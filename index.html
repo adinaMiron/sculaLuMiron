@@ -206,6 +206,51 @@
 </style>
 </head>
 <body>
+<!-- ===== toolbar nav — paste right after <body> ===== -->
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Caiet vocal</a>
+  <a href="editor.html" data-page="editor.html">Editor</a>
+  <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
 
 <div class="top">
   <div class="brand">
