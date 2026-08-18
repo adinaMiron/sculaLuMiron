@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14201A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caiet vocal">
+<title>Caiet vocal — dictare ro / en</title>
+<style>
+  :root{
+    --soil:#14201A;
+    --soil-2:#1B2A22;
+    --soil-3:#22342A;
+    --moss:#2E4739;
+    --olive:#C1BB45;
+    --terra:#C4643C;
+    --paper:#F3EEE1;
+    --ink:#20261E;
+    --mist:#9FB3A5;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 60% at 50% -10%, #1E3128 0%, transparent 60%),
+      var(--soil);
+    color:var(--paper);
+    font-family:var(--ui);
+    font-size:16px;
+    line-height:1.45;
+    min-height:100dvh;
+    padding:0 0 calc(24px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- header ---------- */
+  .top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+    padding:calc(14px + env(safe-area-inset-top)) 18px 10px;
+  }
+  .brand{min-width:0}
+  .eyebrow{
+    font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--olive);margin:0 0 2px;
+  }
+  .wordmark{font-family:var(--display);font-size:27px;line-height:1;margin:0;font-weight:400}
+  .top-actions{display:flex;gap:8px;flex:0 0 auto}
+  .icon-btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    background:transparent;color:var(--mist);border:1px solid var(--moss);
+    border-radius:999px;padding:9px 13px;min-height:38px;cursor:pointer;
+  }
+  .icon-btn:active{background:var(--soil-3)}
+  .icon-btn[aria-pressed="true"]{color:var(--olive);border-color:var(--olive)}
+
+  main{padding:0 18px;max-width:680px;margin:0 auto}
+
+  /* ---------- notices ---------- */
+  .notice{
+    border:1px solid var(--terra);border-radius:var(--r);
+    background:rgba(196,100,60,.12);color:#F0D5C6;
+    padding:12px 14px;font-size:14px;margin:6px 0 14px;
+  }
+  .notice code{font-family:var(--mono);font-size:12px}
+  .hidden{display:none !important}
+
+  /* ---------- stage: growth rings + record ---------- */
+  .stage{
+    position:relative;display:grid;place-items:center;
+    height:290px;margin:2px 0 4px;
+  }
+  .rings{position:absolute;width:250px;height:250px;pointer-events:none}
+  .ring{
+    position:absolute;inset:0;border-radius:50%;
+    border:1px solid var(--olive);opacity:.14;
+    transform:scale(.55);
+    transition:transform .09s linear, opacity .18s linear;
+  }
+  .stage.idle .ring{opacity:.09}
+  .btn-rec{
+    position:relative;width:146px;height:146px;border-radius:50%;
+    border:1px solid rgba(243,238,225,.22);
+    background:radial-gradient(120% 120% at 30% 25%, #3A5B48 0%, #23382C 70%);
+    color:var(--paper);cursor:pointer;
+    display:grid;place-items:center;gap:2px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .btn-rec .dot{
+    width:20px;height:20px;border-radius:50%;background:var(--terra);
+    box-shadow:0 0 0 6px rgba(196,100,60,.16);
+  }
+  .btn-rec .label{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--paper);
+  }
+  .btn-rec.on{background:radial-gradient(120% 120% at 30% 25%, #6E3524 0%, #2B2019 70%);border-color:rgba(196,100,60,.55)}
+  .btn-rec.on .dot{border-radius:4px;background:var(--paper);box-shadow:none;width:22px;height:22px}
+  .btn-rec:disabled{opacity:.5;cursor:default}
+  .clock{
+    position:absolute;bottom:16px;
+    font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--mist);
+  }
+  .clock b{color:var(--olive);font-weight:400}
+
+  /* ---------- controls ---------- */
+  .field-label{
+    font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--mist);margin:16px 0 7px;
+  }
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    flex:1 1 0;min-width:88px;min-height:46px;
+    background:var(--soil-2);border:1px solid var(--moss);border-radius:var(--r);
+    color:var(--paper);font-size:15px;cursor:pointer;padding:10px 8px;
+  }
+  .chip[aria-pressed="true"]{background:var(--olive);border-color:var(--olive);color:#1A2117;font-weight:600}
+  .chip:active{transform:translateY(1px)}
+
+  /* ---------- transcript ---------- */
+  .paper{
+    background:var(--paper);color:var(--ink);border-radius:18px;
+    padding:14px 14px 10px;margin-top:18px;
+    box-shadow:0 14px 36px rgba(0,0,0,.35);
+  }
+  #transcript{
+    width:100%;min-height:220px;resize:vertical;
+    background:transparent;border:0;outline:none;
+    color:var(--ink);font-family:var(--display);font-size:18px;line-height:1.55;
+    padding:0;
+  }
+  #transcript::placeholder{color:#8A8C7E}
+  .interim{
+    font-family:var(--display);font-size:18px;line-height:1.55;color:#7C8073;
+    min-height:0;margin:2px 0 0;
+  }
+  .paper-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    border-top:1px solid rgba(32,38,30,.14);margin-top:10px;padding-top:9px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6E7266;
+  }
+
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{
+    flex:1 1 0;min-width:98px;min-height:48px;
+    background:var(--soil-2);border:1px solid var(--moss);border-radius:var(--r);
+    color:var(--paper);font-size:15px;cursor:pointer;padding:12px 10px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn:active{background:var(--soil-3)}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:#E9B79F;border-color:rgba(196,100,60,.45)}
+
+  .status{
+    font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--mist);
+    margin:14px 0 0;min-height:18px;
+  }
+  .status.err{color:#EEA98A}
+  .status.busy b{color:var(--olive);font-weight:400}
+
+  /* ---------- settings sheet ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(8,14,11,.6);backdrop-filter:blur(2px);z-index:8}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:9;
+    background:var(--soil-2);border-top:1px solid var(--moss);
+    border-radius:20px 20px 0 0;
+    padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height:88dvh;overflow:auto;
+    max-width:680px;margin:0 auto;
+  }
+  .sheet h2{font-family:var(--display);font-weight:400;font-size:22px;margin:2px 0 4px}
+  .sheet p.help{font-size:13px;color:var(--mist);margin:0 0 12px}
+  .grid{display:grid;gap:12px}
+  label.stack{display:grid;gap:6px}
+  label.stack > span{
+    font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mist);
+  }
+  input[type=text],input[type=password],select,textarea.hint{
+    width:100%;font-size:16px;font-family:var(--ui);
+    background:var(--soil);color:var(--paper);
+    border:1px solid var(--moss);border-radius:12px;padding:12px 13px;min-height:48px;
+  }
+  textarea.hint{min-height:76px;resize:vertical;line-height:1.4}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+  .row2{display:flex;gap:8px;align-items:flex-end}
+  .row2 > *{flex:1 1 0;min-width:0}
+  .row2 > button{flex:0 0 auto}
+  .toggle{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--paper)}
+  .toggle input{width:22px;height:22px;accent-color:var(--olive)}
+  .tiny{font-size:12px;color:var(--mist);font-family:var(--mono);line-height:1.5}
+  .tiny a{color:var(--olive)}
+  hr.sep{border:0;border-top:1px solid var(--moss);margin:16px 0}
+  .sheet-foot{display:flex;gap:8px;margin-top:18px}
+
+  @media (prefers-reduced-motion: reduce){
+    .ring{transition:none}
+  }
+  @media (min-width:620px){
+    .wordmark{font-size:34px}
+    .stage{height:320px}
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <p class="eyebrow" id="eyebrow">dictare · română / english</p>
+    <h1 class="wordmark">Caiet vocal</h1>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="uiLangBtn" type="button">EN</button>
+    <button class="icon-btn" id="setBtn" type="button" data-i="settings">Setări</button>
+  </div>
+</div>
+
+<main>
+  <div class="notice hidden" id="secureWarn"></div>
+  <div class="notice hidden" id="setupWarn"></div>
+
+  <div class="stage idle" id="stage">
+    <div class="rings" aria-hidden="true">
+      <div class="ring" data-i0></div>
+      <div class="ring" data-i1></div>
+      <div class="ring" data-i2></div>
+      <div class="ring" data-i3></div>
+    </div>
+    <button class="btn-rec" id="recBtn" type="button">
+      <span class="dot"></span>
+      <span class="label" id="recLabel">Înregistrează</span>
+    </button>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+
+  <p class="field-label" data-i="langLabel">Limba vorbită</p>
+  <div class="chips" role="group" id="langChips">
+    <button class="chip" type="button" data-lang="ro" aria-pressed="true">Română</button>
+    <button class="chip" type="button" data-lang="en" aria-pressed="false">English</button>
+    <button class="chip" type="button" data-lang="auto" aria-pressed="false" data-i="auto">Automat</button>
+  </div>
+
+  <p class="field-label" data-i="engineLabel">Motor de transcriere</p>
+  <div class="chips" role="group" id="engineChips">
+    <button class="chip" type="button" data-engine="api" aria-pressed="true" data-i="engApi">Server (precis)</button>
+    <button class="chip" type="button" data-engine="live" aria-pressed="false" data-i="engLive">Browser (fără cheie)</button>
+  </div>
+
+  <div class="paper">
+    <textarea id="transcript" spellcheck="true" placeholder="Textul apare aici."></textarea>
+    <p class="interim" id="interim"></p>
+    <div class="paper-foot">
+      <span id="counts">0 cuvinte</span>
+      <span id="segInfo"></span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button" data-i="copy">Copiază</button>
+    <button class="btn" id="shareBtn" type="button" data-i="share">Trimite</button>
+    <button class="btn" id="dlBtn" type="button" data-i="download">Descarcă</button>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="fileBtn" type="button" data-i="importFile">Transcrie un fișier audio</button>
+    <button class="btn ghost danger" id="clearBtn" type="button" data-i="clear">Șterge tot</button>
+  </div>
+  <input type="file" id="fileInput" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+
+  <p class="status" id="status"></p>
+</main>
+
+<div class="scrim hidden" id="scrim"></div>
+<div class="sheet hidden" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle" data-i="settings">Setări</h2>
+  <p class="help" data-i="setHelp">Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.</p>
+
+  <div class="grid">
+    <label class="stack">
+      <span data-i="provider">Furnizor</span>
+      <select id="provider">
+        <option value="groq">Groq — Whisper large v3</option>
+        <option value="openai">OpenAI</option>
+        <option value="custom" data-i="ownServer">Server propriu (proxy)</option>
+      </select>
+    </label>
+
+    <label class="stack" id="endpointWrap">
+      <span data-i="endpoint">Adresa proxy-ului</span>
+      <input type="text" id="endpoint" inputmode="url" placeholder="/api/transcribe" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+
+    <label class="stack">
+      <span data-i="apiKey">Cheie API</span>
+      <span class="row2">
+        <input type="password" id="apiKey" placeholder="gsk_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="icon-btn" id="peekBtn" type="button" data-i="show">Arată</button>
+      </span>
+    </label>
+
+    <label class="stack">
+      <span data-i="model">Model</span>
+      <input type="text" id="model" list="modelList" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <datalist id="modelList"></datalist>
+    </label>
+
+    <label class="stack">
+      <span data-i="hint">Termeni utili (opțional)</span>
+      <textarea class="hint" id="hint" placeholder="ex. Netopia, răsaduri, semănare directă, Darcy-Weisbach"></textarea>
+    </label>
+
+    <label class="stack">
+      <span data-i="segLen">Lungimea unui segment</span>
+      <select id="segLen">
+        <option value="2">2 min</option>
+        <option value="5" selected>5 min</option>
+        <option value="10">10 min</option>
+        <option value="0" data-i="segOff">Fără împărțire</option>
+      </select>
+    </label>
+
+    <hr class="sep">
+
+    <label class="toggle">
+      <input type="checkbox" id="tidy">
+      <span data-i="tidyLabel">Corectează punctuația și diacriticele după transcriere</span>
+    </label>
+    <label class="stack">
+      <span data-i="tidyModel">Model pentru corectură</span>
+      <input type="text" id="tidyModel" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+
+    <p class="tiny" id="keyTip"></p>
+  </div>
+
+  <div class="sheet-foot">
+    <button class="btn" id="saveBtn" type="button" data-i="save">Salvează</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1. i18n
+   ============================================================ */
+const I18N = {
+  ro:{
+    eyebrow:"dictare · română / english",
+    settings:"Setări", langLabel:"Limba vorbită", auto:"Automat",
+    engineLabel:"Motor de transcriere", engApi:"Server (precis)", engLive:"Browser (fără cheie)",
+    copy:"Copiază", share:"Trimite", download:"Descarcă", clear:"Șterge tot",
+    importFile:"Transcrie un fișier audio",
+    rec:"Înregistrează", stop:"Oprește",
+    setHelp:"Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.",
+    provider:"Furnizor", ownServer:"Server propriu (proxy)", endpoint:"Adresa proxy-ului",
+    apiKey:"Cheie API", show:"Arată", hide:"Ascunde", model:"Model",
+    hint:"Termeni utili (opțional)", segLen:"Lungimea unui segment", segOff:"Fără împărțire",
+    tidyLabel:"Corectează punctuația și diacriticele după transcriere",
+    tidyModel:"Model pentru corectură", save:"Salvează",
+    placeholder:"Textul apare aici.",
+    words:n=>n+(n===1?" cuvânt":" cuvinte"),
+    listening:"Ascult. Ține ecranul aprins.",
+    transcribing:n=>"Se transcrie segmentul "+n+"…",
+    doneSeg:n=>"Segmentul "+n+" e gata.",
+    tidying:"Se corectează textul…",
+    ready:"Gata.",
+    copied:"Copiat.",
+    cleared:"Text șters.",
+    micDenied:"Microfonul e blocat. Permite accesul în setările browserului, apoi reîncarcă pagina.",
+    noRecorder:"Browserul acesta nu poate înregistra audio. Încearcă Safari pe iPhone sau Chrome pe tabletă.",
+    insecure:"Microfonul funcționează doar pe <b>https://</b> sau localhost. Deschis din fișier local (file://) sau http, browserul nu dă acces la microfon.",
+    needKey:"Adaugă o cheie API în Setări, sau comută pe „Browser (fără cheie)”.",
+    errNoKey:"Lipsește cheia API.",
+    errNoEndpoint:"Lipsește adresa proxy-ului.",
+    errNetwork:"Cererea nu a ajuns la server (rețea sau CORS). Dacă furnizorul blochează cererile din browser, folosește un proxy pe serverul tău.",
+    err401:"Cheie respinsă",
+    err413:"Fișierul e prea mare. Alege un segment mai scurt în Setări.",
+    err429:"Prea multe cereri, mai încearcă",
+    liveUnsupported:"Dictarea din browser nu e disponibilă aici (frecvent pe tabletele fără servicii Google). Folosește motorul „Server (precis)”.",
+    liveAuto:"Dictarea din browser are nevoie de o limbă anume; folosesc româna.",
+    liveOn:"Dictare activă. Vorbește normal.",
+    fileReading:"Se transcrie fișierul…",
+    keyTipGroq:'Cheie de la console.groq.com/keys. Whisper large v3 scrie corect cu diacritice.',
+    keyTipOpenAI:'Cheie de la platform.openai.com/api-keys.',
+    keyTipCustom:'Trimite POST multipart către adresa ta; cheia rămâne pe server. Lasă câmpul de cheie gol.',
+    tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB)."
+  },
+  en:{
+    eyebrow:"dictation · romanian / english",
+    settings:"Settings", langLabel:"Spoken language", auto:"Auto",
+    engineLabel:"Transcription engine", engApi:"Server (accurate)", engLive:"Browser (no key)",
+    copy:"Copy", share:"Share", download:"Download", clear:"Clear all",
+    importFile:"Transcribe an audio file",
+    rec:"Record", stop:"Stop",
+    setHelp:"The key stays on this device. Audio goes only to the provider you pick.",
+    provider:"Provider", ownServer:"Your own server (proxy)", endpoint:"Proxy address",
+    apiKey:"API key", show:"Show", hide:"Hide", model:"Model",
+    hint:"Useful terms (optional)", segLen:"Segment length", segOff:"No splitting",
+    tidyLabel:"Fix punctuation and diacritics after transcribing",
+    tidyModel:"Model for the cleanup pass", save:"Save",
+    placeholder:"Your text appears here.",
+    words:n=>n+(n===1?" word":" words"),
+    listening:"Listening. Keep the screen on.",
+    transcribing:n=>"Transcribing segment "+n+"…",
+    doneSeg:n=>"Segment "+n+" done.",
+    tidying:"Cleaning up the text…",
+    ready:"Ready.",
+    copied:"Copied.",
+    cleared:"Text cleared.",
+    micDenied:"The microphone is blocked. Allow access in your browser settings, then reload.",
+    noRecorder:"This browser can't record audio. Try Safari on iPhone or Chrome on the tablet.",
+    insecure:"The microphone only works over <b>https://</b> or localhost. Opened from a local file (file://) or plain http, the browser won't grant mic access.",
+    needKey:"Add an API key in Settings, or switch to “Browser (no key)”.",
+    errNoKey:"API key missing.",
+    errNoEndpoint:"Proxy address missing.",
+    errNetwork:"The request never reached the server (network or CORS). If the provider blocks browser calls, route it through a proxy on your own server.",
+    err401:"Key rejected",
+    err413:"File too large. Pick a shorter segment in Settings.",
+    err429:"Too many requests, try again",
+    liveUnsupported:"Browser dictation isn't available here (common on tablets without Google services). Use the “Server (accurate)” engine.",
+    liveAuto:"Browser dictation needs a specific language; using Romanian.",
+    liveOn:"Dictation on. Speak normally.",
+    fileReading:"Transcribing the file…",
+    keyTipGroq:'Key from console.groq.com/keys. Whisper large v3 handles Romanian diacritics well.',
+    keyTipOpenAI:'Key from platform.openai.com/api-keys.',
+    keyTipCustom:'Sends a multipart POST to your address; the key stays on the server. Leave the key field empty.',
+    tooBig:"File is too large for a single request (over 25 MB)."
+  }
+};
+let UI = "ro";
+function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+
+/* ============================================================
+   2. Providers
+   ============================================================ */
+const PROVIDERS = {
+  groq:{
+    url:"https://api.groq.com/openai/v1/audio/transcriptions",
+    models:["whisper-large-v3","whisper-large-v3-turbo"],
+    chatUrl:"https://api.groq.com/openai/v1/chat/completions",
+    chatModel:"llama-3.3-70b-versatile",
+    keyPlaceholder:"gsk_…", tip:"keyTipGroq"
+  },
+  openai:{
+    url:"https://api.openai.com/v1/audio/transcriptions",
+    models:["gpt-4o-transcribe","whisper-1","gpt-4o-mini-transcribe"],
+    chatUrl:"https://api.openai.com/v1/chat/completions",
+    chatModel:"gpt-4o-mini",
+    keyPlaceholder:"sk-…", tip:"keyTipOpenAI"
+  },
+  custom:{
+    url:"", models:["whisper-large-v3"],
+    chatUrl:"", chatModel:"",
+    keyPlaceholder:"", tip:"keyTipCustom"
+  }
+};
+
+/* ============================================================
+   3. Settings store (persists where storage exists, memory otherwise)
+   ============================================================ */
+const KEY = "caiet-vocal:settings";
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__cv","1"); localStorage.removeItem("__cv"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+
+const S = {
+  ui:"ro", lang:"ro", engine:"api",
+  provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
+  hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile"
+};
+
+/* ============================================================
+   4. DOM
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const stage=$("#stage"), recBtn=$("#recBtn"), recLabel=$("#recLabel"), clock=$("#clock");
+const rings=[...document.querySelectorAll(".ring")];
+const ta=$("#transcript"), interim=$("#interim"), counts=$("#counts"), segInfo=$("#segInfo");
+const statusEl=$("#status"), secureWarn=$("#secureWarn"), setupWarn=$("#setupWarn");
+const sheet=$("#sheet"), scrim=$("#scrim");
+const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
+const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
+const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
+const fileInput=$("#fileInput");
+
+function say(msg, kind){
+  statusEl.className = "status" + (kind ? " " + kind : "");
+  statusEl.innerHTML = msg || "";
+}
+function updateCounts(){
+  const txt = ta.value.trim();
+  const n = txt ? txt.split(/\s+/).length : 0;
+  counts.textContent = t("words", n);
+}
+function appendText(text){
+  if(!text) return;
+  const cur = ta.value.replace(/\s+$/,"");
+  ta.value = cur ? cur + "\n\n" + text : text;
+  updateCounts();
+  ta.scrollTop = ta.scrollHeight;
+}
+
+/* ============================================================
+   5. Language / engine chips
+   ============================================================ */
+function bindChips(sel, attr, onPick){
+  const box = $(sel);
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button[" + attr + "]");
+    if(!b) return;
+    [...box.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    onPick(b.getAttribute(attr));
+  });
+}
+bindChips("#langChips","data-lang", v => { S.lang = v; save(); if(live.active){ stopLive(); startLive(); } });
+bindChips("#engineChips","data-engine", v => { S.engine = v; save(); checkSetup(); });
+
+/* ============================================================
+   6. UI language
+   ============================================================ */
+function applyUILang(){
+  document.documentElement.lang = UI;
+  $("#eyebrow").textContent = t("eyebrow");
+  $("#uiLangBtn").textContent = UI === "ro" ? "EN" : "RO";
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  recLabel.textContent = rec.active ? t("stop") : t("rec");
+  ta.placeholder = t("placeholder");
+  const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+  secureWarn.innerHTML = t("insecure");
+  updateCounts(); updateProviderUI(); checkSetup();
+}
+$("#uiLangBtn").addEventListener("click", () => { UI = S.ui = (UI === "ro" ? "en" : "ro"); applyUILang(); save(); });
+
+/* ============================================================
+   7. Settings sheet
+   ============================================================ */
+function openSheet(){ sheet.classList.remove("hidden"); scrim.classList.remove("hidden"); }
+function closeSheet(){ sheet.classList.add("hidden"); scrim.classList.add("hidden"); }
+$("#setBtn").addEventListener("click", openSheet);
+scrim.addEventListener("click", closeSheet);
+$("#peekBtn").addEventListener("click", () => {
+  apiKeyEl.type = apiKeyEl.type === "password" ? "text" : "password";
+  $("#peekBtn").textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+});
+function updateProviderUI(){
+  const p = PROVIDERS[providerSel.value] || PROVIDERS.groq;
+  apiKeyEl.placeholder = p.keyPlaceholder;
+  modelList.innerHTML = p.models.map(m => '<option value="' + m + '"></option>').join("");
+  endpointWrap.classList.toggle("hidden", providerSel.value !== "custom");
+  keyTip.textContent = t(p.tip);
+}
+providerSel.addEventListener("change", () => {
+  const p = PROVIDERS[providerSel.value];
+  modelEl.value = p.models[0] || "";
+  tidyModelEl.value = p.chatModel || "";
+  updateProviderUI();
+});
+$("#saveBtn").addEventListener("click", () => {
+  S.provider = providerSel.value;
+  S.key = apiKeyEl.value.trim();
+  S.model = modelEl.value.trim() || PROVIDERS[S.provider].models[0] || "";
+  S.endpoint = endpointEl.value.trim();
+  S.hint = hintEl.value.trim();
+  S.segMin = parseInt(segLenEl.value, 10) || 0;
+  S.tidy = tidyEl.checked;
+  S.tidyModel = tidyModelEl.value.trim();
+  save(); closeSheet(); checkSetup(); say(t("ready"));
+});
+async function save(){ try{ await store.set(KEY, JSON.stringify(S)); }catch(e){} }
+async function load(){
+  let raw = null;
+  try{ raw = await store.get(KEY); }catch(e){}
+  if(raw){ try{ Object.assign(S, JSON.parse(raw)); }catch(e){} }
+  UI = S.ui === "en" ? "en" : "ro";
+  providerSel.value = S.provider in PROVIDERS ? S.provider : "groq";
+  apiKeyEl.value = S.key || "";
+  modelEl.value = S.model || PROVIDERS[providerSel.value].models[0];
+  endpointEl.value = S.endpoint || "";
+  hintEl.value = S.hint || "";
+  segLenEl.value = String(S.segMin);
+  tidyEl.checked = !!S.tidy;
+  tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
+  document.querySelectorAll("#langChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
+  document.querySelectorAll("#engineChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.engine === S.engine)));
+  applyUILang();
+}
+
+function checkSetup(){
+  const needsKey = S.engine === "api" && S.provider !== "custom" && !S.key;
+  const needsUrl = S.engine === "api" && S.provider === "custom" && !S.endpoint;
+  if(needsKey || needsUrl){
+    setupWarn.textContent = needsUrl ? t("errNoEndpoint") : t("needKey");
+    setupWarn.classList.remove("hidden");
+  } else {
+    setupWarn.classList.add("hidden");
+  }
+}
+
+/* ============================================================
+   8. Secure-context check
+   ============================================================ */
+if(!window.isSecureContext){ secureWarn.classList.remove("hidden"); }
+
+/* ============================================================
+   9. Recording (MediaRecorder) with segment rotation
+   ============================================================ */
+function pickMime(){
+  if(typeof MediaRecorder === "undefined") return null;
+  const cand = [
+    ["audio/webm;codecs=opus","webm"],
+    ["audio/ogg;codecs=opus","ogg"],
+    ["audio/mp4;codecs=mp4a.40.2","m4a"],
+    ["audio/mp4","m4a"],
+    ["audio/aac","m4a"]
+  ];
+  for(const [m,e] of cand){
+    try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return {mime:m, ext:e}; }catch(_){}
+  }
+  return {mime:"", ext:"webm"};
+}
+
+const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, timer:null, rot:null, rotating:false, n:0 };
+const queue = { items:[], busy:false, done:0 };
+let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
+
+recBtn.addEventListener("click", () => {
+  if(S.engine === "live"){ live.active ? stopLive() : startLive(); return; }
+  rec.active ? stopRec() : startRec();
+});
+
+async function startRec(){
+  if(typeof MediaRecorder === "undefined"){ say(t("noRecorder"), "err"); return; }
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  if(S.provider === "custom" && !S.endpoint){ say(t("errNoEndpoint"), "err"); openSheet(); return; }
+
+  try{
+    rec.stream = await navigator.mediaDevices.getUserMedia({
+      audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+  }catch(e){ say(t("micDenied"), "err"); return; }
+
+  rec.fmt = pickMime();
+  rec.active = true; rec.n = 0; rec.t0 = Date.now();
+  queue.done = 0;
+  setRecUI(true);
+  say(t("listening"), "busy");
+  startMeter(rec.stream);
+  requestWakeLock();
+  rec.timer = setInterval(tick, 250); tick();
+  startSegment();
+}
+
+function startSegment(){
+  const opts = {};
+  if(rec.fmt.mime) opts.mimeType = rec.fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ rec.mr = new MediaRecorder(rec.stream, opts); }
+  catch(e){ try{ rec.mr = new MediaRecorder(rec.stream); }catch(e2){ say(t("noRecorder"),"err"); return; } }
+  rec.chunks = [];
+  rec.n++;
+  rec.mr.ondataavailable = ev => { if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
+  rec.mr.onstop = () => {
+    const type = rec.chunks.length ? (rec.chunks[0].type || rec.fmt.mime) : rec.fmt.mime;
+    const blob = new Blob(rec.chunks, {type:type || "audio/webm"});
+    rec.chunks = [];
+    if(blob.size > 1200) enqueue(blob, rec.fmt.ext);
+    if(rec.rotating && rec.active){ rec.rotating = false; startSegment(); armRotation(); }
+  };
+  rec.mr.start();
+  armRotation();
+}
+
+function armRotation(){
+  clearTimeout(rec.rot);
+  if(!S.segMin) return;
+  rec.rot = setTimeout(() => {
+    if(rec.active && rec.mr && rec.mr.state === "recording"){ rec.rotating = true; rec.mr.stop(); }
+  }, S.segMin * 60000);
+}
+
+function stopRec(){
+  rec.active = false; rec.rotating = false;
+  clearTimeout(rec.rot); clearInterval(rec.timer);
+  try{ if(rec.mr && rec.mr.state !== "inactive") rec.mr.stop(); }catch(e){}
+  stopMeter();
+  releaseWakeLock();
+  setRecUI(false);
+  setTimeout(() => {
+    if(rec.stream){ rec.stream.getTracks().forEach(tr => tr.stop()); rec.stream = null; }
+  }, 400);
+}
+
+function setRecUI(on){
+  recBtn.classList.toggle("on", on);
+  recLabel.textContent = on ? t("stop") : t("rec");
+  stage.classList.toggle("idle", !on);
+  if(!on){ rings.forEach(r => { r.style.transform = "scale(.55)"; r.style.opacity = ""; }); }
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+function tick(){
+  const ms = Date.now() - rec.t0;
+  clock.innerHTML = fmtTime(ms) + (S.segMin ? ' · <b>' + t("segLen").toLowerCase() + " " + S.segMin + " min</b>" : "");
+}
+
+/* --- level meter drives the growth rings --- */
+function startMeter(stream){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    srcNode = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512; analyser.smoothingTimeConstant = .75;
+    srcNode.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    let smooth = 0;
+    const loop = () => {
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0;
+      for(let i=0;i<buf.length;i++){ const v = Math.abs(buf[i]-128)/128; if(v>peak) peak = v; }
+      smooth = smooth*0.72 + peak*0.28;
+      const lvl = Math.min(1, smooth*3.2);
+      rings.forEach((r,i) => {
+        const base = 0.55 + i*0.13;
+        r.style.transform = "scale(" + (base + lvl*(0.16 + i*0.05)).toFixed(3) + ")";
+        r.style.opacity = (0.12 + lvl*(0.5 - i*0.09)).toFixed(3);
+      });
+      rafId = requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){}
+}
+function stopMeter(){
+  cancelAnimationFrame(rafId);
+  try{ if(srcNode) srcNode.disconnect(); }catch(e){}
+  try{ if(audioCtx) audioCtx.close(); }catch(e){}
+  audioCtx = analyser = srcNode = null;
+}
+
+async function requestWakeLock(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseWakeLock(){ try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){} }
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && rec.active && !wakeLock) requestWakeLock();
+});
+
+/* ============================================================
+   10. Transcription queue
+   ============================================================ */
+function enqueue(blob, ext){
+  queue.items.push({blob, ext});
+  segInfo.textContent = "";
+  pump();
+}
+async function pump(){
+  if(queue.busy || !queue.items.length) return;
+  queue.busy = true;
+  const item = queue.items.shift();
+  const idx = ++queue.done;
+  say(t("transcribing", idx), "busy");
+  segInfo.textContent = t("transcribing", idx);
+  try{
+    if(item.blob.size > 25*1024*1024) throw new Error(t("tooBig"));
+    let text = await transcribe(item.blob, item.ext, tailPrompt());
+    if(text && S.tidy){ say(t("tidying"), "busy"); text = await tidyUp(text); }
+    appendText(text);
+    say(t("doneSeg", idx));
+  }catch(e){
+    say(String(e.message || e), "err");
+  }
+  segInfo.textContent = "";
+  queue.busy = false;
+  if(queue.items.length) pump();
+}
+function tailPrompt(){
+  const tail = ta.value.trim().slice(-400);
+  const bits = [];
+  if(S.hint) bits.push(S.hint);
+  if(tail) bits.push(tail);
+  return bits.join(" ").slice(-800);
+}
+
+async function transcribe(blob, ext, promptText){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? S.endpoint : p.url;
+  if(!url) throw new Error(t("errNoEndpoint"));
+  if(S.provider !== "custom" && !S.key) throw new Error(t("errNoKey"));
+
+  const fd = new FormData();
+  fd.append("file", blob, "inregistrare." + (ext || "webm"));
+  fd.append("model", S.model || p.models[0]);
+  fd.append("response_format", "json");
+  fd.append("temperature", "0");
+  if(S.lang !== "auto") fd.append("language", S.lang);
+  if(promptText) fd.append("prompt", promptText);
+
+  const headers = {};
+  if(S.key) headers.Authorization = "Bearer " + S.key;
+
+  let res;
+  try{ res = await fetch(url, {method:"POST", headers, body:fd}); }
+  catch(e){ throw new Error(t("errNetwork")); }
+
+  if(!res.ok){
+    let msg = "HTTP " + res.status;
+    try{
+      const j = await res.json();
+      if(j && j.error) msg = j.error.message || (typeof j.error === "string" ? j.error : msg);
+    }catch(_){}
+    if(res.status === 401 || res.status === 403) msg = t("err401") + " · " + msg;
+    if(res.status === 413) msg = t("err413");
+    if(res.status === 429) msg = t("err429") + " · " + msg;
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return String(data.text || "").trim();
+}
+
+async function tidyUp(text){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? "" : p.chatUrl;
+  if(!url || !S.tidyModel) return text;
+  const sys = "You edit raw speech-to-text output. Fix punctuation, capitalisation and missing Romanian diacritics. " +
+              "Never translate, never rephrase, never add or remove words. Reply with the corrected text only.";
+  try{
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + S.key },
+      body: JSON.stringify({
+        model: S.tidyModel, temperature: 0,
+        messages: [{role:"system", content:sys}, {role:"user", content:text}]
+      })
+    });
+    if(!res.ok) return text;
+    const j = await res.json();
+    const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    return out ? String(out).trim() : text;
+  }catch(e){ return text; }
+}
+
+/* ============================================================
+   11. Browser dictation (Web Speech API)
+   ============================================================ */
+const live = { active:false, sr:null, wantOn:false };
+function startLive(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ say(t("liveUnsupported"), "err"); return; }
+  const lang = S.lang === "en" ? "en-US" : "ro-RO";
+  if(S.lang === "auto") say(t("liveAuto"));
+  try{
+    live.sr = new SR();
+  }catch(e){ say(t("liveUnsupported"), "err"); return; }
+  live.sr.lang = lang;
+  live.sr.continuous = true;
+  live.sr.interimResults = true;
+  live.wantOn = true; live.active = true;
+  setRecUI(true);
+  say(t("liveOn"), "busy");
+  clock.textContent = lang;
+
+  live.sr.onresult = ev => {
+    let inter = "";
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const r = ev.results[i];
+      if(r.isFinal){
+        const txt = String(r[0].transcript).trim();
+        if(txt){
+          const cur = ta.value.replace(/\s+$/,"");
+          ta.value = cur ? cur + " " + txt : txt;
+          updateCounts(); ta.scrollTop = ta.scrollHeight;
+        }
+      } else {
+        inter += r[0].transcript;
+      }
+    }
+    interim.textContent = inter;
+    const pulse = Math.min(1, (inter.length % 40) / 40 + 0.25);
+    rings.forEach((r,i) => { r.style.transform = "scale(" + (0.55 + i*0.13 + pulse*0.1).toFixed(3) + ")"; });
+  };
+  live.sr.onerror = ev => {
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){ live.wantOn = false; say(t("micDenied"), "err"); }
+    else if(ev.error === "language-not-supported"){ live.wantOn = false; say(t("liveUnsupported"), "err"); }
+  };
+  live.sr.onend = () => {
+    interim.textContent = "";
+    if(live.wantOn){ try{ live.sr.start(); }catch(e){} }
+    else { live.active = false; setRecUI(false); clock.textContent = "00:00"; say(t("ready")); }
+  };
+  try{ live.sr.start(); }
+  catch(e){ live.wantOn = false; live.active = false; setRecUI(false); say(t("liveUnsupported"), "err"); }
+  requestWakeLock();
+}
+function stopLive(){
+  live.wantOn = false;
+  try{ if(live.sr) live.sr.stop(); }catch(e){}
+  live.active = false; setRecUI(false); interim.textContent = "";
+  clock.textContent = "00:00"; releaseWakeLock();
+}
+
+/* ============================================================
+   12. File import
+   ============================================================ */
+$("#fileBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files && fileInput.files[0];
+  fileInput.value = "";
+  if(!f) return;
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  const ext = (f.name.split(".").pop() || "m4a").toLowerCase();
+  say(t("fileReading"), "busy");
+  enqueue(f, ext);
+});
+
+/* ============================================================
+   13. Copy / share / download / clear
+   ============================================================ */
+$("#copyBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); say(t("copied")); }
+  catch(e){ ta.focus(); ta.select(); say(t("copied")); }
+});
+$("#shareBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  if(navigator.share){ try{ await navigator.share({title:"Caiet vocal", text:txt}); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(txt); say(t("copied")); }catch(e){} }
+});
+$("#dlBtn").addEventListener("click", () => {
+  const txt = ta.value;
+  if(!txt) return;
+  const stamp = new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
+  const blob = new Blob(["\uFEFF" + txt], {type:"text/plain;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "transcriere_" + stamp + ".txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+$("#clearBtn").addEventListener("click", () => {
+  ta.value = ""; interim.textContent = ""; updateCounts(); say(t("cleared"));
+});
+ta.addEventListener("input", updateCounts);
+
+/* ============================================================
+   14. Go
+   ============================================================ */
+load();
+})();
+</script>
+</body>
+</html>
