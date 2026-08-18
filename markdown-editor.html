@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Editor</title>
+<style>
+  :root {
+    --bg: #0f0f11;
+    --surface: #18181c;
+    --surface2: #1f1f25;
+    --border: #2e2e38;
+    --accent: #7c6af7;
+    --accent2: #b5acf9;
+    --text: #e8e6f0;
+    --text2: #9591a8;
+    --text3: #5e5a72;
+    --panel-w: 260px;
+    --font-mono: 'Courier New', monospace;
+    --font-ui: 'Trebuchet MS', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent2); }
+  .logo span { color: var(--text3); font-weight: 400; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #6859e0; border-color: #6859e0; color: #fff; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
+
+  .tb-btn {
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+  }
+  .tb-btn:hover { background: var(--border); color: var(--text); }
+  .tb-btn.active { background: var(--accent); color: #fff; }
+  .tb-btn:disabled { opacity: 0.35; cursor: default; }
+  .tb-btn:disabled:hover { background: transparent; color: var(--text2); }
+
+  .tb-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-right: 2px; }
+
+  .tb-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    outline: none;
+  }
+  .tb-select:focus { border-color: var(--accent); }
+
+  /* ── Main workspace ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Image Explorer Panel ── */
+  #img-panel {
+    width: var(--panel-w);
+    min-width: var(--panel-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+  }
+  #img-panel.collapsed { width: 0; min-width: 0; }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .panel-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.12s;
+  }
+  .panel-close:hover { color: var(--text); }
+
+  .panel-actions {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .panel-actions .btn { width: 100%; text-align: center; font-size: 11px; padding: 6px 10px; }
+
+  #folder-name {
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: var(--font-mono);
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Tree ── */
+  #tree-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  #tree-container::-webkit-scrollbar { width: 4px; }
+  #tree-container::-webkit-scrollbar-track { background: transparent; }
+  #tree-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .tree-loading {
+    padding: 16px 12px;
+    font-size: 12px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .tree-dir {
+    user-select: none;
+  }
+  .tree-dir-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .tree-dir-label:hover { background: var(--surface2); }
+  .tree-arrow { font-size: 10px; color: var(--text3); width: 10px; display: inline-block; transition: transform 0.15s; }
+  .tree-arrow.open { transform: rotate(90deg); }
+  .tree-dir-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .tree-children { display: none; }
+  .tree-children.open { display: block; }
+
+  .tree-img-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px 5px 22px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-radius: 0;
+  }
+  .tree-img-item:hover { background: var(--surface2); }
+  .tree-img-item.selected { background: #7c6af722; }
+
+  .tree-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .tree-img-name {
+    font-size: 11px;
+    color: var(--text2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  /* ── Image detail tooltip at bottom of panel ── */
+  #img-detail {
+    border-top: 1px solid var(--border);
+    padding: 8px;
+    flex-shrink: 0;
+    display: none;
+  }
+  #img-detail.visible { display: block; }
+  #detail-img {
+    width: 100%;
+    max-height: 140px;
+    object-fit: contain;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    display: block;
+    margin-bottom: 6px;
+  }
+  #detail-info {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 6px;
+  }
+  #detail-insert {
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    padding: 5px;
+  }
+
+  /* ── Editor panes ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pane + .pane { border-left: 1px solid var(--border); }
+  .pane-header {
+    padding: 8px 16px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #editor {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 24px 28px;
+    overflow-y: auto;
+    tab-size: 2;
+  }
+  #editor::selection { background: #7c6af740; }
+
+  #preview {
+    flex: 1;
+    padding: 24px 28px;
+    overflow-y: auto;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text);
+  }
+  #preview h1 { font-size: 2em; font-weight: 700; margin: 0 0 16px; color: var(--accent2); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  #preview h2 { font-size: 1.55em; font-weight: 600; margin: 24px 0 12px; color: var(--accent2); }
+  #preview h3 { font-size: 1.3em; font-weight: 600; margin: 20px 0 10px; color: var(--text); }
+  #preview h4 { font-size: 1.1em; font-weight: 600; margin: 16px 0 8px; color: var(--text); }
+  #preview h5 { font-size: 1em; font-weight: 600; margin: 14px 0 6px; color: var(--text2); }
+  #preview h6 { font-size: 0.9em; font-weight: 600; margin: 12px 0 6px; color: var(--text3); }
+  #preview p { margin: 0 0 14px; }
+  #preview ul { margin: 0 0 14px 22px; }
+  #preview ol { margin: 0 0 14px 22px; }
+  #preview li { margin: 4px 0; }
+  #preview strong { color: #fff; font-weight: 700; }
+  #preview em { color: var(--accent2); font-style: italic; }
+  #preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; border: 1px solid var(--border); }
+  #preview code { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); font-size: 0.88em; color: #f0c080; }
+
+  /* ── Image modal ── */
+  .image-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000bb;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .image-modal.open { display: flex; }
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .modal-title { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; color: var(--text); }
+  .field label { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 5px; }
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: var(--font-ui);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .local-pick { display: flex; align-items: center; gap: 10px; }
+  .btn-pick {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    color: var(--text2);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-pick:hover { border-color: var(--accent); color: var(--accent2); }
+  .pick-name { font-size: 12px; color: var(--text3); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+  .img-thumb { display: none; width: 100%; max-height: 120px; object-fit: contain; border-radius: 6px; border: 1px solid var(--border); margin-top: 4px; background: var(--bg); }
+
+  /* ── Status bar ── */
+  /* ── Table builder modal ── */
+  .table-modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .table-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .table-controls label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-right: 4px; }
+  .num-input {
+    width: 56px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 13px;
+    font-family: var(--font-ui);
+    outline: none;
+    text-align: center;
+  }
+  .num-input:focus { border-color: var(--accent); }
+  #table-preview-grid {
+    overflow: auto;
+    max-height: 280px;
+  }
+  .tbl-builder {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+  }
+  .tbl-builder th, .tbl-builder td {
+    border: 1px solid var(--border);
+    padding: 0;
+  }
+  .tbl-builder th { background: var(--surface2); }
+  .tbl-builder input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    outline: none;
+    width: 100%;
+    min-width: 80px;
+  }
+  .tbl-builder th input { color: var(--accent2); font-weight: 600; }
+  .tbl-builder input:focus { background: #7c6af715; }
+  .align-row td { background: var(--surface2); padding: 2px 4px; text-align: center; }
+  .align-select {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+  }
+
+  /* ── Code block preview ── */
+  #preview pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    margin: 0 0 14px;
+  }
+  #preview pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #c9d1d9;
+    line-height: 1.6;
+  }
+  #preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 14px;
+    font-size: 14px;
+  }
+  #preview th, #preview td {
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    text-align: left;
+  }
+  #preview th { background: var(--surface2); color: var(--accent2); font-weight: 600; }
+  #preview tr:nth-child(even) td { background: #ffffff06; }
+
+  /* ── Navigation panel ── */
+  #nav-panel {
+    width: 220px;
+    min-width: 220px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+    order: 99;
+  }
+  #nav-panel.collapsed { width: 0; min-width: 0; }
+
+  #nav-panel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #nav-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  #nav-tree::-webkit-scrollbar { width: 4px; }
+  #nav-tree::-webkit-scrollbar-track { background: transparent; }
+  #nav-tree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .nav-empty {
+    padding: 16px 12px;
+    font-size: 12px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+    text-decoration: none;
+    color: inherit;
+    line-height: 1.4;
+  }
+  .nav-item:hover { background: var(--surface2); border-left-color: var(--accent); }
+  .nav-item.active { background: #7c6af715; border-left-color: var(--accent); }
+
+  /* H1 */
+  .nav-h1 { padding-left: 12px; }
+  .nav-h1 .nav-label { font-size: 13px; font-weight: 700; color: var(--accent2); }
+
+  /* H2 */
+  .nav-h2 { padding-left: 20px; }
+  .nav-h2 .nav-label { font-size: 12px; font-weight: 600; color: var(--text); }
+
+  /* H3 */
+  .nav-h3 { padding-left: 28px; }
+  .nav-h3 .nav-label { font-size: 12px; font-weight: 400; font-style: italic; color: var(--text); }
+
+  /* H4 */
+  .nav-h4 { padding-left: 36px; }
+  .nav-h4 .nav-label { font-size: 11px; font-weight: 400; color: var(--text2); }
+
+  /* H5 */
+  .nav-h5 { padding-left: 44px; }
+  .nav-h5 .nav-label { font-size: 11px; font-weight: 400; font-style: italic; color: var(--text3); }
+
+  /* H6 */
+  .nav-h6 { padding-left: 52px; }
+  .nav-h6 .nav-label { font-size: 10px; font-weight: 400; color: var(--text3); }
+
+  .nav-bullet {
+    flex-shrink: 0;
+    font-size: 9px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .file-name { font-size: 12px; color: var(--text3); padding: 6px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 5px; font-family: var(--font-mono); }
+  #status-bar { display: flex; gap: 20px; padding: 4px 16px; font-size: 11px; color: var(--text3); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+
+<!-- ===== toolbar nav — paste right after <body> ===== -->
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Caiet vocal</a>
+  <a href="editor.html" data-page="editor.html">Editor</a>
+  <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+<header>
+  <div class="logo">Markdown <span>/ editor</span></div>
+  <div class="header-actions">
+    <span class="file-name" id="current-file">untitled.md</span>
+    <button class="btn" onclick="newFile()">New</button>
+    <button class="btn" onclick="openFile()">Open .md</button>
+    <button class="btn" onclick="importDocx()">Import DOCX</button>
+    <button class="btn" onclick="exportHtml()">Export HTML</button>
+    <button class="btn btn-primary" onclick="saveFile()">Save ↓</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <span class="tb-label">H</span>
+  <select class="tb-select" id="heading-select" onchange="insertHeading(this.value)">
+    <option value="">— Heading —</option>
+    <option value="1">H1 — Title</option>
+    <option value="2">H2 — Section</option>
+    <option value="3">H3 — Sub-section</option>
+    <option value="4">H4</option>
+    <option value="5">H5</option>
+    <option value="6">H6</option>
+  </select>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="wrapSelection('**','**')" title="Bold"><b>B</b></button>
+  <button class="tb-btn" onclick="wrapSelection('*','*')" title="Italic"><i>I</i></button>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="insertList()" title="Unordered List">≡ List</button>
+  <button class="tb-btn" onclick="insertOrderedList()" title="Ordered List">№ Ordered</button>
+
+  <div class="toolbar-sep"></div>
+  <span class="tb-label">Size</span>
+  <select class="tb-select" id="size-select" onchange="insertFontSize(this.value)">
+    <option value="">— Font Size —</option>
+    <option value="8">8px</option>
+    <option value="9">9px</option>
+    <option value="10">10px</option>
+    <option value="11">11px</option>
+    <option value="12">12px</option>
+    <option value="13">13px</option>
+    <option value="14">14px</option>
+    <option value="15">15px</option>
+    <option value="16">16px</option>
+    <option value="17">17px</option>
+    <option value="18">18px</option>
+    <option value="20">20px</option>
+    <option value="22">22px</option>
+    <option value="24">24px</option>
+    <option value="26">26px</option>
+    <option value="28">28px</option>
+    <option value="30">30px</option>
+  </select>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="openLinkModal()" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
+  <button class="tb-btn" onclick="openImageModal()">⬛ Image</button>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="openTableModal()" title="Insert table">⊞ Table</button>
+  <button class="tb-btn" onclick="insertCodeBlock()" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" title="Image Explorer">🖼 Explorer</button>
+  <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" title="Navigation (Ctrl+1)">☰ Nav</button>
+</div>
+
+<div class="workspace">
+
+  <!-- Image Explorer Side Panel -->
+  <div id="img-panel" class="collapsed">
+    <div class="panel-header">
+      <span class="panel-title">Image Explorer</span>
+      <button class="panel-close" onclick="togglePanel()" title="Close panel">✕</button>
+    </div>
+    <div class="panel-actions">
+      <button class="btn" onclick="setWorkingFolder()">📁 Set folder…</button>
+      <div id="folder-name"></div>
+    </div>
+    <div id="tree-container">
+      <div class="tree-loading" id="tree-empty">No folder selected.<br>Click "Set folder" to begin.</div>
+    </div>
+    <div id="img-detail">
+      <img id="detail-img" alt="" />
+      <div id="detail-info"></div>
+      <button class="btn btn-primary detail-insert" id="detail-insert-btn" onclick="insertSelectedImage()">↩ Insert into editor</button>
+    </div>
+  </div>
+
+  <!-- Editor + Preview -->
+  <div class="main">
+    <div class="pane">
+      <div class="pane-header">Markdown Source</div>
+      <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus()" onkeydown="handleTab(event)" placeholder="Start writing Markdown here…
+
+# Hello, World!
+## A subtitle
+
+Write **bold**, *italic*, or use - for lists.
+
+Use the toolbar above to insert formatting.
+"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header">Preview</div>
+      <div id="preview"></div>
+    </div>
+  </div>
+
+  <!-- Navigation Panel -->
+  <div id="nav-panel">
+    <div class="panel-header">
+      <span class="panel-title">Navigation</span>
+      <button class="panel-close" onclick="toggleNav()" title="Close (Ctrl+1)">✕</button>
+    </div>
+    <div id="nav-tree">
+      <div class="nav-empty">No headings yet.</div>
+    </div>
+  </div>
+</div>
+
+<div id="status-bar">
+  <span id="stat-words">0 words</span>
+  <span id="stat-lines">0 lines</span>
+  <span id="stat-chars">0 chars</span>
+</div>
+
+<!-- Image URL modal -->
+<div class="image-modal" id="image-modal">
+  <div class="modal-box">
+    <div class="modal-title">Insert Image</div>
+    <div class="field">
+      <label>Image URL or file path</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="img-url" placeholder="https://example.com/image.png" style="flex:1" />
+      </div>
+    </div>
+    <div class="field">
+      <label>— or pick from your computer —</label>
+      <div class="local-pick">
+        <button class="btn-pick" onclick="document.getElementById('img-local-input').click()">⬛ Choose file…</button>
+        <span class="pick-name" id="pick-name">no file chosen</span>
+      </div>
+      <img id="img-thumb" class="img-thumb" alt="preview" />
+    </div>
+    <div class="field">
+      <label>Alt Text</label>
+      <input type="text" id="img-alt" placeholder="A descriptive label" />
+    </div>
+    <div class="field">
+      <label>Title (optional tooltip)</label>
+      <input type="text" id="img-title" placeholder="Image title" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeImageModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="insertImage()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Link modal -->
+<div class="image-modal" id="link-modal">
+  <div class="modal-box">
+    <div class="modal-title">Insert Link</div>
+    <div class="field">
+      <label>URL</label>
+      <input type="text" id="link-url" placeholder="https://example.com" />
+    </div>
+    <div class="field">
+      <label>Display text</label>
+      <input type="text" id="link-text" placeholder="Link label" />
+    </div>
+    <div class="field">
+      <label>Title (optional tooltip)</label>
+      <input type="text" id="link-title" placeholder="Hover tooltip" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeLinkModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="insertLink()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table builder modal -->
+<div class="image-modal" id="table-modal">
+  <div class="table-modal-box">
+    <div class="modal-title">Table Builder</div>
+    <div class="table-controls">
+      <label>Rows</label>
+      <input type="number" class="num-input" id="tbl-rows" value="3" min="1" max="20" oninput="rebuildTableGrid()">
+      <label>Columns</label>
+      <input type="number" class="num-input" id="tbl-cols" value="3" min="1" max="10" oninput="rebuildTableGrid()">
+    </div>
+    <div id="table-preview-grid"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeTableModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="insertTable()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".md,.txt" style="display:none" onchange="handleFileOpen(event)">
+<input type="file" id="docx-input" accept=".docx" style="display:none" onchange="handleDocxImport(event)">
+<input type="file" id="img-local-input" accept="image/*" style="display:none" onchange="handleLocalImage(event)">
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+let savedRange = null;
+
+/* ── Selection helpers ── */
+function saveSelection() {
+  savedRange = { start: editor.selectionStart, end: editor.selectionEnd };
+}
+function restoreSelection() {
+  if (savedRange) { editor.focus(); editor.setSelectionRange(savedRange.start, savedRange.end); }
+}
+function insertAtCursor(text) {
+  editor.focus();
+  const s = editor.selectionStart, e = editor.selectionEnd;
+  editor.setRangeText(text, s, e, 'end');
+  updatePreview(); updateStatus();
+}
+
+/* ── Toolbar actions ── */
+function wrapSelection(before, after) {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end);
+  const replacement = before + (sel || 'text') + after;
+  editor.setRangeText(replacement, start, end, 'select');
+  if (!sel) editor.setSelectionRange(start + before.length, start + before.length + 4);
+  updatePreview(); updateStatus();
+}
+
+function insertHeading(level) {
+  if (!level) return;
+  editor.focus();
+  const start = editor.selectionStart, val = editor.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  const lineEnd = val.indexOf('\n', start);
+  const end = lineEnd === -1 ? val.length : lineEnd;
+  const stripped = val.substring(lineStart, end).replace(/^#{1,6}\s*/, '');
+  editor.setRangeText('#'.repeat(parseInt(level)) + ' ' + stripped, lineStart, end, 'end');
+  document.getElementById('heading-select').value = '';
+  updatePreview(); updateStatus();
+}
+
+function insertList() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end);
+  if (sel) {
+    editor.setRangeText(sel.split('\n').map(l => '- ' + l).join('\n'), start, end, 'end');
+  } else {
+    const val = editor.value;
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = val.indexOf('\n', start);
+    const lineEndPos = lineEnd === -1 ? val.length : lineEnd;
+    const line = val.substring(lineStart, lineEndPos);
+    if (!line.startsWith('- ')) editor.setRangeText('- ' + line, lineStart, lineEndPos, 'end');
+    else insertAtCursor('\n- ');
+  }
+  updatePreview(); updateStatus();
+}
+
+function insertOrderedList() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end);
+  if (sel) {
+    const lines = sel.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n');
+    editor.setRangeText(lines, start, end, 'end');
+  } else {
+    const val = editor.value;
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = val.indexOf('\n', start);
+    const lineEndPos = lineEnd === -1 ? val.length : lineEnd;
+    const line = val.substring(lineStart, lineEndPos);
+    if (!/^\d+\.\s/.test(line)) {
+      // find what number to continue from by looking at the line above
+      const prevText = val.substring(0, lineStart);
+      const prevLines = prevText.split('\n');
+      let nextNum = 1;
+      for (let i = prevLines.length - 1; i >= 0; i--) {
+        const m = prevLines[i].match(/^(\d+)\.\s/);
+        if (m) { nextNum = parseInt(m[1]) + 1; break; }
+        if (prevLines[i].trim() !== '') break;
+      }
+      editor.setRangeText(`${nextNum}. ${line}`, lineStart, lineEndPos, 'end');
+    } else {
+      const m = line.match(/^(\d+)\./);
+      const nextNum = m ? parseInt(m[1]) + 1 : 1;
+      insertAtCursor(`\n${nextNum}. `);
+    }
+  }
+  updatePreview(); updateStatus();
+}
+
+function insertFontSize(size) {
+  if (!size) return;
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end) || 'text';
+  editor.focus();
+  editor.setRangeText(`<span style="font-size:${size}px">${sel}</span>`, start, end, 'end');
+  document.getElementById('size-select').value = '';
+  updatePreview(); updateStatus();
+}
+
+/* ── Image URL modal ── */
+function openImageModal() {
+  saveSelection();
+  document.getElementById('image-modal').classList.add('open');
+  document.getElementById('img-url').focus();
+}
+function closeImageModal() {
+  document.getElementById('image-modal').classList.remove('open');
+  ['img-url','img-alt','img-title'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pick-name').textContent = 'no file chosen';
+  const thumb = document.getElementById('img-thumb');
+  thumb.style.display = 'none'; thumb.src = '';
+  document.getElementById('img-local-input').value = '';
+}
+function handleLocalImage(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    document.getElementById('img-url').value = dataUrl;
+    document.getElementById('pick-name').textContent = file.name;
+    if (!document.getElementById('img-alt').value)
+      document.getElementById('img-alt').value = file.name.replace(/\.[^.]+$/, '');
+    const thumb = document.getElementById('img-thumb');
+    thumb.src = dataUrl; thumb.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+function insertImage() {
+  const url = document.getElementById('img-url').value.trim();
+  const alt = document.getElementById('img-alt').value.trim() || 'image';
+  const title = document.getElementById('img-title').value.trim();
+  if (!url) { document.getElementById('img-url').focus(); return; }
+  const md = title ? `![${alt}](${url} "${title}")` : `![${alt}](${url})`;
+  closeImageModal(); restoreSelection(); insertAtCursor(md);
+}
+
+/* ── Image Explorer Panel ── */
+let workingFolderHandle = null;
+let selectedImageEntry = null;   // { relativePath, fileHandle, objectUrl }
+const IMAGE_EXTS = new Set(['.png','.jpg','.jpeg','.gif','.webp','.svg','.avif','.bmp','.ico','.tiff','.tif']);
+
+function isImage(name) {
+  const ext = name.substring(name.lastIndexOf('.')).toLowerCase();
+  return IMAGE_EXTS.has(ext);
+}
+
+function togglePanel() {
+  const panel = document.getElementById('img-panel');
+  const btn = document.getElementById('btn-explorer');
+  const collapsed = panel.classList.toggle('collapsed');
+  btn.classList.toggle('active', !collapsed);
+}
+
+function toggleNav() {
+  const panel = document.getElementById('nav-panel');
+  const btn = document.getElementById('btn-nav');
+  const collapsed = panel.classList.toggle('collapsed');
+  btn.classList.toggle('active', !collapsed);
+}
+
+async function setWorkingFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('Your browser does not support the File System Access API.\nPlease use Chrome, Edge, or another Chromium-based browser.');
+    return;
+  }
+  try {
+    workingFolderHandle = await window.showDirectoryPicker({ mode: 'read' });
+    document.getElementById('folder-name').textContent = '📂 ' + workingFolderHandle.name;
+    selectedImageEntry = null;
+    document.getElementById('img-detail').classList.remove('visible');
+    await buildTree();
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+}
+
+async function buildTree() {
+  const container = document.getElementById('tree-container');
+  container.innerHTML = '<div class="tree-loading">Scanning folder…</div>';
+  try {
+    const root = await buildDirNode(workingFolderHandle, '');
+    container.innerHTML = '';
+    if (!root) {
+      container.innerHTML = '<div class="tree-loading">No images found.</div>';
+      return;
+    }
+    container.appendChild(root);
+  } catch(e) {
+    container.innerHTML = '<div class="tree-loading">Error reading folder.</div>';
+    console.error(e);
+  }
+}
+
+async function buildDirNode(dirHandle, pathPrefix) {
+  const dirEl = document.createElement('div');
+  dirEl.className = 'tree-dir';
+
+  const childrenEl = document.createElement('div');
+  childrenEl.className = 'tree-children';
+
+  let hasContent = false;
+
+  // collect entries, sort: dirs first, then files
+  const entries = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    entries.push({ name, handle });
+  }
+  entries.sort((a, b) => {
+    if (a.handle.kind !== b.handle.kind) return a.handle.kind === 'directory' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const { name, handle } of entries) {
+    if (handle.kind === 'directory') {
+      const subPath = pathPrefix ? pathPrefix + '/' + name : name;
+      const subNode = await buildDirNode(handle, subPath);
+      if (subNode) { childrenEl.appendChild(subNode); hasContent = true; }
+    } else if (handle.kind === 'file' && isImage(name)) {
+      const relPath = pathPrefix ? pathPrefix + '/' + name : name;
+      const itemEl = createImageItem(name, relPath, handle);
+      childrenEl.appendChild(itemEl);
+      hasContent = true;
+    }
+  }
+
+  if (!hasContent) return null;
+
+  // Only add the dir label if this isn't the root (pathPrefix is empty for root)
+  if (pathPrefix !== '') {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'tree-dir-label';
+    const arrow = document.createElement('span');
+    arrow.className = 'tree-arrow';
+    arrow.textContent = '▶';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'tree-dir-name';
+    nameEl.textContent = '📁 ' + dirHandle.name;
+    labelEl.appendChild(arrow);
+    labelEl.appendChild(nameEl);
+    labelEl.addEventListener('click', () => {
+      const open = childrenEl.classList.toggle('open');
+      arrow.classList.toggle('open', open);
+    });
+    dirEl.appendChild(labelEl);
+  } else {
+    // root: auto-expand
+    childrenEl.classList.add('open');
+  }
+
+  dirEl.appendChild(childrenEl);
+  return dirEl;
+}
+
+function createImageItem(name, relPath, fileHandle) {
+  const item = document.createElement('div');
+  item.className = 'tree-img-item';
+
+  const thumb = document.createElement('img');
+  thumb.className = 'tree-thumb';
+  thumb.alt = name;
+
+  // load thumbnail lazily
+  fileHandle.getFile().then(file => {
+    const url = URL.createObjectURL(file);
+    thumb.src = url;
+    thumb.dataset.objUrl = url;
+  });
+
+  const label = document.createElement('span');
+  label.className = 'tree-img-name';
+  label.textContent = name;
+  label.title = relPath;
+
+  item.appendChild(thumb);
+  item.appendChild(label);
+
+  item.addEventListener('click', () => {
+    // deselect previous
+    document.querySelectorAll('.tree-img-item.selected').forEach(el => el.classList.remove('selected'));
+    item.classList.add('selected');
+    showImageDetail(name, relPath, fileHandle, thumb.dataset.objUrl || thumb.src);
+  });
+
+  item.addEventListener('dblclick', () => {
+    if (selectedImageEntry) insertSelectedImage();
+  });
+
+  return item;
+}
+
+function showImageDetail(name, relPath, fileHandle, objUrl) {
+  selectedImageEntry = { relPath, fileHandle, objUrl };
+  const detail = document.getElementById('img-detail');
+  document.getElementById('detail-img').src = objUrl;
+  document.getElementById('detail-info').textContent = relPath;
+  detail.classList.add('visible');
+}
+
+function insertSelectedImage() {
+  if (!selectedImageEntry) return;
+  insertAtCursor(selectedImageEntry.relPath);
+}
+
+/* ── Tab key in editor ── */
+function handleTab(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart, end = editor.selectionEnd;
+    editor.setRangeText('  ', s, end, 'end');
+    updatePreview();
+  }
+}
+
+/* ── Markdown parser ── */
+function parseMarkdown(md) {
+  let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html = html.replace(/&lt;(span\s[^&]*?)&gt;([\s\S]*?)&lt;\/span&gt;/g,
+    (_, attrs, content) => `<span ${attrs}>${content}</span>`);
+
+  const lines = html.split('\n');
+  const out = []; let inUL = false; let inOL = false;
+  let inCode = false; let codeLang = ''; let codeLines = [];
+  let tableBuffer = [];
+
+  function flushTable() {
+    if (!tableBuffer.length) return;
+    const rows = tableBuffer;
+    tableBuffer = [];
+    if (rows.length < 2) { rows.forEach(r => out.push(`<p>${r}</p>`)); return; }
+    const headers = rows[0].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
+    const sepRow = rows[1].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
+    const isSep = sepRow.every(c => /^:?-+:?$/.test(c));
+    if (!isSep) { rows.forEach(r => out.push(`<p>${applyInline(r)}</p>`)); return; }
+    const aligns = sepRow.map(c => c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left');
+    out.push('<table>');
+    out.push('<thead><tr>' + headers.map((h,i) => `<th style="text-align:${aligns[i]}">${applyInline(h)}</th>`).join('') + '</tr></thead>');
+    if (rows.length > 2) {
+      out.push('<tbody>');
+      for (let r = 2; r < rows.length; r++) {
+        const cells = rows[r].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
+        out.push('<tr>' + cells.map((c,i) => `<td style="text-align:${aligns[i]||'left'}">${applyInline(c)}</td>`).join('') + '</tr>');
+      }
+      out.push('</tbody>');
+    }
+    out.push('</table>');
+  }
+
+  for (const line of lines) {
+    // fenced code block
+    if (line.match(/^```/)) {
+      if (!inCode) {
+        flushTable();
+        if (inUL) { out.push('</ul>'); inUL = false; }
+        if (inOL) { out.push('</ol>'); inOL = false; }
+        inCode = true;
+        codeLang = line.slice(3).trim();
+        codeLines = [];
+      } else {
+        out.push(`<pre><code${codeLang ? ` class="language-${codeLang}"` : ''}>${codeLines.join('\n')}</code></pre>`);
+        inCode = false; codeLines = []; codeLang = '';
+      }
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+
+    // table row
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      if (inUL) { out.push('</ul>'); inUL = false; }
+      if (inOL) { out.push('</ol>'); inOL = false; }
+      tableBuffer.push(line.trim());
+      continue;
+    } else {
+      flushTable();
+    }
+
+    const hm = line.match(/^(#{1,6})\s+(.*)/);
+    if (hm) {
+      if (inUL) { out.push('</ul>'); inUL = false; }
+      if (inOL) { out.push('</ol>'); inOL = false; }
+      out.push(`<h${hm[1].length}>${applyInline(hm[2])}</h${hm[1].length}>`);
+      continue;
+    }
+    const olm = line.match(/^\d+\.\s+(.*)/);
+    if (olm) {
+      if (inUL) { out.push('</ul>'); inUL = false; }
+      if (!inOL) { out.push('<ol>'); inOL = true; }
+      out.push(`<li>${applyInline(olm[1])}</li>`);
+      continue;
+    }
+    const lm = line.match(/^[-*+]\s+(.*)/);
+    if (lm) {
+      if (inOL) { out.push('</ol>'); inOL = false; }
+      if (!inUL) { out.push('<ul>'); inUL = true; }
+      out.push(`<li>${applyInline(lm[1])}</li>`);
+      continue;
+    }
+    if (inUL) { out.push('</ul>'); inUL = false; }
+    if (inOL) { out.push('</ol>'); inOL = false; }
+    out.push(line.trim() === '' ? '<br>' : `<p>${applyInline(line)}</p>`);
+  }
+  flushTable();
+  if (inCode) out.push(`<pre><code>${codeLines.join('\n')}</code></pre>`);
+  if (inUL) out.push('</ul>');
+  if (inOL) out.push('</ol>');
+  return out.join('\n');
+}
+
+function applyInline(text) {
+  return text
+    .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
+      (_, alt, src, title) => `<img src="${src}" alt="${alt}"${title ? ` title="${title}"` : ''}>`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function applyInlineForExport(text) {
+  return text
+    .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g, (_, alt, src, title) => {
+      const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
+      const finalSrc = isAbsolute ? src : 'public/images/' + src;
+      return `<img src="${finalSrc}" alt="${alt}"${title ? ` title="${title}"` : ''}>`;
+    })
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function parseMarkdownForExport(md) {
+  let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html = html.replace(/&lt;(span\s[^&]*?)&gt;([\s\S]*?)&lt;\/span&gt;/g,
+    (_, attrs, content) => `<span ${attrs}>${content}</span>`);
+
+  const lines = html.split('\n');
+  const out = []; let inUL = false; let inOL = false;
+  let inCode = false; let codeLang = ''; let codeLines = [];
+  let tableBuffer = [];
+
+  function flushTableExport() {
+    if (!tableBuffer.length) return;
+    const rows = tableBuffer; tableBuffer = [];
+    if (rows.length < 2) { rows.forEach(r => out.push(`<p>${r}</p>`)); return; }
+    const headers = rows[0].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
+    const sepRow  = rows[1].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
+    if (!sepRow.every(c=>/^:?-+:?$/.test(c))) { rows.forEach(r=>out.push(`<p>${applyInlineForExport(r)}</p>`)); return; }
+    const aligns = sepRow.map(c=>c.startsWith(':')&&c.endsWith(':')? 'center':c.endsWith(':')? 'right':'left');
+    out.push('<table>');
+    out.push('<thead><tr>'+headers.map((h,i)=>`<th style="text-align:${aligns[i]}">${applyInlineForExport(h)}</th>`).join('')+'</tr></thead>');
+    if (rows.length > 2) {
+      out.push('<tbody>');
+      for (let r=2;r<rows.length;r++) {
+        const cells = rows[r].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
+        out.push('<tr>'+cells.map((c,i)=>`<td style="text-align:${aligns[i]||'left'}">${applyInlineForExport(c)}</td>`).join('')+'</tr>');
+      }
+      out.push('</tbody>');
+    }
+    out.push('</table>');
+  }
+
+  for (const line of lines) {
+    if (line.match(/^```/)) {
+      if (!inCode) {
+        flushTableExport();
+        if (inUL){out.push('</ul>');inUL=false;}
+        if (inOL){out.push('</ol>');inOL=false;}
+        inCode=true; codeLang=line.slice(3).trim(); codeLines=[];
+      } else {
+        out.push(`<pre><code${codeLang?` class="language-${codeLang}"`:''}>${codeLines.join('\n')}</code></pre>`);
+        inCode=false; codeLines=[]; codeLang='';
+      }
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      if (inUL){out.push('</ul>');inUL=false;}
+      if (inOL){out.push('</ol>');inOL=false;}
+      tableBuffer.push(line.trim());
+      continue;
+    } else { flushTableExport(); }
+
+    const hm = line.match(/^(#{1,6})\s+(.*)/);
+    if (hm) {
+      if (inUL){out.push('</ul>');inUL=false;}
+      if (inOL){out.push('</ol>');inOL=false;}
+      out.push(`<h${hm[1].length}>${applyInlineForExport(hm[2])}</h${hm[1].length}>`);
+      continue;
+    }
+    const olm = line.match(/^\d+\.\s+(.*)/);
+    if (olm) {
+      if (inUL){out.push('</ul>');inUL=false;}
+      if (!inOL){out.push('<ol>');inOL=true;}
+      out.push(`<li>${applyInlineForExport(olm[1])}</li>`);
+      continue;
+    }
+    const lm = line.match(/^[-*+]\s+(.*)/);
+    if (lm) {
+      if (inOL){out.push('</ol>');inOL=false;}
+      if (!inUL){out.push('<ul>');inUL=true;}
+      out.push(`<li>${applyInlineForExport(lm[1])}</li>`);
+      continue;
+    }
+    if (inUL){out.push('</ul>');inUL=false;}
+    if (inOL){out.push('</ol>');inOL=false;}
+    const imgPathMatch = line.trim().match(/^([^\s<>&]+\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?))\s*$/i);
+    if (imgPathMatch) {
+      const src = imgPathMatch[1];
+      const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
+      const finalSrc = isAbsolute ? src : 'public/images/' + src;
+      out.push(`<p><img src="${finalSrc}" alt="${src}"></p>`);
+      continue;
+    }
+    out.push(line.trim()===''? '<br>':`<p>${applyInlineForExport(line)}</p>`);
+  }
+  flushTableExport();
+  if (inCode) out.push(`<pre><code>${codeLines.join('\n')}</code></pre>`);
+  if (inUL) out.push('</ul>');
+  if (inOL) out.push('</ol>');
+  return out.join('\n');
+}
+
+function updatePreview() {
+  preview.innerHTML = parseMarkdown(editor.value);
+  updateNav();
+}
+
+/* ── Navigation panel ── */
+function updateNav() {
+  const navTree = document.getElementById('nav-tree');
+  const lines = editor.value.split('\n');
+  const headings = [];
+  let inCode = false;
+  let slugCount = {};
+
+  for (const line of lines) {
+    if (line.match(/^```/)) { inCode = !inCode; continue; }
+    if (inCode) continue;
+    const m = line.match(/^(#{1,6})\s+(.*)/);
+    if (m) {
+      const level = m[1].length;
+      const raw = m[2].trim();
+      // strip inline markdown for display
+      const text = raw
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1');
+      // build a unique slug for anchor linking in preview
+      let slug = raw.toLowerCase().replace(/[^\w\s-]/g,'').replace(/\s+/g,'-');
+      slugCount[slug] = (slugCount[slug] || 0) + 1;
+      if (slugCount[slug] > 1) slug += '-' + (slugCount[slug] - 1);
+      headings.push({ level, text, slug });
+    }
+  }
+
+  if (!headings.length) {
+    navTree.innerHTML = '<div class="nav-empty">No headings yet.</div>';
+    return;
+  }
+
+  // bullet characters per level
+  const bullets = ['', '◆', '◇', '▸', '▹', '·', '·'];
+
+  navTree.innerHTML = '';
+  headings.forEach(({ level, text, slug }) => {
+    const item = document.createElement('div');
+    item.className = `nav-item nav-h${level}`;
+    item.title = text;
+
+    const bullet = document.createElement('span');
+    bullet.className = 'nav-bullet';
+    bullet.textContent = bullets[level];
+
+    const label = document.createElement('span');
+    label.className = 'nav-label';
+    label.textContent = text;
+
+    item.appendChild(bullet);
+    item.appendChild(label);
+
+    // clicking scrolls the preview to that heading
+    item.addEventListener('click', () => {
+      // find the heading in the preview by matching text content
+      const allHeadings = preview.querySelectorAll('h1,h2,h3,h4,h5,h6');
+      for (const el of allHeadings) {
+        if (el.textContent.trim() === text) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // briefly highlight
+          el.style.transition = 'background 0.2s';
+          el.style.background = '#7c6af730';
+          setTimeout(() => { el.style.background = ''; }, 800);
+          break;
+        }
+      }
+      // highlight active nav item
+      navTree.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+    });
+
+    navTree.appendChild(item);
+  });
+}
+
+function updateStatus() {
+  const text = editor.value;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('stat-words').textContent = `${words} word${words!==1?'s':''}`;
+  document.getElementById('stat-lines').textContent = `${text.split('\n').length} lines`;
+  document.getElementById('stat-chars').textContent = `${text.length} chars`;
+}
+
+/* ── File operations ── */
+function newFile() {
+  if (editor.value && !confirm('Discard current content?')) return;
+  editor.value = '';
+  document.getElementById('current-file').textContent = 'untitled.md';
+  updatePreview(); updateStatus();
+}
+function openFile() { document.getElementById('file-input').click(); }
+function handleFileOpen(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    editor.value = e.target.result;
+    document.getElementById('current-file').textContent = file.name;
+    updatePreview(); updateStatus();
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function importDocx() {
+  if (!window.mammoth) {
+    alert('Mammoth.js is not loaded yet. Please check your internet connection and try again.');
+    return;
+  }
+  document.getElementById('docx-input').click();
+}
+
+function handleDocxImport(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const arrayBuffer = e.target.result;
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+
+      // Convert the HTML output to Markdown
+      const md = htmlToMarkdown(result.value);
+
+      if (editor.value.trim() && !confirm('Replace current content with imported document?')) {
+        event.target.value = '';
+        return;
+      }
+
+      editor.value = md;
+      const mdName = file.name.replace(/\.docx$/i, '.md');
+      document.getElementById('current-file').textContent = mdName;
+      updatePreview(); updateStatus();
+
+      if (result.messages && result.messages.length) {
+        const warnings = result.messages.filter(m => m.type === 'warning');
+        if (warnings.length) console.warn('DOCX import warnings:', warnings);
+      }
+    } catch (err) {
+      alert('Failed to import DOCX: ' + err.message);
+      console.error(err);
+    }
+    event.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function htmlToMarkdown(html) {
+  // Use a temporary DOM element to parse the HTML
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  function processNode(node, listCtx) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const tag = node.tagName.toLowerCase();
+    const children = () => Array.from(node.childNodes).map(n => processNode(n, listCtx)).join('');
+
+    switch (tag) {
+      case 'h1': return '\n# ' + children().trim() + '\n';
+      case 'h2': return '\n## ' + children().trim() + '\n';
+      case 'h3': return '\n### ' + children().trim() + '\n';
+      case 'h4': return '\n#### ' + children().trim() + '\n';
+      case 'h5': return '\n##### ' + children().trim() + '\n';
+      case 'h6': return '\n###### ' + children().trim() + '\n';
+
+      case 'p': {
+        const inner = children().trim();
+        return inner ? '\n' + inner + '\n' : '';
+      }
+
+      case 'strong': case 'b': return '**' + children() + '**';
+      case 'em':     case 'i': return '*' + children() + '*';
+      case 'code':             return '`' + children() + '`';
+
+      case 'pre': {
+        const codeEl = node.querySelector('code');
+        const lang = (codeEl && codeEl.className.match(/language-(\w+)/))?.[1] || '';
+        const content = codeEl ? codeEl.textContent : node.textContent;
+        return '\n```' + lang + '\n' + content + '\n```\n';
+      }
+
+      case 'a': {
+        const href = node.getAttribute('href') || '';
+        const text = children().trim() || href;
+        return `[${text}](${href})`;
+      }
+
+      case 'img': {
+        const src  = node.getAttribute('src') || '';
+        const alt  = node.getAttribute('alt') || '';
+        return `![${alt}](${src})`;
+      }
+
+      case 'br': return '\n';
+      case 'hr': return '\n---\n';
+
+      case 'ul': {
+        return '\n' + Array.from(node.children).map(li => {
+          const content = processNode(li, 'ul').trim();
+          return '- ' + content;
+        }).join('\n') + '\n';
+      }
+
+      case 'ol': {
+        return '\n' + Array.from(node.children).map((li, i) => {
+          const content = processNode(li, 'ol').trim();
+          return `${i + 1}. ` + content;
+        }).join('\n') + '\n';
+      }
+
+      case 'li': return children().trim();
+
+      case 'table': {
+        const rows = Array.from(node.querySelectorAll('tr'));
+        if (!rows.length) return '';
+        const toRow = tr => '| ' + Array.from(tr.querySelectorAll('th,td')).map(c => c.textContent.trim().replace(/\|/g, '\\|')).join(' | ') + ' |';
+        const header = rows[0];
+        const isHeaderRow = header.querySelector('th') !== null;
+        const sep = '| ' + Array.from(header.querySelectorAll('th,td')).map(() => '---').join(' | ') + ' |';
+        const dataRows = isHeaderRow ? rows.slice(1) : rows;
+        const lines = [toRow(header), sep, ...dataRows.map(toRow)];
+        return '\n' + lines.join('\n') + '\n';
+      }
+
+      case 'blockquote': return '\n> ' + children().trim().split('\n').join('\n> ') + '\n';
+
+      // skip these wrapper elements, just process children
+      case 'div': case 'span': case 'section':
+      case 'article': case 'main': case 'header':
+      case 'footer': case 'body':
+        return children();
+
+      default: return children();
+    }
+  }
+
+  let md = Array.from(tmp.childNodes).map(n => processNode(n, null)).join('');
+
+  // clean up excessive blank lines
+  md = md.replace(/\n{3,}/g, '\n\n').trim();
+  return md;
+}
+function saveFile() {
+  const filename = document.getElementById('current-file').textContent || 'document.md';
+  const blob = new Blob([editor.value], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportHtml() {
+  const mdFilename = document.getElementById('current-file').textContent || 'document.md';
+  const htmlFilename = mdFilename.replace(/\.(md|txt)$/i, '') + '.html';
+  const title = mdFilename.replace(/\.(md|txt)$/i, '');
+  const bodyHtml = parseMarkdownForExport(editor.value);
+  const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 0 24px; line-height: 1.8; color: #222; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Trebuchet MS', sans-serif; line-height: 1.3; margin: 1.4em 0 0.5em; }
+    h1 { font-size: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25em; } h4 { font-size: 1.1em; } h5 { font-size: 1em; } h6 { font-size: 0.9em; color: #555; }
+    p { margin: 0 0 1em; }
+    ul, ol { margin: 0 0 1em 1.5em; padding: 0; }
+    li { margin: 0.3em 0; }
+    a { color: #4a6cf7; text-decoration: none; } a:hover { text-decoration: underline; }
+    strong { font-weight: 700; }
+    em { font-style: italic; }
+    img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }
+    code { background: #f4f4f4; border: 1px solid #e0e0e0; border-radius: 3px; padding: 1px 5px; font-family: 'Courier New', monospace; font-size: 0.88em; }
+    pre { background: #f6f8fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; overflow-x: auto; margin: 0 0 1em; }
+    pre code { background: none; border: none; padding: 0; font-size: 0.9em; }
+    table { border-collapse: collapse; width: 100%; margin: 0 0 1em; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; }
+    th { background: #f0f0f0; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+  </style>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+  const blob = new Blob([fullHtml], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = htmlFilename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ── Table builder ── */
+function openTableModal() {
+  saveSelection();
+  document.getElementById('table-modal').classList.add('open');
+  rebuildTableGrid();
+}
+function closeTableModal() {
+  document.getElementById('table-modal').classList.remove('open');
+}
+function rebuildTableGrid() {
+  const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
+  const cols = Math.min(10, Math.max(1, parseInt(document.getElementById('tbl-cols').value) || 1));
+  const container = document.getElementById('table-preview-grid');
+  const table = document.createElement('table');
+  table.className = 'tbl-builder';
+
+  // Header row
+  const thead = document.createElement('thead');
+  const hrow = document.createElement('tr');
+  for (let c = 0; c < cols; c++) {
+    const th = document.createElement('th');
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = `Header ${c + 1}`;
+    inp.dataset.row = 'h';
+    inp.dataset.col = c;
+    th.appendChild(inp);
+    hrow.appendChild(th);
+  }
+  thead.appendChild(hrow);
+  table.appendChild(thead);
+
+  // Alignment row
+  const tbody = document.createElement('tbody');
+  const arow = document.createElement('tr');
+  arow.className = 'align-row';
+  for (let c = 0; c < cols; c++) {
+    const td = document.createElement('td');
+    const sel = document.createElement('select');
+    sel.className = 'align-select';
+    sel.dataset.col = c;
+    [['left','⬅ Left'],['center','↔ Center'],['right','➡ Right']].forEach(([v, l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
+    });
+    td.appendChild(sel);
+    arow.appendChild(td);
+  }
+  tbody.appendChild(arow);
+
+  // Data rows
+  for (let r = 0; r < rows; r++) {
+    const drow = document.createElement('tr');
+    for (let c = 0; c < cols; c++) {
+      const td = document.createElement('td');
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = `Cell`;
+      inp.dataset.row = r;
+      inp.dataset.col = c;
+      td.appendChild(inp);
+      drow.appendChild(td);
+    }
+    tbody.appendChild(drow);
+  }
+  table.appendChild(tbody);
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+function insertTable() {
+  const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
+  const cols = Math.min(10, Math.max(1, parseInt(document.getElementById('tbl-cols').value) || 1));
+  const grid = document.getElementById('table-preview-grid');
+
+  // headers
+  const headers = Array.from(grid.querySelectorAll('thead input')).map(i => i.value || i.placeholder);
+  // alignments
+  const aligns = Array.from(grid.querySelectorAll('.align-select')).map(s => s.value);
+  // data cells
+  const dataInputs = Array.from(grid.querySelectorAll('tbody tr:not(.align-row) input'));
+  const dataRows = [];
+  for (let r = 0; r < rows; r++) {
+    dataRows.push(dataInputs.slice(r * cols, r * cols + cols).map(i => i.value || ' '));
+  }
+
+  // Build separator row with alignment markers
+  const sep = aligns.map(a => a === 'center' ? ':---:' : a === 'right' ? '---:' : ':---');
+
+  const pad = (cells) => '| ' + cells.join(' | ') + ' |';
+  const lines = [
+    pad(headers),
+    pad(sep),
+    ...dataRows.map(pad)
+  ];
+  closeTableModal();
+  restoreSelection();
+  insertAtCursor('\n' + lines.join('\n') + '\n');
+}
+
+/* ── Code block ── */
+function insertCodeBlock() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end);
+  if (sel && !sel.includes('\n')) {
+    // inline code
+    editor.setRangeText('`' + sel + '`', start, end, 'end');
+  } else {
+    // fenced code block
+    const code = sel || 'your code here';
+    editor.setRangeText('\n```\n' + code + '\n```\n', start, end, 'end');
+  }
+  updatePreview(); updateStatus();
+}
+
+/* ── Link modal ── */
+function openLinkModal() {
+  saveSelection();
+  const sel = editor.value.substring(editor.selectionStart, editor.selectionEnd);
+  if (sel) document.getElementById('link-text').value = sel;
+  document.getElementById('link-modal').classList.add('open');
+  document.getElementById('link-url').focus();
+}
+function closeLinkModal() {
+  document.getElementById('link-modal').classList.remove('open');
+  ['link-url','link-text','link-title'].forEach(id => document.getElementById(id).value = '');
+}
+function insertLink() {
+  const url = document.getElementById('link-url').value.trim();
+  const text = document.getElementById('link-text').value.trim() || url;
+  const title = document.getElementById('link-title').value.trim();
+  if (!url) { document.getElementById('link-url').focus(); return; }
+  const md = title ? `[${text}](${url} "${title}")` : `[${text}](${url})`;
+  closeLinkModal(); restoreSelection(); insertAtCursor(md);
+}
+
+/* ── Event listeners ── */
+document.getElementById('image-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeImageModal();
+});
+document.getElementById('link-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeLinkModal();
+});
+document.getElementById('table-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTableModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeImageModal(); closeLinkModal(); closeTableModal(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*','*'); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); openLinkModal(); }
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'K') { e.preventDefault(); insertCodeBlock(); }
+});
+
+updatePreview();
+updateStatus();
+updateNav();
+</script>
+</body>
+</html>
