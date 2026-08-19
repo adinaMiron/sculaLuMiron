@@ -71,11 +71,14 @@ override flips everything:
 [data-theme="light"]{ /* overrides only */ }
 ```
 
-Suggested source of truth: **`index.html`'s earth palette** — it is the
-most distinctive, already dark, and already carries the brand (the nav in
-all three files is *already* styled with it: `#14201A`, `#2E4739`,
-`#C1BB45`, `#F3EEE1`, `#9FB3A5`). Adopting it means the nav stops being a
-foreign object in two of three apps.
+**Decision: the earth palette from `index.html` is the chosen base for all
+three apps** — `--soil #14201A`, `--moss #2E4739`, `--olive #C1BB45`,
+`--terra #C4643C`, `--paper #F3EEE1`, `--mist #9FB3A5`. It is the most
+distinctive of the three, already dark, and already carries the brand: the
+shared nav in all three files is *already* styled with it, so once
+`editor.html` and `markdown-editor.html` migrate, the nav stops being a
+foreign object in two of three apps. This task does not start the
+migration — see the order below.
 
 ## Migration order (cheapest first)
 
