@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1025 | 10k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 2509 | 26k | "Image Marker" — canvas annotation/drawing | light (warm) |
-| `markdown-editor.html` | 2072 | 18k | Markdown editor + live preview | dark (purple) |
+| `markdown-editor.html` | 2074 | 18k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 

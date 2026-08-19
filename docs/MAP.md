@@ -101,38 +101,38 @@ specific `drawX()` you need.
 
 | Lines | Contents |
 |---|---|
-| 8–734 | App CSS. `:root` **9–22**. `@media` 620, 649 |
-| 735 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 740–782 | **Shared nav** |
-| 783–996 | Markup: header, toolbar, workspace, panels, modals |
-| 997–2070 | App script |
+| 8–736 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). `@media` 621, 650 |
+| 737 | **mammoth.js CDN** (docx import) — only external dep in the repo |
+| 742–784 | **Shared nav** |
+| 785–998 | Markup: header, toolbar, workspace, panels, modals |
+| 999–2074 | App script |
 
 | Line | Function / region |
 |---|---|
-| 998–1000 | `editor`, `preview` refs, `savedRange` |
-| 1003–1027 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 1027–1101 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 1102–1143 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| 1139–1141 | `workingFolderHandle`, `IMAGE_EXTS` (File System Access API) |
-| 1149–1186 | Responsive: `isSmallScreen`, `isMobile`, `setView`, `togglePanel`, `toggleNav` |
-| 1292–1349 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| **1359** | **`parseMarkdown`** — preview renderer |
-| 1452 | `applyInline` |
-| 1462 | `applyInlineForExport` ⚠ twin of 1452 |
-| **1475** | **`parseMarkdownForExport`** ⚠ twin of 1359 |
-| 1568–1574 | `updatePreview`, `updateNav` |
-| 1656–1692 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
-| 1726 | `htmlToMarkdown` (docx → md) |
-| 1825–1835 | `saveFile`, `exportHtml` |
-| 1846–1870 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 1881–1980 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 1996–2044 | Link modal: `openLinkModal`, `insertLink` |
-| 2044–2070 | `applyResponsiveDefaults`, init |
+| 1000–1002 | `editor`, `preview` refs, `savedRange` |
+| 1005–1029 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 1029–1103 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
+| 1104–1145 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| 1141–1143 | `workingFolderHandle`, `IMAGE_EXTS` (File System Access API) |
+| 1151–1188 | Responsive: `isSmallScreen`, `isMobile`, `setView`, `togglePanel`, `toggleNav` |
+| 1294–1351 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| **1361** | **`parseMarkdown`** — preview renderer |
+| 1454 | `applyInline` |
+| 1464 | `applyInlineForExport` ⚠ twin of 1454 |
+| **1477** | **`parseMarkdownForExport`** ⚠ twin of 1361 |
+| 1570–1576 | `updatePreview`, `updateNav` |
+| 1658–1694 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
+| 1728 | `htmlToMarkdown` (docx → md) |
+| 1827–1837 | `saveFile`, `exportHtml` |
+| 1848–1872 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 1883–1982 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 1998–2046 | Link modal: `openLinkModal`, `insertLink` |
+| 2046–2074 | `applyResponsiveDefaults`, init |
 
 **Two traps here:**
-1. **Duplicated parser.** Add markdown syntax to *both* 1359 and 1475 (and
+1. **Duplicated parser.** Add markdown syntax to *both* 1361 and 1477 (and
    both inline fns) or export diverges from preview.
-2. **Exported HTML must stay self-contained** (1846–1870). It ships to
+2. **Exported HTML must stay self-contained** (1848–1872). It ships to
    people who don't have the app, so it uses literal hex, not `var(--…)`.
    **Do not migrate that block to theme tokens.**
 
