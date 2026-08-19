@@ -200,6 +200,17 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
   (`flex-wrap:nowrap; overflow-x:auto`). It previously wrapped to **485px
   tall on a 664px phone** (73% of the screen) and 285px on an iPad. Now
   ~61px on both.
+  - The drawing-tools group (`#toolsGrp` — Select/Text/Rect/.../Line) is
+    given `order:-1` in this same breakpoint, so it renders first in the
+    row regardless of its DOM position (right after Open/Save/Zoom/Record
+    in the markup). People reach for a *drawing tool* far more often than
+    Open/Save/Zoom mid-task, so it's the group visible with zero scroll on
+    load; the rest still follow to the right. `order` is CSS-only — DOM
+    order (and any `querySelectorAll('.grp')`/`:last-child` reliance) is
+    unchanged, so this is safe to extend to another group later.
+  - `#toolbar{ scroll-snap-type:x proximity }` + `.grp{
+    scroll-snap-align:start }` in the same breakpoint make a swipe land on
+    a group's left edge instead of stopping mid-group.
 - `@media (max-width:720px)`: layers sidebar moves below the canvas
   (`#main{flex-direction:column}`, capped `max-height:34vh`) instead of
   eating canvas width; keyboard-shortcut `#hint` hidden.

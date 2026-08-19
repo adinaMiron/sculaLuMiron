@@ -219,8 +219,20 @@
   /* Keep the toolbar one swipeable row on phones AND tablets - wrapping ate
      485px of a 664px phone screen and 285px on an iPad. */
   @media (max-width: 1180px){
-    #toolbar{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    #toolbar .grp{ flex:0 0 auto; }
+    #toolbar{
+      flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      /* Snap to each group's left edge instead of landing mid-group on a
+         swipe - makes "reach the next group" a single flick, not a fiddly
+         drag. */
+      scroll-snap-type:x proximity;
+    }
+    #toolbar .grp{ flex:0 0 auto; scroll-snap-align:start; }
+    /* The drawing tools (select/rect/arrow/...) are what people reach for
+       over and over while working, unlike Open/Save/Zoom/Record which are
+       used once in a while. Put them first so they're on screen the moment
+       the page loads, with zero scrolling - the other groups still follow
+       to the right for a swipe. */
+    #toolbar #toolsGrp{ order:-1; }
   }
 
   /* ---------- Small screens ---------- */
@@ -368,7 +380,7 @@
       <button class="action" id="recPauseBtn" data-i="pauseLabel" data-i-title="recPauseTip" title="Pause / resume recording" style="display:none;">⏸ Pause</button>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="toolsGrp">
       <button class="tool" data-tool="select" data-i="toolSelect" data-i-title="toolSelectTip" title="Select / transform (V)">↖ Select</button>
       <button class="tool" data-tool="text" data-i="toolText" data-i-title="toolTextTip" title="Text (T)">T Text</button>
       <button class="tool" data-tool="rect" data-i="toolRect" data-i-title="toolRectTip" title="Rectangle - hold Ctrl for a perfect square (R)">▭ Rect</button>
