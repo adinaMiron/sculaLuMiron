@@ -3,66 +3,81 @@
 Goal: one shared visual identity across all three apps, switchable
 light/dark, with no build step.
 
-## Current state — one theme left to migrate
+## Current state — all three migrated
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
-| `index.html` | **dark** | earth: soil/moss/olive/terra/paper | olive `#C1BB45` |
+| `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `markdown-editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 
-```
-index.html:12-26           editor.html:20-36              markdown-editor.html:9-24
---soil   #14201A           --bg          #14201A          --bg        #14201A
---soil-2 #1B2A22           --surface     #1B2A22          --surface   #1B2A22
---soil-3 #22342A           --surface-2   #22342A          --surface-2 #22342A
---moss   #2E4739           --border      #2E4739          --border    #2E4739
---olive  #C1BB45           --accent      #C1BB45          --accent    #C1BB45
---terra  #C4643C           --accent-2    #D3CD7C          --accent-2  #D3CD7C
---paper  #F3EEE1           --accent-soft color-mix(...)   --on-accent #1A2117
---ink    #20261E           --on-accent   #1A2117          --text      #F3EEE1
---mist   #9FB3A5           --text        #F3EEE1          --text-2    #9FB3A5
-                            --text-2      #9FB3A5          --text-3    #5A6A60
-                            --text-3      #5A6A60
-                            --warn        #C4643C
-```
+None of the three files share one `:root` block yet — each still defines
+its own token set, and the names aren't fully unified (see below). What's
+unified is the *values*: every file now sits on the same earth palette.
 
-`editor.html` is now on the same semantic token names as
-`markdown-editor.html` (`--surface-2`/`--on-accent`/`--text-2`/`--text-3`),
-plus two names the other two files don't need: `--warn` (its danger/record
-state, reuses `index.html`'s `--terra` value) and `--radius`/`--shadow`
-(shape tokens, unrelated to colour). `--accent-soft` is computed with
-`color-mix()` instead of a literal hex — see step 3 notes below.
+| Role | `index.html` | `editor.html` | `markdown-editor.html` |
+|---|---|---|---|
+| `--bg` | `#14201A` | `#14201A` | `#14201A` |
+| `--surface` | `#1B2A22` | `#1B2A22` | `#1B2A22` |
+| `--surface-2` | `#22342A` | `#22342A` | `#22342A` |
+| `--border` | `#2E4739` | `#2E4739` | `#2E4739` |
+| `--text` | `#F3EEE1` | `#F3EEE1` | `#F3EEE1` |
+| `--text-2` | `#9FB3A5` | `#9FB3A5` | `#9FB3A5` |
+| `--text-3` | — | `#5A6A60` | `#5A6A60` |
+| `--on-text` | `#20261E` | — | — |
+| `--accent` | `#C1BB45` | `#C1BB45` | `#C1BB45` |
+| `--accent-2` | — | `#D3CD7C` | `#D3CD7C` |
+| `--accent-soft` | — | `color-mix(in srgb, var(--accent) 16%, var(--surface))` | — |
+| `--on-accent` | `#1A2117` | `#1A2117` | `#1A2117` |
+| `--danger` | `#C4643C` | `#C4643C` | — |
+| `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
+| `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
 
-`markdown-editor.html` still uses its own name set (`--surface-2` /
-`--text-2` / `--text-3` / `--accent-2` / `--on-accent`) rather than the
-full target set below — it maps onto `index.html`'s literal names
-(`--soil`→`--bg`, `--paper`→`--text`, `--mist`→`--text-2`, …) but the two
-files haven't been unified into one shared token file yet. `--text-3` and
-`--accent-2`/`--on-accent` have no `index.html` equivalent; they were
-derived (see git history) rather than lifted from an existing value —
-revisit if `index.html` grows the same tiers during its own migration
-(step 2 below).
+Where a cell is blank, that file has no equivalent — not a gap to fill,
+just a role it doesn't need (`index.html` has no secondary accent tint or
+tinted-hover state; `markdown-editor.html` has no danger/status colour;
+only `index.html` has an inverted-light surface, hence `--on-text`).
+
+`index.html` (12–37) and `editor.html` (20–36) landed on the closest
+naming to each other since they were migrated back-to-back — both use
+`--danger` for the terracotta status colour, both use `--on-accent`.
+`markdown-editor.html` (9–24), migrated first, predates that convention
+and calls the same *shape of* role (a light secondary-accent tint used
+for headings/emphasis, not a status colour) `--accent-2` instead —
+`editor.html` reused `--accent-2` for its own "gold" secondary accent
+(save button, group tag) to match `markdown-editor.html`, so `--accent-2`
+and `--danger` both now appear in two of three files, just not the *same*
+two. Unifying into one shared token file (dropping `--on-text` into
+`markdown-editor.html`-style tiers, or vice versa) is still open —
+revisit if these three ever get pulled into one `<style>` include.
 
 ## ⚠ The trap: same names, opposite meanings
 
-**Do not merge `:root` blocks by copy-paste.** This bit `editor.html`
-during its own migration (step 3, now done) and still applies to
-`index.html` (step 2, pending) — its literal names (`--ink`, `--bg`, …)
-collide in meaning with the semantic set:
+**Do not merge `:root` blocks by copy-paste.** All three migrations hit
+this in one form or another — kept here for git-blame archaeology, since
+the specific collisions below no longer exist in the *current* files:
 
-- `--ink` — in `index.html` it's a **dark colour used on light chips**
-  (2 uses) while body text is `--paper`. `editor.html`'s old `--ink` was
-  the *opposite* (primary body text, dark-on-light) — it renamed to
-  `--text` during migration specifically to avoid this collision, rather
-  than reusing `--ink` for a role `index.html` already uses differently.
-- `--bg` — now dark in all three files (`#14201A`), so this specific trap
-  is resolved. It still illustrates the risk: `editor.html`'s `--bg` was
-  light (`#f6f5f3`) right up until step 3.
-- `--accent` — green in `editor.html` pre-migration, violet in
-  `markdown-editor.html` pre-migration; both are olive `#C1BB45` now.
+- `--ink` — pre-migration, `editor.html` used it for **primary body text**
+  (dark-on-light, 5 uses) while `index.html` used it for a **dark colour
+  on a light card** (2 uses, its transcript panel) with body text in
+  `--paper`. A blind merge would have inverted one file's text colour.
+  Resolved by giving each role its own name: `editor.html`'s `--ink`
+  became `--text` (the normal body-text role, matching the other two
+  files); `index.html`'s `--ink` became `--on-text` (a role unique to
+  it — dark text on its light `.paper`/`#transcript` card, the same
+  `on-X` pattern as `--on-accent`).
+- `--bg` — light `#f6f5f3` in `editor.html`, near-black in the other two,
+  right up until `editor.html`'s migration (step 3). Now dark (`#14201A`)
+  in all three.
+- `--accent` — forest green in `editor.html`, violet in
+  `markdown-editor.html`, both pre-migration. Both are olive `#C1BB45`
+  now.
+- `--warn`/`--terra`/`--danger` — same status colour, three different
+  names across the three files' migrations before they converged on
+  `--danger` (see the naming note above).
 
-Migrate **one file at a time**, mapping old name → new role explicitly.
+Migrate **one file at a time**, mapping old name → new role explicitly —
+this is what caught the `--ink` collision before it shipped.
 
 ## Target token set (semantic, not literal)
 
@@ -97,15 +112,20 @@ override flips everything:
 [data-theme="light"]{ /* overrides only */ }
 ```
 
-**Decision: the earth palette from `index.html` is the chosen base for all
-three apps** — `--soil #14201A`, `--moss #2E4739`, `--olive #C1BB45`,
-`--terra #C4643C`, `--paper #F3EEE1`, `--mist #9FB3A5`. It is the most
-distinctive of the three, already dark, and already carries the brand: the
-shared nav in all three files is *already* styled with it, so once
-`editor.html` and `markdown-editor.html` migrate, the nav stops being a
-foreign object in two of three apps.
+This is still aspirational — no file defines `--warn`/`--ok` (only
+`--danger` exists, in `index.html`/`editor.html`), and no file has a
+`[data-theme="light"]` override block yet (see "Theme switching" below).
 
-## Migration order (cheapest first)
+**Decision: the earth palette originally from `index.html` is the chosen
+base for all three apps** — soil `#14201A`, moss `#2E4739`, olive
+`#C1BB45`, terra `#C4643C`, paper `#F3EEE1`, mist `#9FB3A5` (now the
+`--bg`/`--border`/`--accent`/`--danger`/`--text`/`--text-2` tokens). It is
+the most distinctive of the three, already dark, and already carries the
+brand: the shared nav in all three files is *already* styled with it, so
+now that all three apps have migrated, the nav is no longer a foreign
+object in any of them.
+
+## Migration order (cheapest first) — all done
 
 1. ✅ **`markdown-editor.html`** — done. Renamed `--surface2`→`--surface-2`,
    `--text2`→`--text-2`, `--text3`→`--text-3`, `--accent2`→`--accent-2`,
@@ -120,22 +140,37 @@ foreign object in two of three apps.
    translucent black backdrops/shadows (`#000000bb` etc. — scrims that
    work in any theme, not brand colour). `docs/MAP.md` line anchors were
    updated (+2 lines from the added `--on-accent` token and a comment).
-2. **`index.html`** — dark, but literal names (`--soil`) must map to
-   semantic ones. Keep the old names as aliases during transition:
-   `--soil: var(--bg);`
+2. ✅ **`index.html`** — done. Renamed `--soil`→`--bg`, `--soil-2`→
+   `--surface`, `--soil-3`→`--surface-2`, `--moss`→`--border`, `--olive`→
+   `--accent`, `--terra`→`--danger`, `--paper`→`--text`, `--mist`→
+   `--text-2`, `--ink`→`--on-text`, `--display`→`--font-display`, `--ui`→
+   `--font-ui`, `--mono`→`--font-mono`, `--r`→`--radius`; every `var(--…)`
+   call site in the file was repointed to the new names (no aliases kept —
+   there was only one file to update, unlike a shared-token-file merge).
+   Also tokenised the one hardcoded opaque hex outside `:root`
+   (`.chip[aria-pressed] { color: #1A2117 }` → `var(--on-accent)`, same
+   value markdown-editor.html already uses for that role). Left as literal
+   hex, per this doc's own rules: the shared nav (221–263, already
+   earth-styled and byte-identical to the other two files), the `<meta
+   theme-color>` tag (can't hold a CSS variable), and the decorative/
+   translucent one-offs (background vignette gradient, record-button glow
+   gradients, notice/status/placeholder tint colours, `rgba()` scrims) —
+   same carve-out markdown-editor.html used for its scrims. `docs/MAP.md`
+   line anchors were updated (+11 lines from the expanded `:root` block).
 3. ✅ **`editor.html`** — done. Hardest of the three: inverted light→dark
    *and* had hex values inside `<script>` that CSS variables can't reach.
    `:root` (L20-36) renamed onto the shared semantic set (`--panel`→
    `--surface`, `--ink`→`--text`, `--muted`→`--text-2`, `--line`→
-   `--border`, `--gold`→`--accent-2`), `--accent-soft` switched from a
-   literal light-green tint to `color-mix(in srgb, var(--accent) 16%,
+   `--border`, `--gold`→`--accent-2`, `--warn`→`--danger` to match
+   `index.html`'s naming), `--accent-soft` switched from a literal
+   light-green tint to `color-mix(in srgb, var(--accent) 16%,
    var(--surface))` so it stays correct if `--accent`/`--surface` ever
-   change, and every `color:#fff` paired with an accent/accent-2/warn fill
-   became `color:var(--on-accent)` (plain white on the new bright-olive
-   accent fails contrast — 2.0:1; `--on-accent` gets 8.2:1). Left
-   untouched, per this doc's own rules: the shared nav (268–310, already
-   earth-styled), the `<input type="color">` defaults (content, not
-   chrome), the video-preview letterbox (`#111`) and modal backdrop
+   change, and every `color:#fff` paired with an accent/accent-2/danger
+   fill became `color:var(--on-accent)` (plain white on the new
+   bright-olive accent fails contrast — 2.0:1; `--on-accent` gets 8.2:1).
+   Left untouched, per this doc's own rules: the shared nav (268–310,
+   already earth-styled), the `<input type="color">` defaults (content,
+   not chrome), the video-preview letterbox (`#111`) and modal backdrop
    scrims (`rgba(20,20,15,.45)` etc — theme-neutral, no brand hue), and
    the two canvas exceptions below (`PALETTE`, the JPEG-export white
    fill). See "Canvas colours" for the selection-box/handle resolution.
@@ -206,7 +241,7 @@ const THEME_KEY = 'scula:theme';        // shared by all three apps
 const LANG_KEY  = 'scula:ui-lang';      // see docs/I18N.md
 ```
 
-Reuse the storage wrapper from `index.html:510-531` — it already falls
+Reuse the storage wrapper from `index.html:521-542` — it already falls
 back to in-memory when `localStorage` throws (private mode, `file://`
 in some browsers). Don't call `localStorage` directly; these apps are
 meant to run from `file://` where it can fail.
@@ -216,6 +251,10 @@ Apply before first paint to avoid a flash:
 <script>try{document.documentElement.dataset.theme=
   localStorage.getItem('scula:theme')||'dark'}catch(e){}</script>
 ```
+
+Not implemented yet in any of the three files — all three are still a
+single fixed dark theme, no `[data-theme]` override block, no toggle UI.
+This section describes the intended next step, not current behaviour.
 
 ## Checklist per file
 

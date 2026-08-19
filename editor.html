@@ -30,7 +30,7 @@
     --text: #F3EEE1;                 /* was --ink */
     --text-2: #9FB3A5;               /* was --muted */
     --text-3: #5A6A60;
-    --warn: #C4643C;                 /* terracotta, matches index.html's --terra */
+    --danger: #C4643C;               /* terracotta, matches index.html's --danger */
     --shadow: 0 2px 10px rgba(0,0,0,.35);
     --radius: 0.714rem;
   }
@@ -74,7 +74,7 @@
   #zoomLabelBtn{ min-width:3.6rem; justify-content:center; }
   button.rough-btn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   #boldBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
-  button.action.danger:hover{ background:color-mix(in srgb, var(--warn) 18%, var(--surface)); border-color:var(--warn); color:var(--warn); }
+  button.action.danger:hover{ background:color-mix(in srgb, var(--danger) 18%, var(--surface)); border-color:var(--danger); color:var(--danger); }
   #toolbar label{ font-size:0.786rem; color:var(--text-2); margin-right:0.286rem; }
   select, input[type=number]{
     border:1px solid var(--border); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:var(--surface);
@@ -92,13 +92,13 @@
   }
   .swatch.noFillSwatch::after{
     content:''; position:absolute; left:0.143rem; right:0.143rem; top:0.643rem; height:0.143rem;
-    background:var(--warn); transform:rotate(-45deg);
+    background:var(--danger); transform:rotate(-45deg);
   }
   #customColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fillCustomColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fileInput{ display:none; }
   #openBtn{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600; }
-  #recordBtn.recording{ background:var(--warn); color:var(--on-accent); border-color:var(--warn); font-weight:600; animation: recPulse 1.4s ease-in-out infinite; }
+  #recordBtn.recording{ background:var(--danger); color:var(--on-accent); border-color:var(--danger); font-weight:600; animation: recPulse 1.4s ease-in-out infinite; }
   @keyframes recPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
   #saveBtn{ background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600; }
 
