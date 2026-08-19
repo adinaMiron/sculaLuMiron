@@ -170,9 +170,50 @@ logic runs) or arrow keys (40px, 120px w/ Shift) via `canvasWrap.scrollLeft/Top`
 Root `font-size: clamp(14px, 10px + 0.4vw, 26px)`; nearly every toolbar/
 sidebar/modal CSS value is `rem`, not `px`, so the whole chrome scales
 together with viewport width (verified 14px→26px root across 900px→4K).
-Small-screen media query at 720px narrows the sidebar. If you add new
-toolbar UI, size it in `rem` (rough conversion used throughout: `px/14`),
-not `px`, or it won't scale on large monitors.
+If you add new toolbar UI, size it in `rem` (rough conversion used
+throughout: `px/14`), not `px`, or it won't scale on large monitors.
+**Exception:** inside the `(hover:none) and (pointer:coarse)` touch block,
+sizes are deliberately `px` — `rem` there collapsed to ~34px tall buttons
+because the root font-size floors at 14px on narrow phones, below the 44px
+touch-target floor.
+
+## Mobile / tablet
+
+Works on phones and tablets. Key pieces, all easy to break accidentally:
+- `<meta name="viewport" content="width=device-width, initial-scale=1,
+  viewport-fit=cover">` — without it mobile browsers lay out at 980px and
+  shrink-to-fit, making everything unusably tiny.
+- `#overlayCanvas { touch-action: none; }` — **critical.** Without it the
+  browser claims a one-finger drag as a page pan and fires `pointercancel`
+  mid-stroke, so drawing silently fails on real devices (note: an emulator
+  will still appear to work, so this can't be caught by emulation alone).
+- All input goes through **Pointer Events** (`pointerdown/move/up/cancel`
+  on `#overlayCanvas`, ~L1846), not mouse events, so mouse/touch/pen share
+  one path. `setPointerCapture` keeps the stream on the canvas.
+- Gestures: 1 finger = draw/select; 2 fingers = pinch-zoom + pan
+  (`pinchState`, `pinchCenterAndDist()`). Second finger landing aborts any
+  in-progress draw so a pinch never leaves a stray half-shape; the gesture
+  stays latched until *all* fingers lift so releasing one doesn't start
+  drawing with the other. Double-tap ⇒ `onDblClick` (touch doesn't fire
+  `dblclick` reliably) for editing text / rect labels.
+- `@media (max-width:1180px)`: toolbar becomes a single swipeable row
+  (`flex-wrap:nowrap; overflow-x:auto`). It previously wrapped to **485px
+  tall on a 664px phone** (73% of the screen) and 285px on an iPad. Now
+  ~61px on both.
+- `@media (max-width:720px)`: layers sidebar moves below the canvas
+  (`#main{flex-direction:column}`, capped `max-height:34vh`) instead of
+  eating canvas width; keyboard-shortcut `#hint` hidden.
+- Screenshot/Record depend on `getDisplayMedia`, which iOS Safari and most
+  mobile browsers don't implement at all — platform limitation, not ours.
+  The app already alerts rather than failing silently.
+- Keyboard-only affordances (Ctrl+scroll zoom, Alt+drag pan, arrow-key pan,
+  all letter shortcuts) are simply unreachable on touch; the pinch gesture
+  and on-screen zoom buttons are the touch equivalents.
+
+Verified on emulated iPhone 13 / Pixel 5 / iPad Pro 11: touch drag creates
+shapes, pinch zoomed 68%→340% with zero stray layers, 44px buttons, no page
+overflow — and desktop (1600px) regression-checked afterward (sidebar still
+right-side, mouse draw/text/pan/zoom/undo/save all intact).
 
 ## Known traps already hit and fixed (don't reintroduce)
 
