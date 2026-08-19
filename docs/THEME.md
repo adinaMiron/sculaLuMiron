@@ -3,27 +3,36 @@
 Goal: one shared visual identity across all three apps, switchable
 light/dark, with no build step.
 
-## Current state — two themes left to migrate
+## Current state — one theme left to migrate
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
 | `index.html` | **dark** | earth: soil/moss/olive/terra/paper | olive `#C1BB45` |
-| `editor.html` | **light** | warm grey + white panels | forest green `#3f6b52` |
+| `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `markdown-editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 
 ```
-index.html:12-26           editor.html:19-31          markdown-editor.html:9-24
---soil   #14201A           --bg     #f6f5f3           --bg        #14201A
---soil-2 #1B2A22           --panel  #ffffff           --surface   #1B2A22
---soil-3 #22342A           --ink    #1e1d1c           --surface-2 #22342A
---moss   #2E4739           --muted  #6f6a63           --border    #2E4739
---olive  #C1BB45           --line   #e3e0da           --accent    #C1BB45
---terra  #C4643C           --accent #3f6b52           --accent-2  #D3CD7C
---paper  #F3EEE1           --accent-soft #eaf1ec      --on-accent #1A2117
---ink    #20261E           --warn   #b5493a           --text      #F3EEE1
---mist   #9FB3A5           --gold   #c79a3d           --text-2    #9FB3A5
-                                                        --text-3    #5A6A60
+index.html:12-26           editor.html:20-36              markdown-editor.html:9-24
+--soil   #14201A           --bg          #14201A          --bg        #14201A
+--soil-2 #1B2A22           --surface     #1B2A22          --surface   #1B2A22
+--soil-3 #22342A           --surface-2   #22342A          --surface-2 #22342A
+--moss   #2E4739           --border      #2E4739          --border    #2E4739
+--olive  #C1BB45           --accent      #C1BB45          --accent    #C1BB45
+--terra  #C4643C           --accent-2    #D3CD7C          --accent-2  #D3CD7C
+--paper  #F3EEE1           --accent-soft color-mix(...)   --on-accent #1A2117
+--ink    #20261E           --on-accent   #1A2117          --text      #F3EEE1
+--mist   #9FB3A5           --text        #F3EEE1          --text-2    #9FB3A5
+                            --text-2      #9FB3A5          --text-3    #5A6A60
+                            --text-3      #5A6A60
+                            --warn        #C4643C
 ```
+
+`editor.html` is now on the same semantic token names as
+`markdown-editor.html` (`--surface-2`/`--on-accent`/`--text-2`/`--text-3`),
+plus two names the other two files don't need: `--warn` (its danger/record
+state, reuses `index.html`'s `--terra` value) and `--radius`/`--shadow`
+(shape tokens, unrelated to colour). `--accent-soft` is computed with
+`color-mix()` instead of a literal hex — see step 3 notes below.
 
 `markdown-editor.html` still uses its own name set (`--surface-2` /
 `--text-2` / `--text-3` / `--accent-2` / `--on-accent`) rather than the
@@ -37,15 +46,21 @@ revisit if `index.html` grows the same tiers during its own migration
 
 ## ⚠ The trap: same names, opposite meanings
 
-**Do not merge these `:root` blocks by copy-paste.** Names collide with
-inverted semantics:
+**Do not merge `:root` blocks by copy-paste.** This bit `editor.html`
+during its own migration (step 3, now done) and still applies to
+`index.html` (step 2, pending) — its literal names (`--ink`, `--bg`, …)
+collide in meaning with the semantic set:
 
-- `--ink` — in `editor.html` it's the **primary body text** (dark on light,
-  5 uses). In `index.html` it's a **dark colour used on light chips**
-  (2 uses) while body text is `--paper`. Blind merge inverts text colour.
-- `--bg` — light `#f6f5f3` in `editor.html`, near-black `#0f0f11` in
-  `markdown-editor.html`.
-- `--accent` — green in one, violet in the other.
+- `--ink` — in `index.html` it's a **dark colour used on light chips**
+  (2 uses) while body text is `--paper`. `editor.html`'s old `--ink` was
+  the *opposite* (primary body text, dark-on-light) — it renamed to
+  `--text` during migration specifically to avoid this collision, rather
+  than reusing `--ink` for a role `index.html` already uses differently.
+- `--bg` — now dark in all three files (`#14201A`), so this specific trap
+  is resolved. It still illustrates the risk: `editor.html`'s `--bg` was
+  light (`#f6f5f3`) right up until step 3.
+- `--accent` — green in `editor.html` pre-migration, violet in
+  `markdown-editor.html` pre-migration; both are olive `#C1BB45` now.
 
 Migrate **one file at a time**, mapping old name → new role explicitly.
 
@@ -108,42 +123,74 @@ foreign object in two of three apps.
 2. **`index.html`** — dark, but literal names (`--soil`) must map to
    semantic ones. Keep the old names as aliases during transition:
    `--soil: var(--bg);`
-3. **`editor.html`** — hardest: it inverts (light→dark) *and* has 14 hex
-   values inside `<script>` that CSS variables can't reach. See below.
+3. ✅ **`editor.html`** — done. Hardest of the three: inverted light→dark
+   *and* had hex values inside `<script>` that CSS variables can't reach.
+   `:root` (L20-36) renamed onto the shared semantic set (`--panel`→
+   `--surface`, `--ink`→`--text`, `--muted`→`--text-2`, `--line`→
+   `--border`, `--gold`→`--accent-2`), `--accent-soft` switched from a
+   literal light-green tint to `color-mix(in srgb, var(--accent) 16%,
+   var(--surface))` so it stays correct if `--accent`/`--surface` ever
+   change, and every `color:#fff` paired with an accent/accent-2/warn fill
+   became `color:var(--on-accent)` (plain white on the new bright-olive
+   accent fails contrast — 2.0:1; `--on-accent` gets 8.2:1). Left
+   untouched, per this doc's own rules: the shared nav (268–310, already
+   earth-styled), the `<input type="color">` defaults (content, not
+   chrome), the video-preview letterbox (`#111`) and modal backdrop
+   scrims (`rgba(20,20,15,.45)` etc — theme-neutral, no brand hue), and
+   the two canvas exceptions below (`PALETTE`, the JPEG-export white
+   fill). See "Canvas colours" for the selection-box/handle resolution.
+   `docs/MAP.md` line anchors updated (+24 lines, mostly the `:root`
+   header comment and the canvas `CHROME` token cache).
 
 ## Canvas colours can't use `var()`
 
 `editor.html` draws to `<canvas>`; `ctx.strokeStyle` needs a real colour
-string, not `var(--accent)`. Affected (line numbers from `docs/MAP.md`):
+string, not `var(--accent)`. Current state (line numbers from `docs/MAP.md`):
 
-| Line | What |
-|---|---|
-| 538 | default layer `color: '#1e1d1c'` |
-| **560** | `PALETTE` — the 8 user-facing swatches |
-| 1548, 1562, 1566 | selection box + resize handles `#3f6b52`, handle fill `#fff` |
-| 2316 | `#ffffff` fill (zip/export path) |
+| Line | What | Resolution |
+|---|---|---|
+| ~556 | default layer `color: '#1e1d1c'` | **literal**, see below |
+| **~582** | `PALETTE` — the 8 user-facing swatches | **literal**, deliberate exception |
+| ~1553, ~1567, ~1571 | selection box + resize handles, handle fill | resolved via `CHROME` cache (`--accent`, `--text`) |
+| ~2340 | `#ffffff` fill (JPEG export path) | **literal**, deliberate exception |
 
 Find them again after edits with:
 ```bash
-grep -n "#[0-9a-fA-F]\{3,6\}'" editor.html | awk -F: '$1>=526'
+grep -n "#[0-9a-fA-F]\{3,6\}'" editor.html | awk -F: '$1>=531'
 ```
 
-Resolve tokens at runtime instead:
+Resolve tokens at runtime instead, for anything that's app *chrome*
+(selection UI, not document content):
 
 ```js
-const css = getComputedStyle(document.documentElement);
-const token = n => css.getPropertyValue(n).trim();
-octx.strokeStyle = token('--accent');
+const themeCSS = getComputedStyle(document.documentElement);
+const themeToken = n => themeCSS.getPropertyValue(n).trim();
+const CHROME = { accent: themeToken('--accent'), text: themeToken('--text') };
+// ...later, in strokeSelBox/drawHandles:
+octx.strokeStyle = CHROME.accent;
 ```
 
 Read it **once per render pass**, not per shape — `getComputedStyle` in a
 hot loop will cost you frames in the 60fps recording path
-(`liveRenderLoop`). Re-read when the theme changes.
+(`liveRenderLoop`). `editor.html` resolves `CHROME` exactly once, at
+script init (before `state` is even defined), not per frame; there's no
+live theme toggle yet, so there's nothing to re-read on a theme change —
+if one is added later, invalidate/refresh this cache when it fires.
 
 **`PALETTE` is a deliberate exception.** Those 8 swatches are *document
 content* — the colours a user picked for their drawing. If they follow the
 theme, existing artwork changes colour when the theme flips. Leave
-`PALETTE` as literal hex.
+`PALETTE` as literal hex. The **default pen colour** (`state.color`,
+~L556) gets the same exception even though it isn't in the `PALETTE`
+array itself: its value is literally `PALETTE[0]`, and the swatch UI
+highlights whichever swatch equals `state.color` on load (`sw.classList
+.add('selected')` — see `docs/MAP.md`'s Toolbar wiring section) —
+tokenizing just the default and not the array would silently break that
+highlight. The **JPEG-export white fill** (`renderComposite`'s
+`forceWhiteBg`) is the same kind of exception for a different reason:
+it's an export-file convention (JPEG has no transparency channel), not
+UI chrome, so it should stay a predictable white regardless of what
+theme the app happens to be in when you hit export.
 
 Same principle for the **exported-HTML template** in
 `markdown-editor.html:1846-1870`: it ships standalone to people without
