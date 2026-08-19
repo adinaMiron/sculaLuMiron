@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -269,6 +269,7 @@
   <a href="index.html" data-page="index.html">Caiet vocal</a>
   <a href="editor.html" data-page="editor.html">Editor</a>
   <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
   #site-nav{
@@ -298,12 +299,48 @@
     border-color:#C1BB45;
     font-weight:600;
   }
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    margin-left:auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
 </style>
 <script>
 (function(){
   var here = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll("#site-nav a").forEach(function(a){
     if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var btn = document.getElementById("navLangBtn");
+  if(!btn) return;
+  function paint(lang){ btn.textContent = lang === "ro" ? "EN" : "RO"; }
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+  paint(lang);
+  btn.addEventListener("click", function(){
+    lang = lang === "ro" ? "en" : "ro";
+    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+    paint(lang);
+    window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
   });
 })();
 </script>
@@ -313,39 +350,39 @@
   <div id="toolbar">
     <div class="grp">
       <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg">
-      <button class="action" id="openBtn">📂 Open image</button>
-      <button class="action" id="newCanvasBtn">🖼 New canvas</button>
-      <button class="action" id="saveBtn">💾 Save image</button>
-      <button class="action" id="saveAllSizesBtn" title="Export this drawing at every preset size up to its current size, bundled in one zip">📐 Save all sizes</button>
+      <button class="action" id="openBtn" data-i="openImage">📂 Open image</button>
+      <button class="action" id="newCanvasBtn" data-i="newCanvas">🖼 New canvas</button>
+      <button class="action" id="saveBtn" data-i="saveImage">💾 Save image</button>
+      <button class="action" id="saveAllSizesBtn" data-i="saveAllSizes" data-i-title="saveAllSizesTip" title="Export this drawing at every preset size up to its current size, bundled in one zip">📐 Save all sizes</button>
     </div>
 
     <div class="grp" id="zoomGrp">
-      <button class="action" id="zoomOutBtn" title="Zoom out (Ctrl+scroll down)">−</button>
-      <button class="action" id="zoomLabelBtn" title="Reset zoom to fit the window">100%</button>
-      <button class="action" id="zoomInBtn" title="Zoom in (Ctrl+scroll up)">+</button>
+      <button class="action" id="zoomOutBtn" data-i-title="zoomOutTip" title="Zoom out (Ctrl+scroll down)">−</button>
+      <button class="action" id="zoomLabelBtn" data-i-title="zoomFitTip" title="Reset zoom to fit the window">100%</button>
+      <button class="action" id="zoomInBtn" data-i-title="zoomInTip" title="Zoom in (Ctrl+scroll up)">+</button>
     </div>
 
     <div class="grp">
-      <button class="action" id="snapshotBtn" title="Capture your screen and load it into the editor">🖥️ Screenshot</button>
-      <button class="action" id="recordBtn" title="Record your screen (with audio) directly into the canvas, so you can draw on it live">⏺ Record</button>
-      <button class="action" id="recPauseBtn" title="Pause / resume recording" style="display:none;">⏸ Pause</button>
+      <button class="action" id="snapshotBtn" data-i="screenshot" data-i-title="screenshotTip" title="Capture your screen and load it into the editor">🖥️ Screenshot</button>
+      <button class="action" id="recordBtn" data-i="record" data-i-title="recordTip" title="Record your screen (with audio) directly into the canvas, so you can draw on it live">⏺ Record</button>
+      <button class="action" id="recPauseBtn" data-i="pauseLabel" data-i-title="recPauseTip" title="Pause / resume recording" style="display:none;">⏸ Pause</button>
     </div>
 
     <div class="grp">
-      <button class="tool" data-tool="select" title="Select / transform (V)">↖ Select</button>
-      <button class="tool" data-tool="text" title="Text (T)">T Text</button>
-      <button class="tool" data-tool="rect" title="Rectangle - hold Ctrl for a perfect square (R)">▭ Rect</button>
-      <button class="tool" data-tool="ellipse" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)">◯ Ellipse</button>
-      <button class="tool" data-tool="rhombus" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)">◇ Rhombus</button>
-      <button class="tool" data-tool="pencil" title="Freehand (P)">✎ Draw</button>
-      <button class="tool" data-tool="highlight" title="Highlight (H)">🖍 Highlight</button>
-      <button class="tool" data-tool="arrow" title="Arrow - hold Ctrl to snap horizontal/vertical (A)">↗ Arrow</button>
-      <button class="tool" data-tool="splineArrow" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)">↝ Spline Arrow</button>
-      <button class="tool" data-tool="line" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)">╱ Line</button>
+      <button class="tool" data-tool="select" data-i="toolSelect" data-i-title="toolSelectTip" title="Select / transform (V)">↖ Select</button>
+      <button class="tool" data-tool="text" data-i="toolText" data-i-title="toolTextTip" title="Text (T)">T Text</button>
+      <button class="tool" data-tool="rect" data-i="toolRect" data-i-title="toolRectTip" title="Rectangle - hold Ctrl for a perfect square (R)">▭ Rect</button>
+      <button class="tool" data-tool="ellipse" data-i="toolEllipse" data-i-title="toolEllipseTip" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)">◯ Ellipse</button>
+      <button class="tool" data-tool="rhombus" data-i="toolRhombus" data-i-title="toolRhombusTip" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)">◇ Rhombus</button>
+      <button class="tool" data-tool="pencil" data-i="toolPencil" data-i-title="toolPencilTip" title="Freehand (P)">✎ Draw</button>
+      <button class="tool" data-tool="highlight" data-i="toolHighlight" data-i-title="toolHighlightTip" title="Highlight (H)">🖍 Highlight</button>
+      <button class="tool" data-tool="arrow" data-i="toolArrow" data-i-title="toolArrowTip" title="Arrow - hold Ctrl to snap horizontal/vertical (A)">↗ Arrow</button>
+      <button class="tool" data-tool="splineArrow" data-i="toolSplineArrow" data-i-title="toolSplineArrowTip" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)">↝ Spline Arrow</button>
+      <button class="tool" data-tool="line" data-i="toolLine" data-i-title="toolLineTip" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)">╱ Line</button>
     </div>
 
     <div class="grp">
-      <label>Font</label>
+      <label data-i="lblFont">Font</label>
       <select id="fontSelect">
         <option value="Poppins">Poppins</option>
         <option value="Raleway" selected>Raleway</option>
@@ -357,64 +394,64 @@
         <option value="Lilita One">Lilita One</option>
         <option value="Comic Shanns Mono">Comic Shanns Mono</option>
       </select>
-      <label>Size</label>
+      <label data-i="lblFontSize">Size</label>
       <input type="number" id="fontSize" value="28" min="6" max="300" style="width:4rem">
-      <button class="action" id="boldBtn" title="Bold text" style="font-weight:700;">B</button>
+      <button class="action" id="boldBtn" data-i-title="boldTip" title="Bold text" style="font-weight:700;">B</button>
     </div>
 
     <div class="grp" id="paletteGrp">
-      <label>Color</label>
+      <label data-i="lblColor">Color</label>
       <div id="palette" style="display:flex; gap:0.357rem;"></div>
-      <input type="color" id="customColor" value="#1e1d1c" title="Custom color">
+      <input type="color" id="customColor" value="#1e1d1c" data-i-title="customColorTip" title="Custom color">
     </div>
 
     <div class="grp" id="fillGrp">
-      <label>Fill</label>
+      <label data-i="lblFill">Fill</label>
       <div id="fillPalette" style="display:flex; gap:0.357rem;"></div>
-      <input type="color" id="fillCustomColor" value="#ffffff" title="Custom fill color">
+      <input type="color" id="fillCustomColor" value="#ffffff" data-i-title="fillCustomColorTip" title="Custom fill color">
     </div>
 
     <div class="grp">
-      <label>Stroke</label>
+      <label data-i="lblStroke">Stroke</label>
       <input type="range" id="strokeWidth" min="1" max="40" value="4">
       <span id="strokeWidthLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">4</span>
     </div>
 
     <div class="grp" id="cornerGrp">
-      <label>Corner radius</label>
+      <label data-i="lblCornerRadius">Corner radius</label>
       <input type="range" id="cornerRadius" min="0" max="80" value="6">
       <span id="cornerRadiusLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">6</span>
     </div>
 
     <div class="grp" id="arrowGrp">
-      <label>Head size</label>
+      <label data-i="lblHeadSize">Head size</label>
       <input type="range" id="arrowHead" min="6" max="60" value="18">
       <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">18</span>
     </div>
 
     <div class="grp">
-      <label>Sloppiness</label>
-      <button class="action rough-btn" data-rough="0" title="Architect — precise lines">Architect</button>
-      <button class="action rough-btn" data-rough="1" title="Artist — a bit sketchy">Artist</button>
-      <button class="action rough-btn" data-rough="2" title="Cartoonist — very sketchy">Cartoonist</button>
+      <label data-i="lblSloppiness">Sloppiness</label>
+      <button class="action rough-btn" data-rough="0" data-i="roughArchitect" data-i-title="roughArchitectTip" title="Architect — precise lines">Architect</button>
+      <button class="action rough-btn" data-rough="1" data-i="roughArtist" data-i-title="roughArtistTip" title="Artist — a bit sketchy">Artist</button>
+      <button class="action rough-btn" data-rough="2" data-i="roughCartoonist" data-i-title="roughCartoonistTip" title="Cartoonist — very sketchy">Cartoonist</button>
     </div>
 
     <div class="grp">
-      <label>Opacity</label>
+      <label data-i="lblOpacity">Opacity</label>
       <input type="range" id="opacity" min="0" max="100" value="100">
       <span id="opacityLabel" style="font-size:0.786rem; color:var(--text-2); width:2rem;">100%</span>
     </div>
 
     <div class="grp">
-      <button class="action danger" id="deleteBtn" title="Delete (Del)">🗑 Delete</button>
+      <button class="action danger" id="deleteBtn" data-i="deleteBtn" data-i-title="deleteTip" title="Delete (Del)">🗑 Delete</button>
     </div>
   </div>
 
   <div id="newCanvasOverlay">
     <div id="newCanvasModal">
-      <h3>New canvas</h3>
+      <h3 data-i="newCanvasTitle">New canvas</h3>
 
-      <label class="modalLabel">Size</label>
+      <label class="modalLabel" data-i="lblCanvasSize">Size</label>
       <div id="sizePresetGrid">
         <button class="sizePreset" data-w="320" data-h="240">320 × 240</button>
         <button class="sizePreset" data-w="480" data-h="360">480 × 360</button>
@@ -425,33 +462,33 @@
         <button class="sizePreset" data-w="4096" data-h="2160">4096 × 2160</button>
       </div>
 
-      <label class="modalLabel">Orientation</label>
+      <label class="modalLabel" data-i="lblOrientation">Orientation</label>
       <div class="grp" style="padding:0; border:none;">
-        <button class="action orientBtn active" data-orient="landscape">▭ Landscape</button>
-        <button class="action orientBtn" data-orient="portrait">▯ Portrait</button>
+        <button class="action orientBtn active" data-orient="landscape" data-i="landscapeBtn">▭ Landscape</button>
+        <button class="action orientBtn" data-orient="portrait" data-i="portraitBtn">▯ Portrait</button>
       </div>
 
-      <label class="modalLabel">Background</label>
+      <label class="modalLabel" data-i="lblBackground">Background</label>
       <div class="grp" style="padding:0; border:none;">
-        <button class="action bgBtn active" data-bg="color">🎨 Color</button>
-        <button class="action bgBtn" data-bg="transparent">▦ Transparent</button>
-        <input type="color" id="newCanvasColor" value="#ffffff" title="Background color">
+        <button class="action bgBtn active" data-bg="color" data-i="colorBgBtn">🎨 Color</button>
+        <button class="action bgBtn" data-bg="transparent" data-i="transparentBgBtn">▦ Transparent</button>
+        <input type="color" id="newCanvasColor" value="#ffffff" data-i-title="newCanvasColorTip" title="Background color">
       </div>
 
       <div id="newCanvasSummary">800 × 600 · white background</div>
 
       <div style="display:flex; gap:0.571rem; justify-content:flex-end; margin-top:0.429rem;">
-        <button class="action" id="newCanvasCancel">Cancel</button>
-        <button class="action" id="newCanvasCreate" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Create canvas</button>
+        <button class="action" id="newCanvasCancel" data-i="cancelBtn">Cancel</button>
+        <button class="action" id="newCanvasCreate" data-i="createCanvasBtn" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Create canvas</button>
       </div>
     </div>
   </div>
 
   <div id="saveSizesOverlay">
     <div id="saveSizesModal">
-      <h3 style="margin:0 0 0.429rem;">Save all sizes</h3>
+      <h3 style="margin:0 0 0.429rem;" data-i="saveAllSizesTitle">Save all sizes</h3>
 
-      <label class="modalLabel">Format</label>
+      <label class="modalLabel" data-i="lblFormat">Format</label>
       <div class="grp" style="padding:0; border:none;">
         <button class="action sizesFormatBtn active" data-format="png">PNG</button>
         <button class="action sizesFormatBtn" data-format="jpg">JPG</button>
@@ -460,8 +497,8 @@
       <div id="saveSizesSummary" style="font-size:0.857rem; color:var(--text-2); margin-top:0.714rem; line-height:1.6;"></div>
 
       <div style="display:flex; gap:0.571rem; justify-content:flex-end; margin-top:0.714rem;">
-        <button class="action" id="saveSizesCancel">Cancel</button>
-        <button class="action" id="saveSizesConfirm" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Save all sizes</button>
+        <button class="action" id="saveSizesCancel" data-i="cancelBtn">Cancel</button>
+        <button class="action" id="saveSizesConfirm" data-i="saveAllSizesTitle" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Save all sizes</button>
       </div>
     </div>
   </div>
@@ -469,8 +506,8 @@
   <div id="recordingOverlay">
     <div id="recordingModal">
       <div style="display:flex; align-items:center; justify-content:space-between;">
-        <h3 style="margin:0;">Recording preview</h3>
-        <button class="action" id="recCloseBtn" title="Close">✕</button>
+        <h3 style="margin:0;" data-i="recordingPreviewTitle">Recording preview</h3>
+        <button class="action" id="recCloseBtn" data-i-title="closeTip" title="Close">✕</button>
       </div>
       <div id="recordingVideoWrap">
         <video id="recordingVideo" playsinline></video>
@@ -480,14 +517,14 @@
         <span id="recordingTimeLabel">0:00 / 0:00</span>
       </div>
       <div id="recordingControls">
-        <button class="action" id="recPlayPauseBtn" title="Play / pause">▶ Play</button>
-        <button class="action" id="recStopBtn" title="Stop (rewind to start)">⏹ Stop</button>
+        <button class="action" id="recPlayPauseBtn" data-i="playLabel" data-i-title="playTip" title="Play / pause">▶ Play</button>
+        <button class="action" id="recStopBtn" data-i="stopLabel" data-i-title="stopTip" title="Stop (rewind to start)">⏹ Stop</button>
         <span style="flex:1;"></span>
-        <button class="action" id="recMuteBtn" title="Mute / unmute">🔊</button>
-        <input type="range" id="recVolume" min="0" max="100" value="100" title="Volume">
-        <button class="action" id="recFullscreenBtn" title="Fullscreen">⛶</button>
+        <button class="action" id="recMuteBtn" data-i-title="muteTip" title="Mute / unmute">🔊</button>
+        <input type="range" id="recVolume" min="0" max="100" value="100" data-i-title="volumeTip" title="Volume">
+        <button class="action" id="recFullscreenBtn" data-i-title="fullscreenTip" title="Fullscreen">⛶</button>
         <span style="flex:1;"></span>
-        <button class="action" id="recDownloadBtn" style="background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600;">💾 Download</button>
+        <button class="action" id="recDownloadBtn" data-i="downloadBtn" style="background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600;">💾 Download</button>
       </div>
     </div>
   </div>
@@ -495,11 +532,11 @@
   <div id="main">
     <div id="canvasWrap">
       <div id="emptyState">
-        <p><b>No image loaded yet.</b><br>
-        Click “Open image” to load a JPG or PNG, or “New canvas” to start from
+        <p><b data-i="emptyStateHeading">No image loaded yet.</b><br>
+        <span data-i="emptyStateBody">Click “Open image” to load a JPG or PNG, or “New canvas” to start from
         a blank canvas of a chosen size. Claude works on an in-memory
         duplicate — your original file on disk is never touched, and the saved
-        result keeps the same pixel dimensions as the canvas.</p>
+        result keeps the same pixel dimensions as the canvas.</span></p>
       </div>
       <div id="stage" style="display:none;">
         <canvas id="baseCanvas"></canvas>
@@ -508,17 +545,17 @@
     </div>
 
     <div id="sidebar">
-      <h3>Layers</h3>
+      <h3 data-i="lblLayers">Layers</h3>
       <div id="layerActions">
-        <button class="action" id="copyBtn" title="Copy (Ctrl+C)">Copy</button>
-        <button class="action" id="pasteBtn" title="Paste (Ctrl+V)">Paste</button>
-        <button class="action" id="groupBtn" title="Group (Ctrl+G)">Group</button>
-        <button class="action" id="ungroupBtn" title="Ungroup (Ctrl+Shift+G)">Ungroup</button>
-        <button class="action" id="upBtn" title="Bring forward">Fwd</button>
-        <button class="action" id="downBtn" title="Send backward">Back</button>
+        <button class="action" id="copyBtn" data-i="copyBtn" data-i-title="copyTip" title="Copy (Ctrl+C)">Copy</button>
+        <button class="action" id="pasteBtn" data-i="pasteBtn" data-i-title="pasteTip" title="Paste (Ctrl+V)">Paste</button>
+        <button class="action" id="groupBtn" data-i="groupBtn" data-i-title="groupTip" title="Group (Ctrl+G)">Group</button>
+        <button class="action" id="ungroupBtn" data-i="ungroupBtn" data-i-title="ungroupTip" title="Ungroup (Ctrl+Shift+G)">Ungroup</button>
+        <button class="action" id="upBtn" data-i="fwdBtn" data-i-title="fwdTip" title="Bring forward">Fwd</button>
+        <button class="action" id="downBtn" data-i="backBtn" data-i-title="backTip" title="Send backward">Back</button>
       </div>
       <div id="layerList"></div>
-      <div id="hint">
+      <div id="hint" data-i="hintText">
         Click a layer to select it. Shift‑click to select several. Drag a
         shape's corner handle to resize, the top handle to rotate.
         Ctrl+Z / Ctrl+Shift+Z to undo/redo.
@@ -531,6 +568,171 @@
 <script>
 (function(){
 "use strict";
+
+/* ============================================================
+   1. i18n — pattern copied from index.html, see docs/I18N.md
+   ============================================================ */
+const I18N = {
+  ro:{
+    openImage:"📂 Deschide imagine", newCanvas:"🖼 Canvas nou", saveImage:"💾 Salvează imaginea",
+    saveAllSizes:"📐 Salvează toate dimensiunile",
+    saveAllSizesTip:"Exportă acest desen la fiecare dimensiune presetată până la dimensiunea curentă, într-o singură arhivă zip",
+    zoomOutTip:"Micșorează (Ctrl+derulare în jos)", zoomFitTip:"Readu zoom-ul la potrivirea ferestrei", zoomInTip:"Mărește (Ctrl+derulare în sus)",
+    screenshot:"🖥️ Captură ecran", screenshotTip:"Capturează ecranul tău și încarcă-l în editor",
+    record:"⏺ Înregistrează", recordTip:"Înregistrează ecranul tău (cu sunet) direct pe canvas, ca să poți desena live pe el",
+    recPauseTip:"Pauză / reluare înregistrare", pauseLabel:"⏸ Pauză", resumeLabel:"▶ Reluare",
+    recordingElapsed:n=>`⏹ Oprește (${n})`,
+    toolSelect:"↖ Selectează", toolSelectTip:"Selectează / transformă (V)",
+    toolText:"T Text", toolTextTip:"Text (T)",
+    toolRect:"▭ Dreptunghi", toolRectTip:"Dreptunghi - ține Ctrl pentru pătrat perfect (R)",
+    toolEllipse:"◯ Elipsă", toolEllipseTip:"Elipsă / cerc - ține Shift sau Ctrl pentru cerc perfect (O)",
+    toolRhombus:"◇ Romb", toolRhombusTip:"Romb - ține Shift sau Ctrl pentru laturi egale (D)",
+    toolPencil:"✎ Desenează", toolPencilTip:"Liber, cu mâna (P)",
+    toolHighlight:"🖍 Evidențiază", toolHighlightTip:"Evidențiere (H)",
+    toolArrow:"↗ Săgeată", toolArrowTip:"Săgeată - ține Ctrl pentru aliniere orizontală/verticală (A)",
+    toolSplineArrow:"↝ Săgeată curbă", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
+    toolLine:"╱ Linie", toolLineTip:"Linie dreaptă - ține Shift pentru unghiuri de 45°, Ctrl pentru orizontal/vertical (L)",
+    lblFont:"Font", lblFontSize:"Dimensiune", boldTip:"Text îngroșat",
+    lblColor:"Culoare", customColorTip:"Culoare personalizată",
+    lblFill:"Umplere", fillCustomColorTip:"Culoare de umplere personalizată", noFillTip:"Fără umplere",
+    lblStroke:"Contur", lblCornerRadius:"Rază colț", lblHeadSize:"Dimensiune vârf",
+    lblSloppiness:"Stil schiță",
+    roughArchitect:"Arhitect", roughArchitectTip:"Arhitect — linii precise",
+    roughArtist:"Artist", roughArtistTip:"Artist — puțin schițat",
+    roughCartoonist:"Caricaturist", roughCartoonistTip:"Caricaturist — foarte schițat",
+    lblOpacity:"Opacitate", deleteBtn:"🗑 Șterge", deleteTip:"Șterge (Del)",
+    newCanvasTitle:"Canvas nou", lblCanvasSize:"Dimensiune", lblOrientation:"Orientare",
+    landscapeBtn:"▭ Peisaj", portraitBtn:"▯ Portret", lblBackground:"Fundal",
+    colorBgBtn:"🎨 Culoare", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Culoarea fundalului",
+    cancelBtn:"Anulează", createCanvasBtn:"Creează canvas",
+    saveAllSizesTitle:"Salvează toate dimensiunile", lblFormat:"Format", savingEllipsis:"Se salvează…",
+    recordingPreviewTitle:"Previzualizare înregistrare", closeTip:"Închide",
+    playTip:"Redă / pauză", playLabel:"▶ Redă",
+    stopTip:"Oprește (derulează la început)", stopLabel:"⏹ Oprește",
+    muteTip:"Fără sunet / cu sunet", volumeTip:"Volum", fullscreenTip:"Ecran complet", downloadBtn:"💾 Descarcă",
+    emptyStateHeading:"Nicio imagine încărcată încă.",
+    emptyStateBody:"Apasă „Deschide imagine” pentru a încărca un JPG sau PNG, sau „Canvas nou” pentru a începe de la un canvas gol de o dimensiune aleasă. Claude lucrează pe o copie în memorie — fișierul tău original de pe disc nu este niciodată atins, iar rezultatul salvat păstrează aceleași dimensiuni în pixeli ca și canvasul.",
+    lblLayers:"Straturi",
+    copyBtn:"Copiază", copyTip:"Copiază (Ctrl+C)", pasteBtn:"Lipește", pasteTip:"Lipește (Ctrl+V)",
+    groupBtn:"Grupează", groupTip:"Grupează (Ctrl+G)", ungroupBtn:"Degrupează", ungroupTip:"Degrupează (Ctrl+Shift+G)",
+    fwdBtn:"Sus", fwdTip:"Adu în față", backBtn:"Jos", backTip:"Trimite în spate",
+    hintText:"Apasă pe un strat pentru a-l selecta. Shift‑clic pentru a selecta mai multe. Trage colțul unei forme pentru a redimensiona, mânerul de sus pentru a roti. Ctrl+Z / Ctrl+Shift+Z pentru anulare/refacere.",
+    layerText:p=>`Text: ${p}`, layerRect:"Dreptunghi", layerRectText:"Dreptunghi + text",
+    layerFreehand:"Desen liber", layerArrowLabel:"Săgeată", layerHighlightLabel:"Evidențiere",
+    layerCircle:"Cerc", layerEllipseLabel:"Elipsă", layerRhombusLabel:"Romb", layerLineLabel:"Linie",
+    layerSplineArrowLabel:"Săgeată curbă",
+    bgTransparent:"fundal transparent", bgColor:hex=>`fundal ${hex}`,
+    tooSmallForExport:([w,h])=>`Canvasul tău (${w}×${h}) e mai mic decât cea mai mică presetare (320×240), deci nu mai e nimic mai mic de exportat.`,
+    willSaveSizes:list=>`Se va salva: ${list}`,
+    noScreenCapture:"Captura de ecran nu e disponibilă în acest browser/context. Are nevoie de un Chrome/Edge/Firefox modern și un context securizat (https:// sau localhost) — deschiderea fișierului direct poate să nu fie suficientă pe unele sisteme.",
+    captureError:msg=>`Nu s-a putut captura ecranul: ${msg}`,
+    noScreenRecording:"Înregistrarea ecranului nu e disponibilă în acest browser/context. Are nevoie de un Chrome/Edge/Firefox modern și un context securizat (https:// sau localhost).",
+    recordStartError:msg=>`Nu s-a putut porni înregistrarea ecranului: ${msg}`,
+    videoRecordError:msg=>`Acest browser nu poate înregistra video: ${msg}`
+  },
+  en:{
+    openImage:"📂 Open image", newCanvas:"🖼 New canvas", saveImage:"💾 Save image",
+    saveAllSizes:"📐 Save all sizes",
+    saveAllSizesTip:"Export this drawing at every preset size up to its current size, bundled in one zip",
+    zoomOutTip:"Zoom out (Ctrl+scroll down)", zoomFitTip:"Reset zoom to fit the window", zoomInTip:"Zoom in (Ctrl+scroll up)",
+    screenshot:"🖥️ Screenshot", screenshotTip:"Capture your screen and load it into the editor",
+    record:"⏺ Record", recordTip:"Record your screen (with audio) directly into the canvas, so you can draw on it live",
+    recPauseTip:"Pause / resume recording", pauseLabel:"⏸ Pause", resumeLabel:"▶ Resume",
+    recordingElapsed:n=>`⏹ Stop (${n})`,
+    toolSelect:"↖ Select", toolSelectTip:"Select / transform (V)",
+    toolText:"T Text", toolTextTip:"Text (T)",
+    toolRect:"▭ Rect", toolRectTip:"Rectangle - hold Ctrl for a perfect square (R)",
+    toolEllipse:"◯ Ellipse", toolEllipseTip:"Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)",
+    toolRhombus:"◇ Rhombus", toolRhombusTip:"Rhombus / diamond - hold Shift or Ctrl for equal sides (D)",
+    toolPencil:"✎ Draw", toolPencilTip:"Freehand (P)",
+    toolHighlight:"🖍 Highlight", toolHighlightTip:"Highlight (H)",
+    toolArrow:"↗ Arrow", toolArrowTip:"Arrow - hold Ctrl to snap horizontal/vertical (A)",
+    toolSplineArrow:"↝ Spline Arrow", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
+    toolLine:"╱ Line", toolLineTip:"Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)",
+    lblFont:"Font", lblFontSize:"Size", boldTip:"Bold text",
+    lblColor:"Color", customColorTip:"Custom color",
+    lblFill:"Fill", fillCustomColorTip:"Custom fill color", noFillTip:"No fill",
+    lblStroke:"Stroke", lblCornerRadius:"Corner radius", lblHeadSize:"Head size",
+    lblSloppiness:"Sloppiness",
+    roughArchitect:"Architect", roughArchitectTip:"Architect — precise lines",
+    roughArtist:"Artist", roughArtistTip:"Artist — a bit sketchy",
+    roughCartoonist:"Cartoonist", roughCartoonistTip:"Cartoonist — very sketchy",
+    lblOpacity:"Opacity", deleteBtn:"🗑 Delete", deleteTip:"Delete (Del)",
+    newCanvasTitle:"New canvas", lblCanvasSize:"Size", lblOrientation:"Orientation",
+    landscapeBtn:"▭ Landscape", portraitBtn:"▯ Portrait", lblBackground:"Background",
+    colorBgBtn:"🎨 Color", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Background color",
+    cancelBtn:"Cancel", createCanvasBtn:"Create canvas",
+    saveAllSizesTitle:"Save all sizes", lblFormat:"Format", savingEllipsis:"Saving…",
+    recordingPreviewTitle:"Recording preview", closeTip:"Close",
+    playTip:"Play / pause", playLabel:"▶ Play",
+    stopTip:"Stop (rewind to start)", stopLabel:"⏹ Stop",
+    muteTip:"Mute / unmute", volumeTip:"Volume", fullscreenTip:"Fullscreen", downloadBtn:"💾 Download",
+    emptyStateHeading:"No image loaded yet.",
+    emptyStateBody:"Click “Open image” to load a JPG or PNG, or “New canvas” to start from a blank canvas of a chosen size. Claude works on an in-memory duplicate — your original file on disk is never touched, and the saved result keeps the same pixel dimensions as the canvas.",
+    lblLayers:"Layers",
+    copyBtn:"Copy", copyTip:"Copy (Ctrl+C)", pasteBtn:"Paste", pasteTip:"Paste (Ctrl+V)",
+    groupBtn:"Group", groupTip:"Group (Ctrl+G)", ungroupBtn:"Ungroup", ungroupTip:"Ungroup (Ctrl+Shift+G)",
+    fwdBtn:"Fwd", fwdTip:"Bring forward", backBtn:"Back", backTip:"Send backward",
+    hintText:"Click a layer to select it. Shift‑click to select several. Drag a shape's corner handle to resize, the top handle to rotate. Ctrl+Z / Ctrl+Shift+Z to undo/redo.",
+    layerText:p=>`Text: ${p}`, layerRect:"Rectangle", layerRectText:"Rectangle + text",
+    layerFreehand:"Freehand drawing", layerArrowLabel:"Arrow", layerHighlightLabel:"Highlight",
+    layerCircle:"Circle", layerEllipseLabel:"Ellipse", layerRhombusLabel:"Rhombus", layerLineLabel:"Line",
+    layerSplineArrowLabel:"Spline arrow",
+    bgTransparent:"transparent background", bgColor:hex=>`${hex} background`,
+    tooSmallForExport:([w,h])=>`Your canvas (${w}×${h}) is smaller than the smallest preset (320×240), so there's nothing smaller to export.`,
+    willSaveSizes:list=>`Will save: ${list}`,
+    noScreenCapture:"Screen capture isn't available in this browser/context. It needs a modern Chrome/Edge/Firefox and a secure context (https:// or localhost) — opening the file directly may not be enough on some systems.",
+    captureError:msg=>`Could not capture the screen: ${msg}`,
+    noScreenRecording:"Screen recording isn't available in this browser/context. It needs a modern Chrome/Edge/Firefox and a secure context (https:// or localhost).",
+    recordStartError:msg=>`Could not start screen recording: ${msg}`,
+    videoRecordError:msg=>`This browser can't record video: ${msg}`
+  }
+};
+let UI = "ro";
+function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+const LANG_KEY = "scula:ui-lang";
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__im","1"); localStorage.removeItem("__im"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+const UI_ATTRS = ["placeholder", "title", "aria-label", "value", "alt"];
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  const navBtn = document.getElementById("navLangBtn");
+  if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
+  try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
+  const noFillSw = document.querySelector(".noFillSwatch");
+  if(noFillSw) noFillSw.title = t("noFillTip");
+}
+window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
+(async function initUILang(){
+  let saved = null;
+  try{ saved = await store.get(LANG_KEY); }catch(e){}
+  UI = saved === "en" || saved === "ro" ? saved : "ro";
+  applyUILang();
+})();
 
 // Canvas drawing needs real colour strings, not var(--x) - CSS variables
 // don't resolve inside ctx.strokeStyle/fillStyle. Resolve the *chrome*
@@ -680,7 +882,7 @@ function beginEditing(){
 /* ===================== Screen snapshot ===================== */
 document.getElementById('snapshotBtn').addEventListener('click', async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
-    alert('Screen capture isn\'t available in this browser/context. It needs a modern Chrome/Edge/Firefox and a secure context (https:// or localhost) — opening the file directly may not be enough on some systems.');
+    alert(t('noScreenCapture'));
     return;
   }
   let stream;
@@ -688,7 +890,7 @@ document.getElementById('snapshotBtn').addEventListener('click', async () => {
     stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' } });
   } catch (err){
     // The person cancelled the picker, or the browser blocked it - not a real error to alarm over.
-    if (err && err.name !== 'NotAllowedError') alert('Could not capture the screen: ' + (err && err.message ? err.message : err));
+    if (err && err.name !== 'NotAllowedError') alert(t('captureError', err && err.message ? err.message : err));
     return;
   }
   const track = stream.getVideoTracks()[0];
@@ -738,7 +940,7 @@ function liveRenderLoop(){
 
 async function startRecording(){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
-    alert('Screen recording isn\'t available in this browser/context. It needs a modern Chrome/Edge/Firefox and a secure context (https:// or localhost).');
+    alert(t('noScreenRecording'));
     return;
   }
   try {
@@ -748,7 +950,7 @@ async function startRecording(){
     try {
       recordStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
     } catch (err2){
-      alert('Could not start screen recording: ' + (err2 && err2.message ? err2.message : err2));
+      alert(t('recordStartError', err2 && err2.message ? err2.message : err2));
       return;
     }
   }
@@ -786,7 +988,7 @@ async function startRecording(){
   try {
     mediaRecorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
   } catch (err){
-    alert('This browser can\'t record video: ' + err.message);
+    alert(t('videoRecordError', err.message));
     recordStream.getTracks().forEach(t => t.stop());
     return;
   }
@@ -803,20 +1005,20 @@ async function startRecording(){
   recordStartTime = Date.now();
   const btn = document.getElementById('recordBtn');
   btn.classList.add('recording');
-  btn.textContent = '⏹ Stop (0:00)';
+  btn.textContent = t('recordingElapsed', '0:00');
   document.getElementById('recPauseBtn').style.display = '';
-  document.getElementById('recPauseBtn').textContent = '⏸ Pause';
-  recordTimer = setInterval(() => { btn.textContent = `⏹ Stop (${formatElapsed(Date.now()-recordStartTime)})`; }, 500);
+  document.getElementById('recPauseBtn').textContent = t('pauseLabel');
+  recordTimer = setInterval(() => { btn.textContent = t('recordingElapsed', formatElapsed(Date.now()-recordStartTime)); }, 500);
 }
 
 document.getElementById('recPauseBtn').addEventListener('click', () => {
   if (!mediaRecorder) return;
   if (mediaRecorder.state === 'recording'){
     mediaRecorder.pause();
-    document.getElementById('recPauseBtn').textContent = '▶ Resume';
+    document.getElementById('recPauseBtn').textContent = t('resumeLabel');
   } else if (mediaRecorder.state === 'paused'){
     mediaRecorder.resume();
-    document.getElementById('recPauseBtn').textContent = '⏸ Pause';
+    document.getElementById('recPauseBtn').textContent = t('pauseLabel');
   }
 });
 
@@ -837,7 +1039,7 @@ function stopRecording(){
 
   const btn = document.getElementById('recordBtn');
   btn.classList.remove('recording');
-  btn.textContent = '⏺ Record';
+  btn.textContent = t('record');
   document.getElementById('recPauseBtn').style.display = 'none';
 
   if (frozenDataUrl){
@@ -883,13 +1085,13 @@ function openRecordingPreview(blob, ext){
   recordingVideo.volume = (parseInt(recVolume.value,10) || 100) / 100;
   recordingVideo.muted = false;
   recMuteBtn.textContent = '🔊';
-  recPlayPauseBtn.textContent = '▶ Play';
+  recPlayPauseBtn.textContent = t('playLabel');
   recordingOverlay.classList.add('open');
 }
 
-recordingVideo.addEventListener('play', () => { recPlayPauseBtn.textContent = '⏸ Pause'; });
-recordingVideo.addEventListener('pause', () => { recPlayPauseBtn.textContent = '▶ Play'; });
-recordingVideo.addEventListener('ended', () => { recPlayPauseBtn.textContent = '▶ Play'; });
+recordingVideo.addEventListener('play', () => { recPlayPauseBtn.textContent = t('pauseLabel'); });
+recordingVideo.addEventListener('pause', () => { recPlayPauseBtn.textContent = t('playLabel'); });
+recordingVideo.addEventListener('ended', () => { recPlayPauseBtn.textContent = t('playLabel'); });
 recordingVideo.addEventListener('timeupdate', () => {
   if (!seeking && recordingVideo.duration){
     recSeek.value = (recordingVideo.currentTime / recordingVideo.duration) * 1000;
@@ -1065,7 +1267,7 @@ function effectiveCanvasDims(){
 
 function updateNewCanvasSummary(){
   const { w, h } = effectiveCanvasDims();
-  const bgLabel = modalBg === 'transparent' ? 'transparent background' : `${document.getElementById('newCanvasColor').value} background`;
+  const bgLabel = modalBg === 'transparent' ? t('bgTransparent') : t('bgColor', document.getElementById('newCanvasColor').value);
   document.getElementById('newCanvasSummary').textContent = `${w} × ${h} · ${bgLabel}`;
 }
 updateNewCanvasSummary();
@@ -1596,15 +1798,15 @@ function renderAll(){ renderBase(); renderOverlay(); renderLayerList(); }
 
 /* ===================== Layer list (sidebar) ===================== */
 function labelFor(l){
-  if (l.type==='text') return 'Text: ' + (l.text.split('\n')[0] || '').slice(0,18);
-  if (l.type==='rect') return 'Rectangle' + (l.text ? ' + text' : '');
-  if (l.type==='freehand') return 'Freehand drawing';
-  if (l.type==='arrow') return 'Arrow';
-  if (l.type==='highlight') return 'Highlight';
-  if (l.type==='ellipse') return Math.abs(l.w - l.h) < 2 ? 'Circle' : 'Ellipse';
-  if (l.type==='rhombus') return 'Rhombus';
-  if (l.type==='line') return 'Line';
-  if (l.type==='splineArrow') return 'Spline arrow';
+  if (l.type==='text') return t('layerText', (l.text.split('\n')[0] || '').slice(0,18));
+  if (l.type==='rect') return l.text ? t('layerRectText') : t('layerRect');
+  if (l.type==='freehand') return t('layerFreehand');
+  if (l.type==='arrow') return t('layerArrowLabel');
+  if (l.type==='highlight') return t('layerHighlightLabel');
+  if (l.type==='ellipse') return Math.abs(l.w - l.h) < 2 ? t('layerCircle') : t('layerEllipseLabel');
+  if (l.type==='rhombus') return t('layerRhombusLabel');
+  if (l.type==='line') return t('layerLineLabel');
+  if (l.type==='splineArrow') return t('layerSplineArrowLabel');
   return l.type;
 }
 
@@ -1676,7 +1878,7 @@ document.getElementById('customColor').addEventListener('input', (e) => {
 const fillPaletteEl = document.getElementById('fillPalette');
 const noFillSwatch = document.createElement('div');
 noFillSwatch.className = 'swatch noFillSwatch selected';
-noFillSwatch.title = 'No fill';
+noFillSwatch.title = t('noFillTip');
 noFillSwatch.addEventListener('click', () => {
   state.fill = null;
   fillPaletteEl.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
@@ -2464,10 +2666,10 @@ function updateSaveSizesSummary(){
   const summary = document.getElementById('saveSizesSummary');
   const confirmBtn = document.getElementById('saveSizesConfirm');
   if (!sizes.length){
-    summary.textContent = `Your canvas (${state.naturalW}×${state.naturalH}) is smaller than the smallest preset (320×240), so there's nothing smaller to export.`;
+    summary.textContent = t('tooSmallForExport', [state.naturalW, state.naturalH]);
     confirmBtn.disabled = true;
   } else {
-    summary.textContent = 'Will save: ' + sizes.map(s => `${s.w}×${s.h} (_${s.suffix})`).join(', ');
+    summary.textContent = t('willSaveSizes', sizes.map(s => `${s.w}×${s.h} (_${s.suffix})`).join(', '));
     confirmBtn.disabled = false;
   }
 }
@@ -2491,7 +2693,7 @@ document.getElementById('saveSizesConfirm').addEventListener('click', async () =
   if (!sizes.length) return;
   const btn = document.getElementById('saveSizesConfirm');
   const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled = true; btn.textContent = t('savingEllipsis');
   try {
     const format = document.querySelector('.sizesFormatBtn.active').dataset.format;
     const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';

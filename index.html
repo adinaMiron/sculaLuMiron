@@ -222,6 +222,7 @@
   <a href="index.html" data-page="index.html">Caiet vocal</a>
   <a href="editor.html" data-page="editor.html">Editor</a>
   <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
   #site-nav{
@@ -251,12 +252,48 @@
     border-color:#C1BB45;
     font-weight:600;
   }
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    margin-left:auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
 </style>
 <script>
 (function(){
   var here = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll("#site-nav a").forEach(function(a){
     if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var btn = document.getElementById("navLangBtn");
+  if(!btn) return;
+  function paint(lang){ btn.textContent = lang === "ro" ? "EN" : "RO"; }
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+  paint(lang);
+  btn.addEventListener("click", function(){
+    lang = lang === "ro" ? "en" : "ro";
+    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+    paint(lang);
+    window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
   });
 })();
 </script>
@@ -265,11 +302,10 @@
 
 <div class="top">
   <div class="brand">
-    <p class="eyebrow" id="eyebrow">dictare · română / english</p>
+    <p class="eyebrow" id="eyebrow" data-i="eyebrow">dictare · română / english</p>
     <h1 class="wordmark">Caiet vocal</h1>
   </div>
   <div class="top-actions">
-    <button class="icon-btn" id="uiLangBtn" type="button">EN</button>
     <button class="icon-btn" id="setBtn" type="button" data-i="settings">Setări</button>
   </div>
 </div>
@@ -306,7 +342,7 @@
   </div>
 
   <div class="paper">
-    <textarea id="transcript" spellcheck="true" placeholder="Textul apare aici."></textarea>
+    <textarea id="transcript" spellcheck="true" placeholder="Textul apare aici." data-i-placeholder="placeholder"></textarea>
     <p class="interim" id="interim"></p>
     <div class="paper-foot">
       <span id="counts">0 cuvinte</span>
@@ -596,18 +632,24 @@ bindChips("#engineChips","data-engine", v => { S.engine = v; save(); checkSetup(
 /* ============================================================
    6. UI language
    ============================================================ */
+const LANG_KEY = "scula:ui-lang";
+const UI_ATTRS = ["placeholder", "title", "aria-label", "value", "alt"];
 function applyUILang(){
   document.documentElement.lang = UI;
-  $("#eyebrow").textContent = t("eyebrow");
-  $("#uiLangBtn").textContent = UI === "ro" ? "EN" : "RO";
   document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  const navBtn = document.getElementById("navLangBtn");
+  if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
+  try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
   recLabel.textContent = rec.active ? t("stop") : t("rec");
-  ta.placeholder = t("placeholder");
   const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
   secureWarn.innerHTML = t("insecure");
   updateCounts(); updateProviderUI(); checkSetup();
 }
-$("#uiLangBtn").addEventListener("click", () => { UI = S.ui = (UI === "ro" ? "en" : "ro"); applyUILang(); save(); });
+window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); });
 
 /* ============================================================
    7. Settings sheet
@@ -644,11 +686,16 @@ $("#saveBtn").addEventListener("click", () => {
   S.tidyModel = tidyModelEl.value.trim();
   save(); closeSheet(); checkSetup(); say(t("ready"));
 });
-async function save(){ try{ await store.set(KEY, JSON.stringify(S)); }catch(e){} }
+async function save(){ try{ await store.set(KEY, JSON.stringify(S)); }catch(e){} try{ await store.set(LANG_KEY, S.ui); }catch(e){} }
 async function load(){
   let raw = null;
   try{ raw = await store.get(KEY); }catch(e){}
   if(raw){ try{ Object.assign(S, JSON.parse(raw)); }catch(e){} }
+  // Shared LANG_KEY (docs/I18N.md) is the source of truth once it exists;
+  // S.ui (from the per-app settings blob above) is the back-compat fallback.
+  let sharedLang = null;
+  try{ sharedLang = await store.get(LANG_KEY); }catch(e){}
+  S.ui = sharedLang === "en" || sharedLang === "ro" ? sharedLang : S.ui;
   UI = S.ui === "en" ? "en" : "ro";
   providerSel.value = S.provider in PROVIDERS ? S.provider : "groq";
   apiKeyEl.value = S.key || "";

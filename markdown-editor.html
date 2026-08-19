@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -743,6 +743,7 @@
   <a href="index.html" data-page="index.html">Caiet vocal</a>
   <a href="editor.html" data-page="editor.html">Editor</a>
   <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
   #site-nav{
@@ -772,12 +773,48 @@
     border-color:#C1BB45;
     font-weight:600;
   }
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    margin-left:auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
 </style>
 <script>
 (function(){
   var here = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll("#site-nav a").forEach(function(a){
     if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var btn = document.getElementById("navLangBtn");
+  if(!btn) return;
+  function paint(lang){ btn.textContent = lang === "ro" ? "EN" : "RO"; }
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+  paint(lang);
+  btn.addEventListener("click", function(){
+    lang = lang === "ro" ? "en" : "ro";
+    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+    paint(lang);
+    window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
   });
 })();
 </script>
@@ -787,38 +824,38 @@
   <div class="logo">Markdown <span>/ editor</span></div>
   <div class="header-actions">
     <span class="file-name" id="current-file">untitled.md</span>
-    <button class="btn" onclick="newFile()">New</button>
-    <button class="btn" onclick="openFile()">Open .md</button>
-    <button class="btn" onclick="importDocx()">Import DOCX</button>
-    <button class="btn" onclick="exportHtml()">Export HTML</button>
-    <button class="btn btn-primary" onclick="saveFile()">Save ↓</button>
+    <button class="btn" onclick="newFile()" data-i="newFileBtn">New</button>
+    <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
+    <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
+    <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
+    <button class="btn btn-primary" onclick="saveFile()" data-i="saveFileBtn">Save ↓</button>
   </div>
 </header>
 
 <div class="toolbar">
   <span class="tb-label">H</span>
   <select class="tb-select" id="heading-select" onchange="insertHeading(this.value)">
-    <option value="">— Heading —</option>
-    <option value="1">H1 — Title</option>
-    <option value="2">H2 — Section</option>
-    <option value="3">H3 — Sub-section</option>
+    <option value="" data-i="headingDefault">— Heading —</option>
+    <option value="1" data-i="headingH1">H1 — Title</option>
+    <option value="2" data-i="headingH2">H2 — Section</option>
+    <option value="3" data-i="headingH3">H3 — Sub-section</option>
     <option value="4">H4</option>
     <option value="5">H5</option>
     <option value="6">H6</option>
   </select>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="wrapSelection('**','**')" title="Bold"><b>B</b></button>
-  <button class="tb-btn" onclick="wrapSelection('*','*')" title="Italic"><i>I</i></button>
+  <button class="tb-btn" onclick="wrapSelection('**','**')" data-i-title="boldTip" title="Bold"><b>B</b></button>
+  <button class="tb-btn" onclick="wrapSelection('*','*')" data-i-title="italicTip" title="Italic"><i>I</i></button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="insertList()" title="Unordered List">≡ List</button>
-  <button class="tb-btn" onclick="insertOrderedList()" title="Ordered List">№ Ordered</button>
+  <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
+  <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
 
   <div class="toolbar-sep"></div>
-  <span class="tb-label">Size</span>
+  <span class="tb-label" data-i="lblSize">Size</span>
   <select class="tb-select" id="size-select" onchange="insertFontSize(this.value)">
-    <option value="">— Font Size —</option>
+    <option value="" data-i="sizeDefault">— Font Size —</option>
     <option value="8">8px</option>
     <option value="9">9px</option>
     <option value="10">10px</option>
@@ -839,21 +876,21 @@
   </select>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openLinkModal()" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
-  <button class="tb-btn" onclick="openImageModal()">⬛ Image</button>
+  <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
+  <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openTableModal()" title="Insert table">⊞ Table</button>
-  <button class="tb-btn" onclick="insertCodeBlock()" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
+  <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
+  <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" title="Image Explorer">🖼 Explorer</button>
-  <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" title="Navigation (Ctrl+1)">☰ Nav</button>
+  <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
+  <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
 </div>
 
 <div id="view-tabs">
-  <button id="tab-source" class="active" onclick="setView('source')">✎ Source</button>
-  <button id="tab-preview" onclick="setView('preview')">👁 Preview</button>
+  <button id="tab-source" class="active" onclick="setView('source')" data-i="tabSource">✎ Source</button>
+  <button id="tab-preview" onclick="setView('preview')" data-i="tabPreview">👁 Preview</button>
 </div>
 
 <div id="panel-backdrop" onclick="closeAllPanels()"></div>
@@ -863,28 +900,28 @@
   <!-- Image Explorer Side Panel -->
   <div id="img-panel" class="collapsed">
     <div class="panel-header">
-      <span class="panel-title">Image Explorer</span>
-      <button class="panel-close" onclick="togglePanel()" title="Close panel">✕</button>
+      <span class="panel-title" data-i="explorerTitle">Image Explorer</span>
+      <button class="panel-close" onclick="togglePanel()" data-i-title="closePanelTip" title="Close panel">✕</button>
     </div>
     <div class="panel-actions">
-      <button class="btn" onclick="setWorkingFolder()">📁 Set folder…</button>
+      <button class="btn" onclick="setWorkingFolder()" data-i="setFolderBtn">📁 Set folder…</button>
       <div id="folder-name"></div>
     </div>
     <div id="tree-container">
-      <div class="tree-loading" id="tree-empty">No folder selected.<br>Click "Set folder" to begin.</div>
+      <div class="tree-loading" id="tree-empty"><span data-i="treeEmptyLine1">No folder selected.</span><br><span data-i="treeEmptyLine2">Click "Set folder" to begin.</span></div>
     </div>
     <div id="img-detail">
       <img id="detail-img" alt="" />
       <div id="detail-info"></div>
-      <button class="btn btn-primary detail-insert" id="detail-insert-btn" onclick="insertSelectedImage()">↩ Insert into editor</button>
+      <button class="btn btn-primary detail-insert" id="detail-insert-btn" onclick="insertSelectedImage()" data-i="insertIntoEditorBtn">↩ Insert into editor</button>
     </div>
   </div>
 
   <!-- Editor + Preview -->
   <div class="main">
     <div class="pane" id="editor-pane">
-      <div class="pane-header">Markdown Source</div>
-      <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus()" onkeydown="handleTab(event)" placeholder="Start writing Markdown here…
+      <div class="pane-header" data-i="paneSourceHeader">Markdown Source</div>
+      <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus()" onkeydown="handleTab(event)" data-i-placeholder="editorPlaceholder" placeholder="Start writing Markdown here…
 
 # Hello, World!
 ## A subtitle
@@ -895,7 +932,7 @@ Use the toolbar above to insert formatting.
 "></textarea>
     </div>
     <div class="pane" id="preview-pane">
-      <div class="pane-header">Preview</div>
+      <div class="pane-header" data-i="panePreviewHeader">Preview</div>
       <div id="preview"></div>
     </div>
   </div>
@@ -903,11 +940,11 @@ Use the toolbar above to insert formatting.
   <!-- Navigation Panel -->
   <div id="nav-panel">
     <div class="panel-header">
-      <span class="panel-title">Navigation</span>
-      <button class="panel-close" onclick="toggleNav()" title="Close (Ctrl+1)">✕</button>
+      <span class="panel-title" data-i="navTitle">Navigation</span>
+      <button class="panel-close" onclick="toggleNav()" data-i-title="closeNavTip" title="Close (Ctrl+1)">✕</button>
     </div>
     <div id="nav-tree">
-      <div class="nav-empty">No headings yet.</div>
+      <div class="nav-empty" data-i="noHeadingsYet">No headings yet.</div>
     </div>
   </div>
 </div>
@@ -921,32 +958,32 @@ Use the toolbar above to insert formatting.
 <!-- Image URL modal -->
 <div class="image-modal" id="image-modal">
   <div class="modal-box">
-    <div class="modal-title">Insert Image</div>
+    <div class="modal-title" data-i="modalTitleInsertImage">Insert Image</div>
     <div class="field">
-      <label>Image URL or file path</label>
+      <label data-i="lblImageUrl">Image URL or file path</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="img-url" placeholder="https://example.com/image.png" style="flex:1" />
       </div>
     </div>
     <div class="field">
-      <label>— or pick from your computer —</label>
+      <label data-i="lblOrPickComputer">— or pick from your computer —</label>
       <div class="local-pick">
-        <button class="btn-pick" onclick="document.getElementById('img-local-input').click()">⬛ Choose file…</button>
-        <span class="pick-name" id="pick-name">no file chosen</span>
+        <button class="btn-pick" onclick="document.getElementById('img-local-input').click()" data-i="chooseFileBtn">⬛ Choose file…</button>
+        <span class="pick-name" id="pick-name" data-i="noFileChosen">no file chosen</span>
       </div>
       <img id="img-thumb" class="img-thumb" alt="preview" />
     </div>
     <div class="field">
-      <label>Alt Text</label>
-      <input type="text" id="img-alt" placeholder="A descriptive label" />
+      <label data-i="lblAltText">Alt Text</label>
+      <input type="text" id="img-alt" data-i-placeholder="imgAltPlaceholder" placeholder="A descriptive label" />
     </div>
     <div class="field">
-      <label>Title (optional tooltip)</label>
-      <input type="text" id="img-title" placeholder="Image title" />
+      <label data-i="lblTitleOptional">Title (optional tooltip)</label>
+      <input type="text" id="img-title" data-i-placeholder="imgTitlePlaceholder" placeholder="Image title" />
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeImageModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="insertImage()">Insert</button>
+      <button class="btn" onclick="closeImageModal()" data-i="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" onclick="insertImage()" data-i="insertBtn">Insert</button>
     </div>
   </div>
 </div>
@@ -954,22 +991,22 @@ Use the toolbar above to insert formatting.
 <!-- Link modal -->
 <div class="image-modal" id="link-modal">
   <div class="modal-box">
-    <div class="modal-title">Insert Link</div>
+    <div class="modal-title" data-i="modalTitleInsertLink">Insert Link</div>
     <div class="field">
-      <label>URL</label>
+      <label data-i="lblUrl">URL</label>
       <input type="text" id="link-url" placeholder="https://example.com" />
     </div>
     <div class="field">
-      <label>Display text</label>
-      <input type="text" id="link-text" placeholder="Link label" />
+      <label data-i="lblDisplayText">Display text</label>
+      <input type="text" id="link-text" data-i-placeholder="linkTextPlaceholder" placeholder="Link label" />
     </div>
     <div class="field">
-      <label>Title (optional tooltip)</label>
-      <input type="text" id="link-title" placeholder="Hover tooltip" />
+      <label data-i="lblTitleOptional">Title (optional tooltip)</label>
+      <input type="text" id="link-title" data-i-placeholder="linkTitlePlaceholder" placeholder="Hover tooltip" />
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeLinkModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="insertLink()">Insert</button>
+      <button class="btn" onclick="closeLinkModal()" data-i="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" onclick="insertLink()" data-i="insertBtn">Insert</button>
     </div>
   </div>
 </div>
@@ -977,17 +1014,17 @@ Use the toolbar above to insert formatting.
 <!-- Table builder modal -->
 <div class="image-modal" id="table-modal">
   <div class="table-modal-box">
-    <div class="modal-title">Table Builder</div>
+    <div class="modal-title" data-i="modalTitleTableBuilder">Table Builder</div>
     <div class="table-controls">
-      <label>Rows</label>
+      <label data-i="lblRows">Rows</label>
       <input type="number" class="num-input" id="tbl-rows" value="3" min="1" max="20" oninput="rebuildTableGrid()">
-      <label>Columns</label>
+      <label data-i="lblColumns">Columns</label>
       <input type="number" class="num-input" id="tbl-cols" value="3" min="1" max="10" oninput="rebuildTableGrid()">
     </div>
     <div id="table-preview-grid"></div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeTableModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="insertTable()">Insert</button>
+      <button class="btn" onclick="closeTableModal()" data-i="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" onclick="insertTable()" data-i="insertBtn">Insert</button>
     </div>
   </div>
 </div>
@@ -997,6 +1034,129 @@ Use the toolbar above to insert formatting.
 <input type="file" id="img-local-input" accept="image/*" style="display:none" onchange="handleLocalImage(event)">
 
 <script>
+/* ============================================================
+   i18n — pattern copied from index.html, see docs/I18N.md.
+   Not wrapped in an IIFE (unlike index.html/editor.html): this
+   file's markup calls its functions via inline onclick=, which
+   requires them to stay global.
+   ============================================================ */
+const I18N = {
+  ro:{
+    newFileBtn:"Nou", openFileBtn:"Deschide .md", importDocxBtn:"Importă DOCX",
+    exportHtmlBtn:"Exportă HTML", saveFileBtn:"Salvează ↓",
+    headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
+    boldTip:"Aldin", italicTip:"Cursiv",
+    listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
+    lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
+    linkTip:"Inserează hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Imagine",
+    tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
+    codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
+    explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
+    navTip:"Navigare (Ctrl+1)", navBtn:"☰ Nav",
+    tabSource:"✎ Sursă", tabPreview:"👁 Previzualizare",
+    explorerTitle:"Explorator imagini", closePanelTip:"Închide panoul",
+    setFolderBtn:"📁 Alege folder…", insertIntoEditorBtn:"↩ Inserează în editor",
+    treeEmptyLine1:"Niciun folder selectat.", treeEmptyLine2:"Apasă „Alege folder” pentru a începe.",
+    noFileChosen:"niciun fișier ales", chooseFileBtn:"⬛ Alege fișier…",
+    paneSourceHeader:"Sursă Markdown", panePreviewHeader:"Previzualizare",
+    editorPlaceholder:"Începe să scrii Markdown aici…\n\n# Salut, lume!\n## Un subtitlu\n\nScrie **aldin**, *cursiv*, sau folosește - pentru liste.\n\nFolosește bara de instrumente de mai sus pentru formatare.",
+    navTitle:"Navigare", closeNavTip:"Închide (Ctrl+1)", noHeadingsYet:"Încă nu există titluri.",
+    statWords:n=>`${n} cuvânt${n===1?'':'e'}`, statLines:n=>`${n} rând${n===1?'':'uri'}`, statChars:n=>`${n} caracter${n===1?'':'e'}`,
+    modalTitleInsertImage:"Inserează imagine", lblImageUrl:"URL imagine sau cale fișier",
+    lblOrPickComputer:"— sau alege de pe calculator —", lblAltText:"Text alternativ",
+    imgAltPlaceholder:"O etichetă descriptivă", lblTitleOptional:"Titlu (indiciu opțional)",
+    imgTitlePlaceholder:"Titlul imaginii", cancelBtn:"Anulează", insertBtn:"Inserează",
+    modalTitleInsertLink:"Inserează link", lblUrl:"URL", lblDisplayText:"Text afișat",
+    linkTextPlaceholder:"Eticheta linkului", linkTitlePlaceholder:"Indiciu la trecerea cu mouse-ul",
+    modalTitleTableBuilder:"Constructor tabel", lblRows:"Rânduri", lblColumns:"Coloane",
+    noFsApi:"Browserul tău nu suportă File System Access API.\nFolosește Chrome, Edge, sau alt browser bazat pe Chromium.",
+    confirmDiscard:"Renunți la conținutul curent?",
+    mammothNotLoaded:"Mammoth.js nu s-a încărcat încă. Verifică-ți conexiunea la internet și încearcă din nou.",
+    confirmReplace:"Înlocuiești conținutul curent cu documentul importat?",
+    importFailed:msg=>`Import DOCX eșuat: ${msg}`,
+    scanningFolder:"Se scanează folderul…", noImagesFound:"Nicio imagine găsită.", errorReadingFolder:"Eroare la citirea folderului."
+  },
+  en:{
+    newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
+    exportHtmlBtn:"Export HTML", saveFileBtn:"Save ↓",
+    headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
+    boldTip:"Bold", italicTip:"Italic",
+    listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
+    lblSize:"Size", sizeDefault:"— Font Size —",
+    linkTip:"Insert hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Image",
+    tableTip:"Insert table", tableBtn:"⊞ Table",
+    codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
+    explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
+    navTip:"Navigation (Ctrl+1)", navBtn:"☰ Nav",
+    tabSource:"✎ Source", tabPreview:"👁 Preview",
+    explorerTitle:"Image Explorer", closePanelTip:"Close panel",
+    setFolderBtn:"📁 Set folder…", insertIntoEditorBtn:"↩ Insert into editor",
+    treeEmptyLine1:"No folder selected.", treeEmptyLine2:"Click “Set folder” to begin.",
+    noFileChosen:"no file chosen", chooseFileBtn:"⬛ Choose file…",
+    paneSourceHeader:"Markdown Source", panePreviewHeader:"Preview",
+    editorPlaceholder:"Start writing Markdown here…\n\n# Hello, World!\n## A subtitle\n\nWrite **bold**, *italic*, or use - for lists.\n\nUse the toolbar above to insert formatting.",
+    navTitle:"Navigation", closeNavTip:"Close (Ctrl+1)", noHeadingsYet:"No headings yet.",
+    statWords:n=>`${n} word${n!==1?'s':''}`, statLines:n=>`${n} line${n!==1?'s':''}`, statChars:n=>`${n} char${n!==1?'s':''}`,
+    modalTitleInsertImage:"Insert Image", lblImageUrl:"Image URL or file path",
+    lblOrPickComputer:"— or pick from your computer —", lblAltText:"Alt Text",
+    imgAltPlaceholder:"A descriptive label", lblTitleOptional:"Title (optional tooltip)",
+    imgTitlePlaceholder:"Image title", cancelBtn:"Cancel", insertBtn:"Insert",
+    modalTitleInsertLink:"Insert Link", lblUrl:"URL", lblDisplayText:"Display text",
+    linkTextPlaceholder:"Link label", linkTitlePlaceholder:"Hover tooltip",
+    modalTitleTableBuilder:"Table Builder", lblRows:"Rows", lblColumns:"Columns",
+    noFsApi:"Your browser does not support the File System Access API.\nPlease use Chrome, Edge, or another Chromium-based browser.",
+    confirmDiscard:"Discard current content?",
+    mammothNotLoaded:"Mammoth.js is not loaded yet. Please check your internet connection and try again.",
+    confirmReplace:"Replace current content with imported document?",
+    importFailed:msg=>`Failed to import DOCX: ${msg}`,
+    scanningFolder:"Scanning folder…", noImagesFound:"No images found.", errorReadingFolder:"Error reading folder."
+  }
+};
+let UI = "ro";
+function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+const LANG_KEY = "scula:ui-lang";
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__md","1"); localStorage.removeItem("__md"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+const UI_ATTRS = ["placeholder", "title", "aria-label", "value", "alt"];
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  const navBtn = document.getElementById("navLangBtn");
+  if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
+  try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
+  if(typeof updateStatus === "function") updateStatus();
+}
+window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
+(async function initUILang(){
+  let saved = null;
+  try{ saved = await store.get(LANG_KEY); }catch(e){}
+  UI = saved === "en" || saved === "ro" ? saved : "ro";
+  applyUILang();
+})();
+
 const editor = document.getElementById('editor');
 const preview = document.getElementById('preview');
 let savedRange = null;
@@ -1109,7 +1269,7 @@ function openImageModal() {
 function closeImageModal() {
   document.getElementById('image-modal').classList.remove('open');
   ['img-url','img-alt','img-title'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('pick-name').textContent = 'no file chosen';
+  document.getElementById('pick-name').textContent = t('noFileChosen');
   const thumb = document.getElementById('img-thumb');
   thumb.style.display = 'none'; thumb.src = '';
   document.getElementById('img-local-input').value = '';
@@ -1200,7 +1360,7 @@ function toggleNav() {
 
 async function setWorkingFolder() {
   if (!window.showDirectoryPicker) {
-    alert('Your browser does not support the File System Access API.\nPlease use Chrome, Edge, or another Chromium-based browser.');
+    alert(t('noFsApi'));
     return;
   }
   try {
@@ -1216,17 +1376,17 @@ async function setWorkingFolder() {
 
 async function buildTree() {
   const container = document.getElementById('tree-container');
-  container.innerHTML = '<div class="tree-loading">Scanning folder…</div>';
+  container.innerHTML = '<div class="tree-loading">' + t('scanningFolder') + '</div>';
   try {
     const root = await buildDirNode(workingFolderHandle, '');
     container.innerHTML = '';
     if (!root) {
-      container.innerHTML = '<div class="tree-loading">No images found.</div>';
+      container.innerHTML = '<div class="tree-loading">' + t('noImagesFound') + '</div>';
       return;
     }
     container.appendChild(root);
   } catch(e) {
-    container.innerHTML = '<div class="tree-loading">Error reading folder.</div>';
+    container.innerHTML = '<div class="tree-loading">' + t('errorReadingFolder') + '</div>';
     console.error(e);
   }
 }
@@ -1601,7 +1761,7 @@ function updateNav() {
   }
 
   if (!headings.length) {
-    navTree.innerHTML = '<div class="nav-empty">No headings yet.</div>';
+    navTree.innerHTML = '<div class="nav-empty">' + t('noHeadingsYet') + '</div>';
     return;
   }
 
@@ -1658,14 +1818,14 @@ function updateNav() {
 function updateStatus() {
   const text = editor.value;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-  document.getElementById('stat-words').textContent = `${words} word${words!==1?'s':''}`;
-  document.getElementById('stat-lines').textContent = `${text.split('\n').length} lines`;
-  document.getElementById('stat-chars').textContent = `${text.length} chars`;
+  document.getElementById('stat-words').textContent = t('statWords', words);
+  document.getElementById('stat-lines').textContent = t('statLines', text.split('\n').length);
+  document.getElementById('stat-chars').textContent = t('statChars', text.length);
 }
 
 /* ── File operations ── */
 function newFile() {
-  if (editor.value && !confirm('Discard current content?')) return;
+  if (editor.value && !confirm(t('confirmDiscard'))) return;
   editor.value = '';
   document.getElementById('current-file').textContent = 'untitled.md';
   updatePreview(); updateStatus();
@@ -1685,7 +1845,7 @@ function handleFileOpen(event) {
 
 function importDocx() {
   if (!window.mammoth) {
-    alert('Mammoth.js is not loaded yet. Please check your internet connection and try again.');
+    alert(t('mammothNotLoaded'));
     return;
   }
   document.getElementById('docx-input').click();
@@ -1702,7 +1862,7 @@ function handleDocxImport(event) {
       // Convert the HTML output to Markdown
       const md = htmlToMarkdown(result.value);
 
-      if (editor.value.trim() && !confirm('Replace current content with imported document?')) {
+      if (editor.value.trim() && !confirm(t('confirmReplace'))) {
         event.target.value = '';
         return;
       }
@@ -1717,7 +1877,7 @@ function handleDocxImport(event) {
         if (warnings.length) console.warn('DOCX import warnings:', warnings);
       }
     } catch (err) {
-      alert('Failed to import DOCX: ' + err.message);
+      alert(t('importFailed', err.message));
       console.error(err);
     }
     event.target.value = '';
