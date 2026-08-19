@@ -3,37 +3,51 @@
 Goal: one shared visual identity across all three apps, switchable
 light/dark, with no build step.
 
-## Current state — two themes left to migrate
+## Current state — one theme left to migrate
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
-| `index.html` | **dark** | earth: soil/moss/olive/terra/paper | olive `#C1BB45` |
+| `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **light** | warm grey + white panels | forest green `#3f6b52` |
 | `markdown-editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 
 ```
-index.html:12-26           editor.html:19-31          markdown-editor.html:9-24
---soil   #14201A           --bg     #f6f5f3           --bg        #14201A
---soil-2 #1B2A22           --panel  #ffffff           --surface   #1B2A22
---soil-3 #22342A           --ink    #1e1d1c           --surface-2 #22342A
---moss   #2E4739           --muted  #6f6a63           --border    #2E4739
---olive  #C1BB45           --line   #e3e0da           --accent    #C1BB45
---terra  #C4643C           --accent #3f6b52           --accent-2  #D3CD7C
---paper  #F3EEE1           --accent-soft #eaf1ec      --on-accent #1A2117
---ink    #20261E           --warn   #b5493a           --text      #F3EEE1
---mist   #9FB3A5           --gold   #c79a3d           --text-2    #9FB3A5
-                                                        --text-3    #5A6A60
+index.html:12-37 (new)     editor.html:19-31          markdown-editor.html:9-24
+--bg        #14201A        --bg     #f6f5f3           --bg        #14201A
+--surface   #1B2A22        --panel  #ffffff           --surface   #1B2A22
+--surface-2 #22342A        --ink    #1e1d1c           --surface-2 #22342A
+--border    #2E4739        --muted  #6f6a63           --border    #2E4739
+--text      #F3EEE1        --line   #e3e0da           --text      #F3EEE1
+--text-2    #9FB3A5        --accent #3f6b52           --text-2    #9FB3A5
+--on-text   #20261E        --accent-soft #eaf1ec      --text-3    #5A6A60
+--accent    #C1BB45        --warn   #b5493a           --accent    #C1BB45
+--on-accent #1A2117        --gold   #c79a3d           --accent-2  #D3CD7C
+--danger    #C4643C                                    --on-accent #1A2117
 ```
 
-`markdown-editor.html` still uses its own name set (`--surface-2` /
-`--text-2` / `--text-3` / `--accent-2` / `--on-accent`) rather than the
-full target set below — it maps onto `index.html`'s literal names
-(`--soil`→`--bg`, `--paper`→`--text`, `--mist`→`--text-2`, …) but the two
-files haven't been unified into one shared token file yet. `--text-3` and
-`--accent-2`/`--on-accent` have no `index.html` equivalent; they were
-derived (see git history) rather than lifted from an existing value —
-revisit if `index.html` grows the same tiers during its own migration
-(step 2 below).
+Old literal names (pre-migration, kept here for git-blame archaeology):
+`--soil`→`--bg`, `--soil-2`→`--surface`, `--soil-3`→`--surface-2`,
+`--moss`→`--border`, `--olive`→`--accent`, `--terra`→`--danger`,
+`--paper`→`--text`, `--mist`→`--text-2`, `--ink`→`--on-text`,
+`--display`→`--font-display`, `--ui`→`--font-ui`, `--mono`→`--font-mono`,
+`--r`→`--radius`. The chip-pressed text colour (`#1A2117`, previously
+hardcoded, not tokenised) became `--on-accent`, matching the value already
+used for that exact role in `markdown-editor.html`.
+
+`index.html` and `markdown-editor.html` still use two slightly different
+name sets (`--on-text`/`--danger` vs `--text-3`/`--accent-2`) rather than
+one shared token file — they haven't been unified yet. `--on-text` is new:
+`index.html`'s `.paper`/`#transcript` card is a light "paper" surface
+floating inside the dark theme (background `var(--text)`, i.e. the same
+hex as body text, reused as a fill — same trick already used with
+`--accent` elsewhere in the file); `--on-text` is the dark ink colour used
+for text on top of that surface, following the same `on-X` naming as
+`--on-accent`. `markdown-editor.html` has no equivalent (no inverted-light
+surface), so it has no `--on-text`; `index.html` in turn has no
+`--text-3`/`--accent-2` (no third text tier or secondary accent tint is
+used anywhere in the file). Revisit when unifying into one shared token
+file — see git history for how `--text-3`/`--accent-2`/`--on-accent` were
+derived on the `markdown-editor.html` side.
 
 ## ⚠ The trap: same names, opposite meanings
 
@@ -41,8 +55,9 @@ revisit if `index.html` grows the same tiers during its own migration
 inverted semantics:
 
 - `--ink` — in `editor.html` it's the **primary body text** (dark on light,
-  5 uses). In `index.html` it's a **dark colour used on light chips**
-  (2 uses) while body text is `--paper`. Blind merge inverts text colour.
+  5 uses). In `index.html` (pre-migration) it was a **dark colour used on
+  the light transcript card** (2 uses) while body text was `--paper`; it's
+  now `--on-text`. Blind merge would invert text colour.
 - `--bg` — light `#f6f5f3` in `editor.html`, near-black `#0f0f11` in
   `markdown-editor.html`.
 - `--accent` — green in one, violet in the other.
@@ -82,13 +97,14 @@ override flips everything:
 [data-theme="light"]{ /* overrides only */ }
 ```
 
-**Decision: the earth palette from `index.html` is the chosen base for all
-three apps** — `--soil #14201A`, `--moss #2E4739`, `--olive #C1BB45`,
-`--terra #C4643C`, `--paper #F3EEE1`, `--mist #9FB3A5`. It is the most
-distinctive of the three, already dark, and already carries the brand: the
-shared nav in all three files is *already* styled with it, so once
-`editor.html` and `markdown-editor.html` migrate, the nav stops being a
-foreign object in two of three apps.
+**Decision: the earth palette originally from `index.html` is the chosen
+base for all three apps** — soil `#14201A`, moss `#2E4739`, olive
+`#C1BB45`, terra `#C4643C`, paper `#F3EEE1`, mist `#9FB3A5` (now the
+`--bg`/`--border`/`--accent`/`--danger`/`--text`/`--text-2` tokens). It is
+the most distinctive of the three, already dark, and already carries the
+brand: the shared nav in all three files is *already* styled with it, so
+once `editor.html` migrates too, the nav stops being a foreign object in
+one of three apps.
 
 ## Migration order (cheapest first)
 
@@ -105,9 +121,23 @@ foreign object in two of three apps.
    translucent black backdrops/shadows (`#000000bb` etc. — scrims that
    work in any theme, not brand colour). `docs/MAP.md` line anchors were
    updated (+2 lines from the added `--on-accent` token and a comment).
-2. **`index.html`** — dark, but literal names (`--soil`) must map to
-   semantic ones. Keep the old names as aliases during transition:
-   `--soil: var(--bg);`
+2. ✅ **`index.html`** — done. Renamed `--soil`→`--bg`, `--soil-2`→
+   `--surface`, `--soil-3`→`--surface-2`, `--moss`→`--border`, `--olive`→
+   `--accent`, `--terra`→`--danger`, `--paper`→`--text`, `--mist`→
+   `--text-2`, `--ink`→`--on-text`, `--display`→`--font-display`, `--ui`→
+   `--font-ui`, `--mono`→`--font-mono`, `--r`→`--radius`; every `var(--…)`
+   call site in the file was repointed to the new names (no aliases kept —
+   there was only one file to update, unlike a shared-token-file merge).
+   Also tokenised the one hardcoded opaque hex outside `:root`
+   (`.chip[aria-pressed] { color: #1A2117 }` → `var(--on-accent)`, same
+   value markdown-editor.html already uses for that role). Left as literal
+   hex, per this doc's own rules: the shared nav (221–263, already
+   earth-styled and byte-identical to the other two files), the `<meta
+   theme-color>` tag (can't hold a CSS variable), and the decorative/
+   translucent one-offs (background vignette gradient, record-button glow
+   gradients, notice/status/placeholder tint colours, `rgba()` scrims) —
+   same carve-out markdown-editor.html used for its scrims. `docs/MAP.md`
+   line anchors were updated (+11 lines from the expanded `:root` block).
 3. **`editor.html`** — hardest: it inverts (light→dark) *and* has 14 hex
    values inside `<script>` that CSS variables can't reach. See below.
 
@@ -159,7 +189,7 @@ const THEME_KEY = 'scula:theme';        // shared by all three apps
 const LANG_KEY  = 'scula:ui-lang';      // see docs/I18N.md
 ```
 
-Reuse the storage wrapper from `index.html:510-531` — it already falls
+Reuse the storage wrapper from `index.html:521-542` — it already falls
 back to in-memory when `localStorage` throws (private mode, `file://`
 in some browsers). Don't call `localStorage` directly; these apps are
 meant to run from `file://` where it can fail.

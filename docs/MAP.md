@@ -16,35 +16,35 @@ Shared shape of all three files:
 
 ---
 
-## index.html — 1025 lines · "Caiet vocal" (voice dictation)
+## index.html — 1036 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
-| 11–206 | App CSS. `:root` palette at **12–26** |
-| 210–252 | **Shared nav** (identical in all 3 files) |
-| 253–387 | Markup: header, controls, textarea, settings sheet |
-| 388–1023 | App script, numbered sections below |
+| 11–217 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated) |
+| 221–263 | **Shared nav** (identical in all 3 files) |
+| 264–398 | Markup: header, controls, textarea, settings sheet |
+| 399–1034 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 392 | **1. i18n** — `I18N` object (`ro:` / `en:`), `t()` at 480, `UI` at 479 |
-| 482 | 2. Providers |
-| 507 | 3. Settings store — `KEY` 510, `store` w/ memory fallback, `save()` 636, `load()` 637 |
-| 539 | 4. DOM refs |
-| 570 | 5. Language / engine chips |
-| 585 | **6. UI language** — `applyUILang()` **588**, toggle handler 599 |
-| 601 | 7. Settings sheet |
-| 668 | 8. Secure-context check |
-| 673 | 9. Recording (MediaRecorder) + segment rotation |
-| 820 | 10. Transcription queue |
-| 914 | 11. Browser dictation (Web Speech API) |
-| 973 | 12. File import |
-| 987 | 13. Copy / share / download / clear |
-| 1018 | 14. Init |
+| 403 | **1. i18n** — `I18N` object (`ro:` / `en:`), `t()` at 491, `UI` at 490 |
+| 493 | 2. Providers |
+| 518 | 3. Settings store — `KEY` 521, `store` w/ memory fallback, `save()` 647, `load()` 648 |
+| 550 | 4. DOM refs |
+| 581 | 5. Language / engine chips |
+| 596 | **6. UI language** — `applyUILang()` **599**, toggle handler 610 |
+| 612 | 7. Settings sheet |
+| 679 | 8. Secure-context check |
+| 684 | 9. Recording (MediaRecorder) + segment rotation |
+| 831 | 10. Transcription queue |
+| 925 | 11. Browser dictation (Web Speech API) |
+| 984 | 12. File import |
+| 998 | 13. Copy / share / download / clear |
+| 1029 | 14. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
