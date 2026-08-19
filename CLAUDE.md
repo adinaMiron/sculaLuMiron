@@ -97,11 +97,7 @@ Xvfb; headless Chromium cannot decode media streams at all.
    `fonts/*.ttf`, but the 4 bundled `.ttf` files sit in the repo **root**
    and no `fonts/` directory exists. Fix = `mkdir fonts && git mv *.ttf
    "PUT FONTS HERE.txt" fonts/`. Ask before doing it; it moves tracked files.
-2. **Markdown parser is duplicated.** `parseMarkdown` (L1359) and
-   `parseMarkdownForExport` (L1475) are near-identical twins, as are
-   `applyInline` (L1452) / `applyInlineForExport` (L1462). Any new markdown
-   syntax must be added to **both** or export silently diverges from preview.
-3. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
+2. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
    with zero Node.
 
 ## Planned direction (design toward these)
