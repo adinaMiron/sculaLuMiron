@@ -1,0 +1,112 @@
+# CLAUDE.md
+
+Three standalone browser tools. **No build step, no framework, no package
+manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
+file). Open in a browser; that's the whole toolchain.
+
+| File | Lines | ~Tokens | What it is | Theme |
+|---|---|---|---|---|
+| `index.html` | 1025 | 10k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 2509 | 26k | "Image Marker" — canvas annotation/drawing | light (warm) |
+| `markdown-editor.html` | 2072 | 18k | Markdown editor + live preview | dark (purple) |
+
+## Rule 1: never read a whole HTML file
+
+Reading all three costs ~55k tokens; `editor.html` alone is 26k. **Never
+`view` an entire app file.** Locate first, then read a narrow range.
+
+```bash
+grep -n "functionName\|#elementId" editor.html   # locate
+sed -n '1080,1140p' editor.html                  # read just that
+```
+
+`docs/MAP.md` has line anchors for every section of all three files. Read
+it instead of exploring. It is far cheaper than one file scan.
+
+## Routing — read only what the task needs
+
+| Task | Read |
+|---|---|
+| Anything (locate code) | `docs/MAP.md` |
+| Colors, theming, dark/light | `docs/THEME.md` |
+| English/Romanian UI, strings | `docs/I18N.md` |
+| New tool, button, or feature | `docs/FEATURES.md` |
+| Deep work inside `editor.html` | `HANDOFF.md` |
+
+Do not read a doc the task doesn't touch.
+
+## Rule 2: the nav is triplicated
+
+`<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
+in all three files (`index.html:210-252`, `editor.html:263-305`,
+`markdown-editor.html:740-782`). Any nav change must be applied to **all
+three** or they drift. Verify with:
+
+```bash
+sed -n '210,252p' index.html > /tmp/n1
+sed -n '263,305p' editor.html > /tmp/n2
+sed -n '740,782p' markdown-editor.html > /tmp/n3
+diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
+```
+
+Adding a page means adding a link to all three navs.
+
+## Rule 3: respect the constraints
+
+- **Single file per app.** Don't split into `.css`/`.js` or introduce a
+  bundler, npm, or a framework. The apps are meant to run from `file://`.
+- **No new dependencies.** Only external dep in the repo is mammoth.js via
+  CDN in `markdown-editor.html:735` (docx import). Don't add more.
+- **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
+  scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
+  is deliberate (44px touch-target floor).
+- **Preserve Romanian diacritics** (ă â î ș ț) in all strings and fonts.
+
+## Standard workflow
+
+1. Read `docs/MAP.md` → find line range.
+2. Read only that range.
+3. Edit with `str_replace` (never rewrite a whole file).
+4. Verify — see below.
+5. If the change touched theme tokens, i18n keys, or the nav, update the
+   matching doc in the same commit.
+
+## Verification (no test framework exists)
+
+```bash
+# JS in every <script> block still parses (verified working on all 3 files)
+for f in index.html editor.html markdown-editor.html; do
+  awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
+  printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
+done
+```
+
+Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
+in `markdown-editor.html:735` has attributes and is correctly skipped. If
+you add an attributed `<script …>` on its own line, adjust the pattern.
+
+For behaviour, ad-hoc Playwright scripts are the established approach —
+see `HANDOFF.md` § "Testing approach". Canvas work needs pixel assertions
+(`getImageData`), not screenshots. Anything using `getDisplayMedia`
+(screenshot/record in `editor.html`) needs a **headed** browser under
+Xvfb; headless Chromium cannot decode media streams at all.
+
+## Known issues (unfixed — confirm before "fixing" something else)
+
+1. **Fonts are broken in `editor.html`.** All 9 `@font-face` rules point at
+   `fonts/*.ttf`, but the 4 bundled `.ttf` files sit in the repo **root**
+   and no `fonts/` directory exists. Fix = `mkdir fonts && git mv *.ttf
+   "PUT FONTS HERE.txt" fonts/`. Ask before doing it; it moves tracked files.
+2. **Markdown parser is duplicated.** `parseMarkdown` (L1359) and
+   `parseMarkdownForExport` (L1475) are near-identical twins, as are
+   `applyInline` (L1452) / `applyInlineForExport` (L1462). Any new markdown
+   syntax must be added to **both** or export silently diverges from preview.
+3. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
+   with zero Node.
+
+## Planned direction (design toward these)
+
+Shared theme tokens · English + Romanian UI everywhere · room for new tools.
+Details in `docs/THEME.md`, `docs/I18N.md`, `docs/FEATURES.md`. When adding
+anything now, use theme tokens and i18n keys rather than hardcoded hex and
+hardcoded strings — that is what keeps the migrations cheap.
