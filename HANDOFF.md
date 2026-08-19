@@ -1,0 +1,237 @@
+# editor.html — dev handoff
+
+Single-file HTML/CSS/JS screen-annotation + drawing tool. No build step, no
+external JS libs. 9 fonts via local `.ttf` in `fonts/` next to the HTML
+(all referenced in the `@font-face` block at the top of `<style>`):
+5 user-supplied (Poppins-Regular, Raleway-Regular, Roboto-Regular,
+ink-free, NotoMono-Regular — person provides these themselves, app just
+references the filenames) + 4 already bundled in `fonts/` in outputs
+(Excalifont-Regular, Nunito-Regular, LilitaOne-Regular,
+ComicShannsMono-Regular — Excalidraw's actual font lineup, pulled from
+their official npm package + Google Fonts' repo, OFL-licensed).
+Excalifont/Nunito/Comic-Shanns-Mono verified to cover Romanian diacritics
+(ă,â,î,ș,ț); Lilita One doesn't (upstream limitation, not ours) — `fontCss()`
+appends a `sans-serif` fallback so a missing glyph degrades instead of tofu.
+
+Structure: `<style>` (~L6-204) → HTML markup (~L205-423) → `<script>` IIFE
+(~L423-2319). Everything is one closure; no modules, no framework.
+Line numbers below are approximate (current file ≈2320 lines) — search by
+function name, they don't move much between edits.
+
+## Mental model
+
+Two stacked `<canvas>` elements inside `#stage`:
+- `#baseCanvas` — the actual content (background + every layer). This is
+  what gets exported.
+- `#overlayCanvas` — selection box, resize/rotate handles, in-progress
+  drag previews. Never exported, purely UI chrome. Also the element that
+  receives all mouse/pointer events (`onDown`/`onMove`/`onUp`).
+
+`state` (plain object, ~L428) holds everything: current tool, style
+defaults (color/fill/stroke/font/opacity/roughness/etc — these double as
+"defaults for next new shape" AND get live-applied to the current
+selection when changed), `state.layers` (the document), zoom/pan, and
+canvas readiness/mode flags. `baseImage` (an `Image` or `null`, ~L467) and
+`state.bgFill` (hex color or `null`=transparent) together describe what's
+"behind" the layers — see `renderBase()` (~L1387).
+
+Render pipeline: `renderAll()` = `renderBase()` + `renderOverlay()` +
+`renderLayerList()`. `renderCanvasFrame()` skips the (expensive) layers
+panel rebuild — used by the 60fps live-recording loop. Always call
+`pushHistory()` right before/after mutating `state.layers` for undo/redo
+to work (`snapshot()`/`undo()`/`redo()`, ~L499).
+
+## Layer model
+
+Every layer: `{ id, type, x, y, w, h, rotation, groupId, visible, opacity }`
++ type-specific fields below. `x,y,w,h` are always axis-aligned pre-rotation
+bounding-box coords in the canvas's *natural* pixel space (never CSS/zoom
+space — `canvasPoint(evt)` at ~L1743 converts mouse events into this space
+once, everything downstream is zoom/scroll-agnostic).
+
+| type | extra fields | notes |
+|---|---|---|
+| `text` | `text, font, fontSize, color, bold, strokeWidth` | `strokeWidth` here = faux-bold outline via `ctx.strokeText`, NOT shared with shape stroke width semantics. Live-edited via a floating `<textarea>` (`openTextEditor`, ~L2020) positioned over the canvas — see gotchas. |
+| `rect` | `fill, stroke, strokeWidth, cornerRadius, font, text, textColor, textSize` | Optional embedded text (double-click). `fill=null`→no fill. |
+| `ellipse` | `fill, stroke, strokeWidth` | `w===h` ⇒ labeled "Circle" in layer list. |
+| `rhombus` | `fill, stroke, strokeWidth` | 4-point diamond from bbox midpoints. |
+| `line` | `color, strokeWidth, x1n,y1n,x2n,y2n` | Endpoints normalized 0..1 within bbox. |
+| `arrow` | same as `line` + `headSize` | |
+| `splineArrow` | `color, strokeWidth, headSize, points[]` | `points[0]` = arrowhead TIP (first click), `points[last]`= tail. See "spline arrow" below. |
+| `freehand` | `color, strokeWidth, points[]` | `points[]` = `{nx,ny}` normalized 0..1 within bbox. |
+| `highlight` | `color, points[]` (thickness = `l.h`) | Horizontal-only band (drag locks to start Y). Rendered with `globalAlpha=0.4*layerOpacity` + `multiply` blend. |
+| all shapes except text | `roughness, seed` | Sloppiness (see below). |
+
+Group = shared `groupId` string; no nested groups. Selecting one member
+selects all (`groupMembers()`, ~L1513).
+
+## Tools (`state.tool` values, toolbar buttons `data-tool="…"`)
+
+`select, text, rect, ellipse, rhombus, pencil, arrow, splineArrow, line,
+highlight`. Keyboard: `v,t,r,o,d,p,a,s,l,h`. Adding a new shape tool
+touches ~10 places — grep any existing type (e.g. `'rhombus'`) across the
+file to find them all: toolbar button, `drawX()` fn, `drawLayer()`
+dispatch, `labelFor()`, `applyColorToSelection()`, stroke-width handler,
+sloppiness-button filter, `hitLayer()` padded-hit branch (only needed for
+thin/stroke-only shapes), `onDown` creation block, `onMove` resize/point
+branch, keyboard map.
+
+Modifier keys while dragging a shape tool: **Shift** = ellipse→circle,
+rhombus→equal sides, line→45° snap. **Ctrl** = rect→square,
+ellipse/rhombus→same as Shift, arrow/line→snap horizontal/vertical.
+
+## Sloppiness ("Architect/Artist/Cartoonist")
+
+`state.roughness` 0/1/2, per-layer `l.roughness` + `l.seed`. `seed` makes
+the "hand-drawn" wobble deterministic per-shape (`mulberry32()`, ~L980) so
+it doesn't re-randomize every repaint. `roughLineTo`/`roughStrokeLine`
+(~L993/1012) wobble straight segments (rect/rhombus/line/arrow edges,
+double-stroked when roughness>0). `roughEllipsePath` (~L1117) does the
+same for ellipses via a jittered point ring. roughness=0 always takes a
+separate, perfectly-clean rendering branch (not just roughness→0 wobble).
+
+## Freehand smoothing ("no jitters")
+
+`smoothPoints(points, passes, windowRadius)` (~L959): moving-average on
+raw drag points, endpoints anchored (critical for `splineArrow` — point 0
+must stay exactly where the person clicked for the tip). Applied once on
+mouse-up for `pencil`/`splineArrow`/`highlight`. Rendering ALSO runs
+`smoothPathTo()` (~L1218, quadratic-curve-through-midpoints) — the two
+together are what make freehand strokes look smooth instead of faceted.
+Don't skip either step.
+
+## Spline arrow specifics
+
+`points[0]` is the tip. Render (`drawSplineArrow`, ~L1287): compute tangent
+from `points[0]` vs `points[min(3,len-1)]` (not points[1] — too noisy),
+pull the curve's start back by `headSize` along that tangent so the shaft
+doesn't poke through the triangle, draw the triangle separately at the
+literal tip. `onDown`/`onMove` reuse the pencil point-capture branch
+(`create-splinearrow` mode aliases into the same code as `create-pencil`).
+
+## Canvas sources (what can be "under" the layers)
+
+1. Uploaded image (`Open image` → `baseImage`, original file untouched).
+2. Blank canvas (`New canvas` modal → picks one of 7 preset sizes ×
+   landscape/portrait × color/transparent bg → `state.bgFill`).
+3. Screenshot (`getDisplayMedia` one-frame grab → drawn into an `Image`,
+   same path as #1).
+4. **Live screen recording** — the interesting one: the shared screen is
+   played into a *hidden* `<video>` (`liveVideoEl`), and `liveRenderLoop()`
+   (~L608, rAF loop) draws its current frame into `baseCanvas` every tick,
+   THEN draws all layers on top — so you can annotate live and it's
+   actually baked into what gets recorded. The recorded stream is
+   `baseCanvas.captureStream(30)` video track + the original mic/tab audio
+   track, merged into one `MediaStream` and fed to `MediaRecorder`
+   (`startRecording()`, ~L614) — NOT the raw screen share. On stop, the
+   final canvas frame is captured via `toDataURL()` and promoted to a
+   normal `baseImage` (layers cleared, since they're now baked in) so the
+   person can keep annotating a still frame afterward. Recording controls:
+   toolbar Pause/Resume (`mediaRecorder.pause/resume`) + Stop; a separate
+   post-recording review modal (`openRecordingPreview`, ~L753) gets full
+   play/pause/seek/volume/mute/download/fullscreen controls.
+
+`beginEditing()` (~L545) is the shared reset used by all four sources:
+clears layers/history, resets zoom, calls `setupStage()`.
+
+## Zoom / Pan
+
+`state.fitScale` (auto, recomputed on load/resize) × `state.zoom` (user
+multiplier, default 1) = actual CSS display scale. `applyZoomDisplay()`
+(~L838) only touches `style.width/height`; canvas `.width/.height`
+(pixel buffer) always stays at `naturalW/H`. `canvasPoint()` divides by
+this same effective scale, so drawing/hit-testing is zoom-agnostic —
+never hardcode pixel offsets against screen coordinates elsewhere.
+Zoom In/Out/Reset buttons + Ctrl+scroll (wheel listener, `passive:false`
++ `preventDefault` to block native page zoom) + Ctrl+=/-/0.
+Pan: Alt+drag or middle-click drag (`startPan/updatePan/endPan`, ~L873,
+short-circuits at the top of `onDown`/`onMove`/`onUp` before any tool
+logic runs) or arrow keys (40px, 120px w/ Shift) via `canvasWrap.scrollLeft/Top`.
+
+## Export
+
+- `renderComposite(w, h, opts)` (~L2122) — the one function that draws
+  background+layers at ANY target size, by `ctx.scale()`-ing the context
+  rather than touching per-layer coords. Both single-image save and
+  multi-size export call this.
+- Save image: `renderComposite` at native size → PNG.
+- Save all sizes: `qualifyingSizes()` (~L2156) filters the fixed
+  `SIZE_PRESETS` list (320×240 … 4096×2160) to those ≤ current canvas's
+  larger dimension, matching current orientation; suffix is always the
+  *larger* number of the preset pair. Files bundled into one `.zip` via a
+  ~90-line hand-rolled STORE-only (uncompressed) zip writer (`makeZip`,
+  `crc32`, ~L2172-2247) — no library, because multiple simultaneous
+  `<a download>` clicks get blocked/nagged by browsers. JPG export force-
+  fills white first if canvas would otherwise be transparent (JPG has no
+  alpha).
+
+## Responsive UI
+
+Root `font-size: clamp(14px, 10px + 0.4vw, 26px)`; nearly every toolbar/
+sidebar/modal CSS value is `rem`, not `px`, so the whole chrome scales
+together with viewport width (verified 14px→26px root across 900px→4K).
+Small-screen media query at 720px narrows the sidebar. If you add new
+toolbar UI, size it in `rem` (rough conversion used throughout: `px/14`),
+not `px`, or it won't scale on large monitors.
+
+## Known traps already hit and fixed (don't reintroduce)
+
+- **Flex-centering + overflow**: `#canvasWrap` used to be
+  `display:flex; align-items:center; justify-content:center` — once
+  zoomed-in content became taller/wider than the wrapper, the "centered"
+  overflow extended *above/left* of the scrollable area and became
+  genuinely unclickable (not just visually clipped — `getBoundingClientRect`
+  lied about what was interactable). Fixed by dropping the centering and
+  using `margin:auto` on `#stage`/`#emptyState` instead — centers when
+  content fits, degrades to normal top-left scrollable behavior when it
+  doesn't. If you touch `#canvasWrap` layout, keep this pattern.
+- **Detached `<video>.play()` hangs forever** if the element isn't
+  attached to the DOM when you `getDisplayMedia()` into it (screenshot
+  and live-recording code both attach off-screen via
+  `position:fixed;top:-9999px` rather than leaving it detached, and await
+  `onloadedmetadata` before `.play()`).
+- **Mousedown focus stealing**: without `e.preventDefault()` in `onDown`,
+  the browser's default post-mousedown focus handling silently steals
+  focus back from a just-created `<textarea>` (text tool), making typing
+  impossible. Already handled — don't remove that `preventDefault()`.
+- **Double-rendering during text edit**: `renderBase()` explicitly skips
+  drawing the layer currently being live-edited (`state.editingLayerId`)
+  since the floating `<textarea>` already shows it.
+- **Unscoped `.swatch` selectors**: color palette and fill palette both
+  use `.swatch` — deselect-all-then-select-one logic must be scoped to
+  `#palette .swatch` / `#fillPalette .swatch` respectively or they clobber
+  each other.
+- **Font-load race**: custom `@font-face` fonts only fetch on first
+  *use*, so the very first draw with a not-yet-used font silently falls
+  back and never redraws once the real font arrives. Fixed by
+  force-`document.fonts.load()`-ing all 9 on startup, and again on the
+  font-select `change` handler as a belt-and-braces re-render-once-loaded.
+- **Headless Chromium cannot decode `getDisplayMedia`/`<video>` streams**
+  at all — this is a testing-environment limitation, not an app bug. Any
+  automated test of screenshot/recording needs a real (headed) browser
+  (Xvfb + `headless:false` works fine in a sandboxed Linux CI box).
+
+## Testing approach used throughout
+
+No test framework — ad hoc Playwright (Python) scripts per feature,
+plus pixel-level assertions (read canvas via
+`canvas.getContext('2d').getImageData()` or `toDataURL()` → PIL) rather
+than trusting visual screenshots alone. For anything touching
+screen-capture/recording, launch **headed** (`headless=False`) under Xvfb
+(`Xvfb :99 -screen 0 1280x900x24`, `DISPLAY=:99`) since headless Chromium
+can't decode media streams. Recorded video output was validated with
+`ffprobe`/`ffmpeg` (codec, duration, extracted frames) and Python's
+`zipfile` module (CRC integrity) for the zip export — not just "did a
+file download."
+
+## Not yet implemented / possible next asks
+
+- No project save/load (JSON serialize `state.layers` + canvas source
+  would be the natural extension — nothing currently persists across
+  page reloads).
+- No live-audio monitor volume/mute *during* recording (only muted
+  hidden `<video>`; volume/mute UI exists only in the post-recording
+  review modal).
+- No text-in-ellipse/rhombus (rect is the only shape with embedded text).
+- Group rotation rotates members in place, not orbiting around the
+  group's shared center.

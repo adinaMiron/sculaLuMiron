@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14201A">
 <title>Markdown Editor</title>
 <style>
   :root {
@@ -580,6 +581,156 @@
 
   .file-name { font-size: 12px; color: var(--text3); padding: 6px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 5px; font-family: var(--font-mono); }
   #status-bar { display: flex; gap: 20px; padding: 4px 16px; font-size: 11px; color: var(--text3); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+
+  /* ── Mobile view tabs (hidden on desktop) ── */
+  #view-tabs {
+    display: none;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #view-tabs button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text3);
+    padding: 9px 4px;
+    font-size: 11px;
+    font-family: var(--font-ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  #view-tabs button.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  /* Backdrop behind overlay panels on small screens */
+  #panel-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000aa;
+    z-index: 40;
+  }
+  #panel-backdrop.show { display: block; }
+
+  /* ═══════════ TABLET (≤ 1024px) ═══════════ */
+  @media (max-width: 1024px) {
+    :root { --panel-w: 240px; }
+
+    header { height: auto; flex-wrap: wrap; gap: 8px; padding: 8px 14px; }
+    .header-actions { flex-wrap: wrap; gap: 6px; }
+    .btn { padding: 6px 10px; font-size: 11px; }
+    .file-name { font-size: 11px; padding: 5px 8px; }
+
+    .toolbar { padding: 5px 10px; gap: 1px; }
+    .tb-btn { padding: 6px 7px; font-size: 12px; }
+    .tb-select { font-size: 11px; padding: 4px 6px; }
+    .toolbar-sep { margin: 0 4px; }
+
+    /* Panels float over the content instead of squeezing it */
+    #img-panel, #nav-panel {
+      position: absolute;
+      top: 0; bottom: 0;
+      z-index: 50;
+      box-shadow: 0 0 28px #00000088;
+    }
+    #img-panel { left: 0; }
+    #nav-panel { right: 0; }
+    #img-panel.collapsed, #nav-panel.collapsed {
+      width: 0; min-width: 0; box-shadow: none;
+    }
+    .workspace { position: relative; }
+  }
+
+  /* ═══════════ MOBILE (≤ 700px) ═══════════ */
+  @media (max-width: 700px) {
+    :root { --panel-w: 82vw; }
+
+    header {
+      padding: 6px 12px;
+      gap: 6px;
+    }
+    .logo { font-size: 13px; }
+    .header-actions { width: 100%; justify-content: flex-start; }
+    .file-name {
+      order: -1;
+      width: 100%;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .btn { flex: 1 1 auto; min-width: 0; text-align: center; padding: 8px 6px; font-size: 11px; }
+
+    /* Toolbar becomes a horizontal scroll strip */
+    .toolbar {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 6px 10px;
+    }
+    .toolbar::-webkit-scrollbar { display: none; }
+    .tb-btn, .tb-select { flex: 0 0 auto; }
+    .tb-btn { padding: 8px 9px; font-size: 13px; }  /* bigger tap targets */
+    .tb-label { flex: 0 0 auto; }
+
+    /* Show mobile tabs, stack panes and show only one at a time */
+    #view-tabs { display: flex; }
+    .main { flex-direction: column; }
+    .pane + .pane { border-left: none; border-top: 1px solid var(--border); }
+    .pane-header { display: none; }
+
+    body.view-source #preview-pane { display: none; }
+    body.view-preview #editor-pane { display: none; }
+
+    #editor { padding: 16px 14px; font-size: 15px; line-height: 1.65; }
+    #preview { padding: 16px 14px; font-size: 15px; }
+    #preview h1 { font-size: 1.6em; }
+    #preview h2 { font-size: 1.35em; }
+    #preview h3 { font-size: 1.18em; }
+    #preview table { font-size: 12px; display: block; overflow-x: auto; }
+    #preview pre { padding: 10px 12px; font-size: 12px; }
+
+    /* Modals fill most of the screen */
+    .modal-box, .table-modal-box {
+      width: 94vw;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 18px;
+      gap: 11px;
+    }
+    .modal-title { font-size: 13px; }
+    .field input { padding: 10px 12px; font-size: 14px; }  /* ≥16px-ish avoids iOS zoom quirks */
+    .modal-actions .btn { flex: 1; padding: 10px; }
+    #table-preview-grid { max-height: 44vh; }
+    .tbl-builder input { min-width: 62px; font-size: 12px; }
+
+    /* Panel touch sizing */
+    .tree-img-item { padding: 8px 10px 8px 20px; }
+    .tree-thumb { width: 38px; height: 38px; }
+    .tree-dir-label { padding: 8px 10px; }
+    .nav-item { padding: 7px 12px; }
+
+    /* Status bar: keep it slim */
+    #status-bar { gap: 12px; font-size: 10px; padding: 4px 12px; }
+  }
+
+  /* ═══════════ VERY SMALL (≤ 420px) ═══════════ */
+  @media (max-width: 420px) {
+    .logo span { display: none; }
+    #status-bar span:nth-child(3) { display: none; }  /* drop char count */
+    .btn { font-size: 10px; padding: 7px 4px; letter-spacing: 0; }
+  }
+
+  /* Landscape phones: reclaim vertical space */
+  @media (max-height: 500px) and (orientation: landscape) {
+    header { height: auto; padding: 4px 12px; }
+    .toolbar { padding: 4px 10px; }
+    #status-bar { display: none; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
@@ -698,6 +849,13 @@
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" title="Navigation (Ctrl+1)">☰ Nav</button>
 </div>
 
+<div id="view-tabs">
+  <button id="tab-source" class="active" onclick="setView('source')">✎ Source</button>
+  <button id="tab-preview" onclick="setView('preview')">👁 Preview</button>
+</div>
+
+<div id="panel-backdrop" onclick="closeAllPanels()"></div>
+
 <div class="workspace">
 
   <!-- Image Explorer Side Panel -->
@@ -722,7 +880,7 @@
 
   <!-- Editor + Preview -->
   <div class="main">
-    <div class="pane">
+    <div class="pane" id="editor-pane">
       <div class="pane-header">Markdown Source</div>
       <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus()" onkeydown="handleTab(event)" placeholder="Start writing Markdown here…
 
@@ -734,7 +892,7 @@ Write **bold**, *italic*, or use - for lists.
 Use the toolbar above to insert formatting.
 "></textarea>
     </div>
-    <div class="pane">
+    <div class="pane" id="preview-pane">
       <div class="pane-header">Preview</div>
       <div id="preview"></div>
     </div>
@@ -987,18 +1145,55 @@ function isImage(name) {
   return IMAGE_EXTS.has(ext);
 }
 
+/* ── Responsive helpers ── */
+function isSmallScreen() { return window.matchMedia('(max-width: 1024px)').matches; }
+function isMobile() { return window.matchMedia('(max-width: 700px)').matches; }
+
+function setView(view) {
+  document.body.classList.remove('view-source', 'view-preview');
+  document.body.classList.add('view-' + view);
+  document.getElementById('tab-source').classList.toggle('active', view === 'source');
+  document.getElementById('tab-preview').classList.toggle('active', view === 'preview');
+}
+
+function syncBackdrop() {
+  const anyOpen = !document.getElementById('img-panel').classList.contains('collapsed')
+               || !document.getElementById('nav-panel').classList.contains('collapsed');
+  document.getElementById('panel-backdrop').classList.toggle('show', anyOpen && isSmallScreen());
+}
+
+function closeAllPanels() {
+  ['img-panel', 'nav-panel'].forEach(id => document.getElementById(id).classList.add('collapsed'));
+  document.getElementById('btn-explorer').classList.remove('active');
+  document.getElementById('btn-nav').classList.remove('active');
+  syncBackdrop();
+}
+
 function togglePanel() {
   const panel = document.getElementById('img-panel');
   const btn = document.getElementById('btn-explorer');
+  const willOpen = panel.classList.contains('collapsed');
+  // On small screens only one panel at a time
+  if (willOpen && isSmallScreen()) {
+    document.getElementById('nav-panel').classList.add('collapsed');
+    document.getElementById('btn-nav').classList.remove('active');
+  }
   const collapsed = panel.classList.toggle('collapsed');
   btn.classList.toggle('active', !collapsed);
+  syncBackdrop();
 }
 
 function toggleNav() {
   const panel = document.getElementById('nav-panel');
   const btn = document.getElementById('btn-nav');
+  const willOpen = panel.classList.contains('collapsed');
+  if (willOpen && isSmallScreen()) {
+    document.getElementById('img-panel').classList.add('collapsed');
+    document.getElementById('btn-explorer').classList.remove('active');
+  }
   const collapsed = panel.classList.toggle('collapsed');
   btn.classList.toggle('active', !collapsed);
+  syncBackdrop();
 }
 
 async function setWorkingFolder() {
@@ -1141,6 +1336,12 @@ function showImageDetail(name, relPath, fileHandle, objUrl) {
 
 function insertSelectedImage() {
   if (!selectedImageEntry) return;
+  if (isMobile()) {
+    setView('source');
+    document.getElementById('img-panel').classList.add('collapsed');
+    document.getElementById('btn-explorer').classList.remove('active');
+    syncBackdrop();
+  }
   insertAtCursor(selectedImageEntry.relPath);
 }
 
@@ -1424,6 +1625,13 @@ function updateNav() {
 
     // clicking scrolls the preview to that heading
     item.addEventListener('click', () => {
+      // On mobile, the preview may be hidden — switch to it and close the panel
+      if (isMobile()) {
+        setView('preview');
+        document.getElementById('nav-panel').classList.add('collapsed');
+        document.getElementById('btn-nav').classList.remove('active');
+        syncBackdrop();
+      }
       // find the heading in the preview by matching text content
       const allHeadings = preview.querySelectorAll('h1,h2,h3,h4,h5,h6');
       for (const el of allHeadings) {
@@ -1816,7 +2024,10 @@ document.getElementById('table-modal').addEventListener('click', function(e) {
   if (e.target === this) closeTableModal();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeImageModal(); closeLinkModal(); closeTableModal(); }
+  if (e.key === 'Escape') {
+    closeImageModal(); closeLinkModal(); closeTableModal();
+    if (isSmallScreen()) closeAllPanels();
+  }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }
@@ -1828,6 +2039,34 @@ document.addEventListener('keydown', e => {
 updatePreview();
 updateStatus();
 updateNav();
+
+/* ── Responsive initialisation ── */
+function applyResponsiveDefaults() {
+  if (isSmallScreen()) {
+    // Panels overlay the content, so start them closed
+    closeAllPanels();
+  } else {
+    // Desktop: nav visible by default, explorer closed
+    document.getElementById('nav-panel').classList.remove('collapsed');
+    document.getElementById('btn-nav').classList.add('active');
+    document.getElementById('img-panel').classList.add('collapsed');
+    document.getElementById('btn-explorer').classList.remove('active');
+    document.getElementById('panel-backdrop').classList.remove('show');
+  }
+}
+
+setView('source');
+applyResponsiveDefaults();
+
+let lastSmall = isSmallScreen();
+window.addEventListener('resize', () => {
+  const nowSmall = isSmallScreen();
+  if (nowSmall !== lastSmall) {   // only react when crossing the breakpoint
+    lastSmall = nowSmall;
+    applyResponsiveDefaults();
+  }
+  syncBackdrop();
+});
 </script>
 </body>
 </html>
