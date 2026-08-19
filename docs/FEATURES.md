@@ -84,28 +84,21 @@ button label and tooltip, and the touch-toolbar overflow check.
 
 ## C. New markdown syntax in `markdown-editor.html`
 
-⚠ **The parser is duplicated.** Every syntax change goes in **both**:
+The parser is unified: `parseMarkdown(md, opts)` (L1382) and
+`applyInline(text, opts)` (L1371) serve **both** the live preview
+(`updatePreview()`, opts omitted) and the HTML export
+(`exportHtml()`, `{forExport: true}`). Add new syntax once, in these two
+functions — no twin to keep in sync.
 
-| Preview | Export |
-|---|---|
-| `parseMarkdown` L1359 | `parseMarkdownForExport` L1475 |
-| `applyInline` L1452 | `applyInlineForExport` L1462 |
+The only place behaviour forks on `forExport` is `resolveImageSrc()`
+(L1365): export rewrites relative image paths to `public/images/…` and
+turns a bare image-path line into a standalone `<img>`, because exported
+HTML ships without the app's working-folder image tree. If your new
+syntax needs export-only handling (e.g. it also touches paths that only
+make sense relative to the app's file picker), branch on `opts &&
+opts.forExport` the same way rather than forking the function.
 
-The export twins inject inline styles because exported HTML is
-standalone. Change one without the other and preview silently diverges
-from the saved file.
-
-If you touch this area, consider unifying them first —
-`parseMarkdown(md, {forExport:false})` with a style lookup — which
-removes the whole class of bug. Diff them before deciding:
-
-```bash
-sed -n '1360,1451p' markdown-editor.html | sed 's/ForExport//g;s/[[:space:]]\+/ /g' > /tmp/a
-sed -n '1476,1567p' markdown-editor.html | sed 's/ForExport//g;s/[[:space:]]\+/ /g' > /tmp/b
-diff /tmp/a /tmp/b
-```
-
-Also update `updateNav()` (L1574) if the syntax creates headings, and the
+Also update `updateNav()` (L1490) if the syntax creates headings, and the
 toolbar button + its `I18N` keys.
 
 **The exported-HTML template (L1846-1870) stays literal hex** — it ships

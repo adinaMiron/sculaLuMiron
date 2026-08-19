@@ -99,7 +99,7 @@ specific `drawX()` you need.
 
 ---
 
-## markdown-editor.html — 2072 lines · Markdown editor
+## markdown-editor.html — 1988 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
@@ -108,8 +108,8 @@ specific `drawX()` you need.
 | 8–736 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). `@media` 621, 650 |
 | 737 | **mammoth.js CDN** (docx import) — only external dep in the repo |
 | 742–784 | **Shared nav** |
-| 785–998 | Markup: header, toolbar, workspace, panels, modals |
-| 999–2074 | App script |
+| 785–~998 | Markup: header, toolbar, workspace, panels, modals |
+| 999–1988 | App script |
 
 | Line | Function / region |
 |---|---|
@@ -120,25 +120,29 @@ specific `drawX()` you need.
 | 1141–1143 | `workingFolderHandle`, `IMAGE_EXTS` (File System Access API) |
 | 1151–1188 | Responsive: `isSmallScreen`, `isMobile`, `setView`, `togglePanel`, `toggleNav` |
 | 1294–1351 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| **1361** | **`parseMarkdown`** — preview renderer |
-| 1454 | `applyInline` |
-| 1464 | `applyInlineForExport` ⚠ twin of 1454 |
-| **1477** | **`parseMarkdownForExport`** ⚠ twin of 1361 |
-| 1570–1576 | `updatePreview`, `updateNav` |
-| 1658–1694 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
-| 1728 | `htmlToMarkdown` (docx → md) |
-| 1827–1837 | `saveFile`, `exportHtml` |
-| 1848–1872 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 1883–1982 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 1998–2046 | Link modal: `openLinkModal`, `insertLink` |
-| 2046–2074 | `applyResponsiveDefaults`, init |
+| 1365 | `resolveImageSrc` — image-path rewrite, export-only |
+| 1371 | `applyInline(text, opts)` |
+| **1382** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 1484–1490 | `updatePreview`, `updateNav` |
+| 1572–1600 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
+| 1642 | `htmlToMarkdown` (docx → md) |
+| 1741–1751 | `saveFile`, `exportHtml` |
+| ~1762–1786 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 1805–1896 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 1912–1923 | Link modal: `openLinkModal`, `insertLink` |
+| 1960–1988 | `applyResponsiveDefaults`, init |
 
-**Two traps here:**
-1. **Duplicated parser.** Add markdown syntax to *both* 1361 and 1477 (and
-   both inline fns) or export diverges from preview.
-2. **Exported HTML must stay self-contained** (1848–1872). It ships to
-   people who don't have the app, so it uses literal hex, not `var(--…)`.
-   **Do not migrate that block to theme tokens.**
+**Parser is unified (2026-08).** `parseMarkdown(md, {forExport})` and
+`applyInline(text, {forExport})` serve both preview (`forExport` falsy) and
+export (`forExport: true`) from one implementation — see `resolveImageSrc`
+for the only behavioural fork (relative image paths get `public/images/`
+prefixed, and a bare image-path line becomes a standalone `<img>`, only
+when exporting). New markdown syntax now needs exactly one edit, in
+`parseMarkdown`/`applyInline`, not two.
+
+**One trap remains:** exported HTML must stay self-contained (around
+1762–1786). It ships to people who don't have the app, so it uses literal
+hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 

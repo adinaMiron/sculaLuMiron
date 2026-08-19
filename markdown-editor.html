@@ -1517,8 +1517,30 @@ function handleTab(e) {
   }
 }
 
-/* ── Markdown parser ── */
-function parseMarkdown(md) {
+/* ── Markdown parser ──
+   Single implementation shared by the live preview and the HTML export.
+   Pass {forExport:true} for export: it rewrites relative image paths to
+   `public/images/…` and recognises a bare image-path line as a standalone
+   <img>. Preview (the default, forExport:false) leaves paths as-authored. */
+function resolveImageSrc(src, forExport) {
+  if (!forExport) return src;
+  const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
+  return isAbsolute ? src : 'public/images/' + src;
+}
+
+function applyInline(text, opts) {
+  const forExport = !!(opts && opts.forExport);
+  return text
+    .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
+      (_, alt, src, title) => `<img src="${resolveImageSrc(src, forExport)}" alt="${alt}"${title ? ` title="${title}"` : ''}>`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function parseMarkdown(md, opts) {
+  const forExport = !!(opts && opts.forExport);
   let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html = html.replace(/&lt;(span\s[^&]*?)&gt;([\s\S]*?)&lt;\/span&gt;/g,
     (_, attrs, content) => `<span ${attrs}>${content}</span>`);
@@ -1536,15 +1558,15 @@ function parseMarkdown(md) {
     const headers = rows[0].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
     const sepRow = rows[1].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
     const isSep = sepRow.every(c => /^:?-+:?$/.test(c));
-    if (!isSep) { rows.forEach(r => out.push(`<p>${applyInline(r)}</p>`)); return; }
+    if (!isSep) { rows.forEach(r => out.push(`<p>${applyInline(r, opts)}</p>`)); return; }
     const aligns = sepRow.map(c => c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left');
     out.push('<table>');
-    out.push('<thead><tr>' + headers.map((h,i) => `<th style="text-align:${aligns[i]}">${applyInline(h)}</th>`).join('') + '</tr></thead>');
+    out.push('<thead><tr>' + headers.map((h,i) => `<th style="text-align:${aligns[i]}">${applyInline(h, opts)}</th>`).join('') + '</tr></thead>');
     if (rows.length > 2) {
       out.push('<tbody>');
       for (let r = 2; r < rows.length; r++) {
         const cells = rows[r].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
-        out.push('<tr>' + cells.map((c,i) => `<td style="text-align:${aligns[i]||'left'}">${applyInline(c)}</td>`).join('') + '</tr>');
+        out.push('<tr>' + cells.map((c,i) => `<td style="text-align:${aligns[i]||'left'}">${applyInline(c, opts)}</td>`).join('') + '</tr>');
       }
       out.push('</tbody>');
     }
@@ -1583,144 +1605,36 @@ function parseMarkdown(md) {
     if (hm) {
       if (inUL) { out.push('</ul>'); inUL = false; }
       if (inOL) { out.push('</ol>'); inOL = false; }
-      out.push(`<h${hm[1].length}>${applyInline(hm[2])}</h${hm[1].length}>`);
+      out.push(`<h${hm[1].length}>${applyInline(hm[2], opts)}</h${hm[1].length}>`);
       continue;
     }
     const olm = line.match(/^\d+\.\s+(.*)/);
     if (olm) {
       if (inUL) { out.push('</ul>'); inUL = false; }
       if (!inOL) { out.push('<ol>'); inOL = true; }
-      out.push(`<li>${applyInline(olm[1])}</li>`);
+      out.push(`<li>${applyInline(olm[1], opts)}</li>`);
       continue;
     }
     const lm = line.match(/^[-*+]\s+(.*)/);
     if (lm) {
       if (inOL) { out.push('</ol>'); inOL = false; }
       if (!inUL) { out.push('<ul>'); inUL = true; }
-      out.push(`<li>${applyInline(lm[1])}</li>`);
+      out.push(`<li>${applyInline(lm[1], opts)}</li>`);
       continue;
     }
     if (inUL) { out.push('</ul>'); inUL = false; }
     if (inOL) { out.push('</ol>'); inOL = false; }
-    out.push(line.trim() === '' ? '<br>' : `<p>${applyInline(line)}</p>`);
+    if (forExport) {
+      const imgPathMatch = line.trim().match(/^([^\s<>&]+\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?))\s*$/i);
+      if (imgPathMatch) {
+        const src = imgPathMatch[1];
+        out.push(`<p><img src="${resolveImageSrc(src, forExport)}" alt="${src}"></p>`);
+        continue;
+      }
+    }
+    out.push(line.trim() === '' ? '<br>' : `<p>${applyInline(line, opts)}</p>`);
   }
   flushTable();
-  if (inCode) out.push(`<pre><code>${codeLines.join('\n')}</code></pre>`);
-  if (inUL) out.push('</ul>');
-  if (inOL) out.push('</ol>');
-  return out.join('\n');
-}
-
-function applyInline(text) {
-  return text
-    .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
-      (_, alt, src, title) => `<img src="${src}" alt="${alt}"${title ? ` title="${title}"` : ''}>`)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>');
-}
-
-function applyInlineForExport(text) {
-  return text
-    .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g, (_, alt, src, title) => {
-      const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
-      const finalSrc = isAbsolute ? src : 'public/images/' + src;
-      return `<img src="${finalSrc}" alt="${alt}"${title ? ` title="${title}"` : ''}>`;
-    })
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>');
-}
-
-function parseMarkdownForExport(md) {
-  let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  html = html.replace(/&lt;(span\s[^&]*?)&gt;([\s\S]*?)&lt;\/span&gt;/g,
-    (_, attrs, content) => `<span ${attrs}>${content}</span>`);
-
-  const lines = html.split('\n');
-  const out = []; let inUL = false; let inOL = false;
-  let inCode = false; let codeLang = ''; let codeLines = [];
-  let tableBuffer = [];
-
-  function flushTableExport() {
-    if (!tableBuffer.length) return;
-    const rows = tableBuffer; tableBuffer = [];
-    if (rows.length < 2) { rows.forEach(r => out.push(`<p>${r}</p>`)); return; }
-    const headers = rows[0].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
-    const sepRow  = rows[1].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
-    if (!sepRow.every(c=>/^:?-+:?$/.test(c))) { rows.forEach(r=>out.push(`<p>${applyInlineForExport(r)}</p>`)); return; }
-    const aligns = sepRow.map(c=>c.startsWith(':')&&c.endsWith(':')? 'center':c.endsWith(':')? 'right':'left');
-    out.push('<table>');
-    out.push('<thead><tr>'+headers.map((h,i)=>`<th style="text-align:${aligns[i]}">${applyInlineForExport(h)}</th>`).join('')+'</tr></thead>');
-    if (rows.length > 2) {
-      out.push('<tbody>');
-      for (let r=2;r<rows.length;r++) {
-        const cells = rows[r].split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1);
-        out.push('<tr>'+cells.map((c,i)=>`<td style="text-align:${aligns[i]||'left'}">${applyInlineForExport(c)}</td>`).join('')+'</tr>');
-      }
-      out.push('</tbody>');
-    }
-    out.push('</table>');
-  }
-
-  for (const line of lines) {
-    if (line.match(/^```/)) {
-      if (!inCode) {
-        flushTableExport();
-        if (inUL){out.push('</ul>');inUL=false;}
-        if (inOL){out.push('</ol>');inOL=false;}
-        inCode=true; codeLang=line.slice(3).trim(); codeLines=[];
-      } else {
-        out.push(`<pre><code${codeLang?` class="language-${codeLang}"`:''}>${codeLines.join('\n')}</code></pre>`);
-        inCode=false; codeLines=[]; codeLang='';
-      }
-      continue;
-    }
-    if (inCode) { codeLines.push(line); continue; }
-
-    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-      if (inUL){out.push('</ul>');inUL=false;}
-      if (inOL){out.push('</ol>');inOL=false;}
-      tableBuffer.push(line.trim());
-      continue;
-    } else { flushTableExport(); }
-
-    const hm = line.match(/^(#{1,6})\s+(.*)/);
-    if (hm) {
-      if (inUL){out.push('</ul>');inUL=false;}
-      if (inOL){out.push('</ol>');inOL=false;}
-      out.push(`<h${hm[1].length}>${applyInlineForExport(hm[2])}</h${hm[1].length}>`);
-      continue;
-    }
-    const olm = line.match(/^\d+\.\s+(.*)/);
-    if (olm) {
-      if (inUL){out.push('</ul>');inUL=false;}
-      if (!inOL){out.push('<ol>');inOL=true;}
-      out.push(`<li>${applyInlineForExport(olm[1])}</li>`);
-      continue;
-    }
-    const lm = line.match(/^[-*+]\s+(.*)/);
-    if (lm) {
-      if (inOL){out.push('</ol>');inOL=false;}
-      if (!inUL){out.push('<ul>');inUL=true;}
-      out.push(`<li>${applyInlineForExport(lm[1])}</li>`);
-      continue;
-    }
-    if (inUL){out.push('</ul>');inUL=false;}
-    if (inOL){out.push('</ol>');inOL=false;}
-    const imgPathMatch = line.trim().match(/^([^\s<>&]+\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?))\s*$/i);
-    if (imgPathMatch) {
-      const src = imgPathMatch[1];
-      const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
-      const finalSrc = isAbsolute ? src : 'public/images/' + src;
-      out.push(`<p><img src="${finalSrc}" alt="${src}"></p>`);
-      continue;
-    }
-    out.push(line.trim()===''? '<br>':`<p>${applyInlineForExport(line)}</p>`);
-  }
-  flushTableExport();
   if (inCode) out.push(`<pre><code>${codeLines.join('\n')}</code></pre>`);
   if (inUL) out.push('</ul>');
   if (inOL) out.push('</ol>');
@@ -1998,7 +1912,7 @@ function exportHtml() {
   const mdFilename = document.getElementById('current-file').textContent || 'document.md';
   const htmlFilename = mdFilename.replace(/\.(md|txt)$/i, '') + '.html';
   const title = mdFilename.replace(/\.(md|txt)$/i, '');
-  const bodyHtml = parseMarkdownForExport(editor.value);
+  const bodyHtml = parseMarkdown(editor.value, {forExport: true});
   const fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
