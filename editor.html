@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#14201A">
 <title>Image Marker — draw, write, arrow</title>
 <style>
   @font-face { font-family: 'Poppins'; src: url('fonts/Poppins-Regular.ttf') format('truetype'); font-weight: 400; }
@@ -17,16 +18,20 @@
   @font-face { font-family: 'Comic Shanns Mono'; src: url('fonts/ComicShannsMono-Regular.ttf') format('truetype'); font-weight: 400; }
 
   :root{
-    --bg: #f6f5f3;
-    --panel: #ffffff;
-    --ink: #1e1d1c;
-    --muted: #6f6a63;
-    --line: #e3e0da;
-    --accent: #3f6b52;      /* deep forest green */
-    --accent-soft: #eaf1ec;
-    --warn: #b5493a;        /* terracotta */
-    --gold: #c79a3d;        /* olive gold */
-    --shadow: 0 2px 10px rgba(20,20,15,.08);
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    --bg: #14201A;
+    --surface: #1B2A22;
+    --surface-2: #22342A;
+    --border: #2E4739;
+    --accent: #C1BB45;               /* olive — was deep forest green */
+    --accent-2: #D3CD7C;             /* was --gold olive-gold */
+    --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    --on-accent: #1A2117;            /* text ON an accent/accent-2 fill */
+    --text: #F3EEE1;                 /* was --ink */
+    --text-2: #9FB3A5;               /* was --muted */
+    --text-3: #5A6A60;
+    --danger: #C4643C;               /* terracotta, matches index.html's --danger */
+    --shadow: 0 2px 10px rgba(0,0,0,.35);
     --radius: 0.714rem;
   }
   *{ box-sizing: border-box; }
@@ -41,7 +46,7 @@
   }
   html,body{
     margin:0; padding:0; height:100%;
-    background: var(--bg); color: var(--ink);
+    background: var(--bg); color: var(--text);
     font-family: 'Raleway', 'Roboto', sans-serif;
     overflow: hidden;
   }
@@ -51,58 +56,58 @@
   /* ---------- Top toolbar ---------- */
   #toolbar{
     display:flex; align-items:center; gap:0.714rem;
-    padding:0.571rem 0.857rem; background:var(--panel);
-    border-bottom:1px solid var(--line);
+    padding:0.571rem 0.857rem; background:var(--surface);
+    border-bottom:1px solid var(--border);
     flex-wrap:wrap; box-shadow: var(--shadow); z-index:5;
   }
-  #toolbar .grp{ display:flex; align-items:center; gap:0.286rem; padding:0 0.571rem; border-right:1px solid var(--line);}
+  #toolbar .grp{ display:flex; align-items:center; gap:0.286rem; padding:0 0.571rem; border-right:1px solid var(--border);}
   #toolbar .grp:last-child{ border-right:none; }
   button.tool, button.action{
-    border:1px solid var(--line); background:#fff; color:var(--ink);
+    border:1px solid var(--border); background:var(--surface); color:var(--text);
     border-radius:0.571rem; padding:0.429rem 0.643rem; cursor:pointer; font-size:0.929rem;
     display:flex; align-items:center; gap:0.429rem; line-height:1;
   }
   button.tool:hover, button.action:hover{ background:var(--accent-soft); }
-  button.action:disabled{ opacity:.4; cursor:not-allowed; background:#fff; }
-  button.action:disabled:hover{ background:#fff; }
-  button.tool.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.action:disabled{ opacity:.4; cursor:not-allowed; background:var(--surface); }
+  button.action:disabled:hover{ background:var(--surface); }
+  button.tool.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   #zoomLabelBtn{ min-width:3.6rem; justify-content:center; }
-  button.rough-btn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  #boldBtn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  button.action.danger:hover{ background:#fbe9e6; border-color:var(--warn); color:var(--warn); }
-  #toolbar label{ font-size:0.786rem; color:var(--muted); margin-right:0.286rem; }
+  button.rough-btn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  #boldBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  button.action.danger:hover{ background:color-mix(in srgb, var(--danger) 18%, var(--surface)); border-color:var(--danger); color:var(--danger); }
+  #toolbar label{ font-size:0.786rem; color:var(--text-2); margin-right:0.286rem; }
   select, input[type=number]{
-    border:1px solid var(--line); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:#fff;
+    border:1px solid var(--border); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:var(--surface);
   }
   input[type=range]{ width:5.714rem; }
   .swatch{
-    width:1.429rem; height:1.429rem; border-radius:50%; border:0.143rem solid #fff;
-    box-shadow:0 0 0 1px var(--line); cursor:pointer;
+    width:1.429rem; height:1.429rem; border-radius:50%; border:0.143rem solid var(--surface);
+    box-shadow:0 0 0 1px var(--border); cursor:pointer;
   }
-  .swatch.selected{ box-shadow:0 0 0 2px var(--ink); }
+  .swatch.selected{ box-shadow:0 0 0 2px var(--text); }
   .swatch.noFillSwatch{
     border-radius:0.429rem; background:
-      repeating-conic-gradient(#cfccc4 0% 25%, #fff 0% 50%) 0 0/0.571rem 0.571rem;
+      repeating-conic-gradient(var(--border) 0% 25%, var(--surface-2) 0% 50%) 0 0/0.571rem 0.571rem;
     position:relative;
   }
   .swatch.noFillSwatch::after{
     content:''; position:absolute; left:0.143rem; right:0.143rem; top:0.643rem; height:0.143rem;
-    background:#b5493a; transform:rotate(-45deg);
+    background:var(--danger); transform:rotate(-45deg);
   }
   #customColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fillCustomColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fileInput{ display:none; }
-  #openBtn{ background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
-  #recordBtn.recording{ background:var(--warn); color:#fff; border-color:var(--warn); font-weight:600; animation: recPulse 1.4s ease-in-out infinite; }
+  #openBtn{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600; }
+  #recordBtn.recording{ background:var(--danger); color:var(--on-accent); border-color:var(--danger); font-weight:600; animation: recPulse 1.4s ease-in-out infinite; }
   @keyframes recPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
-  #saveBtn{ background:var(--gold); color:#2a2114; border-color:var(--gold); font-weight:600; }
+  #saveBtn{ background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600; }
 
   /* ---------- Main layout ---------- */
   #main{ flex:1; display:flex; min-height:0; }
   #canvasWrap{
     flex:1; position:relative; overflow:auto; display:flex;
     background:
-      repeating-conic-gradient(#eceae5 0% 25%, #f6f5f3 0% 50%) 0 0/22px 22px;
+      repeating-conic-gradient(var(--surface-2) 0% 25%, var(--bg) 0% 50%) 0 0/22px 22px;
   }
   #stage{ position:relative; box-shadow: 0 6px 26px rgba(0,0,0,.18); margin:auto; }
   #baseCanvas, #overlayCanvas{ position:absolute; top:0; left:0; display:block; }
@@ -119,10 +124,10 @@
   #overlayCanvas.altPanHover{ cursor: grab; }
   #overlayCanvas.panning{ cursor: grabbing !important; }
   #emptyState{
-    color:var(--muted); text-align:center; max-width:24.286rem; font-size:1rem; line-height:1.6;
+    color:var(--text-2); text-align:center; max-width:24.286rem; font-size:1rem; line-height:1.6;
     margin:auto;
   }
-  #emptyState b{ color:var(--ink); }
+  #emptyState b{ color:var(--text); }
 
   #textEditArea{
     position:absolute; background:transparent; border:1px dashed var(--accent);
@@ -132,12 +137,12 @@
 
   /* ---------- Right sidebar: layers ---------- */
   #sidebar{
-    width:17.857rem; background:var(--panel); border-left:1px solid var(--line);
+    width:17.857rem; background:var(--surface); border-left:1px solid var(--border);
     display:flex; flex-direction:column; flex-shrink:0;
   }
   #sidebar h3{ margin:0; padding:0.714rem 0.857rem; font-size:0.929rem; letter-spacing:.04em; text-transform:uppercase;
-    color:var(--muted); border-bottom:1px solid var(--line); }
-  #layerActions{ display:flex; gap:0.429rem; padding:0.571rem 0.714rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    color:var(--text-2); border-bottom:1px solid var(--border); }
+  #layerActions{ display:flex; gap:0.429rem; padding:0.571rem 0.714rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
   #layerActions button{ font-size:0.786rem; padding:0.357rem 0.5rem; }
   #layerList{ flex:1; overflow-y:auto; padding:0.429rem; }
   .layerItem{
@@ -147,10 +152,10 @@
   .layerItem:hover{ background:var(--accent-soft); }
   .layerItem.selected{ background:var(--accent-soft); border-color:var(--accent); }
   .layerItem .lname{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .layerItem .micro{ border:none; background:none; cursor:pointer; padding:0.143rem; font-size:0.857rem; color:var(--muted); }
-  .layerItem .micro:hover{ color:var(--ink); }
-  .groupTag{ font-size:0.643rem; background:var(--gold); color:#2a2114; border-radius:0.286rem; padding:0 0.286rem; margin-right:0.143rem;}
-  #hint{ font-size:0.786rem; color:var(--muted); padding:0.571rem 0.857rem; border-top:1px solid var(--line); line-height:1.5; }
+  .layerItem .micro{ border:none; background:none; cursor:pointer; padding:0.143rem; font-size:0.857rem; color:var(--text-2); }
+  .layerItem .micro:hover{ color:var(--text); }
+  .groupTag{ font-size:0.643rem; background:var(--accent-2); color:var(--on-accent); border-radius:0.286rem; padding:0 0.286rem; margin-right:0.143rem;}
+  #hint{ font-size:0.786rem; color:var(--text-2); padding:0.571rem 0.857rem; border-top:1px solid var(--border); line-height:1.5; }
 
   /* ---------- New canvas modal ---------- */
   #newCanvasOverlay{
@@ -159,22 +164,22 @@
   }
   #newCanvasOverlay.open{ display:flex; }
   #newCanvasModal{
-    background:var(--panel); border-radius:var(--radius); padding:1.429rem 1.571rem;
+    background:var(--surface); border-radius:var(--radius); padding:1.429rem 1.571rem;
     width:27.143rem; max-width:92vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:0.429rem;
   }
   #newCanvasModal h3{ margin:0 0 0.429rem; font-size:1.143rem; }
-  .modalLabel{ font-size:0.786rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-top:0.571rem; }
+  .modalLabel{ font-size:0.786rem; color:var(--text-2); text-transform:uppercase; letter-spacing:.04em; margin-top:0.571rem; }
   #sizePresetGrid{ display:grid; grid-template-columns:1fr 1fr; gap:0.429rem; }
   .sizePreset{
-    border:1px solid var(--line); background:#fff; border-radius:0.571rem; padding:0.5rem 0.571rem;
+    border:1px solid var(--border); background:var(--surface); border-radius:0.571rem; padding:0.5rem 0.571rem;
     font-size:0.893rem; cursor:pointer; text-align:left;
   }
   .sizePreset:hover{ background:var(--accent-soft); }
-  .sizePreset.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  .orientBtn.active, .bgBtn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .sizePreset.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .orientBtn.active, .bgBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   #newCanvasColor{ width:2.143rem; height:2.143rem; padding:0; border:none; border-radius:50%; cursor:pointer; }
-  #newCanvasSummary{ font-size:0.857rem; color:var(--muted); margin-top:0.714rem; }
+  #newCanvasSummary{ font-size:0.857rem; color:var(--text-2); margin-top:0.714rem; }
 
   /* ---------- Save all sizes modal ---------- */
   #saveSizesOverlay{
@@ -183,11 +188,11 @@
   }
   #saveSizesOverlay.open{ display:flex; }
   #saveSizesModal{
-    background:var(--panel); border-radius:var(--radius); padding:1.429rem 1.571rem;
+    background:var(--surface); border-radius:var(--radius); padding:1.429rem 1.571rem;
     width:24rem; max-width:92vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:0.429rem;
   }
-  .sizesFormatBtn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .sizesFormatBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 
   /* ---------- Recording preview modal ---------- */
   #recordingOverlay{
@@ -196,7 +201,7 @@
   }
   #recordingOverlay.open{ display:flex; }
   #recordingModal{
-    background:var(--panel); border-radius:var(--radius); padding:1.143rem 1.286rem;
+    background:var(--surface); border-radius:var(--radius); padding:1.143rem 1.286rem;
     width:51.429rem; max-width:94vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:0.571rem;
   }
@@ -207,7 +212,7 @@
   #recordingVideo{ width:100%; max-height:60vh; display:block; }
   #recordingSeekRow{ display:flex; align-items:center; gap:0.714rem; }
   #recordingSeek{ flex:1; }
-  #recordingTimeLabel{ font-size:0.786rem; color:var(--muted); white-space:nowrap; width:7.143rem; text-align:right; }
+  #recordingTimeLabel{ font-size:0.786rem; color:var(--text-2); white-space:nowrap; width:7.143rem; text-align:right; }
   #recordingControls{ display:flex; align-items:center; gap:0.571rem; }
   #recVolume{ width:6.429rem; }
 
@@ -227,7 +232,7 @@
     #canvasWrap{ min-height:0; }
     #sidebar{
       width:100%; max-height:34vh; border-left:none;
-      border-top:1px solid var(--line);
+      border-top:1px solid var(--border);
     }
     #layerActions{ padding:0.429rem 0.5rem; }
     #hint{ display:none; } /* keyboard-shortcut hints are irrelevant on touch */
@@ -372,19 +377,19 @@
     <div class="grp">
       <label>Stroke</label>
       <input type="range" id="strokeWidth" min="1" max="40" value="4">
-      <span id="strokeWidthLabel" style="font-size:0.786rem; color:var(--muted); width:1.429rem;">4</span>
+      <span id="strokeWidthLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">4</span>
     </div>
 
     <div class="grp" id="cornerGrp">
       <label>Corner radius</label>
       <input type="range" id="cornerRadius" min="0" max="80" value="6">
-      <span id="cornerRadiusLabel" style="font-size:0.786rem; color:var(--muted); width:1.429rem;">6</span>
+      <span id="cornerRadiusLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">6</span>
     </div>
 
     <div class="grp" id="arrowGrp">
       <label>Head size</label>
       <input type="range" id="arrowHead" min="6" max="60" value="18">
-      <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--muted); width:1.429rem;">18</span>
+      <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">18</span>
     </div>
 
     <div class="grp">
@@ -397,7 +402,7 @@
     <div class="grp">
       <label>Opacity</label>
       <input type="range" id="opacity" min="0" max="100" value="100">
-      <span id="opacityLabel" style="font-size:0.786rem; color:var(--muted); width:2rem;">100%</span>
+      <span id="opacityLabel" style="font-size:0.786rem; color:var(--text-2); width:2rem;">100%</span>
     </div>
 
     <div class="grp">
@@ -437,7 +442,7 @@
 
       <div style="display:flex; gap:0.571rem; justify-content:flex-end; margin-top:0.429rem;">
         <button class="action" id="newCanvasCancel">Cancel</button>
-        <button class="action" id="newCanvasCreate" style="background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;">Create canvas</button>
+        <button class="action" id="newCanvasCreate" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Create canvas</button>
       </div>
     </div>
   </div>
@@ -452,11 +457,11 @@
         <button class="action sizesFormatBtn" data-format="jpg">JPG</button>
       </div>
 
-      <div id="saveSizesSummary" style="font-size:0.857rem; color:var(--muted); margin-top:0.714rem; line-height:1.6;"></div>
+      <div id="saveSizesSummary" style="font-size:0.857rem; color:var(--text-2); margin-top:0.714rem; line-height:1.6;"></div>
 
       <div style="display:flex; gap:0.571rem; justify-content:flex-end; margin-top:0.714rem;">
         <button class="action" id="saveSizesCancel">Cancel</button>
-        <button class="action" id="saveSizesConfirm" style="background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;">Save all sizes</button>
+        <button class="action" id="saveSizesConfirm" style="background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;">Save all sizes</button>
       </div>
     </div>
   </div>
@@ -482,7 +487,7 @@
         <input type="range" id="recVolume" min="0" max="100" value="100" title="Volume">
         <button class="action" id="recFullscreenBtn" title="Fullscreen">⛶</button>
         <span style="flex:1;"></span>
-        <button class="action" id="recDownloadBtn" style="background:var(--gold); color:#2a2114; border-color:var(--gold); font-weight:600;">💾 Download</button>
+        <button class="action" id="recDownloadBtn" style="background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600;">💾 Download</button>
       </div>
     </div>
   </div>
@@ -527,6 +532,19 @@
 (function(){
 "use strict";
 
+// Canvas drawing needs real colour strings, not var(--x) - CSS variables
+// don't resolve inside ctx.strokeStyle/fillStyle. Resolve the *chrome*
+// tokens (selection box, resize handles) once here rather than re-reading
+// them live: strokeSelBox/drawHandles run every rAF tick during screen
+// recording (liveRenderLoop), and repeated getComputedStyle calls there
+// would cost frames. See docs/THEME.md "Canvas colours can't use var()".
+const themeCSS = getComputedStyle(document.documentElement);
+const themeToken = n => themeCSS.getPropertyValue(n).trim();
+const CHROME = {
+  accent: themeToken('--accent'),
+  text: themeToken('--text')
+};
+
 /* ===================== State ===================== */
 const state = {
   layers: [],           // array of layer objects, back-to-front (index 0 = bottom)
@@ -535,7 +553,7 @@ const state = {
   tool: 'select',
   font: 'Raleway',
   fontSize: 28,
-  color: '#1e1d1c',
+  color: '#1e1d1c',     // document content, not chrome - matches PALETTE[0] below, deliberately literal
   strokeWidth: 4,
   arrowHead: 18,
   cornerRadius: 6,
@@ -557,6 +575,10 @@ const state = {
   redoStack: []
 };
 
+// Document content - the colours a person picks for their drawing, not
+// chrome. Left as literal hex on purpose: if these tracked the theme,
+// existing artwork would change colour whenever the theme flips. See
+// docs/THEME.md "PALETTE is a deliberate exception."
 const PALETTE = ['#1e1d1c','#3f6b52','#b5493a','#c79a3d','#2f5d8a','#7a4fae','#ffffff','#8a8578'];
 
 const baseCanvas = document.getElementById('baseCanvas');
@@ -1545,7 +1567,7 @@ function renderOverlay(){
 }
 
 function strokeSelBox(x,y,w,h){
-  octx.strokeStyle = '#3f6b52'; octx.lineWidth = 1.5; octx.setLineDash([5,4]);
+  octx.strokeStyle = CHROME.accent; octx.lineWidth = 1.5; octx.setLineDash([5,4]);
   octx.strokeRect(x,y,w,h);
   octx.setLineDash([]);
 }
@@ -1559,11 +1581,11 @@ function handlePositions(l){
 
 function drawHandles(l){
   const hp = handlePositions(l);
-  octx.strokeStyle = '#3f6b52'; octx.lineWidth = 1.5;
+  octx.strokeStyle = CHROME.accent; octx.lineWidth = 1.5;
   octx.beginPath(); octx.moveTo(l.x+l.w/2, l.y); octx.lineTo(hp.rotate.x, hp.rotate.y); octx.stroke();
   Object.entries(hp).forEach(([k,p]) => {
     octx.beginPath();
-    octx.fillStyle = '#fff'; octx.strokeStyle = '#3f6b52'; octx.lineWidth = 1.5;
+    octx.fillStyle = CHROME.text; octx.strokeStyle = CHROME.accent; octx.lineWidth = 1.5;
     if (k==='rotate'){ octx.arc(p.x,p.y,6,0,Math.PI*2); } else { octx.rect(p.x-5,p.y-5,10,10); }
     octx.fill(); octx.stroke();
   });
@@ -2313,6 +2335,8 @@ function renderComposite(w, h, opts){
   out.width = w; out.height = h;
   const octx2 = out.getContext('2d');
   if (opts.forceWhiteBg && !baseImage && !state.bgFill){
+    // Exported-file convention (JPEG has no transparency), not app chrome -
+    // stays literal white regardless of theme, like PALETTE above.
     octx2.fillStyle = '#ffffff';
     octx2.fillRect(0, 0, w, h);
   }

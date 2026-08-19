@@ -6,8 +6,8 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `index.html` | 1025 | 10k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 2509 | 26k | "Image Marker" — canvas annotation/drawing | light (warm) |
+| `index.html` | 1036 | 10k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 2533 | 26k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 2074 | 18k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
@@ -38,14 +38,14 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav is triplicated
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:210-252`, `editor.html:263-305`,
-`markdown-editor.html:740-782`). Any nav change must be applied to **all
+in all three files (`index.html:221-263`, `editor.html:268-310`,
+`markdown-editor.html:742-784`). Any nav change must be applied to **all
 three** or they drift. Verify with:
 
 ```bash
-sed -n '210,252p' index.html > /tmp/n1
-sed -n '263,305p' editor.html > /tmp/n2
-sed -n '740,782p' markdown-editor.html > /tmp/n3
+sed -n '221,263p' index.html > /tmp/n1
+sed -n '268,310p' editor.html > /tmp/n2
+sed -n '742,784p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
 

@@ -52,45 +52,49 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 2509 lines · "Image Marker" (canvas annotation)
+## editor.html — 2533 lines · "Image Marker" (canvas annotation)
 
 `lang="en"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
 
+Theme: ✅ migrated to the earth palette (dark), step 3 of `docs/THEME.md`.
+`:root` uses the shared semantic token names (`--surface`, `--text`, …) —
+see that doc for the canvas-colour resolution (`CHROME` cache, ~L537).
+
 | Lines | Contents |
 |---|---|
-| 8–259 | App CSS. `:root` **19–31**. `@font-face` ×9 near top (**broken paths**) |
-| 263–305 | **Shared nav** |
-| 306–525 | Markup: toolbar, stage, sidebar, modals |
-| 526–2509 | App script |
+| 8–264 | App CSS. `:root` **20–36**. `@font-face` ×9 near top (**broken paths**) |
+| 268–310 | **Shared nav** |
+| 311–530 | Markup: toolbar, stage, sidebar, modals |
+| 531–2533 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 530 | State — `state` object, style defaults, `PALETTE` **560** |
-| 572 | Utilities |
-| 601 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
-| 625 | Loading an image |
-| 658 | Screen snapshot |
-| 698 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 838 | Recording preview / playback |
-| 942 | Zoom |
-| 976 | Pan — `startPan`/`updatePan`/`endPan` |
-| 998 | New canvas modal |
-| **1080** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 1575 | Layer list (sidebar) — `renderLayerList` |
-| **1623** | **Toolbar wiring** — every button/handler |
-| 1836 | Text box auto-fit |
-| 1847 | Pointer/canvas coords — `canvasPoint()` |
-| 1878 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
-| 2198 | Text editing overlay — `openTextEditor` |
-| 2276 | Keyboard shortcuts |
-| 2304 | Save — `renderComposite` |
-| 2341 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 2493 | Fonts ready — `document.fonts.load()` startup pass |
+| 548 | State — `state` object, style defaults, `PALETTE` **582** |
+| 594 | Utilities |
+| 623 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
+| 647 | Loading an image |
+| 680 | Screen snapshot |
+| 720 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 860 | Recording preview / playback |
+| 964 | Zoom |
+| 998 | Pan — `startPan`/`updatePan`/`endPan` |
+| 1020 | New canvas modal |
+| **1102** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| 1597 | Layer list (sidebar) — `renderLayerList` |
+| **1645** | **Toolbar wiring** — every button/handler |
+| 1858 | Text box auto-fit |
+| 1869 | Pointer/canvas coords — `canvasPoint()` |
+| 1900 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
+| 2220 | Text editing overlay — `openTextEditor` |
+| 2298 | Keyboard shortcuts |
+| 2326 | Save — `renderComposite` |
+| 2365 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 2517 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (1080–1575); go straight to the
+Largest region by far is Rendering (1102–1597); go straight to the
 specific `drawX()` you need.
 
 ---
