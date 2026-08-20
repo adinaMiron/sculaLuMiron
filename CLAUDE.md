@@ -7,7 +7,7 @@ file). Open in a browser; that's the whole toolchain.
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `index.html` | 1647 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 4024 | 40k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `editor.html` | 4055 | 40k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 2706 | 24k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
@@ -102,12 +102,6 @@ Xvfb; headless Chromium cannot decode media streams at all.
 
 1. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
    with zero Node.
-2. **`editor.html` undo is one step behind.** `pushHistory()` snapshots the
-   state *after* the change, so the first Ctrl+Z restores the state it is
-   already in and the very first action can never be undone. Fixing it means
-   snapshotting before the mutation (or keeping a "last committed" snapshot
-   that `pushHistory`/`undo`/`redo` shuffle) — a change to those three
-   functions, not to their ~20 call sites.
 
 ## Planned direction (design toward these)
 

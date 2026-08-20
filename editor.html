@@ -1624,28 +1624,59 @@ function toLocal(l, p){
 
 function fontCss(size, family, bold){ return `${bold ? 'bold ' : ''}${size}px "${family}", sans-serif`; }
 
-/* ===================== History (undo/redo) ===================== */
-function snapshot(){
-  return { layers: deepClone(state.layers), selection: state.selection.slice() };
+/* ===================== History (undo/redo) =====================
+   Every one of pushHistory()'s ~20 call sites mutates state.layers first and
+   calls it afterwards. So what goes on the undo stack is `committed` - the
+   drawing as it was *before* that change - never the state the caller just
+   produced. Pushing the post-change state (what this did until 2026-08) put
+   the stack one entry out of step: the first Ctrl+Z restored the state the
+   app was already in, and the very first action of a session could never be
+   undone at all.
+
+   `committedJson` is the same layers serialized. pushHistory() compares
+   against it so a call that changed nothing - a click that only selected, a
+   drag too small to become a shape, a colour re-applied to itself - does not
+   burn an undo step. */
+let committed = { layers: [], selection: [] };
+let committedJson = '[]';
+
+// the drawing as it stands now becomes the state an undo returns to
+// (`json` is only ever passed by a caller that just serialized it anyway)
+function commit(json){
+  committedJson = json || JSON.stringify(state.layers);
+  committed = { layers: JSON.parse(committedJson), selection: state.selection.slice() };
+}
+function resetHistory(){
+  state.undoStack = []; state.redoStack = [];
+  commit();
 }
 function pushHistory(){
-  state.undoStack.push(snapshot());
+  const json = JSON.stringify(state.layers);
+  if (json === committedJson){
+    // nothing about the drawing changed; keep the selection current so that a
+    // later undo lands on what was selected just before that change
+    committed.selection = state.selection.slice();
+    return;
+  }
+  state.undoStack.push(committed);
   if (state.undoStack.length > 60) state.undoStack.shift();
   state.redoStack.length = 0;
+  commit(json);
+}
+function applyHistory(s){
+  state.layers = s.layers; state.selection = s.selection;
+  commit(); // re-clone: the entry just popped is now live state, not a record
+  renderAll();
 }
 function undo(){
   if (!state.undoStack.length) return;
-  state.redoStack.push(snapshot());
-  const s = state.undoStack.pop();
-  state.layers = s.layers; state.selection = s.selection;
-  renderAll();
+  state.redoStack.push(committed);
+  applyHistory(state.undoStack.pop());
 }
 function redo(){
   if (!state.redoStack.length) return;
-  state.undoStack.push(snapshot());
-  const s = state.redoStack.pop();
-  state.layers = s.layers; state.selection = s.selection;
-  renderAll();
+  state.undoStack.push(committed);
+  applyHistory(state.redoStack.pop());
 }
 
 /* ===================== Loading an image ===================== */
@@ -1674,7 +1705,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 function beginEditing(){
   state.layers = [];
   state.selection = [];
-  state.undoStack = []; state.redoStack = [];
+  resetHistory();
   state.canvasReady = true;
   state.zoom = 1;
   state.panX = 0; state.panY = 0;

@@ -23,9 +23,9 @@ Patrick-Hand-as-Ink-Free all verified to cover Romanian diacritics
 appends a `sans-serif` fallback so a missing glyph degrades instead of tofu.
 
 Structure: `<style>` (L15-406) → the shared nav block (L409-1052) → HTML
-markup (L1058-1334) → `<script>` IIFE (L1335-4022). Everything is one
+markup (L1058-1334) → `<script>` IIFE (L1335-4053). Everything is one
 closure; no modules, no framework. Line numbers below are approximate
-(current file ≈4020 lines) and several predate later edits — search by
+(current file ≈4055 lines) and several predate later edits — search by
 function name, and see `docs/MAP.md` for anchors that are kept current.
 
 ## Mental model
@@ -49,9 +49,19 @@ canvas readiness/mode flags. `baseImage` (an `Image` or `null`, ~L467) and
 
 Render pipeline: `renderAll()` = `renderBase()` + `renderOverlay()` +
 `renderLayerList()`. `renderCanvasFrame()` skips the (expensive) layers
-panel rebuild — used by the 60fps live-recording loop. Always call
-`pushHistory()` right before/after mutating `state.layers` for undo/redo
-to work (`snapshot()`/`undo()`/`redo()`, ~L499).
+panel rebuild — used by the 60fps live-recording loop.
+
+**Undo/redo contract: mutate `state.layers`, then call `pushHistory()`,
+then `renderAll()`** — in that order, which is what all ~20 call sites do.
+`pushHistory()` puts `committed` (the drawing as it was *before* your
+change) on the undo stack and takes a fresh copy; it is not a snapshot of
+what you just made. Getting that backwards is what made undo one step
+behind until 2026-08 — the first Ctrl+Z restored the state the app was
+already in, and the session's first action could never be undone. Calls
+that turn out to have changed nothing (a click that only selected, a drag
+too small to become a shape) are detected by comparing the serialized
+layers and cost no undo step. `resetHistory()` is the one way to clear the
+stacks; `beginEditing()` calls it for every new canvas/image.
 
 ## Layer model
 
@@ -173,7 +183,7 @@ canvases; the canvas *pixel buffers* always stay at `naturalW/H`.
 and hit-testing are zoom/pan agnostic — never hardcode pixel offsets against
 screen coordinates anywhere else.
 
-The whole thing rests on two functions (§ Viewport, ~L1973):
+The whole thing rests on two functions (§ Viewport, ~L2004):
 
 ```js
 clientToContent(cx, cy)      // screen point  -> point of the drawing under it
@@ -284,7 +294,7 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
   can't be caught by emulation alone). The wrapper needs it as well because
   the padding around the image is now a pan surface of ours, not a scroller.
 - All input goes through **Pointer Events**, in **one gesture layer**
-  (§ Pointer interaction, ~L3281): `pointerdown` on `#canvasWrap`,
+  (§ Pointer interaction, ~L3312): `pointerdown` on `#canvasWrap`,
   `pointermove` / `pointerup` / `pointercancel` on `window`. Taking the
   up/cancel from `window` is not optional — a finger that lifts somewhere
   other than where it landed (off the image, past the window edge, or

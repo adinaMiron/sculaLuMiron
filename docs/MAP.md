@@ -80,7 +80,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 4024 lines · "Image Marker" (canvas annotation)
+## editor.html — 4055 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -108,7 +108,7 @@ touch" for why and how.
 | 1087–1123 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
 | 1124–1216 | Markup: `#selectionPanel` — one `.selRow` per property |
 | 1217–1334 | Markup: modals, stage, sidebar |
-| 1335–4022 | App script |
+| 1335–4053 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
@@ -117,29 +117,29 @@ Script sections (banners `/* ===== Title ===== */`):
 | 1335 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
 | 1537 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
 | 1585 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1627 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
-| 1651 | Loading an image |
-| 1685 | Screen snapshot |
-| 1725 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1871 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **1973** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2102 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2154 | New canvas modal |
-| **2236** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 2731 | Layer list (sidebar) — `renderLayerList` |
-| **2779** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3001** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3185** | **Selection panel contents** — `ROW_TYPES` (3199), `syncSelectionPanel` |
-| 3239 | Text box auto-fit |
-| 3250 | Pointer/canvas coords — `canvasPoint()` |
-| **3281** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 3707 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 3790 | Keyboard shortcuts |
-| 3820 | Save — `renderComposite`, **`saveOut()`** 3851 (one line onto `ScuLaFolder.save`) |
-| 3859 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4008 | Fonts ready — `document.fonts.load()` startup pass |
+| 1627 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1682 | Loading an image |
+| 1716 | Screen snapshot |
+| 1756 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1902 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2004** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2133 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2185 | New canvas modal |
+| **2267** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| 2762 | Layer list (sidebar) — `renderLayerList` |
+| **2810** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3032** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3216** | **Selection panel contents** — `ROW_TYPES` (3230), `syncSelectionPanel` |
+| 3270 | Text box auto-fit |
+| 3281 | Pointer/canvas coords — `canvasPoint()` |
+| **3312** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 3738 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 3821 | Keyboard shortcuts |
+| 3851 | Save — `renderComposite`, **`saveOut()`** 3882 (one line onto `ScuLaFolder.save`) |
+| 3890 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4039 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2236–2731); go straight to the
+Largest region by far is Rendering (2267–2762); go straight to the
 specific `drawX()` you need.
 
 **Zoom is the app's, never the browser's.** Three places cooperate and must
@@ -154,7 +154,7 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3199) says which property
+**Two lists must stay in step:** `ROW_TYPES` (3230) says which property
 rows show for which layer type, and the handlers in Toolbar wiring (2685)
 say which types each control actually writes to. Add a control → add it to
 both.
@@ -182,12 +182,12 @@ both.
 | 1864–1866 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
 | 1874–1919 | Responsive: `isSmallScreen`, `isMobile`, `setView`, `togglePanel`, `toggleNav` |
 | 2017–2074 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| 2088 | `resolveImageSrc` — image-path rewrite, export-only |
-| 2094 | `applyInline(text, opts)` |
-| **2105** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 2090 | `resolveImageSrc` — image-path rewrite, export-only |
+| 2096 | `applyInline(text, opts)` |
+| **2107** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
 | 2207–2213 | `updatePreview`, `updateNav` |
 | 2295–2323 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
-| 2365 | `htmlToMarkdown` (docx → md) |
+| 2367 | `htmlToMarkdown` (docx → md) |
 | 2467–2474 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
 | ~1762–1786 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
 | 2523–2614 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
