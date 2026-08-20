@@ -2,14 +2,23 @@
 
 Single-file HTML/CSS/JS screen-annotation + drawing tool. No build step, no
 external JS libs. 9 fonts via local `.ttf` in `fonts/` next to the HTML
-(all referenced in the `@font-face` block at the top of `<style>`):
-5 user-supplied (Poppins-Regular, Raleway-Regular, Roboto-Regular,
-ink-free, NotoMono-Regular — person provides these themselves, app just
-references the filenames) + 4 already bundled in `fonts/` in outputs
-(Excalifont-Regular, Nunito-Regular, LilitaOne-Regular,
-ComicShannsMono-Regular — Excalidraw's actual font lineup, pulled from
+(all referenced in the `@font-face` block at the top of `<style>`), all
+now present and working:
+Poppins-Regular, Raleway-Regular, Roboto-Regular, NotoMono-Regular
+(actually Noto Sans Mono — Google Fonts renamed the family; kept the old
+filename/CSS name to match the UI's "Noto Mono" option) pulled from Google
+Fonts, OFL-licensed, same treatment as the Excalidraw set below +
+Excalifont-Regular, Nunito-Regular, LilitaOne-Regular,
+ComicShannsMono-Regular (Excalidraw's actual font lineup, pulled from
 their official npm package + Google Fonts' repo, OFL-licensed).
-Excalifont/Nunito/Comic-Shanns-Mono verified to cover Romanian diacritics
+`ink-free.ttf` is a special case: 'Ink Free' ships with Windows and is
+Microsoft's font, not redistributable, so it can't be bundled for real.
+The `@font-face` rule tries `local('Ink Free')`/`local('Inkfree')` first
+(picks up the genuine font on machines that have it) and falls back to
+the bundled `ink-free.ttf`, which is actually Patrick Hand (OFL) — a
+plain-print handwriting look-alike, not the real Ink Free.
+Poppins/Raleway/Roboto/Noto-Sans-Mono/Excalifont/Nunito/Comic-Shanns-Mono/
+Patrick-Hand-as-Ink-Free all verified to cover Romanian diacritics
 (ă,â,î,ș,ț); Lilita One doesn't (upstream limitation, not ours) — `fontCss()`
 appends a `sans-serif` fallback so a missing glyph degrades instead of tofu.
 

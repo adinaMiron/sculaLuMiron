@@ -68,7 +68,7 @@ touch" for why and how.
 
 | Lines | Contents |
 |---|---|
-| 10–371 | App CSS. `:root` **20–36**. `@font-face` ×9 near top (**broken paths**) |
+| 10–371 | App CSS. `:root` **20–36**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 56–104 | Top toolbar |
 | 219–317 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel` |
 | 318–371 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |

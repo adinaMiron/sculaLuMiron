@@ -10,7 +10,11 @@
   @font-face { font-family: 'Poppins'; src: url('fonts/Poppins-Regular.ttf') format('truetype'); font-weight: 400; }
   @font-face { font-family: 'Raleway'; src: url('fonts/Raleway-Regular.ttf') format('truetype'); font-weight: 400; }
   @font-face { font-family: 'Roboto'; src: url('fonts/Roboto-Regular.ttf') format('truetype'); font-weight: 400; }
-  @font-face { font-family: 'Ink Free'; src: url('fonts/ink-free.ttf') format('truetype'); font-weight: 400; }
+  /* 'Ink Free' ships with Windows; it's Microsoft's font and can't be
+     redistributed. local() picks up the real thing on machines that have
+     it, everyone else gets the bundled fonts/ink-free.ttf — Patrick Hand
+     (OFL, covers ă â î ș ț), a plain-print handwriting look-alike. */
+  @font-face { font-family: 'Ink Free'; src: local('Ink Free'), local('Inkfree'), url('fonts/ink-free.ttf') format('truetype'); font-weight: 400; }
   @font-face { font-family: 'Noto Mono'; src: url('fonts/NotoMono-Regular.ttf') format('truetype'); font-weight: 400; }
   @font-face { font-family: 'Excalifont'; src: url('fonts/Excalifont-Regular.ttf') format('truetype'); font-weight: 400; }
   @font-face { font-family: 'Nunito'; src: url('fonts/Nunito-Regular.ttf') format('truetype'); font-weight: 400; }

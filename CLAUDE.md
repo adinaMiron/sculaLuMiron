@@ -93,11 +93,7 @@ Xvfb; headless Chromium cannot decode media streams at all.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
-1. **Fonts are broken in `editor.html`.** All 9 `@font-face` rules point at
-   `fonts/*.ttf`, but the 4 bundled `.ttf` files sit in the repo **root**
-   and no `fonts/` directory exists. Fix = `mkdir fonts && git mv *.ttf
-   "PUT FONTS HERE.txt" fonts/`. Ask before doing it; it moves tracked files.
-2. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
+1. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
    with zero Node.
 
 ## Planned direction (design toward these)
