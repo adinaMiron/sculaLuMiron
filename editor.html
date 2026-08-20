@@ -241,6 +241,10 @@
     border-radius:var(--radius); box-shadow:var(--shadow);
     display:flex; flex-direction:column;
     max-height:calc(100vh - 1.5rem);
+    /* Never wider than the screen, so placePanel() can always fit the whole
+       panel inside the viewport - on a narrow phone the fixed widths below
+       would otherwise stick out past the right edge. */
+    max-width:calc(100vw - 1.5rem);
   }
   .panel[hidden]{ display:none; }
   .panelHead{
@@ -2910,27 +2914,35 @@ function reorderSelection(dir){
 const PANEL_KEY = 'scula:im-panels';
 const panelEls = ['toolsPanel','selectionPanel'].map(id => document.getElementById(id));
 
-// Keep a panel reachable: never let it go so far that the drag handle is off
-// screen, otherwise it can't be dragged back.
+// Keep a panel fully on screen. Letting only the drag handle stay visible was
+// not enough: slide a panel off to the left and the sliver left over is the
+// right end of the header - nothing but the collapse/close buttons, which the
+// drag handler ignores - so the panel could never be dragged back. Every edge
+// is clamped inside the viewport now, so no part of a panel can leave it.
 function placePanel(p, x, y){
   const pad = 12;
-  const keep = Math.min(p.offsetWidth, 72);
   const headH = (p.querySelector('.panelHead') || p).offsetHeight || 32;
-  const clampedX = Math.max(keep - p.offsetWidth, Math.min(x, window.innerWidth - keep));
 
   // Measure at full natural height first, otherwise a previous run's
   // max-height makes the panel look shorter than it is.
   p.style.maxHeight = (window.innerHeight - pad * 2) + 'px';
-  let clampedY = Math.max(0, Math.min(y, window.innerHeight - headH));
-  const h = p.offsetHeight;
-  if (clampedY + h + pad > window.innerHeight){
-    // pull it up so the body fits; if it's taller than the screen it starts at
-    // the top and .panelBody scrolls the remainder.
-    clampedY = Math.max(pad, Math.min(clampedY, window.innerHeight - h - pad));
-  }
+  const w = p.offsetWidth, h = p.offsetHeight;
+
+  // Preferred gap from the edges is `pad`, but a panel bigger than the screen
+  // must still be pinned at 0 rather than pushed past the far edge; the body
+  // scrolls the remainder.
+  const room = (viewport, size) => {
+    const max = viewport - size - pad;
+    return max < pad ? Math.max(0, viewport - size) : max;
+  };
+  const maxX = room(window.innerWidth, w);
+  const maxY = room(window.innerHeight, h);
+  const clampedX = Math.max(Math.min(pad, maxX), Math.min(x, maxX));
+  const clampedY = Math.max(Math.min(pad, maxY), Math.min(y, maxY));
+
   p.style.left = clampedX + 'px';
   p.style.top = clampedY + 'px';
-  p.style.maxHeight = Math.max(headH + 40, window.innerHeight - clampedY - pad) + 'px';
+  p.style.maxHeight = Math.max(headH, window.innerHeight - clampedY - pad) + 'px';
 }
 
 function defaultPos(p){
@@ -3070,6 +3082,10 @@ window.addEventListener('resize', () => {
     if (!p.hidden) placePanel(p, d.x, d.y);
   });
   syncPanelToggles();
+  // A position saved by an older build could be off screen; placePanel() has
+  // just pulled it back, so write the corrected one out instead of re-fixing
+  // it on every load.
+  savePanels();
 })();
 
 /* ===================== Selection panel contents =====================

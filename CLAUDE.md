@@ -7,7 +7,7 @@ file). Open in a browser; that's the whole toolchain.
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `index.html` | 1647 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 3754 | 38k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `editor.html` | 3829 | 38k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 2706 | 24k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
@@ -38,7 +38,7 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is triplicated
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:220-863`, `editor.html:379-1022`,
+in all three files (`index.html:220-863`, `editor.html:395-1038`,
 `markdown-editor.html:741-1384`). It carries the nav links, the UI-language
 toggle, **and `window.ScuLaFolder`** — which decides where every saved file
 goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
@@ -46,7 +46,7 @@ goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 
 ```bash
 sed -n '220,863p' index.html > /tmp/n1
-sed -n '379,1022p' editor.html > /tmp/n2
+sed -n '395,1038p' editor.html > /tmp/n2
 sed -n '741,1384p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```

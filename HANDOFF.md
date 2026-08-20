@@ -269,11 +269,19 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
 - **Panels are draggable** (`makePanelDraggable`, ~L2330). The `.panelHead`
   needs `touch-action:none` for the same reason `#overlayCanvas` does —
   without it touch drags die on `pointercancel`. `placePanel()` is the only
-  place that writes `left`/`top`: it clamps so the header can never leave
-  the screen, pulls a panel up when its body would run off the bottom, and
-  sets `max-height` from the room left below so `.panelBody` scrolls instead
-  of overflowing. Call it after anything that changes a panel's height —
-  `syncSelectionPanel()` does.
+  place that writes `left`/`top`: **it keeps the whole panel inside the
+  viewport** — all four edges, not just the header — and sets `max-height`
+  from the room left below so `.panelBody` scrolls instead of overflowing.
+  Call it after anything that changes a panel's height —
+  `syncSelectionPanel()` does. `.panel` also carries
+  `max-width:calc(100vw - 1.5rem)` so the fixed panel widths can't exceed a
+  narrow phone screen and make a full fit impossible.
+  **Don't relax this back to "keep 72px visible"** (the pre-2026-08 rule):
+  the sliver left over after a drag off the left edge is the *right* end of
+  the header, which is only the collapse/close buttons — and the drag
+  handler ignores buttons, so the panel became unreachable for good. Stale
+  off-screen positions saved by that build are rescued on load:
+  `restorePanels()` re-clamps and writes the corrected position back.
 - Position / collapsed / hidden state persists per browser under
   `scula:im-panels` via the shared async `store`. `resetPanels()` (⤢ in the
   toolbar) restores defaults — the escape hatch if a panel ends up somewhere
@@ -307,7 +315,11 @@ Panel rework re-verified at 390×844, 820×1180 and 1600×900: zero horizontal
 overflow, all 10 tools inside the viewport at every size, both panels fully
 on screen, touch-drag moves a panel by exactly the gesture delta, a wild
 drag clamps back on screen, position survives reload, `resetPanels()`
-restores defaults, ro↔en keeps icons and diacritics, and a stroke-width
+restores defaults, and (2026-08 bounds fix, re-verified at those same three
+sizes) a drag 3000px past any edge or corner leaves every panel edge inside
+the viewport, the panel is still draggable back afterwards, collapse/expand
+at the bottom edge stays in bounds, shrinking the window pulls the panels
+in, and a stale off-screen saved position is rescued on load, ro↔en keeps icons and diacritics, and a stroke-width
 change from the panel still repaints the canvas (dark-pixel count 3.7k→15k
 on a selected rect).
 
