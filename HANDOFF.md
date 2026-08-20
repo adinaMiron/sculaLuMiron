@@ -22,10 +22,11 @@ Patrick-Hand-as-Ink-Free all verified to cover Romanian diacritics
 (ă,â,î,ș,ț); Lilita One doesn't (upstream limitation, not ours) — `fontCss()`
 appends a `sans-serif` fallback so a missing glyph degrades instead of tofu.
 
-Structure: `<style>` (~L6-204) → HTML markup (~L205-423) → `<script>` IIFE
-(~L423-2319). Everything is one closure; no modules, no framework.
-Line numbers below are approximate (current file ≈2320 lines) — search by
-function name, they don't move much between edits.
+Structure: `<style>` (L15-406) → the shared nav block (L409-1052) → HTML
+markup (L1058-1334) → `<script>` IIFE (L1335-4022). Everything is one
+closure; no modules, no framework. Line numbers below are approximate
+(current file ≈4020 lines) and several predate later edits — search by
+function name, and see `docs/MAP.md` for anchors that are kept current.
 
 ## Mental model
 
@@ -33,8 +34,10 @@ Two stacked `<canvas>` elements inside `#stage`:
 - `#baseCanvas` — the actual content (background + every layer). This is
   what gets exported.
 - `#overlayCanvas` — selection box, resize/rotate handles, in-progress
-  drag previews. Never exported, purely UI chrome. Also the element that
-  receives all mouse/pointer events (`onDown`/`onMove`/`onUp`).
+  drag previews. Never exported, purely UI chrome. Pointer events are
+  listened for one level up, on `#canvasWrap` (see § Zoom / Pan), so a
+  finger on the checkered padding is handled too; a single-pointer gesture
+  over the drawing is what reaches `onDown`/`onMove`/`onUp`.
 
 `state` (plain object, ~L428) holds everything: current tool, style
 defaults (color/fill/stroke/font/opacity/roughness/etc — these double as
@@ -145,17 +148,68 @@ clears layers/history, resets zoom, calls `setupStage()`.
 
 ## Zoom / Pan
 
-`state.fitScale` (auto, recomputed on load/resize) × `state.zoom` (user
-multiplier, default 1) = actual CSS display scale. `applyZoomDisplay()`
-(~L838) only touches `style.width/height`; canvas `.width/.height`
-(pixel buffer) always stays at `naturalW/H`. `canvasPoint()` divides by
-this same effective scale, so drawing/hit-testing is zoom-agnostic —
-never hardcode pixel offsets against screen coordinates elsewhere.
-Zoom In/Out/Reset buttons + Ctrl+scroll (wheel listener, `passive:false`
-+ `preventDefault` to block native page zoom) + Ctrl+=/-/0.
-Pan: Alt+drag or middle-click drag (`startPan/updatePan/endPan`, ~L873,
-short-circuits at the top of `onDown`/`onMove`/`onUp` before any tool
-logic runs) or arrow keys (40px, 120px w/ Shift) via `canvasWrap.scrollLeft/Top`.
+**The view is a transform of `#stage`, not a scroll of `#canvasWrap`**
+(rewritten 2026-08). `#canvasWrap` is `overflow:hidden; touch-action:none`;
+`#stage` sits at its rest position (`margin:auto` — centred while the
+drawing fits, flush top-left once it doesn't) and carries
+`translate3d(panX, panY, 0)`. Nothing in the app touches `scrollLeft` /
+`scrollTop` any more, and nothing should: sharing the gesture with the
+browser's own scrolling is exactly what made panning lag, drift and stick
+at the edges.
+
+Two numbers describe the view, both in `state`:
+
+- `state.zoom` — user multiplier, clamped 0.1 … 8. `state.fitScale` (auto,
+  recomputed by `setupStage()` on load and on resize) × `state.zoom` =
+  `viewScale()`, the actual CSS display scale. The zoom label shows the
+  product, so at a 47% fit the 8× ceiling reads "372%".
+- `state.panX` / `state.panY` — CSS pixels of translate, clamped by
+  `applyPan()`.
+
+`applyZoomDisplay()` only sets `style.width/height` on `#stage` and both
+canvases; the canvas *pixel buffers* always stay at `naturalW/H`.
+`canvasPoint()` divides by the same effective scale and reads
+`getBoundingClientRect()`, which already includes the transform, so drawing
+and hit-testing are zoom/pan agnostic — never hardcode pixel offsets against
+screen coordinates anywhere else.
+
+The whole thing rests on two functions (§ Viewport, ~L1973):
+
+```js
+clientToContent(cx, cy)      // screen point  -> point of the drawing under it
+panContentTo(c, cx, cy)      // move the view so drawing-point c sits at (cx,cy)
+```
+
+Anchored zoom is those two in sequence — `setZoomAt(z, x, y)` remembers what
+is under `(x, y)`, changes the zoom, and puts it back. A pinch is the same
+thing driven continuously: `beginPinch()` stores the drawing-point between
+the two fingers, and every move re-pins that point under the current
+midpoint. One call therefore does both jobs — spreading the fingers zooms,
+sliding them pans, and any mix of the two keeps the pinched zone under the
+fingers. Do not "fix" a pinch by adding a separate delta-pan on top; that
+double-counts and is what the old code got wrong.
+
+`applyPan()` clamps: half of whichever is smaller — the drawing or the
+viewport — must stay on screen. It derives the rest position by measuring
+(`rect.left - appliedPanX`) rather than assuming, because flexbox centres
+the stage while it fits and start-aligns it once it overflows, and the clamp
+has to be right in both. `#stage` is `flex:0 0 auto` for the same reason a
+shrinkable stage stopped growing at the wrapper's width while the drawing
+inside it kept scaling.
+
+Inputs, all of them ending in `setZoomAt` / `panContentTo` / `panBy`:
+
+| Gesture | What it does |
+|---|---|
+| Pinch (2 fingers, anywhere in the canvas area) | zoom + pan, anchored between the fingers |
+| 1 finger on the drawing | the current tool |
+| 1 finger / mouse drag on the checkered padding | pan (a tap there with the select tool deselects) |
+| Alt+drag, middle-drag, Space+drag | pan |
+| Wheel / two-finger trackpad scroll | pan (Shift = horizontal) |
+| Ctrl/Cmd+wheel (= trackpad pinch) | zoom at the pointer |
+| Arrow keys (Shift = 120px) | pan |
+| Zoom −/+ buttons, Ctrl+= / Ctrl+− | zoom 1.25× around the centre of the view |
+| Zoom % button, Ctrl+0 | back to fit, centred, pan reset |
 
 **The browser's own page zoom is switched off** (2026-08) — a pinch used to
 scale the entire document, so the toolbar, the floating panels and the layers
@@ -167,29 +221,22 @@ them as one unit:
    Chrome and friends.
 2. `html,body{ touch-action: pan-x pan-y }` — naming only the pan values
    drops pinch-zoom *and* double-tap zoom for every descendant, while
-   one-finger scrolling inside `#canvasWrap` / `#sidebar` / `.panelBody`
-   still works. `#overlayCanvas` and `.panelHead` keep their stricter
-   `touch-action:none`; the intersection is still `none`, so nothing there
-   changes.
+   one-finger scrolling inside `#sidebar` / `.panelBody` still works.
+   `#canvasWrap` (and `#overlayCanvas`, `.panelHead`) go further with
+   `touch-action:none`, because every gesture over the canvas is the app's.
 3. `gesturestart` / `gesturechange` / `gestureend` → `preventDefault()` on
-   `document` (§ Zoom in the script) — iOS Safari ignores `user-scalable=no`
-   and drives page zoom from these non-standard events. `preventDefault`
-   here does not affect Pointer Events, so the canvas pinch is untouched.
+   `document` (§ Viewport in the script) — iOS Safari ignores
+   `user-scalable=no` and drives page zoom from these non-standard events.
+   `preventDefault` here does not affect Pointer Events, so the app's own
+   gestures are untouched.
 
-A pinch on the checkered padding around the image never reaches
-`#overlayCanvas`, so with page zoom gone it would do nothing at all. A small
-zoom-only pinch handler on `#canvasWrap` (`wrapPointers`/`wrapPinch`, § Zoom)
-covers that case; it deliberately does **not** move `scrollLeft/Top`, because
-`touch-action` still lets the browser scroll that container natively and doing
-both would pan at double speed. The `#overlayCanvas` pinch does pan by hand —
-it must, `touch-action:none` there leaves no native scrolling to inherit.
-
-Verified with CDP-synthesized pinches on an emulated Pixel 5: a control page
-zooms to `visualViewport.scale` 2.5, editor.html stays at 1 for a pinch on the
-toolbar and on the sidebar with the canvas zoom untouched at 44%; a pinch over
-the image zooms the canvas 44%→353% at page scale 1; a pinch on the padding
-zooms 44%→177%; one-finger scroll of `#canvasWrap` still moves it (0→120px);
-one-finger touch draw still creates a layer.
+Verified with CDP-synthesized pinches on an emulated phone and a desktop
+window: a pinch over the image and a pinch on the checkered padding both zoom
+the canvas with the pinched point staying put to within ~1 canvas pixel, at
+page scale 1; a two-finger slide moves the drawing by exactly the distance
+the fingers travelled; ctrl+wheel zooms at the mouse; one-finger scroll of
+the layers sidebar still works; and a shape drawn after any of it lands under
+the finger that drew it (checked with `getImageData`, not screenshots).
 
 ## Export
 
@@ -230,22 +277,37 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
   page-zoom lock described in § Zoom / Pan (the trade-off is deliberate: the
   browser's magnify-the-whole-page gesture is gone, the canvas has its own
   zoom, and the chrome scales with viewport width instead).
-- `#overlayCanvas { touch-action: none; }` — **critical.** Without it the
-  browser claims a one-finger drag as a page pan and fires `pointercancel`
-  mid-stroke, so drawing silently fails on real devices (note: an emulator
-  will still appear to work, so this can't be caught by emulation alone).
-- All input goes through **Pointer Events** (`pointerdown/move/up/cancel`
-  on `#overlayCanvas`, ~L1846), not mouse events, so mouse/touch/pen share
-  one path. `setPointerCapture` keeps the stream on the canvas.
-- Gestures: 1 finger = draw/select; 2 fingers = pinch-zoom + pan
-  (`pinchState`, `pinchCenterAndDist()`). Second finger landing aborts any
-  in-progress draw so a pinch never leaves a stray half-shape; the gesture
-  stays latched until *all* fingers lift so releasing one doesn't start
-  drawing with the other. Double-tap ⇒ `onDblClick` (touch doesn't fire
-  `dblclick` reliably) for editing text / rect labels. A pinch on the
-  checkered padding *around* the image zooms too, via the separate zoom-only
-  `#canvasWrap` handler (§ Zoom / Pan). A pinch on the toolbar, the panels or
-  the layers sidebar now does nothing at all — that is the point.
+- `#canvasWrap { touch-action: none; }` and `#overlayCanvas { touch-action:
+  none; }` — **critical.** Without them the browser claims a one-finger drag
+  as a page pan and fires `pointercancel` mid-stroke, so drawing silently
+  fails on real devices (note: an emulator will still appear to work, so this
+  can't be caught by emulation alone). The wrapper needs it as well because
+  the padding around the image is now a pan surface of ours, not a scroller.
+- All input goes through **Pointer Events**, in **one gesture layer**
+  (§ Pointer interaction, ~L3281): `pointerdown` on `#canvasWrap`,
+  `pointermove` / `pointerup` / `pointercancel` on `window`. Taking the
+  up/cancel from `window` is not optional — a finger that lifts somewhere
+  other than where it landed (off the image, past the window edge, or
+  cancelled by the browser) used to leave a stale entry in the pointer map,
+  and from then on every tap was read as the second finger of a pinch:
+  the app looked frozen, nothing could be drawn, only a reload fixed it.
+  `canvasWrap.setPointerCapture` keeps the stream coming, and a primary
+  pointer going down clears anything stale before it can block.
+- Gestures: 1 finger on the drawing = draw/select; 1 finger on the padding =
+  pan; 2 fingers anywhere = pinch (zoom + pan, anchored between them, see
+  § Zoom / Pan). A second finger landing aborts any in-progress draw
+  (`cancelActiveDraw`) so a pinch never leaves a stray half-shape or an empty
+  text box; lifting one of two continues as a one-finger pan rather than
+  suddenly drawing. A pinch on the toolbar, the panels or the layers sidebar
+  does nothing at all — that is the point.
+- **Double-tap / double-click** is counted in `maybeDoubleTap()`, for every
+  pointer type, not left to the native `dblclick`: touch never fires it
+  reliably, and pointer capture retargets the compatibility mouse events
+  (`mousedown`/`click`/`dblclick`) to the capture element, so a `dblclick`
+  listener on `#overlayCanvas` silently stops firing. Both halves must be
+  taps — a pointer that travelled more than a few px is a drag and resets the
+  counter, otherwise finishing a shape and tapping beside it popped an editor
+  open.
 - **Chrome layout (2026-08 rework).** The toolbar used to hold everything in
   one row: on phones and tablets that meant `overflow-x:auto`, so reaching a
   tool was a swipe through nine other buttons. It is now split in three:
@@ -331,9 +393,20 @@ on a selected rect).
   overflow extended *above/left* of the scrollable area and became
   genuinely unclickable (not just visually clipped — `getBoundingClientRect`
   lied about what was interactable). Fixed by dropping the centering and
-  using `margin:auto` on `#stage`/`#emptyState` instead — centers when
-  content fits, degrades to normal top-left scrollable behavior when it
-  doesn't. If you touch `#canvasWrap` layout, keep this pattern.
+  using `margin:auto` on `#stage`/`#emptyState` instead. The wrapper no
+  longer scrolls at all (the view is a transform, § Zoom / Pan), but keep the
+  `margin:auto` pattern: it is the rest position the pan is measured from.
+- **A flex item shrinks unless told not to**: `#stage` without
+  `flex:0 0 auto` stopped growing at the wrapper's width, while the two
+  canvases inside it (absolutely positioned, sized in CSS px) kept scaling
+  with the zoom. Everything derived from the stage's box — the drop shadow,
+  the centering, and any pan maths that reads its rect — was wrong past that
+  point, while the drawing still *looked* right.
+- **Pointer capture retargets the compatibility mouse events**: with
+  `canvasWrap.setPointerCapture()` in the gesture layer, `mousedown`,
+  `click`, `dblclick` and `auxclick` for that pointer fire at the wrapper,
+  not at `#overlayCanvas`. Any listener for those has to sit on the wrapper
+  (or be counted from pointer events, as `maybeDoubleTap` does).
 - **Detached `<video>.play()` hangs forever** if the element isn't
   attached to the DOM when you `getDisplayMedia()` into it (screenshot
   and live-recording code both attach off-screen via

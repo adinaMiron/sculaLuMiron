@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:220-863` · `editor.html:395-1038` · `markdown-editor.html:741-1384`
+`index.html:220-863` · `editor.html:409-1052` · `markdown-editor.html:741-1384`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -80,7 +80,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 3829 lines · "Image Marker" (canvas annotation)
+## editor.html — 4024 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -97,56 +97,64 @@ touch" for why and how.
 | Lines | Contents |
 |---|---|
 | 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
-| 15–388 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 15–406 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
 | 72–117 | Top toolbar |
-| 233–324 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
-| 325–392 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 395–1038 | **Shared nav + `ScuLaFolder`** |
-| 1044–1072 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1073–1109 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1110–1202 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1203–1320 | Markup: modals, stage, sidebar |
-| 1321–3829 | App script |
+| 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
+| 247–338 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
+| 339–406 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 409–1052 | **Shared nav + `ScuLaFolder`** |
+| 1058–1086 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1087–1123 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1124–1216 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1217–1334 | Markup: modals, stage, sidebar |
+| 1335–4022 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1321 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1523 | State — `state` object, style defaults, `PALETTE` |
-| 1570 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1612 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
-| 1636 | Loading an image |
-| 1669 | Screen snapshot |
-| 1709 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1855 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| 1957 | Zoom — buttons, Ctrl+scroll, **`gesture*` page-zoom blockers**, `#canvasWrap` pinch |
-| 2038 | Pan — `startPan`/`updatePan`/`endPan` |
-| 2060 | New canvas modal |
-| **2142** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 2637 | Layer list (sidebar) — `renderLayerList` |
-| **2685** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **2907** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3091** | **Selection panel contents** — `ROW_TYPES`, `syncSelectionPanel` |
-| 3145 | Text box auto-fit |
-| 3156 | Pointer/canvas coords — `canvasPoint()` |
-| 3187 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
-| 3518 | Text editing overlay — `openTextEditor` |
-| 3597 | Keyboard shortcuts |
-| 3625 | Save — `renderComposite`, **`saveOut()`** 3656 (one line onto `ScuLaFolder.save`) |
-| 3664 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 3813 | Fonts ready — `document.fonts.load()` startup pass |
+| 1335 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1537 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
+| 1585 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1627 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
+| 1651 | Loading an image |
+| 1685 | Screen snapshot |
+| 1725 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1871 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **1973** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2102 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2154 | New canvas modal |
+| **2236** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| 2731 | Layer list (sidebar) — `renderLayerList` |
+| **2779** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3001** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3185** | **Selection panel contents** — `ROW_TYPES` (3199), `syncSelectionPanel` |
+| 3239 | Text box auto-fit |
+| 3250 | Pointer/canvas coords — `canvasPoint()` |
+| **3281** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 3707 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 3790 | Keyboard shortcuts |
+| 3820 | Save — `renderComposite`, **`saveOut()`** 3851 (one line onto `ScuLaFolder.save`) |
+| 3859 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4008 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2142–2637); go straight to the
+Largest region by far is Rendering (2236–2731); go straight to the
 specific `drawX()` you need.
 
 **Zoom is the app's, never the browser's.** Three places cooperate and must
 stay together — the viewport meta (5–11), `html,body{touch-action}` (57–68)
-and the `gesture*` blockers in § Zoom. Remove any one and a pinch starts
+and the `gesture*` blockers in § Viewport. Remove any one and a pinch starts
 scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 
-**Two lists must stay in step:** `ROW_TYPES` (3105) says which property
+**The view is a transform, not a scroll.** `#canvasWrap` is
+`overflow:hidden; touch-action:none` and `#stage` carries
+`translate3d(panX, panY, 0)`. Nothing anywhere may go back to
+`scrollLeft`/`scrollTop` — that was what made panning lag and drift, and the
+pan clamp in `applyPan()` is the only thing deciding how far the view may
+travel.
+
+**Two lists must stay in step:** `ROW_TYPES` (3199) says which property
 rows show for which layer type, and the handlers in Toolbar wiring (2685)
 say which types each control actually writes to. Add a control → add it to
 both.

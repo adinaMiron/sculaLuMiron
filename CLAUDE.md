@@ -7,12 +7,12 @@ file). Open in a browser; that's the whole toolchain.
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `index.html` | 1647 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 3829 | 38k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `editor.html` | 4024 | 40k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 2706 | 24k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~78k tokens; `editor.html` alone is 38k. **Never
+Reading all three costs ~80k tokens; `editor.html` alone is 40k. **Never
 `view` an entire app file.** Locate first, then read a narrow range.
 
 ```bash
@@ -38,7 +38,7 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is triplicated
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:220-863`, `editor.html:395-1038`,
+in all three files (`index.html:220-863`, `editor.html:409-1052`,
 `markdown-editor.html:741-1384`). It carries the nav links, the UI-language
 toggle, **and `window.ScuLaFolder`** — which decides where every saved file
 goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
@@ -46,7 +46,7 @@ goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 
 ```bash
 sed -n '220,863p' index.html > /tmp/n1
-sed -n '395,1038p' editor.html > /tmp/n2
+sed -n '409,1052p' editor.html > /tmp/n2
 sed -n '741,1384p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
@@ -102,6 +102,12 @@ Xvfb; headless Chromium cannot decode media streams at all.
 
 1. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
    with zero Node.
+2. **`editor.html` undo is one step behind.** `pushHistory()` snapshots the
+   state *after* the change, so the first Ctrl+Z restores the state it is
+   already in and the very first action can never be undone. Fixing it means
+   snapshotting before the mutation (or keeping a "last committed" snapshot
+   that `pushHistory`/`undo`/`redo` shuffle) — a change to those three
+   functions, not to their ~20 call sites.
 
 ## Planned direction (design toward these)
 

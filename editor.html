@@ -119,11 +119,25 @@
   /* ---------- Main layout ---------- */
   #main{ flex:1; display:flex; min-height:0; }
   #canvasWrap{
-    flex:1; position:relative; overflow:auto; display:flex;
+    flex:1; position:relative; overflow:hidden; display:flex;
+    /* Every gesture in here - one-finger draw, one-finger pan on the padding,
+       two-finger pinch, wheel - is handled in JS, and the view is moved by a
+       transform on #stage rather than by scrolling this box. Leaving the
+       browser any share of it is what made panning lag and drift: its own
+       scrolling ran a frame behind ours and the two fought over the same
+       finger. touch-action:none hands us the whole gesture. */
+    touch-action: none;
+    overscroll-behavior: contain;
     background:
       repeating-conic-gradient(var(--surface-2) 0% 25%, var(--bg) 0% 50%) 0 0/22px 22px;
   }
-  #stage{ position:relative; box-shadow: 0 6px 26px rgba(0,0,0,.18); margin:auto; }
+  /* margin:auto is the rest position - centred while the drawing fits, flush
+     to the top-left once it doesn't - and the pan transform moves it from
+     there. flex:0 0 auto matters too: as a shrinkable flex item the stage
+     stopped growing at the width of the wrapper, while the drawing inside it
+     (absolutely positioned) kept getting bigger, which threw off both the
+     drop shadow and the centering. */
+  #stage{ position:relative; flex:0 0 auto; box-shadow: 0 6px 26px rgba(0,0,0,.18); margin:auto; }
   #baseCanvas, #overlayCanvas{ position:absolute; top:0; left:0; display:block; }
   #overlayCanvas{
     cursor: crosshair;
@@ -1544,6 +1558,7 @@ const state = {
   liveVideoMode: false, // true while a screen recording's live feed is being drawn into the canvas
   zoom: 1, // user zoom multiplier on top of fitScale; 1 = "fit the window"
   fitScale: 1, // auto-computed scale that fits the current content to the canvas area
+  panX: 0, panY: 0, // view offset in CSS px, applied as a transform on #stage (see Viewport)
   panning: false,
   drag: null,            // active drag/interaction descriptor
   editingLayerId: null,
@@ -1662,6 +1677,7 @@ function beginEditing(){
   state.undoStack = []; state.redoStack = [];
   state.canvasReady = true;
   state.zoom = 1;
+  state.panX = 0; state.panY = 0;
   setupStage();
   renderAll();
 }
@@ -1954,38 +1970,121 @@ function setupStage(){
 }
 window.addEventListener('resize', () => { if (state.canvasReady) setupStage(); renderAll(); });
 
-/* ===================== Zoom ===================== */
+/* ===================== Viewport: zoom + pan =====================
+   The view is a pure transform of #stage: its CSS width/height carry the
+   zoom (the canvas pixel buffers always stay at naturalW/H) and a CSS
+   translate carries the pan. Nothing scrolls #canvasWrap any more - a
+   transform takes any value we give it, follows a finger exactly and never
+   races the browser's own scrolling, which is what used to make panning lag,
+   drift and stick at the edges.
+
+   canvasPoint() and the text overlays read getBoundingClientRect(), which
+   already includes both, so drawing and hit-testing stay zoom/pan agnostic -
+   never hardcode pixel offsets against screen coordinates elsewhere. */
+
+function viewScale(){ return state.fitScale * state.zoom; }
+
 function applyZoomDisplay(){
-  const scale = state.fitScale * state.zoom;
+  const scale = viewScale();
   [baseCanvas, overlayCanvas].forEach(c => {
     c.style.width = (state.naturalW*scale) + 'px';
     c.style.height = (state.naturalH*scale) + 'px';
   });
   stage.style.width = (state.naturalW*scale) + 'px';
   stage.style.height = (state.naturalH*scale) + 'px';
-  const pct = Math.round(state.fitScale * state.zoom * 100);
-  document.getElementById('zoomLabelBtn').textContent = pct + '%';
+  applyPan();
+  document.getElementById('zoomLabelBtn').textContent = Math.round(scale * 100) + '%';
 }
+
+// set by whichever text overlay is open, so zooming or panning underneath one
+// keeps the textarea sitting on top of its layer
+let repositionEditor = null;
+
+// what the transform currently carries, so the stage's untransformed (rest)
+// position can be recovered from its rect without assuming how the layout
+// places it - #stage is centred by margin:auto while it fits and flush to the
+// top-left once it doesn't, and the clamp below has to hold for both
+let appliedPanX = 0, appliedPanY = 0;
+
+/* Clamp the pan so the drawing can always be brought back. Half of whichever
+   is smaller - the drawing or the viewport - must stay on screen: zoomed in,
+   that lets every edge be dragged well past the middle of the view (nothing
+   ever jams against an edge, and no floating panel can permanently cover a
+   corner); zoomed out, the drawing can be nudged aside but never lost. */
+function applyPan(){
+  if (state.canvasReady){
+    const r = stage.getBoundingClientRect();
+    const wr = canvasWrap.getBoundingClientRect();
+    const baseLeft = r.left - appliedPanX, baseTop = r.top - appliedPanY;
+    const keepX = Math.min(r.width, wr.width) / 2, keepY = Math.min(r.height, wr.height) / 2;
+    state.panX = Math.max(wr.left + keepX - baseLeft - r.width, Math.min(wr.right - keepX - baseLeft, state.panX));
+    state.panY = Math.max(wr.top + keepY - baseTop - r.height, Math.min(wr.bottom - keepY - baseTop, state.panY));
+  }
+  // whole pixels: a fractional translate resamples the canvas and makes the
+  // drawing look soft while it moves
+  appliedPanX = Math.round(state.panX); appliedPanY = Math.round(state.panY);
+  stage.style.transform = `translate3d(${appliedPanX}px, ${appliedPanY}px, 0)`;
+  if (repositionEditor) repositionEditor();
+}
+
+// The point of the drawing (natural canvas pixels) under a screen point...
+function clientToContent(cx, cy){
+  const r = stage.getBoundingClientRect(), s = viewScale();
+  return { x: (cx - r.left) / s, y: (cy - r.top) / s };
+}
+// ...and the inverse: move the view so content point `c` sits under the screen
+// point (cx, cy). This one line is "the zone I pinch stays under my fingers".
+function panContentTo(c, cx, cy){
+  const r = stage.getBoundingClientRect(), s = viewScale();
+  state.panX += cx - (r.left + c.x * s);
+  state.panY += cy - (r.top + c.y * s);
+  applyPan();
+}
+function panBy(dx, dy){ state.panX += dx; state.panY += dy; applyPan(); }
 
 function setZoom(newZoom){
   if (!state.canvasReady) return;
   state.zoom = Math.max(0.1, Math.min(8, newZoom));
   applyZoomDisplay();
 }
-function zoomIn(){ setZoom(state.zoom * 1.25); }
-function zoomOut(){ setZoom(state.zoom / 1.25); }
-function zoomReset(){ setZoom(1); } // back to "fit the window"
+// Zoom around a fixed screen point - the pinch centre, the mouse pointer, or
+// the middle of the viewport for the toolbar buttons.
+function setZoomAt(newZoom, clientX, clientY){
+  if (!state.canvasReady) return;
+  const anchor = clientToContent(clientX, clientY);
+  setZoom(newZoom);
+  panContentTo(anchor, clientX, clientY);
+}
+function viewportCenter(){
+  const r = canvasWrap.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+function zoomIn(){ const c = viewportCenter(); setZoomAt(state.zoom * 1.25, c.x, c.y); }
+function zoomOut(){ const c = viewportCenter(); setZoomAt(state.zoom / 1.25, c.x, c.y); }
+function zoomReset(){ // back to "fit the window", centred
+  if (!state.canvasReady) return;
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  applyZoomDisplay();
+}
 
 document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
 document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
 document.getElementById('zoomLabelBtn').addEventListener('click', zoomReset);
 
-// Ctrl+scroll zooms the canvas instead of the whole browser page - this is
-// the same shortcut people already expect from image/design tools.
+/* Wheel over the canvas area. Ctrl/Cmd+wheel zooms at the pointer - which is
+   also how a trackpad pinch arrives in every desktop browser - and a plain
+   wheel pans, since #canvasWrap no longer scrolls by itself. */
 canvasWrap.addEventListener('wheel', (e) => {
-  if (!e.ctrlKey || !state.canvasReady) return;
+  if (!state.canvasReady) return;
   e.preventDefault();
-  setZoom(state.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1));
+  if (e.ctrlKey || e.metaKey){
+    const factor = Math.min(2, Math.max(0.5, Math.exp(-e.deltaY * 0.0025)));
+    setZoomAt(state.zoom * factor, e.clientX, e.clientY);
+    return;
+  }
+  const k = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? canvasWrap.clientHeight : 1);
+  if (e.shiftKey && !e.deltaX) panBy(-e.deltaY * k, 0);
+  else panBy(-e.deltaX * k, -e.deltaY * k);
 }, { passive: false });
 
 /* --- Keep a pinch off the browser's page zoom ---------------------------
@@ -1995,67 +2094,62 @@ canvasWrap.addEventListener('wheel', (e) => {
    Android/Chrome; iOS Safari ignores user-scalable=no and drives its own
    page zoom from these non-standard gesture events, so block them too.
    preventDefault here does not touch Pointer Events, so the app's own
-   canvas pinch below is unaffected. */
+   canvas gestures below are unaffected. */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(type => {
   document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
 });
 
-/* A pinch that lands on the checkered padding around the image (or on the
-   empty state) is still "pinch the canvas" as far as the user is concerned,
-   but it never reaches #overlayCanvas, so the gesture pipeline further down
-   never sees it - and with page zoom now off it would otherwise do nothing.
-   Zoom only: panning stays with the browser, which scrolls #canvasWrap
-   natively (touch-action allows pan), so we must not move scrollLeft/Top as
-   well or the area would pan at double speed. */
-const wrapPointers = new Map();
-let wrapPinch = null;
-function wrapPinchDist(){
-  const p = [...wrapPointers.values()];
-  return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
-}
-canvasWrap.addEventListener('pointerdown', (e) => {
-  // gestures over the image itself belong to the canvas pipeline
-  if (e.pointerType !== 'touch' || e.target === overlayCanvas) return;
-  wrapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  // recomputed on every second finger, so lifting one and putting it back
-  // resumes from the current spread instead of jumping
-  if (wrapPointers.size === 2) wrapPinch = { startDist: wrapPinchDist(), startZoom: state.zoom };
-});
-canvasWrap.addEventListener('pointermove', (e) => {
-  if (!wrapPointers.has(e.pointerId)) return;
-  wrapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (!wrapPinch || wrapPointers.size !== 2) return;
-  const dist = wrapPinchDist();
-  if (dist > 0 && wrapPinch.startDist > 0) setZoom(wrapPinch.startZoom * (dist / wrapPinch.startDist));
-});
-function endWrapPointer(e){
-  wrapPointers.delete(e.pointerId);
-  if (wrapPointers.size === 0) wrapPinch = null;
-}
-canvasWrap.addEventListener('pointerup', endWrapPointer);
-canvasWrap.addEventListener('pointercancel', endWrapPointer);
-
-/* ===================== Pan ===================== */
+/* ===================== Pan =====================
+   Alt+drag, middle-click drag, Space+drag and a plain drag on the checkered
+   padding around the image all pan; fingers get here through the gesture
+   layer in § Pointer interaction. Every one of them moves state.panX/panY -
+   there is no scroll position left to move. */
 let panOrigin = null;
+let spaceHeld = false;
+
 function startPan(e){
   state.panning = true;
-  panOrigin = { x: e.clientX, y: e.clientY, scrollLeft: canvasWrap.scrollLeft, scrollTop: canvasWrap.scrollTop };
+  panOrigin = { x: e.clientX, y: e.clientY, panX: state.panX, panY: state.panY, moved: 0 };
   overlayCanvas.classList.add('panning');
 }
 function updatePan(e){
-  canvasWrap.scrollLeft = panOrigin.scrollLeft - (e.clientX - panOrigin.x);
-  canvasWrap.scrollTop = panOrigin.scrollTop - (e.clientY - panOrigin.y);
+  if (!panOrigin) return;
+  const dx = e.clientX - panOrigin.x, dy = e.clientY - panOrigin.y;
+  panOrigin.moved = Math.max(panOrigin.moved, Math.hypot(dx, dy));
+  state.panX = panOrigin.panX + dx;
+  state.panY = panOrigin.panY + dy;
+  applyPan();
 }
+// how far this pan actually travelled, so a pan that never moved can be
+// treated as the tap it really was
+function panMoved(){ return panOrigin ? panOrigin.moved : 0; }
 function endPan(){
   state.panning = false;
+  panOrigin = null;
   overlayCanvas.classList.remove('panning');
 }
-// hint that Alt+drag will pan, even before the drag actually starts
-window.addEventListener('keydown', (e) => { if (e.key === 'Alt') overlayCanvas.classList.add('altPanHover'); });
-window.addEventListener('keyup', (e) => { if (e.key === 'Alt') overlayCanvas.classList.remove('altPanHover'); });
-window.addEventListener('blur', () => overlayCanvas.classList.remove('altPanHover'));
-// middle-click's default auxclick behavior (e.g. opening links) shouldn't fire over the canvas
-overlayCanvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+
+// hint that Alt+drag / Space+drag will pan, even before the drag starts
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Alt') overlayCanvas.classList.add('altPanHover');
+  // Space pans only while nothing else holds the keyboard: a focused button
+  // or text field must keep its own meaning for the space bar.
+  const idle = !document.activeElement || document.activeElement === document.body || document.activeElement === overlayCanvas;
+  if (e.code === 'Space' && idle && !spaceHeld){
+    spaceHeld = true;
+    e.preventDefault();
+    overlayCanvas.classList.add('altPanHover');
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'Alt') overlayCanvas.classList.remove('altPanHover');
+  if (e.code === 'Space'){ spaceHeld = false; overlayCanvas.classList.remove('altPanHover'); }
+});
+window.addEventListener('blur', () => { spaceHeld = false; overlayCanvas.classList.remove('altPanHover'); });
+// middle-click's default auxclick behavior (e.g. opening links) shouldn't fire
+// over the canvas. On the wrapper, not the canvas: pointer capture retargets
+// the compatibility mouse events to whatever element holds the capture.
+canvasWrap.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
 
 /* ===================== New canvas modal ===================== */
 const newCanvasOverlay = document.getElementById('newCanvasOverlay');
@@ -3185,112 +3279,209 @@ function hitLayer(p){
 }
 
 /* ===================== Pointer interaction (mouse + touch + stylus) =====================
-   Pointer Events give us one code path for mouse, finger and stylus. Touch
-   gestures with 2+ fingers are intercepted first and treated as pinch-zoom /
-   two-finger pan (the touch equivalents of Ctrl+scroll and Alt+drag), since
-   those modifier-key shortcuts are unreachable without a keyboard. */
-const activePointers = new Map();
-let pinchState = null;
-// the textarea currently open from openTextEditor(), so a pinch-zoom's second
-// finger can tell a genuine edit apart from the stray empty box the tool's
-// first finger just created (see the pointerdown handler below)
+   One gesture layer for the whole canvas area. Everything is listened for on
+   #canvasWrap, so a finger on the checkered padding is handled exactly like a
+   finger on the image, and every move/up/cancel is taken from `window`, so a
+   finger that lifts somewhere else - off the image, outside the window, or
+   cancelled by the browser - can never leave a stale entry behind. That is
+   what used to happen: one missed pointerup and the app stayed latched in
+   "two fingers are down", after which every later tap was read as the start
+   of a pinch and nothing could be drawn again until reload.
+
+     1 finger on the image   -> the current tool (draw / select / text)
+     1 finger on the padding -> pan
+     2 fingers anywhere      -> pinch: zoom around the point between them,
+                                which stays pinned under them as they move
+     Alt / middle / Space + drag, wheel, Ctrl+wheel -> the mouse equivalents
+
+   Pointer Events give all three input kinds one code path; the map is keyed
+   by pointerId, so mouse, finger and stylus can never confuse each other. */
+const pointers = new Map();   // pointerId -> {x, y, type}
+let gesture = null;           // null | {mode:'draw'|'pan'|'pinch', ...}
+
+// the textarea currently open from openTextEditor(), so a pinch's second
+// finger can tell a genuine edit apart from the stray empty box the text
+// tool's first finger just created
 let activeTextEditor = null;
 
-function pinchCenterAndDist(){
-  const pts = [...activePointers.values()];
-  const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
-  return {
-    dist: Math.hypot(dx, dy),
-    cx: (pts[0].x + pts[1].x) / 2,
-    cy: (pts[0].y + pts[1].y) / 2
+// Is this screen point over the drawing itself (as opposed to the padding
+// around it)? Geometry, not event.target: the answer must be the same
+// whether the event arrived on the canvas, the stage or the wrapper.
+function overImage(clientX, clientY){
+  if (!state.canvasReady) return false;
+  const r = overlayCanvas.getBoundingClientRect();
+  return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+}
+
+// Give up whatever single-pointer interaction was running, without committing
+// it - used when a second finger turns the interaction into a gesture.
+function cancelActiveDraw(){
+  if (state.drag){ state.drag = null; renderAll(); }
+  if (state.panning) endPan();
+  // with the text tool selected, the first finger of this same pinch already
+  // landed on the canvas and opened a brand-new empty text box under it -
+  // that is the start of a zoom gesture, not "start typing", so undo it the
+  // same way blurring an untouched new box already does
+  if (activeTextEditor && activeTextEditor.isNew && activeTextEditor.l.text === ''){
+    activeTextEditor.ta.blur();
+  }
+}
+
+// Forget every pointer and gesture. Cheap insurance called whenever the app
+// cannot know what the input devices are doing any more.
+function resetGesture(){
+  pointers.clear();
+  gesture = null;
+  if (state.panning) endPan();
+  if (state.drag){ state.drag = null; renderAll(); }
+}
+
+function beginPinch(){
+  const ids = [...pointers.keys()].slice(0, 2);
+  const a = pointers.get(ids[0]), b = pointers.get(ids[1]);
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  gesture = {
+    mode: 'pinch', ids,
+    startDist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    startZoom: state.zoom,
+    // the bit of the drawing between the fingers right now; it is put back
+    // under them on every move, which is what keeps the pinched zone in focus
+    anchor: clientToContent(cx, cy)
   };
 }
 
-overlayCanvas.addEventListener('pointerdown', (e) => {
-  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-  if (e.pointerType === 'touch' && activePointers.size === 2){
-    // second finger down: abandon whatever single-finger draw had started and
-    // switch to a gesture, so a pinch never leaves a stray half-drawn shape
-    if (state.drag){ state.drag = null; renderAll(); }
-    if (state.panning) endPan();
-    // with the text tool selected, the first finger of this same pinch
-    // already landed on the canvas and opened a brand-new empty text box
-    // under it - that's the start of a zoom gesture, not "start typing", so
-    // undo it the same way blurring an untouched new box already does
-    if (activeTextEditor && activeTextEditor.isNew && activeTextEditor.l.text === ''){
-      activeTextEditor.ta.blur();
-    }
-    const g = pinchCenterAndDist();
-    pinchState = {
-      startDist: g.dist, startZoom: state.zoom,
-      lastCx: g.cx, lastCy: g.cy,
-      startScrollLeft: canvasWrap.scrollLeft, startScrollTop: canvasWrap.scrollTop
-    };
-    return;
-  }
-  if (activePointers.size > 1) return; // ignore extra fingers beyond the gesture
-  try { overlayCanvas.setPointerCapture(e.pointerId); } catch(_){}
-  onDown(e);
-});
-
-overlayCanvas.addEventListener('pointermove', (e) => {
-  if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-  if (pinchState && activePointers.size >= 2){
-    e.preventDefault();
-    const g = pinchCenterAndDist();
-    if (g.dist > 0 && pinchState.startDist > 0){
-      setZoom(pinchState.startZoom * (g.dist / pinchState.startDist));
-    }
-    // moving both fingers together pans
-    canvasWrap.scrollLeft -= (g.cx - pinchState.lastCx);
-    canvasWrap.scrollTop  -= (g.cy - pinchState.lastCy);
-    pinchState.lastCx = g.cx; pinchState.lastCy = g.cy;
-    return;
-  }
-  onMove(e);
-});
-
-function endPointer(e){
-  activePointers.delete(e.pointerId);
-  if (pinchState){
-    // keep the gesture alive until every finger is lifted, so releasing one
-    // finger mid-pinch doesn't suddenly start drawing with the other
-    if (activePointers.size === 0) pinchState = null;
-    return;
-  }
-  onUp(e);
+function updatePinch(){
+  const a = pointers.get(gesture.ids[0]), b = pointers.get(gesture.ids[1]);
+  if (!a || !b) return;
+  const dist = Math.hypot(a.x - b.x, a.y - b.y);
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  if (dist > 0) setZoom(gesture.startZoom * (dist / gesture.startDist));
+  // one call, both jobs: spreading the fingers zooms, sliding them pans, and
+  // any mix of the two lands the anchor exactly under the fingers again
+  panContentTo(gesture.anchor, cx, cy);
 }
-overlayCanvas.addEventListener('pointerup', endPointer);
-overlayCanvas.addEventListener('pointercancel', endPointer);
-// pointer capture keeps events coming to the canvas, but a mouse released
-// outside the window still needs a safety net
-window.addEventListener('pointerup', (e) => { if (!activePointers.has(e.pointerId) && (state.drag || state.panning)) onUp(e); });
 
-overlayCanvas.addEventListener('dblclick', onDblClick);
+canvasWrap.addEventListener('pointerdown', (e) => {
+  // right / back / forward buttons are not drawing input
+  if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
+  // A primary pointer going down means nothing else can still be down: drop
+  // anything a missed pointerup or cancel left behind before it can block us.
+  if (e.isPrimary && !pointers.has(e.pointerId)) resetGesture();
 
-// double-tap = double-click (touch doesn't fire dblclick reliably); used to
-// edit text and rect labels
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+  // capture on the wrapper, not the canvas: the gesture keeps its stream even
+  // when a finger wanders onto the padding or past the edge of the image
+  try { canvasWrap.setPointerCapture(e.pointerId); } catch(_){}
+
+  if (!state.canvasReady) return;
+
+  if (pointers.size >= 2){
+    cancelActiveDraw();
+    // recomputed on every extra finger, so adding or swapping one resumes
+    // from the current spread and position instead of jumping
+    beginPinch();
+    e.preventDefault();
+    return;
+  }
+
+  const onPadding = !overImage(e.clientX, e.clientY);
+  if (e.altKey || e.button === 1 || spaceHeld || onPadding){
+    e.preventDefault();
+    gesture = { mode: 'pan', id: e.pointerId, fromPadding: onPadding && !e.altKey && e.button !== 1 };
+    startPan(e);
+    return;
+  }
+
+  gesture = { mode: 'draw', id: e.pointerId, downX: e.clientX, downY: e.clientY };
+  onDown(e);
+}, { passive: false });
+
+window.addEventListener('pointermove', (e) => {
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (!gesture) return;
+
+  if (gesture.mode === 'pinch'){ e.preventDefault(); updatePinch(); return; }
+  if (e.pointerId !== gesture.id) return;
+  if (gesture.mode === 'pan'){ e.preventDefault(); updatePan(e); return; }
+  onMove(e);
+}, { passive: false });
+
+function releasePointer(e){
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  try { canvasWrap.releasePointerCapture(e.pointerId); } catch(_){}
+  if (!gesture) return;
+
+  if (gesture.mode === 'pinch'){
+    if (pointers.size >= 2){
+      beginPinch();               // rebase on the fingers still down
+    } else if (pointers.size === 1){
+      // one finger left: keep panning with it rather than suddenly drawing
+      const id = [...pointers.keys()][0], p = pointers.get(id);
+      gesture = { mode: 'pan', id, fromPadding: false };
+      startPan({ clientX: p.x, clientY: p.y });
+    } else {
+      gesture = null;
+      endPan();
+    }
+    return;
+  }
+  if (e.pointerId !== gesture.id) return;
+
+  if (gesture.mode === 'pan'){
+    const wasTap = panMoved() < 4 && gesture.fromPadding;
+    endPan();
+    gesture = null;
+    // a tap on the empty area around the drawing is "click away to deselect"
+    if (wasTap && e.type === 'pointerup' && state.tool === 'select' && state.selection.length){
+      state.selection = [];
+      renderAll();
+    }
+    return;
+  }
+
+  const travelled = Math.hypot(e.clientX - gesture.downX, e.clientY - gesture.downY);
+  gesture = null;
+  onUp(e);
+  if (e.type === 'pointerup') maybeDoubleTap(e, travelled);
+}
+window.addEventListener('pointerup', releasePointer);
+window.addEventListener('pointercancel', releasePointer);
+// nothing can be known about the input devices across these, so start clean
+window.addEventListener('blur', resetGesture);
+document.addEventListener('visibilitychange', () => { if (document.hidden) resetGesture(); });
+
+/* Double-click / double-tap - two taps of the same pointer over the same
+   spot - opens a text layer or a rectangle's label for editing.
+
+   Counted here rather than left to the native `dblclick` event, for two
+   reasons: touch never fires it reliably, and the pointer capture this
+   gesture layer takes retargets the compatibility mouse events (mousedown,
+   click, dblclick) away from the canvas to whatever element holds the
+   capture, so a listener on #overlayCanvas would silently stop firing. One
+   counter covers mouse, finger and stylus alike. */
 let lastTapTime = 0, lastTapX = 0, lastTapY = 0;
-overlayCanvas.addEventListener('pointerup', (e) => {
-  if (e.pointerType !== 'touch') return;
+function maybeDoubleTap(e, travelled){
+  const slack = e.pointerType === 'touch' ? 30 : 10; // fingers land less precisely than a mouse
+  // Only a tap counts, on both halves of the pair. Finishing a drag near
+  // where the last one ended is not someone asking to edit text - that was
+  // how a shape drawn and then a tap beside it could pop an editor open.
+  if (travelled > slack){ lastTapTime = 0; return; }
   const now = Date.now();
-  if (now - lastTapTime < 300 && Math.hypot(e.clientX-lastTapX, e.clientY-lastTapY) < 30){
+  if (now - lastTapTime < 400 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < slack){
     lastTapTime = 0;
     onDblClick(e);
   } else {
     lastTapTime = now; lastTapX = e.clientX; lastTapY = e.clientY;
   }
-});
+}
 
 function onDown(e){
   if (!state.canvasReady) return;
-  if (e.altKey || e.button === 1){
-    e.preventDefault();
-    startPan(e);
-    return;
-  }
+  // Panning (Alt / middle-click / Space / a drag on the padding) never gets
+  // this far - the gesture layer above routes it straight to startPan.
   e.preventDefault(); // keep focus behaviour predictable for the text editors we open below
   const p = canvasPoint(e);
 
@@ -3393,7 +3584,6 @@ function newBaseLayer(type, p){
 }
 
 function onMove(e){
-  if (state.panning){ updatePan(e); return; }
   if (!state.drag || !state.canvasReady) return;
   const p = canvasPoint(e);
   const d = state.drag;
@@ -3490,7 +3680,6 @@ function resizeByHandle(l, orig, handle, p){
 }
 
 function onUp(){
-  if (state.panning){ endPan(); return; }
   if (!state.drag) return;
   const d = state.drag;
   if (d.mode.startsWith('create-')){
@@ -3533,11 +3722,13 @@ function openTextEditor(l, isNew){
   document.body.appendChild(ta);
   activeTextEditor = { ta, l, isNew };
   positionEditor(ta, l);
+  repositionEditor = () => positionEditor(ta, l);
   ta.focus();
   function commit(){
     l.text = ta.value;
     fitTextBox(l);
     ta.remove();
+    repositionEditor = null;
     state.editingLayerId = null;
     if (activeTextEditor && activeTextEditor.ta === ta) activeTextEditor = null;
     if (l.text.trim() === '' && isNew){ state.layers = state.layers.filter(x=>x.id!==l.id); }
@@ -3582,10 +3773,12 @@ function openRectTextEditor(l){
     ta.style.transformOrigin = 'center center';
   };
   posEditor();
+  repositionEditor = posEditor;
   ta.focus();
   function commit(){
     l.text = ta.value;
     ta.remove();
+    repositionEditor = null;
     state.editingLayerId = null;
     pushHistory(); renderAll();
   }
@@ -3612,10 +3805,12 @@ window.addEventListener('keydown', (e) => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && state.canvasReady){
     e.preventDefault();
     const step = e.shiftKey ? 120 : 40;
-    if (e.key === 'ArrowUp') canvasWrap.scrollTop -= step;
-    if (e.key === 'ArrowDown') canvasWrap.scrollTop += step;
-    if (e.key === 'ArrowLeft') canvasWrap.scrollLeft -= step;
-    if (e.key === 'ArrowRight') canvasWrap.scrollLeft += step;
+    // the view moves the opposite way to the drawing: pressing Right looks
+    // further right, so the drawing slides left
+    if (e.key === 'ArrowUp') panBy(0, step);
+    if (e.key === 'ArrowDown') panBy(0, -step);
+    if (e.key === 'ArrowLeft') panBy(step, 0);
+    if (e.key === 'ArrowRight') panBy(-step, 0);
     return;
   }
   const map = { v:'select', t:'text', r:'rect', o:'ellipse', d:'rhombus', p:'pencil', a:'arrow', h:'highlight', l:'line', s:'splineArrow' };
