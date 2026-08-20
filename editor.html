@@ -55,12 +55,12 @@
 
   /* ---------- Top toolbar ---------- */
   #toolbar{
-    display:flex; align-items:center; gap:0.714rem;
-    padding:0.571rem 0.857rem; background:var(--surface);
+    display:flex; align-items:center; gap:0.429rem;
+    padding:0.5rem 0.714rem; background:var(--surface);
     border-bottom:1px solid var(--border);
     flex-wrap:wrap; box-shadow: var(--shadow); z-index:5;
   }
-  #toolbar .grp{ display:flex; align-items:center; gap:0.286rem; padding:0 0.571rem; border-right:1px solid var(--border);}
+  #toolbar .grp{ display:flex; align-items:center; gap:0.286rem; padding:0 0.429rem; border-right:1px solid var(--border);}
   #toolbar .grp:last-child{ border-right:none; }
   button.tool, button.action{
     border:1px solid var(--border); background:var(--surface); color:var(--text);
@@ -216,26 +216,126 @@
   #recordingControls{ display:flex; align-items:center; gap:0.571rem; }
   #recVolume{ width:6.429rem; }
 
-  /* Keep the toolbar one swipeable row on phones AND tablets - wrapping ate
-     485px of a 664px phone screen and 285px on an iPad. */
-  @media (max-width: 1180px){
-    #toolbar{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    #toolbar .grp{ flex:0 0 auto; }
+  /* ---------- Floating, draggable panels ---------- */
+  /* Tools and per-element properties used to live in the top bar, which
+     meant one very long horizontal strip you had to swipe through to reach
+     a tool. They are now free-floating panels the person can drag wherever
+     they want, so every tool is on screen at once and nothing scrolls. */
+  .panel{
+    position:fixed; z-index:30;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    display:flex; flex-direction:column;
+    max-height:calc(100vh - 1.5rem);
+  }
+  .panel[hidden]{ display:none; }
+  .panelHead{
+    display:flex; align-items:center; gap:0.286rem;
+    padding:0.286rem 0.286rem 0.286rem 0.571rem;
+    background:var(--surface-2); border-bottom:1px solid var(--border);
+    border-radius:var(--radius) var(--radius) 0 0;
+    cursor:grab;
+    /* Same lesson as #overlayCanvas: without this the browser claims the
+       drag as a page pan and fires pointercancel, so panels can't be moved
+       by touch at all. */
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .panel.dragging{ box-shadow:0 8px 28px rgba(0,0,0,.5); }
+  .panel.dragging .panelHead{ cursor:grabbing; }
+  .panelHead .ptitle{
+    flex:1; font-size:0.714rem; font-weight:600; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text-2); white-space:nowrap;
+  }
+  .panelHead .pbtn{
+    border:none; background:none; color:var(--text-2); cursor:pointer;
+    font-size:0.786rem; line-height:1; padding:0.286rem 0.357rem;
+    border-radius:0.286rem;
+  }
+  .panelHead .pbtn:hover{ background:var(--accent-soft); color:var(--text); }
+  .panelBody{
+    padding:0.5rem; overflow-y:auto; overflow-x:hidden;
+    display:flex; flex-direction:column; gap:0.5rem;
+  }
+  .panel.collapsed .panelBody{ display:none; }
+  .panel.collapsed .panelHead{ border-bottom:none; border-radius:var(--radius); }
+  .panelCap{
+    font-size:0.643rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-3); margin-bottom:0.214rem;
+  }
+
+  /* ---------- Tools panel ---------- */
+  #toolbar button.action.panelToggle.active{
+    background:var(--accent); color:var(--on-accent); border-color:var(--accent);
+  }
+
+  #toolsPanel{ width:15.6rem; }
+  #toolsPanel .toolGrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:0.286rem; }
+  #toolsPanel button.tool{
+    flex-direction:column; gap:0.143rem; justify-content:center;
+    padding:0.357rem 0.143rem; min-width:0; text-align:center;
+  }
+  #toolsPanel .ticon{ font-size:1.071rem; line-height:1.15; }
+  #toolsPanel .tlabel{
+    font-size:0.55rem; line-height:1.15; max-width:100%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  /* ---------- Selection panel ---------- */
+  #selectionPanel{ width:15.5rem; }
+  .selRow{ display:flex; flex-direction:column; gap:0.286rem; }
+  .selRow[hidden]{ display:none; }
+  .selRow.inline{ flex-direction:row; align-items:center; gap:0.429rem; }
+  .selRow .rlab{
+    font-size:0.714rem; color:var(--text-2); letter-spacing:.02em; white-space:nowrap;
+  }
+  .selRow.inline .rlab{ flex:0 0 5.2rem; }
+  .selRow.inline input[type=range]{ flex:1; width:auto; min-width:0; }
+  .selRow .rctl{ display:flex; flex-wrap:wrap; align-items:center; gap:0.357rem; }
+  /* display:contents so the swatches become flex items of .rctl directly -
+     that way the custom-colour input wraps in the same run instead of being
+     bumped to its own line under a full-width palette. */
+  #palette, #fillPalette{ display:contents; }
+  #selectionPanel #fontSelect{ width:100%; }
+  #selectionPanel .roughRow button{ flex:1; justify-content:center; padding:0.357rem 0.286rem; font-size:0.786rem; }
+  #selectionPanel #deleteBtn{ width:100%; justify-content:center; }
+  #selEmpty{ font-size:0.714rem; color:var(--text-3); line-height:1.5; }
+
+  /* The toolbar keeps only document-level actions now, and it wraps instead
+     of scrolling - see docs note in HANDOFF.md. */
+  @media (max-width: 900px){
+    /* Icon-only in the top bar: the labels are what made it overflow, and
+       every button keeps its title/aria-label. */
+    #toolbar .tlabel{ display:none; }
+    #toolbar button.action{ gap:0; padding-left:0.5rem; padding-right:0.5rem; }
+    /* The dividers cost ~9px per group, which is a whole button's worth of
+       width once four groups are icon-only. */
+    #toolbar .grp{ padding:0 0.143rem; border-right:none; }
+    #toolbar{ gap:0.286rem; }
   }
 
   /* ---------- Small screens ---------- */
   @media (max-width: 720px){
-    #toolbar .grp{ padding:0 0.357rem; }
     #newCanvasModal, #recordingModal{ width:94vw; }
     /* stack layers panel under the canvas instead of stealing canvas width */
     #main{ flex-direction:column; }
     #canvasWrap{ min-height:0; }
     #sidebar{
-      width:100%; max-height:34vh; border-left:none;
+      width:100%; max-height:26vh; border-left:none;
       border-top:1px solid var(--border);
     }
     #layerActions{ padding:0.429rem 0.5rem; }
     #hint{ display:none; } /* keyboard-shortcut hints are irrelevant on touch */
+  }
+
+  /* Narrow phones: drop the tool captions so the palette stays small enough
+     to leave real canvas visible next to it. */
+  @media (max-width: 520px){
+    #toolsPanel{ width:11.2rem; }
+    #toolsPanel .tlabel{ display:none; }
+    #selectionPanel{ width:14rem; }
+    .selRow.inline .rlab{ flex:0 0 4.4rem; }
   }
 
   /* ---------- Touch devices: bigger hit targets ---------- */
@@ -246,6 +346,10 @@
     button.tool, button.action{
       min-height:44px; padding:10px 14px; font-size:15px;
     }
+    /* ...but the grid cells are square-ish, so the wide side padding would
+       squeeze the icon out. Height still clears 44px. */
+    #toolsPanel button.tool{ padding:6px 2px; }
+    #toolbar button.action{ padding-left:10px; padding-right:10px; }
     #layerActions button{ min-height:38px; padding:8px 12px; font-size:14px; }
     .layerItem{ min-height:44px; padding:10px 8px; font-size:14px; }
     .layerItem .micro{ min-width:34px; min-height:34px; font-size:16px; }
@@ -255,8 +359,10 @@
     input[type=number]{ width:64px; }
     input[type=range]{ height:34px; }
     #toolbar label{ font-size:12px; }
+    .panelHead .pbtn{ min-width:34px; min-height:34px; font-size:15px; }
+    #selectionPanel .roughRow button{ padding:8px 4px; font-size:13px; }
     /* don't let a long-press on chrome start a text selection */
-    #toolbar, #sidebar, #site-nav{
+    #toolbar, #sidebar, #site-nav, .panel{
       -webkit-user-select:none; user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
@@ -347,13 +453,16 @@
 <!-- ===== end toolbar nav ===== -->
 <div id="app">
 
+  <!-- Top bar: document-level actions only. Everything that acts on a
+       drawing element lives in the floating #toolsPanel / #selectionPanel
+       below, so this bar stays short and never needs to scroll. -->
   <div id="toolbar">
     <div class="grp">
       <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg">
-      <button class="action" id="openBtn" data-i="openImage">📂 Open image</button>
-      <button class="action" id="newCanvasBtn" data-i="newCanvas">🖼 New canvas</button>
-      <button class="action" id="saveBtn" data-i="saveImage">💾 Save image</button>
-      <button class="action" id="saveAllSizesBtn" data-i="saveAllSizes" data-i-title="saveAllSizesTip" title="Export this drawing at every preset size up to its current size, bundled in one zip">📐 Save all sizes</button>
+      <button class="action" id="openBtn" data-i-title="openImageTip" data-i-aria="openImageTip" title="Open a JPG or PNG image" aria-label="Open a JPG or PNG image"><span class="ticon">📂</span><span class="tlabel" data-i="openImage">Open image</span></button>
+      <button class="action" id="newCanvasBtn" data-i-title="newCanvasTip" data-i-aria="newCanvasTip" title="Start from a blank canvas" aria-label="Start from a blank canvas"><span class="ticon">🖼</span><span class="tlabel" data-i="newCanvas">New canvas</span></button>
+      <button class="action" id="saveBtn" data-i-title="saveImageTip" data-i-aria="saveImageTip" title="Save the edited image" aria-label="Save the edited image"><span class="ticon">💾</span><span class="tlabel" data-i="saveImage">Save image</span></button>
+      <button class="action" id="saveAllSizesBtn" data-i-title="saveAllSizesTip" data-i-aria="saveAllSizesTitle" title="Export this drawing at every preset size up to its current size, bundled in one zip" aria-label="Save all sizes"><span class="ticon">📐</span><span class="tlabel" data-i="saveAllSizes">Save all sizes</span></button>
     </div>
 
     <div class="grp" id="zoomGrp">
@@ -363,87 +472,137 @@
     </div>
 
     <div class="grp">
-      <button class="action" id="snapshotBtn" data-i="screenshot" data-i-title="screenshotTip" title="Capture your screen and load it into the editor">🖥️ Screenshot</button>
-      <button class="action" id="recordBtn" data-i="record" data-i-title="recordTip" title="Record your screen (with audio) directly into the canvas, so you can draw on it live">⏺ Record</button>
-      <button class="action" id="recPauseBtn" data-i="pauseLabel" data-i-title="recPauseTip" title="Pause / resume recording" style="display:none;">⏸ Pause</button>
+      <button class="action" id="snapshotBtn" data-i-title="screenshotTip" data-i-aria="screenshot" title="Capture your screen and load it into the editor" aria-label="Screenshot"><span class="ticon">🖥️</span><span class="tlabel" data-i="screenshot">Screenshot</span></button>
+      <button class="action" id="recordBtn" data-i-title="recordTip" data-i-aria="record" title="Record your screen (with audio) directly into the canvas, so you can draw on it live" aria-label="Record"><span class="ticon" id="recordIcon">⏺</span><span class="tlabel" data-i="record">Record</span></button>
+      <button class="action" id="recPauseBtn" data-i-title="recPauseTip" title="Pause / resume recording" style="display:none;"><span class="ticon" id="recPauseIcon">⏸</span><span class="tlabel" data-i="pauseLabel">Pause</span></button>
     </div>
 
     <div class="grp">
-      <button class="tool" data-tool="select" data-i="toolSelect" data-i-title="toolSelectTip" title="Select / transform (V)">↖ Select</button>
-      <button class="tool" data-tool="text" data-i="toolText" data-i-title="toolTextTip" title="Text (T)">T Text</button>
-      <button class="tool" data-tool="rect" data-i="toolRect" data-i-title="toolRectTip" title="Rectangle - hold Ctrl for a perfect square (R)">▭ Rect</button>
-      <button class="tool" data-tool="ellipse" data-i="toolEllipse" data-i-title="toolEllipseTip" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)">◯ Ellipse</button>
-      <button class="tool" data-tool="rhombus" data-i="toolRhombus" data-i-title="toolRhombusTip" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)">◇ Rhombus</button>
-      <button class="tool" data-tool="pencil" data-i="toolPencil" data-i-title="toolPencilTip" title="Freehand (P)">✎ Draw</button>
-      <button class="tool" data-tool="highlight" data-i="toolHighlight" data-i-title="toolHighlightTip" title="Highlight (H)">🖍 Highlight</button>
-      <button class="tool" data-tool="arrow" data-i="toolArrow" data-i-title="toolArrowTip" title="Arrow - hold Ctrl to snap horizontal/vertical (A)">↗ Arrow</button>
-      <button class="tool" data-tool="splineArrow" data-i="toolSplineArrow" data-i-title="toolSplineArrowTip" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)">↝ Spline Arrow</button>
-      <button class="tool" data-tool="line" data-i="toolLine" data-i-title="toolLineTip" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)">╱ Line</button>
+      <button class="action panelToggle" id="toggleToolsBtn" data-i-title="toggleToolsTip" data-i-aria="panelTools" title="Show / hide the tools palette" aria-label="Tools"><span class="ticon">🧰</span><span class="tlabel" data-i="panelTools">Tools</span></button>
+      <button class="action panelToggle" id="toggleSelectionBtn" data-i-title="toggleSelectionTip" data-i-aria="panelSelection" title="Show / hide the selection panel" aria-label="Selection"><span class="ticon">🎛</span><span class="tlabel" data-i="panelSelection">Selection</span></button>
+      <button class="action" id="resetPanelsBtn" data-i-title="resetPanelsTip" data-i-aria="resetPanelsTip" title="Move the panels back to their default spots" aria-label="Move the panels back to their default spots"><span class="ticon">⤢</span></button>
     </div>
+  </div>
 
-    <div class="grp">
-      <label data-i="lblFont">Font</label>
-      <select id="fontSelect">
-        <option value="Poppins">Poppins</option>
-        <option value="Raleway" selected>Raleway</option>
-        <option value="Roboto">Roboto</option>
-        <option value="Ink Free">Ink Free</option>
-        <option value="Noto Mono">Noto Mono</option>
-        <option value="Excalifont">Excalifont (hand-drawn)</option>
-        <option value="Nunito">Nunito</option>
-        <option value="Lilita One">Lilita One</option>
-        <option value="Comic Shanns Mono">Comic Shanns Mono</option>
-      </select>
-      <label data-i="lblFontSize">Size</label>
-      <input type="number" id="fontSize" value="28" min="6" max="300" style="width:4rem">
-      <button class="action" id="boldBtn" data-i-title="boldTip" title="Bold text" style="font-weight:700;">B</button>
+  <!-- ===== Floating tools palette ===== -->
+  <div class="panel" id="toolsPanel">
+    <div class="panelHead">
+      <span class="ptitle" data-i="panelTools">Tools</span>
+      <button class="pbtn panelCollapse" data-i-title="collapseTip" title="Collapse / expand" aria-expanded="true">▾</button>
+      <button class="pbtn panelClose" data-i-title="closePanelTip" title="Close panel">✕</button>
     </div>
-
-    <div class="grp" id="paletteGrp">
-      <label data-i="lblColor">Color</label>
-      <div id="palette" style="display:flex; gap:0.357rem;"></div>
-      <input type="color" id="customColor" value="#1e1d1c" data-i-title="customColorTip" title="Custom color">
+    <div class="panelBody">
+      <div>
+        <div class="panelCap" data-i="capBasic">Basic</div>
+        <div class="toolGrid">
+          <button class="tool" data-tool="select" data-i-title="toolSelectTip" data-i-aria="toolSelect" title="Select / transform (V)" aria-label="Select"><span class="ticon">↖</span><span class="tlabel" data-i="toolSelect">Select</span></button>
+          <button class="tool" data-tool="text" data-i-title="toolTextTip" data-i-aria="toolText" title="Text (T)" aria-label="Text"><span class="ticon">T</span><span class="tlabel" data-i="toolText">Text</span></button>
+          <button class="tool" data-tool="pencil" data-i-title="toolPencilTip" data-i-aria="toolPencil" title="Freehand (P)" aria-label="Draw"><span class="ticon">✎</span><span class="tlabel" data-i="toolPencil">Draw</span></button>
+          <button class="tool" data-tool="highlight" data-i-title="toolHighlightTip" data-i-aria="toolHighlight" title="Highlight (H)" aria-label="Highlight"><span class="ticon">🖍</span><span class="tlabel" data-i="toolHighlight">Highlight</span></button>
+        </div>
+      </div>
+      <div>
+        <div class="panelCap" data-i="capShapes">Shapes</div>
+        <div class="toolGrid">
+          <button class="tool" data-tool="line" data-i-title="toolLineTip" data-i-aria="toolLine" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)" aria-label="Line"><span class="ticon">╱</span><span class="tlabel" data-i="toolLine">Line</span></button>
+          <button class="tool" data-tool="rect" data-i-title="toolRectTip" data-i-aria="toolRect" title="Rectangle - hold Ctrl for a perfect square (R)" aria-label="Rect"><span class="ticon">▭</span><span class="tlabel" data-i="toolRect">Rect</span></button>
+          <button class="tool" data-tool="ellipse" data-i-title="toolEllipseTip" data-i-aria="toolEllipse" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)" aria-label="Ellipse"><span class="ticon">◯</span><span class="tlabel" data-i="toolEllipse">Ellipse</span></button>
+          <button class="tool" data-tool="rhombus" data-i-title="toolRhombusTip" data-i-aria="toolRhombus" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)" aria-label="Rhombus"><span class="ticon">◇</span><span class="tlabel" data-i="toolRhombus">Rhombus</span></button>
+        </div>
+      </div>
+      <div>
+        <div class="panelCap" data-i="capArrows">Arrows</div>
+        <div class="toolGrid">
+          <button class="tool" data-tool="arrow" data-i-title="toolArrowTip" data-i-aria="toolArrow" title="Arrow - hold Ctrl to snap horizontal/vertical (A)" aria-label="Arrow"><span class="ticon">↗</span><span class="tlabel" data-i="toolArrow">Arrow</span></button>
+          <button class="tool" data-tool="splineArrow" data-i-title="toolSplineArrowTip" data-i-aria="toolSplineArrow" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)" aria-label="Spline arrow"><span class="ticon">↝</span><span class="tlabel" data-i="toolSplineArrow">Spline</span></button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="grp" id="fillGrp">
-      <label data-i="lblFill">Fill</label>
-      <div id="fillPalette" style="display:flex; gap:0.357rem;"></div>
-      <input type="color" id="fillCustomColor" value="#ffffff" data-i-title="fillCustomColorTip" title="Custom fill color">
+  <!-- ===== Floating selection / properties panel =====
+       Rows are shown or hidden per element type by syncSelectionPanel(). -->
+  <div class="panel" id="selectionPanel">
+    <div class="panelHead">
+      <span class="ptitle" data-i="panelSelection">Selection</span>
+      <button class="pbtn panelCollapse" data-i-title="collapseTip" title="Collapse / expand" aria-expanded="true">▾</button>
+      <button class="pbtn panelClose" data-i-title="closePanelTip" title="Close panel">✕</button>
     </div>
+    <div class="panelBody">
+      <div id="selEmpty" data-i="selEmptyHint" hidden>These are the defaults for whatever you draw next.</div>
 
-    <div class="grp">
-      <label data-i="lblStroke">Stroke</label>
-      <input type="range" id="strokeWidth" min="1" max="40" value="4">
-      <span id="strokeWidthLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">4</span>
-    </div>
+      <div class="selRow" id="rowText">
+        <span class="rlab" data-i="lblFont">Font</span>
+        <select id="fontSelect">
+          <option value="Poppins">Poppins</option>
+          <option value="Raleway" selected>Raleway</option>
+          <option value="Roboto">Roboto</option>
+          <option value="Ink Free">Ink Free</option>
+          <option value="Noto Mono">Noto Mono</option>
+          <option value="Excalifont">Excalifont (hand-drawn)</option>
+          <option value="Nunito">Nunito</option>
+          <option value="Lilita One">Lilita One</option>
+          <option value="Comic Shanns Mono">Comic Shanns Mono</option>
+        </select>
+        <div class="rctl">
+          <span class="rlab" data-i="lblFontSize">Size</span>
+          <input type="number" id="fontSize" value="28" min="6" max="300" style="width:4.6rem">
+          <button class="action" id="boldBtn" data-i-title="boldTip" title="Bold text" aria-label="Bold" style="font-weight:700;">B</button>
+        </div>
+      </div>
 
-    <div class="grp" id="cornerGrp">
-      <label data-i="lblCornerRadius">Corner radius</label>
-      <input type="range" id="cornerRadius" min="0" max="80" value="6">
-      <span id="cornerRadiusLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">6</span>
-    </div>
+      <div class="selRow" id="rowColor">
+        <span class="rlab" data-i="lblColor">Color</span>
+        <div class="rctl">
+          <div id="palette"></div>
+          <input type="color" id="customColor" value="#1e1d1c" data-i-title="customColorTip" title="Custom color">
+        </div>
+      </div>
 
-    <div class="grp" id="arrowGrp">
-      <label data-i="lblHeadSize">Head size</label>
-      <input type="range" id="arrowHead" min="6" max="60" value="18">
-      <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--text-2); width:1.429rem;">18</span>
-    </div>
+      <div class="selRow" id="rowFill">
+        <span class="rlab" data-i="lblFill">Fill</span>
+        <div class="rctl">
+          <div id="fillPalette"></div>
+          <input type="color" id="fillCustomColor" value="#ffffff" data-i-title="fillCustomColorTip" title="Custom fill color">
+        </div>
+      </div>
 
-    <div class="grp">
-      <label data-i="lblSloppiness">Sloppiness</label>
-      <button class="action rough-btn" data-rough="0" data-i="roughArchitect" data-i-title="roughArchitectTip" title="Architect — precise lines">Architect</button>
-      <button class="action rough-btn" data-rough="1" data-i="roughArtist" data-i-title="roughArtistTip" title="Artist — a bit sketchy">Artist</button>
-      <button class="action rough-btn" data-rough="2" data-i="roughCartoonist" data-i-title="roughCartoonistTip" title="Cartoonist — very sketchy">Cartoonist</button>
-    </div>
+      <div class="selRow inline" id="rowStrokeW">
+        <span class="rlab" data-i="lblStroke">Stroke</span>
+        <input type="range" id="strokeWidth" min="1" max="40" value="4">
+        <span id="strokeWidthLabel" style="font-size:0.786rem; color:var(--text-2); width:1.6rem; text-align:right;">4</span>
+      </div>
 
-    <div class="grp">
-      <label data-i="lblOpacity">Opacity</label>
-      <input type="range" id="opacity" min="0" max="100" value="100">
-      <span id="opacityLabel" style="font-size:0.786rem; color:var(--text-2); width:2rem;">100%</span>
-    </div>
+      <div class="selRow inline" id="rowCorner">
+        <span class="rlab" data-i="lblCornerRadius">Corner radius</span>
+        <input type="range" id="cornerRadius" min="0" max="80" value="6">
+        <span id="cornerRadiusLabel" style="font-size:0.786rem; color:var(--text-2); width:1.6rem; text-align:right;">6</span>
+      </div>
 
-    <div class="grp">
-      <button class="action danger" id="deleteBtn" data-i="deleteBtn" data-i-title="deleteTip" title="Delete (Del)">🗑 Delete</button>
+      <div class="selRow inline" id="rowHead">
+        <span class="rlab" data-i="lblHeadSize">Head size</span>
+        <input type="range" id="arrowHead" min="6" max="60" value="18">
+        <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--text-2); width:1.6rem; text-align:right;">18</span>
+      </div>
+
+      <div class="selRow" id="rowRough">
+        <span class="rlab" data-i="lblSloppiness">Sloppiness</span>
+        <div class="rctl roughRow" style="flex-wrap:nowrap;">
+          <button class="action rough-btn" data-rough="0" data-i="roughArchitect" data-i-title="roughArchitectTip" title="Architect — precise lines">Architect</button>
+          <button class="action rough-btn" data-rough="1" data-i="roughArtist" data-i-title="roughArtistTip" title="Artist — a bit sketchy">Artist</button>
+          <button class="action rough-btn" data-rough="2" data-i="roughCartoonist" data-i-title="roughCartoonistTip" title="Cartoonist — very sketchy">Cartoonist</button>
+        </div>
+      </div>
+
+      <div class="selRow inline" id="rowOpacity">
+        <span class="rlab" data-i="lblOpacity">Opacity</span>
+        <input type="range" id="opacity" min="0" max="100" value="100">
+        <span id="opacityLabel" style="font-size:0.786rem; color:var(--text-2); width:2.4rem; text-align:right;">100%</span>
+      </div>
+
+      <div class="selRow" id="rowDelete">
+        <button class="action danger" id="deleteBtn" data-i-title="deleteTip" title="Delete (Del)" aria-label="Delete"><span class="ticon">🗑</span><span class="tlabel" data-i="deleteBtn">Delete</span></button>
+      </div>
     </div>
   </div>
 
@@ -574,24 +733,33 @@
    ============================================================ */
 const I18N = {
   ro:{
-    openImage:"📂 Deschide imagine", newCanvas:"🖼 Canvas nou", saveImage:"💾 Salvează imaginea",
-    saveAllSizes:"📐 Salvează toate dimensiunile",
+    openImage:"Deschide", newCanvas:"Canvas nou", saveImage:"Salvează",
+    openImageTip:"Deschide o imagine JPG sau PNG", newCanvasTip:"Începe de la un canvas gol",
+    saveImageTip:"Salvează imaginea editată",
+    saveAllSizes:"Toate dimensiunile",
     saveAllSizesTip:"Exportă acest desen la fiecare dimensiune presetată până la dimensiunea curentă, într-o singură arhivă zip",
     zoomOutTip:"Micșorează (Ctrl+derulare în jos)", zoomFitTip:"Readu zoom-ul la potrivirea ferestrei", zoomInTip:"Mărește (Ctrl+derulare în sus)",
-    screenshot:"🖥️ Captură ecran", screenshotTip:"Capturează ecranul tău și încarcă-l în editor",
-    record:"⏺ Înregistrează", recordTip:"Înregistrează ecranul tău (cu sunet) direct pe canvas, ca să poți desena live pe el",
-    recPauseTip:"Pauză / reluare înregistrare", pauseLabel:"⏸ Pauză", resumeLabel:"▶ Reluare",
-    recordingElapsed:n=>`⏹ Oprește (${n})`,
-    toolSelect:"↖ Selectează", toolSelectTip:"Selectează / transformă (V)",
-    toolText:"T Text", toolTextTip:"Text (T)",
-    toolRect:"▭ Dreptunghi", toolRectTip:"Dreptunghi - ține Ctrl pentru pătrat perfect (R)",
-    toolEllipse:"◯ Elipsă", toolEllipseTip:"Elipsă / cerc - ține Shift sau Ctrl pentru cerc perfect (O)",
-    toolRhombus:"◇ Romb", toolRhombusTip:"Romb - ține Shift sau Ctrl pentru laturi egale (D)",
-    toolPencil:"✎ Desenează", toolPencilTip:"Liber, cu mâna (P)",
-    toolHighlight:"🖍 Evidențiază", toolHighlightTip:"Evidențiere (H)",
-    toolArrow:"↗ Săgeată", toolArrowTip:"Săgeată - ține Ctrl pentru aliniere orizontală/verticală (A)",
-    toolSplineArrow:"↝ Săgeată curbă", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
-    toolLine:"╱ Linie", toolLineTip:"Linie dreaptă - ține Shift pentru unghiuri de 45°, Ctrl pentru orizontal/vertical (L)",
+    screenshot:"Captură ecran", screenshotTip:"Capturează ecranul tău și încarcă-l în editor",
+    record:"Înregistrează", recordTip:"Înregistrează ecranul tău (cu sunet) direct pe canvas, ca să poți desena live pe el",
+    recPauseTip:"Pauză / reluare înregistrare", pauseLabel:"Pauză", resumeLabel:"Reluare",
+    recordingElapsed:n=>`Oprește (${n})`,
+    toolSelect:"Selectează", toolSelectTip:"Selectează / transformă (V)",
+    toolText:"Text", toolTextTip:"Text (T)",
+    toolRect:"Dreptunghi", toolRectTip:"Dreptunghi - ține Ctrl pentru pătrat perfect (R)",
+    toolEllipse:"Elipsă", toolEllipseTip:"Elipsă / cerc - ține Shift sau Ctrl pentru cerc perfect (O)",
+    toolRhombus:"Romb", toolRhombusTip:"Romb - ține Shift sau Ctrl pentru laturi egale (D)",
+    toolPencil:"Desenează", toolPencilTip:"Liber, cu mâna (P)",
+    toolHighlight:"Evidențiază", toolHighlightTip:"Evidențiere (H)",
+    toolArrow:"Săgeată", toolArrowTip:"Săgeată - ține Ctrl pentru aliniere orizontală/verticală (A)",
+    toolSplineArrow:"Curbă", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
+    toolLine:"Linie", toolLineTip:"Linie dreaptă - ține Shift pentru unghiuri de 45°, Ctrl pentru orizontal/vertical (L)",
+    panelTools:"Instrumente", panelSelection:"Selecție",
+    capBasic:"De bază", capShapes:"Forme", capArrows:"Săgeți",
+    toggleToolsTip:"Arată / ascunde paleta de instrumente",
+    toggleSelectionTip:"Arată / ascunde panoul de selecție",
+    resetPanelsTip:"Readu panourile în pozițiile lor implicite",
+    collapseTip:"Restrânge / extinde", closePanelTip:"Închide panoul",
+    selEmptyHint:"Acestea sunt valorile implicite pentru ce desenezi în continuare.",
     lblFont:"Font", lblFontSize:"Dimensiune", boldTip:"Text îngroșat",
     lblColor:"Culoare", customColorTip:"Culoare personalizată",
     lblFill:"Umplere", fillCustomColorTip:"Culoare de umplere personalizată", noFillTip:"Fără umplere",
@@ -600,7 +768,7 @@ const I18N = {
     roughArchitect:"Arhitect", roughArchitectTip:"Arhitect — linii precise",
     roughArtist:"Artist", roughArtistTip:"Artist — puțin schițat",
     roughCartoonist:"Caricaturist", roughCartoonistTip:"Caricaturist — foarte schițat",
-    lblOpacity:"Opacitate", deleteBtn:"🗑 Șterge", deleteTip:"Șterge (Del)",
+    lblOpacity:"Opacitate", deleteBtn:"Șterge", deleteTip:"Șterge (Del)",
     newCanvasTitle:"Canvas nou", lblCanvasSize:"Dimensiune", lblOrientation:"Orientare",
     landscapeBtn:"▭ Peisaj", portraitBtn:"▯ Portret", lblBackground:"Fundal",
     colorBgBtn:"🎨 Culoare", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Culoarea fundalului",
@@ -631,24 +799,33 @@ const I18N = {
     videoRecordError:msg=>`Acest browser nu poate înregistra video: ${msg}`
   },
   en:{
-    openImage:"📂 Open image", newCanvas:"🖼 New canvas", saveImage:"💾 Save image",
-    saveAllSizes:"📐 Save all sizes",
+    openImage:"Open", newCanvas:"New canvas", saveImage:"Save",
+    openImageTip:"Open a JPG or PNG image", newCanvasTip:"Start from a blank canvas",
+    saveImageTip:"Save the edited image",
+    saveAllSizes:"All sizes",
     saveAllSizesTip:"Export this drawing at every preset size up to its current size, bundled in one zip",
     zoomOutTip:"Zoom out (Ctrl+scroll down)", zoomFitTip:"Reset zoom to fit the window", zoomInTip:"Zoom in (Ctrl+scroll up)",
-    screenshot:"🖥️ Screenshot", screenshotTip:"Capture your screen and load it into the editor",
-    record:"⏺ Record", recordTip:"Record your screen (with audio) directly into the canvas, so you can draw on it live",
-    recPauseTip:"Pause / resume recording", pauseLabel:"⏸ Pause", resumeLabel:"▶ Resume",
-    recordingElapsed:n=>`⏹ Stop (${n})`,
-    toolSelect:"↖ Select", toolSelectTip:"Select / transform (V)",
-    toolText:"T Text", toolTextTip:"Text (T)",
-    toolRect:"▭ Rect", toolRectTip:"Rectangle - hold Ctrl for a perfect square (R)",
-    toolEllipse:"◯ Ellipse", toolEllipseTip:"Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)",
-    toolRhombus:"◇ Rhombus", toolRhombusTip:"Rhombus / diamond - hold Shift or Ctrl for equal sides (D)",
-    toolPencil:"✎ Draw", toolPencilTip:"Freehand (P)",
-    toolHighlight:"🖍 Highlight", toolHighlightTip:"Highlight (H)",
-    toolArrow:"↗ Arrow", toolArrowTip:"Arrow - hold Ctrl to snap horizontal/vertical (A)",
-    toolSplineArrow:"↝ Spline Arrow", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
-    toolLine:"╱ Line", toolLineTip:"Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)",
+    screenshot:"Screenshot", screenshotTip:"Capture your screen and load it into the editor",
+    record:"Record", recordTip:"Record your screen (with audio) directly into the canvas, so you can draw on it live",
+    recPauseTip:"Pause / resume recording", pauseLabel:"Pause", resumeLabel:"Resume",
+    recordingElapsed:n=>`Stop (${n})`,
+    toolSelect:"Select", toolSelectTip:"Select / transform (V)",
+    toolText:"Text", toolTextTip:"Text (T)",
+    toolRect:"Rect", toolRectTip:"Rectangle - hold Ctrl for a perfect square (R)",
+    toolEllipse:"Ellipse", toolEllipseTip:"Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)",
+    toolRhombus:"Rhombus", toolRhombusTip:"Rhombus / diamond - hold Shift or Ctrl for equal sides (D)",
+    toolPencil:"Draw", toolPencilTip:"Freehand (P)",
+    toolHighlight:"Highlight", toolHighlightTip:"Highlight (H)",
+    toolArrow:"Arrow", toolArrowTip:"Arrow - hold Ctrl to snap horizontal/vertical (A)",
+    toolSplineArrow:"Spline", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
+    toolLine:"Line", toolLineTip:"Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)",
+    panelTools:"Tools", panelSelection:"Selection",
+    capBasic:"Basic", capShapes:"Shapes", capArrows:"Arrows",
+    toggleToolsTip:"Show / hide the tools palette",
+    toggleSelectionTip:"Show / hide the selection panel",
+    resetPanelsTip:"Move the panels back to their default spots",
+    collapseTip:"Collapse / expand", closePanelTip:"Close panel",
+    selEmptyHint:"These are the defaults for whatever you draw next.",
     lblFont:"Font", lblFontSize:"Size", boldTip:"Bold text",
     lblColor:"Color", customColorTip:"Custom color",
     lblFill:"Fill", fillCustomColorTip:"Custom fill color", noFillTip:"No fill",
@@ -657,7 +834,7 @@ const I18N = {
     roughArchitect:"Architect", roughArchitectTip:"Architect — precise lines",
     roughArtist:"Artist", roughArtistTip:"Artist — a bit sketchy",
     roughCartoonist:"Cartoonist", roughCartoonistTip:"Cartoonist — very sketchy",
-    lblOpacity:"Opacity", deleteBtn:"🗑 Delete", deleteTip:"Delete (Del)",
+    lblOpacity:"Opacity", deleteBtn:"Delete", deleteTip:"Delete (Del)",
     newCanvasTitle:"New canvas", lblCanvasSize:"Size", lblOrientation:"Orientation",
     landscapeBtn:"▭ Landscape", portraitBtn:"▯ Portrait", lblBackground:"Background",
     colorBgBtn:"🎨 Color", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Background color",
@@ -794,6 +971,19 @@ const layerListEl = document.getElementById('layerList');
 let baseImage = null;
 
 /* ===================== Utilities ===================== */
+// Chrome buttons are "<span class=ticon>icon</span><span class=tlabel>text</span>"
+// so the label can be hidden on narrow screens while the icon stays. Writing
+// btn.textContent would blow the icon span away, so anything that relabels a
+// button at runtime goes through these two.
+function setBtnLabel(btn, text){
+  const lab = btn.querySelector('.tlabel');
+  if (lab) lab.textContent = text; else btn.textContent = text;
+}
+function setBtnIcon(btn, icon){
+  const ic = btn.querySelector('.ticon');
+  if (ic) ic.textContent = icon;
+}
+
 function uid(){ return 'l' + Math.random().toString(36).slice(2,10); }
 
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -1005,20 +1195,25 @@ async function startRecording(){
   recordStartTime = Date.now();
   const btn = document.getElementById('recordBtn');
   btn.classList.add('recording');
-  btn.textContent = t('recordingElapsed', '0:00');
-  document.getElementById('recPauseBtn').style.display = '';
-  document.getElementById('recPauseBtn').textContent = t('pauseLabel');
-  recordTimer = setInterval(() => { btn.textContent = t('recordingElapsed', formatElapsed(Date.now()-recordStartTime)); }, 500);
+  setBtnIcon(btn, '⏹');
+  setBtnLabel(btn, t('recordingElapsed', '0:00'));
+  const pauseBtn = document.getElementById('recPauseBtn');
+  pauseBtn.style.display = '';
+  setBtnIcon(pauseBtn, '⏸');
+  setBtnLabel(pauseBtn, t('pauseLabel'));
+  recordTimer = setInterval(() => { setBtnLabel(btn, t('recordingElapsed', formatElapsed(Date.now()-recordStartTime))); }, 500);
 }
 
 document.getElementById('recPauseBtn').addEventListener('click', () => {
   if (!mediaRecorder) return;
   if (mediaRecorder.state === 'recording'){
     mediaRecorder.pause();
-    document.getElementById('recPauseBtn').textContent = t('resumeLabel');
+    setBtnIcon(document.getElementById('recPauseBtn'), '▶');
+    setBtnLabel(document.getElementById('recPauseBtn'), t('resumeLabel'));
   } else if (mediaRecorder.state === 'paused'){
     mediaRecorder.resume();
-    document.getElementById('recPauseBtn').textContent = t('pauseLabel');
+    setBtnIcon(document.getElementById('recPauseBtn'), '⏸');
+    setBtnLabel(document.getElementById('recPauseBtn'), t('pauseLabel'));
   }
 });
 
@@ -1039,7 +1234,8 @@ function stopRecording(){
 
   const btn = document.getElementById('recordBtn');
   btn.classList.remove('recording');
-  btn.textContent = t('record');
+  setBtnIcon(btn, '⏺');
+  setBtnLabel(btn, t('record'));
   document.getElementById('recPauseBtn').style.display = 'none';
 
   if (frozenDataUrl){
@@ -1794,7 +1990,7 @@ function drawHandles(l){
 }
 
 function renderCanvasFrame(){ renderBase(); renderOverlay(); }
-function renderAll(){ renderBase(); renderOverlay(); renderLayerList(); }
+function renderAll(){ renderBase(); renderOverlay(); renderLayerList(); syncSelectionPanel(); }
 
 /* ===================== Layer list (sidebar) ===================== */
 function labelFor(l){
@@ -1850,6 +2046,7 @@ document.querySelectorAll('button.tool').forEach(btn => {
     state.tool = btn.dataset.tool;
     document.querySelectorAll('button.tool').forEach(b => b.classList.toggle('active', b===btn));
     if (state.tool !== 'select'){ state.selection = []; renderAll(); }
+    syncSelectionPanel();
   });
 });
 document.querySelector('button[data-tool="select"]').classList.add('active');
@@ -2056,6 +2253,231 @@ function reorderSelection(dir){
   });
   pushHistory(); renderAll();
 }
+
+/* ===================== Floating panels =====================
+   The tools palette and the per-element property panel used to be groups in
+   the top bar, which forced one long horizontal scroll strip on phones and
+   tablets. They are now free-floating panels: everything is on screen at
+   once, and the person drags them wherever suits the drawing.
+   Position / collapsed / hidden state is remembered per browser. */
+
+const PANEL_KEY = 'scula:im-panels';
+const panelEls = ['toolsPanel','selectionPanel'].map(id => document.getElementById(id));
+
+// Keep a panel reachable: never let it go so far that the drag handle is off
+// screen, otherwise it can't be dragged back.
+function placePanel(p, x, y){
+  const pad = 12;
+  const keep = Math.min(p.offsetWidth, 72);
+  const headH = (p.querySelector('.panelHead') || p).offsetHeight || 32;
+  const clampedX = Math.max(keep - p.offsetWidth, Math.min(x, window.innerWidth - keep));
+
+  // Measure at full natural height first, otherwise a previous run's
+  // max-height makes the panel look shorter than it is.
+  p.style.maxHeight = (window.innerHeight - pad * 2) + 'px';
+  let clampedY = Math.max(0, Math.min(y, window.innerHeight - headH));
+  const h = p.offsetHeight;
+  if (clampedY + h + pad > window.innerHeight){
+    // pull it up so the body fits; if it's taller than the screen it starts at
+    // the top and .panelBody scrolls the remainder.
+    clampedY = Math.max(pad, Math.min(clampedY, window.innerHeight - h - pad));
+  }
+  p.style.left = clampedX + 'px';
+  p.style.top = clampedY + 'px';
+  p.style.maxHeight = Math.max(headH + 40, window.innerHeight - clampedY - pad) + 'px';
+}
+
+function defaultPos(p){
+  const r = canvasWrap.getBoundingClientRect();
+  const pad = 12;
+  if (p.id === 'toolsPanel') return { x: r.left + pad, y: r.top + pad };
+  // Selection panel goes on the opposite side when the canvas area is wide
+  // enough for both; on a phone it stacks under the tools palette instead of
+  // covering it.
+  const tools = document.getElementById('toolsPanel');
+  if (r.width > tools.offsetWidth + p.offsetWidth + pad * 5){
+    return { x: r.right - p.offsetWidth - pad, y: r.top + pad };
+  }
+  return { x: r.left + pad, y: tools.getBoundingClientRect().bottom + pad };
+}
+
+function syncPanelChrome(p){
+  const btn = p.querySelector('.panelCollapse');
+  const collapsed = p.classList.contains('collapsed');
+  btn.textContent = collapsed ? '▸' : '▾';
+  btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+
+function syncPanelToggles(){
+  document.getElementById('toggleToolsBtn')
+    .classList.toggle('active', !document.getElementById('toolsPanel').hidden);
+  document.getElementById('toggleSelectionBtn')
+    .classList.toggle('active', !document.getElementById('selectionPanel').hidden);
+}
+
+function resetPanel(p){
+  p.hidden = false;
+  // On a phone the property panel starts collapsed so both panels are visible
+  // without burying the canvas; the header is still one tap from expanding.
+  p.classList.toggle('collapsed', window.innerWidth <= 720 && p.id === 'selectionPanel');
+  syncPanelChrome(p);
+  const d = defaultPos(p);          // measured after collapsing, so height is right
+  placePanel(p, d.x, d.y);
+}
+
+function resetPanels(){
+  panelEls.forEach(resetPanel);     // tools first: the selection default reads its box
+  syncPanelToggles();
+  savePanels();
+}
+
+function savePanels(){
+  const data = {};
+  panelEls.forEach(p => {
+    data[p.id] = {
+      x: parseFloat(p.style.left) || 0,
+      y: parseFloat(p.style.top) || 0,
+      collapsed: p.classList.contains('collapsed'),
+      hidden: !!p.hidden
+    };
+  });
+  try{ store.set(PANEL_KEY, JSON.stringify(data)); }catch(e){}
+}
+
+function makePanelDraggable(p){
+  const head = p.querySelector('.panelHead');
+  let start = null;
+  head.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;        // collapse / close still click
+    const r = p.getBoundingClientRect();
+    start = { px: e.clientX, py: e.clientY, x: r.left, y: r.top };
+    p.classList.add('dragging');
+    try{ head.setPointerCapture(e.pointerId); }catch(err){}
+    e.preventDefault();
+  });
+  head.addEventListener('pointermove', e => {
+    if (!start) return;
+    placePanel(p, start.x + (e.clientX - start.px), start.y + (e.clientY - start.py));
+  });
+  const end = () => {
+    if (!start) return;
+    start = null;
+    p.classList.remove('dragging');
+    savePanels();
+  };
+  head.addEventListener('pointerup', end);
+  head.addEventListener('pointercancel', end);
+
+  p.querySelector('.panelCollapse').addEventListener('click', () => {
+    p.classList.toggle('collapsed');
+    syncPanelChrome(p);
+    // collapsing near the bottom edge can leave the header off screen
+    placePanel(p, parseFloat(p.style.left) || 0, parseFloat(p.style.top) || 0);
+    savePanels();
+  });
+  p.querySelector('.panelClose').addEventListener('click', () => {
+    p.hidden = true;
+    syncPanelToggles();
+    savePanels();
+  });
+}
+panelEls.forEach(makePanelDraggable);
+
+function togglePanel(p){
+  if (p.hidden){
+    p.hidden = false;
+    // A panel that was never positioned (or was closed before the layout
+    // changed) needs a sane spot rather than 0,0.
+    if (!p.style.left) { const d = defaultPos(p); placePanel(p, d.x, d.y); }
+    else placePanel(p, parseFloat(p.style.left), parseFloat(p.style.top));
+  } else {
+    p.hidden = true;
+  }
+  syncPanelToggles();
+  savePanels();
+}
+document.getElementById('toggleToolsBtn').addEventListener('click',
+  () => togglePanel(document.getElementById('toolsPanel')));
+document.getElementById('toggleSelectionBtn').addEventListener('click',
+  () => togglePanel(document.getElementById('selectionPanel')));
+document.getElementById('resetPanelsBtn').addEventListener('click', resetPanels);
+
+window.addEventListener('resize', () => {
+  panelEls.forEach(p => {
+    if (p.hidden) return;
+    placePanel(p, parseFloat(p.style.left) || 0, parseFloat(p.style.top) || 0);
+  });
+});
+
+(async function restorePanels(){
+  let data = null;
+  try{
+    const raw = await store.get(PANEL_KEY);
+    if (raw) data = JSON.parse(raw);
+  }catch(e){ data = null; }
+  panelEls.forEach(p => {
+    const d = data && data[p.id];
+    if (!d){ resetPanel(p); return; }
+    p.hidden = !!d.hidden;
+    p.classList.toggle('collapsed', !!d.collapsed);
+    syncPanelChrome(p);
+    if (!p.hidden) placePanel(p, d.x, d.y);
+  });
+  syncPanelToggles();
+})();
+
+/* ===================== Selection panel contents =====================
+   Which property rows make sense depends on what is selected - or, with
+   nothing selected, on the active tool, since the controls then set the
+   defaults for the next thing drawn. Keep these lists in step with the
+   handlers in "Toolbar wiring" above: a row is only worth showing for a
+   type its handler actually writes to. */
+
+const TOOL_TYPE = {
+  text:'text', rect:'rect', ellipse:'ellipse', rhombus:'rhombus',
+  pencil:'freehand', highlight:'highlight', arrow:'arrow',
+  splineArrow:'splineArrow', line:'line'
+  // 'select' deliberately absent - it has no type of its own
+};
+const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow'];
+const ROW_TYPES = {
+  rowText:    ['text','rect','highlight'],   // font/size/bold; size also sets highlight thickness
+  rowColor:   ALL_TYPES,
+  rowFill:    ['rect','ellipse','rhombus'],
+  rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow'],
+  rowCorner:  ['rect'],
+  rowHead:    ['arrow','splineArrow'],
+  rowRough:   ['rect','freehand','arrow','highlight','ellipse','rhombus','line','splineArrow'],
+  rowOpacity: ALL_TYPES
+};
+// Shown when the Select tool is active with nothing selected: the settings
+// that apply to anything, acting as defaults for the next shape.
+const DEFAULT_ROWS = ['rowColor','rowStrokeW','rowOpacity'];
+
+function syncSelectionPanel(){
+  const sel = selectedLayers();
+  const types = sel.length
+    ? new Set(sel.map(l => l.type))
+    : new Set([TOOL_TYPE[state.tool]].filter(Boolean));
+  const haveContext = types.size > 0;
+  Object.keys(ROW_TYPES).forEach(id => {
+    const row = document.getElementById(id);
+    if (!row) return;
+    row.hidden = haveContext
+      ? !ROW_TYPES[id].some(ty => types.has(ty))
+      : DEFAULT_ROWS.indexOf(id) === -1;
+  });
+  document.getElementById('rowDelete').hidden = !sel.length;
+  document.getElementById('selEmpty').hidden = haveContext;
+  // the row changes just resized the panel - keep it inside the viewport
+  const sp = document.getElementById('selectionPanel');
+  if (!sp.hidden && sp.style.top){
+    placePanel(sp, parseFloat(sp.style.left) || 0, parseFloat(sp.style.top) || 0);
+  }
+}
+
+// Initial pass: nothing is on the canvas yet, so renderAll() hasn't run.
+syncSelectionPanel();
 
 /* ===================== Text box auto-fit ===================== */
 function fitTextBox(l){

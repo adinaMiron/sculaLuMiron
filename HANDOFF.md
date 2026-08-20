@@ -196,13 +196,51 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
   stays latched until *all* fingers lift so releasing one doesn't start
   drawing with the other. Double-tap ⇒ `onDblClick` (touch doesn't fire
   `dblclick` reliably) for editing text / rect labels.
-- `@media (max-width:1180px)`: toolbar becomes a single swipeable row
-  (`flex-wrap:nowrap; overflow-x:auto`). It previously wrapped to **485px
-  tall on a 664px phone** (73% of the screen) and 285px on an iPad. Now
-  ~61px on both.
+- **Chrome layout (2026-08 rework).** The toolbar used to hold everything in
+  one row: on phones and tablets that meant `overflow-x:auto`, so reaching a
+  tool was a swipe through nine other buttons. It is now split in three:
+  - `#toolbar` keeps only **document-level** actions (open / new / save /
+    save-all-sizes, zoom, screenshot / record, the panel toggles). It
+    **wraps**, never scrolls — 1 row ≥1280px, 2 rows on a 390px phone
+    (~107px). `@media (max-width:900px)` hides `.tlabel` so it's icon-only.
+  - `#toolsPanel` — the drawing tools, in three captioned 4-up grids:
+    **Basic** (Select/Text/Draw/Highlight), **Shapes**
+    (Line/Rect/Ellipse/Rhombus), **Arrows** (Arrow/Spline). All ten are on
+    screen at every viewport, no scrolling.
+  - `#selectionPanel` — every per-element property (font/size/bold, stroke
+    colour + width, fill, corner radius, head size, sloppiness, opacity,
+    delete).
+- **Buttons are two spans**, `<span class="ticon">` + `<span class="tlabel">`,
+  so the label can be dropped on narrow screens while the icon stays. The
+  i18n values are therefore **label-only** — the icon lives in the markup.
+  Anything relabelling a button at runtime must use `setBtnLabel()` /
+  `setBtnIcon()` (Utilities); a bare `btn.textContent = …` wipes the icon
+  span out. That bit the Record button, which swaps ⏺→⏹ and back.
+- **Panels are draggable** (`makePanelDraggable`, ~L2330). The `.panelHead`
+  needs `touch-action:none` for the same reason `#overlayCanvas` does —
+  without it touch drags die on `pointercancel`. `placePanel()` is the only
+  place that writes `left`/`top`: it clamps so the header can never leave
+  the screen, pulls a panel up when its body would run off the bottom, and
+  sets `max-height` from the room left below so `.panelBody` scrolls instead
+  of overflowing. Call it after anything that changes a panel's height —
+  `syncSelectionPanel()` does.
+- Position / collapsed / hidden state persists per browser under
+  `scula:im-panels` via the shared async `store`. `resetPanels()` (⤢ in the
+  toolbar) restores defaults — the escape hatch if a panel ends up somewhere
+  useless. `defaultPos()` puts the properties panel on the opposite side
+  when the canvas area is wide enough for both, otherwise stacks it under
+  the tools palette; on ≤720px it also starts **collapsed**, since two
+  expanded panels don't fit a phone.
+- **`syncSelectionPanel()`** (~L2450) decides which `.selRow`s are visible:
+  from the selected layers' types, or — with nothing selected — from the
+  active tool, since the controls then set the defaults for the next shape.
+  Select tool + empty selection falls back to `DEFAULT_ROWS`. It is called
+  from `renderAll()`, so any selection change already refreshes it.
 - `@media (max-width:720px)`: layers sidebar moves below the canvas
-  (`#main{flex-direction:column}`, capped `max-height:34vh`) instead of
+  (`#main{flex-direction:column}`, capped `max-height:26vh`) instead of
   eating canvas width; keyboard-shortcut `#hint` hidden.
+- `@media (max-width:520px)`: tool captions drop to icon-only so the palette
+  stays ~11rem and leaves real canvas visible.
 - Screenshot/Record depend on `getDisplayMedia`, which iOS Safari and most
   mobile browsers don't implement at all — platform limitation, not ours.
   The app already alerts rather than failing silently.
@@ -214,6 +252,14 @@ Verified on emulated iPhone 13 / Pixel 5 / iPad Pro 11: touch drag creates
 shapes, pinch zoomed 68%→340% with zero stray layers, 44px buttons, no page
 overflow — and desktop (1600px) regression-checked afterward (sidebar still
 right-side, mouse draw/text/pan/zoom/undo/save all intact).
+
+Panel rework re-verified at 390×844, 820×1180 and 1600×900: zero horizontal
+overflow, all 10 tools inside the viewport at every size, both panels fully
+on screen, touch-drag moves a panel by exactly the gesture delta, a wild
+drag clamps back on screen, position survives reload, `resetPanels()`
+restores defaults, ro↔en keeps icons and diacritics, and a stroke-width
+change from the panel still repaints the canvas (dark-pixel count 3.7k→15k
+on a selected rect).
 
 ## Known traps already hit and fixed (don't reintroduce)
 
