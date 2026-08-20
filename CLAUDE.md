@@ -6,13 +6,13 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `index.html` | 1367 | 13k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 3479 | 35k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 2431 | 21k | Markdown editor + live preview | dark (earth) |
+| `index.html` | 1647 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 3754 | 38k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `markdown-editor.html` | 2706 | 24k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~70k tokens; `editor.html` alone is 35k. **Never
+Reading all three costs ~78k tokens; `editor.html` alone is 38k. **Never
 `view` an entire app file.** Locate first, then read a narrow range.
 
 ```bash
@@ -38,16 +38,16 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is triplicated
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:220-585`, `editor.html:379-744`,
-`markdown-editor.html:741-1106`). It carries the nav links, the UI-language
-toggle, **and `window.ScuLaFolder`** — the shared default save folder (see
-`docs/FEATURES.md` § D). Any change to it must be applied to **all three**
-or they drift. Verify with:
+in all three files (`index.html:220-863`, `editor.html:379-1022`,
+`markdown-editor.html:741-1384`). It carries the nav links, the UI-language
+toggle, **and `window.ScuLaFolder`** — which decides where every saved file
+goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
+**all three** or they drift. Verify with:
 
 ```bash
-sed -n '220,585p' index.html > /tmp/n1
-sed -n '379,744p' editor.html > /tmp/n2
-sed -n '741,1106p' markdown-editor.html > /tmp/n3
+sed -n '220,863p' index.html > /tmp/n1
+sed -n '379,1022p' editor.html > /tmp/n2
+sed -n '741,1384p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
 
@@ -65,8 +65,9 @@ block's `SUBDIR` map, so the new page gets its own folder.
   is deliberate (44px touch-target floor).
 - **Preserve Romanian diacritics** (ă â î ș ț) in all strings and fonts.
 - **Save through `ScuLaFolder.save(name, blob)`**, never a hand-rolled
-  `<a download>`. It writes into the user's chosen folder and falls back to
-  a download on its own — `docs/FEATURES.md` § D.
+  `<a download>`. It routes to the chosen folder (desktop), the OS share
+  sheet (phones — no mobile browser has `showDirectoryPicker`), or a
+  download, and reports what it did — `docs/FEATURES.md` § D.
 
 ## Standard workflow
 

@@ -304,8 +304,63 @@
     pointer-events:none;
     transition:opacity .18s ease;
     word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
   }
   #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
 </style>
 <script>
 (function(){
@@ -343,18 +398,28 @@
   });
 
   /* ============================================================
-     Shared default save folder (window.ScuLaFolder)
+     Shared save destination (window.ScuLaFolder)
      ------------------------------------------------------------
-     One folder for the whole site, picked once via the File System
-     Access API and kept in IndexedDB (directory handles survive a
-     reload; localStorage cannot hold them). Inside it every page owns
-     a subfolder - see SUBDIR below. Pages call
-     ScuLaFolder.save(name, blob); when no folder is set, or the API /
-     permission is unavailable, that falls back to a normal download so
-     nothing is ever lost. Byte-identical in all three files
-     (CLAUDE.md rule 2) - see docs/FEATURES.md "Default save folder".
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
      ============================================================ */
-  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root";
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
     "index.html": "transcript",
     "editor.html": "desen",
@@ -363,38 +428,99 @@
   var T = {
     ro:{
       pickLabel:"Dosar",
-      tip:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
-      unsupported:"Browserul acesta nu poate alege un dosar. Încearcă Chrome sau Edge pe desktop, pe https:// sau localhost. Fișierele se descarcă normal.",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
       denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
       picked:function(n){ return "Dosar implicit: " + n; },
       cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
       clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
       saved:function(p){ return "Salvat în " + p; },
-      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat."
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
     },
     en:{
       pickLabel:"Folder",
-      tip:"Choose the default folder for saved files (right-click: forget the folder)",
-      unsupported:"This browser can't pick a folder. Try desktop Chrome or Edge over https:// or localhost. Files download normally instead.",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
       denied:"Folder access denied. Files download normally instead.",
       picked:function(n){ return "Default folder: " + n; },
       cleared:"Default folder cleared. Files download normally instead.",
       clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
       saved:function(p){ return "Saved to " + p; },
-      failed:"Couldn't write into the folder. The file was downloaded instead."
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
     }
   };
   function tx(k){ return (T[lang] || T.ro)[k]; }
 
   var fBtn = document.getElementById("navFolderBtn");
   var fName = document.getElementById("navFolderName");
-  var root = null;
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
   var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
 
   function supported(){ return typeof window.showDirectoryPicker === "function"; }
   function subdir(){ return SUBDIR[here] || "scula"; }
 
-  function toast(msg){
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
     if(!msg) return;
     if(!toastEl){
       toastEl = document.createElement("div");
@@ -402,18 +528,39 @@
       toastEl.setAttribute("role", "status");
       document.body.appendChild(toastEl);
     }
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
   }
 
   function paintFolder(){
     if(!fBtn) return;
-    fBtn.title = tx("tip");
-    fBtn.setAttribute("aria-label", tx("tip"));
-    fName.textContent = root ? root.name : tx("pickLabel");
-    fBtn.classList.toggle("set", !!root);
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
   }
 
   function idb(){
@@ -425,10 +572,10 @@
       r.onerror = function(){ rej(r.error); };
     });
   }
-  function idbTx(mode, run){
+  function idbTx(mode2, run){
     return idb().then(function(db){
       return new Promise(function(res, rej){
-        var t = db.transaction(DB_STORE, mode);
+        var t = db.transaction(DB_STORE, mode2);
         var req = run(t.objectStore(DB_STORE));
         t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
         t.onerror = function(){ db.close(); rej(t.error); };
@@ -453,7 +600,9 @@
 
   function announce(){
     paintFolder();
-    window.dispatchEvent(new CustomEvent("scula-folder", { detail: root ? root.name : null }));
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
   }
 
   function pick(){
@@ -491,6 +640,72 @@
     });
   }
 
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
   // Resolves to this page's subfolder handle, or null when unavailable.
   function dir(request){
     if(!root) return Promise.resolve(null);
@@ -525,10 +740,61 @@
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
   }
 
-  // The one call pages make. Always resolves; { saved:false } means the file
-  // went to the browser's download folder instead.
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    return navigator.share({ files:[file], title: filename }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
   function save(filename, blob, opts){
     var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
     return dir().then(function(d){
       if(!d) return null;
       return freeName(d, filename).then(function(name){
@@ -536,45 +802,57 @@
           return fh.createWritable().then(function(w){
             return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
           }).then(function(){
-            return { saved:true, name:name, path:root.name + "/" + subdir() + "/" + name };
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
           });
         });
       });
     }).catch(function(){ return { failed:true }; }).then(function(r){
-      if(r && r.saved){ if(!quiet) toast(tx("saved")(r.path)); return r; }
-      download(filename, blob);
-      if(r && r.failed && !quiet) toast(tx("failed"));
-      return { saved:false, name:filename, path:filename };
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
     });
   }
 
-  var ready = idbGet(DB_KEY).then(function(h){
-    if(!h) return null;
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
     return permitted(h, false).then(function(ok){
       // Not granted yet is fine - the first save re-asks inside a gesture.
       root = h;
       paintFolder();
       return ok ? h : null;
     });
-  }).catch(function(){ return null; });
+  }).catch(function(){ paintFolder(); return null; });
 
   if(fBtn){
     paintFolder();
-    fBtn.addEventListener("click", function(){ pick(); });
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
     fBtn.addEventListener("contextmenu", function(ev){
       ev.preventDefault();
       if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
     });
   }
 
   window.ScuLaFolder = {
     supported: supported,
+    canShareFiles: canShareFiles,
     isSet: function(){ return !!root; },
     name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
     subdir: subdir,
     ready: ready,
     pick: pick,
     forget: forget,
+    chooser: openSheet,
     dir: dir,
     save: save,
     download: download,
@@ -746,8 +1024,6 @@ const I18N = {
     tidying:"Se corectează textul…",
     ready:"Gata.",
     copied:"Copiat.",
-    savedTo:p=>"Salvat în " + p,
-    downloaded:n=>"Descărcat: " + n + ". Alege un dosar implicit din bara de sus ca să salvezi direct în „transcript”.",
     cleared:"Text șters.",
     micDenied:"Microfonul e blocat. Permite accesul în setările browserului, apoi reîncarcă pagina.",
     noRecorder:"Browserul acesta nu poate înregistra audio. Încearcă Safari pe iPhone sau Chrome pe tabletă.",
@@ -789,8 +1065,6 @@ const I18N = {
     tidying:"Cleaning up the text…",
     ready:"Ready.",
     copied:"Copied.",
-    savedTo:p=>"Saved to " + p,
-    downloaded:n=>"Downloaded: " + n + ". Pick a default folder in the top bar to save straight into “transcript”.",
     cleared:"Text cleared.",
     micDenied:"The microphone is blocked. Allow access in your browser settings, then reload.",
     noRecorder:"This browser can't record audio. Try Safari on iPhone or Chrome on the tablet.",
@@ -1352,10 +1626,11 @@ $("#dlBtn").addEventListener("click", async () => {
   const stamp = new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
   const blob = new Blob(["\uFEFF" + txt], {type:"text/plain;charset=utf-8"});
   const name = "transcriere_" + stamp + ".txt";
-  // Goes into <default folder>/transcript when one is set; plain download
-  // otherwise. See the shared nav block's ScuLaFolder.
+  // Folder, share sheet or download - ScuLaFolder decides and hands back a
+  // ready-made message (null when there is nothing to say, e.g. the person
+  // dismissed the share sheet). See the shared nav block.
   const r = await ScuLaFolder.save(name, blob, { quiet:true });
-  say(r.saved ? t("savedTo", r.path) : t("downloaded", r.name));
+  if(r.message) say(r.message);
 });
 $("#clearBtn").addEventListener("click", () => {
   ta.value = ""; interim.textContent = ""; updateCounts(); say(t("cleared"));

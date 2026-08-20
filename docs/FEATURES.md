@@ -108,47 +108,53 @@ to people without the app, so it can't reference theme tokens.
 
 ---
 
-## D. Saving files — the shared default folder
+## D. Saving files — one call, three destinations
 
-Every page saves through **one** call:
+Every page saves through **one** call. Never build an `<a download>` by hand.
 
 ```js
 const r = await ScuLaFolder.save(filename, blob, { quiet:true });
-//   r.saved  true  -> written into <default folder>/<page subfolder>
-//   r.saved  false -> fell back to a normal browser download
-//   r.path         -> "MyFolder/desen/edited-image.png", or just the filename
+//  r.via      "folder" | "share" | "download"
+//  r.saved    true when it landed somewhere the person chose
+//  r.path     "MyFolder/desen/edited-image.png", or just the filename
+//  r.message  ready-made, already translated - print it, or null for
+//             "say nothing" (they dismissed the share sheet)
+if (r.message) say(r.message);      // or drop { quiet:true } and the
+                                    // shared toast says it for you
 ```
 
-Never build an `<a download>` by hand again — `ScuLaFolder.save()` already
-falls back to exactly that when there's no folder, no File System Access
-API (Safari, Firefox, every mobile browser), or permission is refused.
-Pass `{ quiet:true }` and print `r.path` yourself through the app's own
-status line/toast so the message is in the app's voice; omit it and the
-shared toast speaks instead.
+`ScuLaFolder` lives in the triplicated `#site-nav` block, so it is defined
+before any app script runs. `save()` picks a route with `currentMode()`:
 
-`ScuLaFolder` lives in the triplicated `#site-nav` block, so it is
-defined before any app script runs. Full surface:
+| Mode | When | What happens |
+|---|---|---|
+| `folder` | a directory handle is set (desktop Chrome/Edge) | written into `<folder>/<page subfolder>` |
+| `share` | no directory picker, but `navigator.canShare({files})` — **every phone and tablet** | handed to the OS share sheet: "Save to Files" on iOS, the Files app on Android, so the person picks any folder |
+| `download` | everything else, or their explicit choice | ordinary download |
+
+Full surface:
 
 | Call | Does |
 |---|---|
-| `save(name, blob, opts)` | write-or-download; always resolves |
+| `save(name, blob, opts)` | route-and-save; always resolves |
+| `mode()` | `"folder"` / `"share"` / `"download"` right now |
+| `setMode(m)` / `chooser()` | set the route / open the destination sheet |
 | `dir(request)` | this page's subfolder handle, or `null` |
-| `pick()` / `forget()` | folder chooser / clear (also on the nav button) |
-| `isSet()` / `name()` / `subdir()` / `supported()` | state |
-| `ready` | promise; resolves once the stored handle has been reloaded |
-| `download(name, blob)` | plain download, no folder attempt |
-| `toast(msg)` | the shared bottom toast (`#scula-toast`) |
+| `pick()` / `forget()` | folder chooser / clear |
+| `isSet()` / `name()` / `subdir()` / `supported()` / `canShareFiles()` | state |
+| `ready` | promise; resolves once the stored handle and mode are reloaded |
+| `download(name, blob)` | plain download, no routing |
+| `toast(msg[, action, fn])` | the shared bottom toast; with `action` it grows a button |
 
-How it works:
+### The folder route (desktop)
 
-- The user picks **one** root folder from the `📁` nav button
-  (`showDirectoryPicker`, `mode:'readwrite'`). All three subfolders are
-  created immediately, so the layout is visible before anything is saved.
-- The `FileSystemDirectoryHandle` is stored in **IndexedDB**
-  (`scula-fs` → `handles` → `root`). It has to be IndexedDB —
-  `localStorage` is strings only and cannot hold a handle.
-- Each page owns a subfolder, from `SUBDIR` in the shared block, keyed by
-  filename:
+- One root folder from the `📁` nav button (`showDirectoryPicker`,
+  `mode:'readwrite'`). All three subfolders are created immediately, so
+  the layout is visible before anything is saved.
+- The `FileSystemDirectoryHandle` is stored in **IndexedDB** (`scula-fs` →
+  `handles` → `root`). It has to be IndexedDB — `localStorage` is strings
+  only and cannot hold a handle.
+- Each page owns a subfolder, from `SUBDIR` in the shared block:
 
   | Page | Subfolder |
   |---|---|
@@ -158,14 +164,46 @@ How it works:
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
-  and the first `save()` re-requests inside the click. That's why saves
-  must stay in a user gesture — don't move one behind a timer.
+  and the first `save()` re-requests inside the click.
 - **Nothing is overwritten.** `a.png` taken → `a-1.png`, `a-2.png`, …
 - Right-click the nav button to forget the folder.
 
-Adding a save to an existing page: build the `Blob`, call
-`ScuLaFolder.save()`, report `r.path`. Adding a new page: add it to
-`SUBDIR` (all copies of the block) and do the same.
+### The share route (phones and tablets)
+
+**No mobile browser implements `showDirectoryPicker`** — not iOS Safari,
+not Chrome for Android. (Chromium's Android work stalled: it needs new
+`WebChromeClient` callbacks that missed Android 16.) So there is no folder
+to remember on a phone, and any design that assumes one is wrong.
+
+What *does* work is Web Share level 2 — `navigator.share({files})`, iOS
+Safari 15+ and Android Chrome. The OS share sheet includes "Save to
+Files" / the Files app, so the person drops the file into any folder they
+like, and the system remembers the folder they used last. That is as close
+to a default folder as a phone gets, and it is what the `share` mode does.
+
+Three traps, all handled in `shareOut()` — keep them handled:
+
+- **`canShare` is the only honest test.** `navigator.share` exists in
+  browsers that then refuse files. iOS also accepts only a short list of
+  types, so `shareable()` retries text formats as `text/plain` (that is
+  why a `.md` shares as plain text) and returns `null` for what it cannot
+  place — a `.zip` falls through to a download.
+- **`AbortError` means they cancelled.** Do not download behind their
+  back, and do not claim anything was saved: `message` is `null`.
+- **`NotAllowedError` means the tap expired.** Producing a big PNG or a
+  zip can outlive the gesture, and iOS will not open the sheet without
+  one. The toast grows a **Salvează / Save** button so one fresh tap
+  finishes the job instead of losing the file.
+
+Because the mode is a real preference, it lives in IndexedDB next to the
+handle (`scula-fs` → `handles` → `mode`) and is shared by all pages. The
+`📁` button opens the chooser sheet (`#scula-sheet`) wherever there is no
+directory picker; on desktop it goes straight to the picker.
+
+### Adding a save, or a page
+
+Build the `Blob`, call `ScuLaFolder.save()`, print `r.message`. A new page
+also needs an entry in `SUBDIR` — in all copies of the block.
 
 ---
 
@@ -180,6 +218,9 @@ Adding a save to an existing page: build the `Blob`, call
 - [ ] Nav still byte-identical across all files
 - [ ] Anything the feature writes to disk goes through
       `ScuLaFolder.save()` (§ D), never a hand-rolled `<a download>`
+- [ ] Saving tested with a phone-shaped stub too (no `showDirectoryPicker`,
+      `navigator.share` present) — the share route is not optional polish,
+      it is the only folder a phone has
 - [ ] Undo/redo intact if it mutates document state
 - [ ] `docs/MAP.md` line anchors updated if sections moved
 
