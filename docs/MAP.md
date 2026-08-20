@@ -52,50 +52,69 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 2533 lines · "Image Marker" (canvas annotation)
+## editor.html — 3157 lines · "Image Marker" (canvas annotation)
 
-`lang="en"`. Deep internals in **`HANDOFF.md`** — read that for the layer
+`lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
 
 Theme: ✅ migrated to the earth palette (dark), step 3 of `docs/THEME.md`.
 `:root` uses the shared semantic token names (`--surface`, `--text`, …) —
-see that doc for the canvas-colour resolution (`CHROME` cache, ~L537).
+see that doc for the canvas-colour resolution (`CHROME` cache, ~L940).
+
+**Chrome layout (2026-08):** the top bar holds document-level actions only.
+Drawing tools and per-element properties live in two **floating, draggable
+panels** (`#toolsPanel`, `#selectionPanel`) — see HANDOFF.md § "Mobile /
+touch" for why and how.
 
 | Lines | Contents |
 |---|---|
-| 8–264 | App CSS. `:root` **20–36**. `@font-face` ×9 near top (**broken paths**) |
-| 268–310 | **Shared nav** |
-| 311–530 | Markup: toolbar, stage, sidebar, modals |
-| 531–2533 | App script |
+| 10–371 | App CSS. `:root` **20–36**. `@font-face` ×9 near top (**broken paths**) |
+| 56–104 | Top toolbar |
+| 219–317 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel` |
+| 318–371 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 373–453 | **Shared nav** |
+| 446–486 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 487–522 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 523–598 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 599–730 | Markup: modals, stage, sidebar |
+| 731–3157 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 548 | State — `state` object, style defaults, `PALETTE` **582** |
-| 594 | Utilities |
-| 623 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
-| 647 | Loading an image |
-| 680 | Screen snapshot |
-| 720 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 860 | Recording preview / playback |
-| 964 | Zoom |
-| 998 | Pan — `startPan`/`updatePan`/`endPan` |
-| 1020 | New canvas modal |
-| **1102** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 1597 | Layer list (sidebar) — `renderLayerList` |
-| **1645** | **Toolbar wiring** — every button/handler |
-| 1858 | Text box auto-fit |
-| 1869 | Pointer/canvas coords — `canvasPoint()` |
-| 1900 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
-| 2220 | Text editing overlay — `openTextEditor` |
-| 2298 | Keyboard shortcuts |
-| 2326 | Save — `renderComposite` |
-| 2365 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 2517 | Fonts ready — `document.fonts.load()` startup pass |
+| 733 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 927 | State — `state` object, style defaults, `PALETTE` **961** |
+| 973 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1015 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
+| 1039 | Loading an image |
+| 1072 | Screen snapshot |
+| 1112 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1258 | Recording preview / playback |
+| 1362 | Zoom |
+| 1396 | Pan — `startPan`/`updatePan`/`endPan` |
+| 1418 | New canvas modal |
+| **1500** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| 1995 | Layer list (sidebar) — `renderLayerList` |
+| **2043** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **2257** | **Floating panels** — `placePanel`, `defaultPos`, drag, persistence |
+| **2429** | **Selection panel contents** — `ROW_TYPES`, `syncSelectionPanel` |
+| 2482 | Text box auto-fit |
+| 2493 | Pointer/canvas coords — `canvasPoint()` |
+| 2524 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
+| 2844 | Text editing overlay — `openTextEditor` |
+| 2922 | Keyboard shortcuts |
+| 2950 | Save — `renderComposite` |
+| 2989 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 3141 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (1102–1597); go straight to the
+Largest region by far is Rendering (1500–1995); go straight to the
 specific `drawX()` you need.
+
+**Two lists must stay in step:** `ROW_TYPES` (2429) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (2043)
+say which types each control actually writes to. Add a control → add it to
+both.
 
 ---
 
