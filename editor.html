@@ -97,10 +97,8 @@
   #customColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fillCustomColor{ width:1.857rem; height:1.857rem; padding:0; border:none; border-radius:50%; cursor:pointer; background:none; }
   #fileInput{ display:none; }
-  #openBtn{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600; }
   #recordBtn.recording{ background:var(--danger); color:var(--on-accent); border-color:var(--danger); font-weight:600; animation: recPulse 1.4s ease-in-out infinite; }
   @keyframes recPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
-  #saveBtn{ background:var(--accent-2); color:var(--on-accent); border-color:var(--accent-2); font-weight:600; }
 
   /* ---------- Main layout ---------- */
   #main{ flex:1; display:flex; min-height:0; }
@@ -165,7 +163,7 @@
   #newCanvasOverlay.open{ display:flex; }
   #newCanvasModal{
     background:var(--surface); border-radius:var(--radius); padding:1.429rem 1.571rem;
-    width:27.143rem; max-width:92vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    width:34.286rem; max-width:94vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:0.429rem;
   }
   #newCanvasModal h3{ margin:0 0 0.429rem; font-size:1.143rem; }
@@ -317,7 +315,7 @@
 
   /* ---------- Small screens ---------- */
   @media (max-width: 720px){
-    #newCanvasModal, #recordingModal{ width:94vw; }
+    #newCanvasModal, #recordingModal{ width:97vw; }
     /* stack layers panel under the canvas instead of stealing canvas width */
     #main{ flex-direction:column; }
     #canvasWrap{ min-height:0; }
@@ -336,6 +334,10 @@
     #toolsPanel .tlabel{ display:none; }
     #selectionPanel{ width:14rem; }
     .selRow.inline .rlab{ flex:0 0 4.4rem; }
+    /* One column instead of two: each size preset gets the modal's full
+       width so its label ("1920 × 1080") always has room, instead of being
+       squeezed into half the container. */
+    #sizePresetGrid{ grid-template-columns:1fr; }
   }
 
   /* ---------- Touch devices: bigger hit targets ---------- */
