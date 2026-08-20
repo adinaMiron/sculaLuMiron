@@ -381,6 +381,7 @@
   <a href="index.html" data-page="index.html">Caiet vocal</a>
   <a href="editor.html" data-page="editor.html">Editor</a>
   <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
@@ -411,9 +412,9 @@
     border-color:#C1BB45;
     font-weight:600;
   }
+  #site-nav #navFolderBtn,
   #site-nav #navLangBtn{
     flex:0 0 auto;
-    margin-left:auto;
     background:transparent;
     color:#9FB3A5;
     border:1px solid #2E4739;
@@ -426,7 +427,44 @@
     cursor:pointer;
     white-space:nowrap;
   }
+  #site-nav #navFolderBtn:hover,
   #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+  }
+  #scula-toast.show{ opacity:1; }
 </style>
 <script>
 (function(){
@@ -442,18 +480,265 @@
   // applyUILang() and reconciles against its async storage as the source of
   // truth - see that file's "6. UI language" section.
   var LANG_KEY = "scula:ui-lang";
-  var btn = document.getElementById("navLangBtn");
-  if(!btn) return;
-  function paint(lang){ btn.textContent = lang === "ro" ? "EN" : "RO"; }
   var lang = "ro";
   try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
-  paint(lang);
-  btn.addEventListener("click", function(){
-    lang = lang === "ro" ? "en" : "ro";
-    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
-    paint(lang);
-    window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
   });
+
+  /* ============================================================
+     Shared default save folder (window.ScuLaFolder)
+     ------------------------------------------------------------
+     One folder for the whole site, picked once via the File System
+     Access API and kept in IndexedDB (directory handles survive a
+     reload; localStorage cannot hold them). Inside it every page owns
+     a subfolder - see SUBDIR below. Pages call
+     ScuLaFolder.save(name, blob); when no folder is set, or the API /
+     permission is unavailable, that falls back to a normal download so
+     nothing is ever lost. Byte-identical in all three files
+     (CLAUDE.md rule 2) - see docs/FEATURES.md "Default save folder".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root";
+  var SUBDIR = {
+    "index.html": "transcript",
+    "editor.html": "desen",
+    "markdown-editor.html": "markdown"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      tip:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      unsupported:"Browserul acesta nu poate alege un dosar. Încearcă Chrome sau Edge pe desktop, pe https:// sau localhost. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat."
+    },
+    en:{
+      pickLabel:"Folder",
+      tip:"Choose the default folder for saved files (right-click: forget the folder)",
+      unsupported:"This browser can't pick a folder. Try desktop Chrome or Edge over https:// or localhost. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      failed:"Couldn't write into the folder. The file was downloaded instead."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;
+  var toastEl = null, toastTimer = 0;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  function toast(msg){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    fBtn.title = tx("tip");
+    fBtn.setAttribute("aria-label", tx("tip"));
+    fName.textContent = root ? root.name : tx("pickLabel");
+    fBtn.classList.toggle("set", !!root);
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", { detail: root ? root.name : null }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  // The one call pages make. Always resolves; { saved:false } means the file
+  // went to the browser's download folder instead.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, name:name, path:root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ if(!quiet) toast(tx("saved")(r.path)); return r; }
+      download(filename, blob);
+      if(r && r.failed && !quiet) toast(tx("failed"));
+      return { saved:false, name:filename, path:filename };
+    });
+  }
+
+  var ready = idbGet(DB_KEY).then(function(h){
+    if(!h) return null;
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ return null; });
+
+  if(fBtn){
+    paintFolder();
+    fBtn.addEventListener("click", function(){ pick(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    dir: dir,
+    save: save,
+    download: download,
+    toast: toast
+  };
 })();
 </script>
 <!-- ===== end toolbar nav ===== -->
@@ -757,6 +1042,8 @@ const I18N = {
     screenshot:"Captură ecran", screenshotTip:"Capturează ecranul tău și încarcă-l în editor",
     record:"Înregistrează", recordTip:"Înregistrează ecranul tău (cu sunet) direct pe canvas, ca să poți desena live pe el",
     recPauseTip:"Pauză / reluare înregistrare", pauseLabel:"Pauză", resumeLabel:"Reluare",
+    savedTo:p=>`Salvat în ${p}`,
+    downloadedTo:n=>`Descărcat: ${n}. Alege un dosar implicit din bara de sus ca să salvezi direct în „desen”.`,
     recordingElapsed:n=>`Oprește (${n})`,
     toolSelect:"Selectează", toolSelectTip:"Selectează / transformă (V)",
     toolText:"Text", toolTextTip:"Text (T)",
@@ -824,6 +1111,8 @@ const I18N = {
     screenshot:"Screenshot", screenshotTip:"Capture your screen and load it into the editor",
     record:"Record", recordTip:"Record your screen (with audio) directly into the canvas, so you can draw on it live",
     recPauseTip:"Pause / resume recording", pauseLabel:"Pause", resumeLabel:"Resume",
+    savedTo:p=>`Saved to ${p}`,
+    downloadedTo:n=>`Downloaded: ${n}. Pick a default folder in the top bar to save straight into “desen”.`,
     recordingElapsed:n=>`Stop (${n})`,
     toolSelect:"Select", toolSelectTip:"Select / transform (V)",
     toolText:"Text", toolTextTip:"Text (T)",
@@ -1283,7 +1572,7 @@ const recMuteBtn = document.getElementById('recMuteBtn');
 const recVolume = document.getElementById('recVolume');
 const recSeek = document.getElementById('recordingSeek');
 const recTimeLabel = document.getElementById('recordingTimeLabel');
-let recordingBlobUrl = null, recordingExt = 'webm', seeking = false;
+let recordingBlobUrl = null, recordingBlob = null, recordingExt = 'webm', seeking = false;
 
 function fmtTime(t){
   if (!isFinite(t)) return '0:00';
@@ -1294,6 +1583,7 @@ function fmtTime(t){
 function openRecordingPreview(blob, ext){
   if (recordingBlobUrl) URL.revokeObjectURL(recordingBlobUrl);
   recordingBlobUrl = URL.createObjectURL(blob);
+  recordingBlob = blob;
   recordingExt = ext;
   recordingVideo.src = recordingBlobUrl;
   recordingVideo.volume = (parseInt(recVolume.value,10) || 100) / 100;
@@ -1344,11 +1634,8 @@ recSeek.addEventListener('input', () => {
 recSeek.addEventListener('change', () => { seeking = false; });
 
 document.getElementById('recDownloadBtn').addEventListener('click', () => {
-  if (!recordingBlobUrl) return;
-  const a = document.createElement('a');
-  a.href = recordingBlobUrl;
-  a.download = 'screen-recording.' + recordingExt;
-  document.body.appendChild(a); a.click(); a.remove();
+  if (!recordingBlob) return;
+  saveOut('screen-recording.' + recordingExt, recordingBlob);
 });
 
 document.getElementById('recFullscreenBtn').addEventListener('click', () => {
@@ -3014,15 +3301,19 @@ function renderComposite(w, h, opts){
   return out;
 }
 
+// Everything this page writes goes to <default folder>/desen when one is
+// set, and falls back to a plain download otherwise. See the shared nav
+// block's ScuLaFolder.
+async function saveOut(filename, blob){
+  const r = await ScuLaFolder.save(filename, blob, { quiet:true });
+  ScuLaFolder.toast(r.saved ? t('savedTo', r.path) : t('downloadedTo', r.name));
+  return r;
+}
+
 document.getElementById('saveBtn').addEventListener('click', () => {
   if (!state.canvasReady) return;
   const out = renderComposite(state.naturalW, state.naturalH);
-  out.toBlob((blob) => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'edited-image.png';
-    document.body.appendChild(a); a.click(); a.remove();
-  }, 'image/png');
+  out.toBlob((blob) => { saveOut('edited-image.png', blob); }, 'image/png');
 });
 
 /* ===================== Save all sizes (zip) ===================== */
@@ -3167,10 +3458,7 @@ document.getElementById('saveSizesConfirm').addEventListener('click', async () =
       files.push({ name: `edited-image_${s.suffix}.${ext}`, data });
     }
     const zipBlob = makeZip(files);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(zipBlob);
-    a.download = 'edited-image-sizes.zip';
-    document.body.appendChild(a); a.click(); a.remove();
+    await saveOut('edited-image-sizes.zip', zipBlob);
     saveSizesOverlay.classList.remove('open');
   } finally {
     btn.disabled = false; btn.textContent = origText;

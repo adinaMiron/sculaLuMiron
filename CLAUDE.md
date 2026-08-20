@@ -6,13 +6,13 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `index.html` | 1036 | 10k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 3157 | 32k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 2074 | 18k | Markdown editor + live preview | dark (earth) |
+| `index.html` | 1367 | 13k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 3479 | 35k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `markdown-editor.html` | 2431 | 21k | Markdown editor + live preview | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~60k tokens; `editor.html` alone is 32k. **Never
+Reading all three costs ~70k tokens; `editor.html` alone is 35k. **Never
 `view` an entire app file.** Locate first, then read a narrow range.
 
 ```bash
@@ -35,21 +35,24 @@ it instead of exploring. It is far cheaper than one file scan.
 
 Do not read a doc the task doesn't touch.
 
-## Rule 2: the nav is triplicated
+## Rule 2: the nav block is triplicated
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:221-263`, `editor.html:374-416`,
-`markdown-editor.html:742-784`). Any nav change must be applied to **all
-three** or they drift. Verify with:
+in all three files (`index.html:220-585`, `editor.html:379-744`,
+`markdown-editor.html:741-1106`). It carries the nav links, the UI-language
+toggle, **and `window.ScuLaFolder`** — the shared default save folder (see
+`docs/FEATURES.md` § D). Any change to it must be applied to **all three**
+or they drift. Verify with:
 
 ```bash
-sed -n '221,263p' index.html > /tmp/n1
-sed -n '374,416p' editor.html > /tmp/n2
-sed -n '742,784p' markdown-editor.html > /tmp/n3
+sed -n '220,585p' index.html > /tmp/n1
+sed -n '379,744p' editor.html > /tmp/n2
+sed -n '741,1106p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
 
-Adding a page means adding a link to all three navs.
+Adding a page means adding a link to all three navs **and** an entry in the
+block's `SUBDIR` map, so the new page gets its own folder.
 
 ## Rule 3: respect the constraints
 
@@ -61,6 +64,9 @@ Adding a page means adding a link to all three navs.
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
 - **Preserve Romanian diacritics** (ă â î ș ț) in all strings and fonts.
+- **Save through `ScuLaFolder.save(name, blob)`**, never a hand-rolled
+  `<a download>`. It writes into the user's chosen folder and falls back to
+  a download on its own — `docs/FEATURES.md` § D.
 
 ## Standard workflow
 
