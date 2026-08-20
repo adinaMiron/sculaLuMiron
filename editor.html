@@ -551,6 +551,15 @@
         </div>
       </div>
 
+      <!-- The highlighter's band height used to piggy-back on the text
+           "Size" field; it has its own control now so the text properties
+           can stay text-only. -->
+      <div class="selRow inline" id="rowHiSize">
+        <span class="rlab" data-i="lblHighlightSize">Thickness</span>
+        <input type="range" id="highlightSize" min="6" max="120" value="28">
+        <span id="highlightSizeLabel" style="font-size:0.786rem; color:var(--text-2); width:2.4rem; text-align:right;">28</span>
+      </div>
+
       <div class="selRow" id="rowColor">
         <span class="rlab" data-i="lblColor">Color</span>
         <div class="rctl">
@@ -761,6 +770,7 @@ const I18N = {
     collapseTip:"Restrânge / extinde", closePanelTip:"Închide panoul",
     selEmptyHint:"Acestea sunt valorile implicite pentru ce desenezi în continuare.",
     lblFont:"Font", lblFontSize:"Dimensiune", boldTip:"Text îngroșat",
+    lblHighlightSize:"Grosime",
     lblColor:"Culoare", customColorTip:"Culoare personalizată",
     lblFill:"Umplere", fillCustomColorTip:"Culoare de umplere personalizată", noFillTip:"Fără umplere",
     lblStroke:"Contur", lblCornerRadius:"Rază colț", lblHeadSize:"Dimensiune vârf",
@@ -827,6 +837,7 @@ const I18N = {
     collapseTip:"Collapse / expand", closePanelTip:"Close panel",
     selEmptyHint:"These are the defaults for whatever you draw next.",
     lblFont:"Font", lblFontSize:"Size", boldTip:"Bold text",
+    lblHighlightSize:"Thickness",
     lblColor:"Color", customColorTip:"Custom color",
     lblFill:"Fill", fillCustomColorTip:"Custom fill color", noFillTip:"No fill",
     lblStroke:"Stroke", lblCornerRadius:"Corner radius", lblHeadSize:"Head size",
@@ -932,6 +943,7 @@ const state = {
   tool: 'select',
   font: 'Raleway',
   fontSize: 28,
+  highlightSize: 28, // highlighter band height, independent of the text size
   color: '#1e1d1c',     // document content, not chrome - matches PALETTE[0] below, deliberately literal
   strokeWidth: 4,
   arrowHead: 18,
@@ -2121,7 +2133,7 @@ function applyColorToSelection(c){
 
 document.getElementById('fontSelect').addEventListener('change', (e) => {
   state.font = e.target.value;
-  const sel = selectedLayers().filter(l => l.type==='text' || l.type==='rect');
+  const sel = selectedLayers().filter(l => l.type==='text');
   if (sel.length){
     sel.forEach(l => l.font = state.font);
     pushHistory(); renderAll();
@@ -2132,11 +2144,19 @@ document.getElementById('fontSelect').addEventListener('change', (e) => {
 });
 document.getElementById('fontSize').addEventListener('change', (e) => {
   state.fontSize = parseInt(e.target.value,10) || 28;
-  const selText = selectedLayers().filter(l => l.type==='text');
-  const selHi = selectedLayers().filter(l => l.type==='highlight');
-  if (selText.length || selHi.length){
-    selText.forEach(l => { l.fontSize = state.fontSize; fitTextBox(l); });
-    selHi.forEach(l => { const mid = l.y + l.h/2; l.h = state.fontSize; l.y = mid - l.h/2; });
+  const sel = selectedLayers().filter(l => l.type==='text');
+  if (sel.length){
+    sel.forEach(l => { l.fontSize = state.fontSize; fitTextBox(l); });
+    pushHistory(); renderAll();
+  }
+});
+document.getElementById('highlightSize').addEventListener('input', (e) => {
+  state.highlightSize = parseInt(e.target.value,10) || 28;
+  document.getElementById('highlightSizeLabel').textContent = state.highlightSize;
+  const sel = selectedLayers().filter(l => l.type==='highlight');
+  if (sel.length){
+    // grow/shrink around the band's middle so it stays where it was drawn
+    sel.forEach(l => { const mid = l.y + l.h/2; l.h = state.highlightSize; l.y = mid - l.h/2; });
     pushHistory(); renderAll();
   }
 });
@@ -2441,7 +2461,8 @@ const TOOL_TYPE = {
 };
 const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow'];
 const ROW_TYPES = {
-  rowText:    ['text','rect','highlight'],   // font/size/bold; size also sets highlight thickness
+  rowText:    ['text'],       // font/size/bold - text layers and nothing else
+  rowHiSize:  ['highlight'],  // the highlighter's own thickness control
   rowColor:   ALL_TYPES,
   rowFill:    ['rect','ellipse','rhombus'],
   rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow'],
@@ -2683,10 +2704,9 @@ function onDown(e){
 
   if (state.tool === 'highlight'){
     const l = newBaseLayer('highlight', p);
-    // deliberately reuses the same color palette and "Size" field as the
-    // text tool, rather than introducing separate controls
+    // reuses the shared color palette, but has its own thickness control
     l.color = state.color;
-    l.h = state.fontSize; l.y = p.y - l.h/2; l.w = 1;
+    l.h = state.highlightSize; l.y = p.y - l.h/2; l.w = 1;
     state.drag = { mode:'create-highlight', start: p, layer: l, previewLayer: l };
     return;
   }
@@ -2825,7 +2845,8 @@ function onUp(){
       if (d.mode === 'create-pencil' || d.mode === 'create-splinearrow') d.layer.points = smoothPoints(d.layer.points, 2, 1);
       state.layers.push(d.layer);
       state.selection = [d.layer.id];
-      if (d.mode === 'create-rect') { document.querySelector('button[data-tool="select"]').click(); openRectTextEditorIfEmpty(d.layer); }
+      // Nothing here opens a text editor: text is only ever created by the
+      // text tool, or by double-clicking a rectangle to label it.
     }
   }
   pushHistory();
@@ -2886,7 +2907,6 @@ function positionEditor(ta, l){
   ta.style.transformOrigin = 'center center';
 }
 
-function openRectTextEditorIfEmpty(l){ openRectTextEditor(l); }
 function openRectTextEditor(l){
   state.editingLayerId = l.id;
   const ta = document.createElement('textarea');

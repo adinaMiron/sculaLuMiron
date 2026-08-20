@@ -52,14 +52,14 @@ once, everything downstream is zoom/scroll-agnostic).
 | type | extra fields | notes |
 |---|---|---|
 | `text` | `text, font, fontSize, color, bold, strokeWidth` | `strokeWidth` here = faux-bold outline via `ctx.strokeText`, NOT shared with shape stroke width semantics. Live-edited via a floating `<textarea>` (`openTextEditor`, ~L2020) positioned over the canvas — see gotchas. |
-| `rect` | `fill, stroke, strokeWidth, cornerRadius, font, text, textColor, textSize` | Optional embedded text (double-click). `fill=null`→no fill. |
+| `rect` | `fill, stroke, strokeWidth, cornerRadius, font, text, textColor, textSize` | Optional embedded text, added by double-clicking the rectangle **only** — drawing one never opens a text editor. No font/size/bold rows in the selection panel: the label inherits `state.font` at creation time. `fill=null`→no fill. |
 | `ellipse` | `fill, stroke, strokeWidth` | `w===h` ⇒ labeled "Circle" in layer list. |
 | `rhombus` | `fill, stroke, strokeWidth` | 4-point diamond from bbox midpoints. |
 | `line` | `color, strokeWidth, x1n,y1n,x2n,y2n` | Endpoints normalized 0..1 within bbox. |
 | `arrow` | same as `line` + `headSize` | |
 | `splineArrow` | `color, strokeWidth, headSize, points[]` | `points[0]` = arrowhead TIP (first click), `points[last]`= tail. See "spline arrow" below. |
 | `freehand` | `color, strokeWidth, points[]` | `points[]` = `{nx,ny}` normalized 0..1 within bbox. |
-| `highlight` | `color, points[]` (thickness = `l.h`) | Horizontal-only band (drag locks to start Y). Rendered with `globalAlpha=0.4*layerOpacity` + `multiply` blend. |
+| `highlight` | `color, points[]` (thickness = `l.h`) | Horizontal-only band (drag locks to start Y). Thickness comes from `state.highlightSize` / the `#rowHiSize` slider — **not** the text "Size" field, which it used to borrow. Rendered with `globalAlpha=0.4*layerOpacity` + `multiply` blend. |
 | all shapes except text | `roughness, seed` | Sloppiness (see below). |
 
 Group = shared `groupId` string; no nested groups. Selecting one member
