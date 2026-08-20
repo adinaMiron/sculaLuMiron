@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:220-863` · `editor.html:395-1038` · `markdown-editor.html:741-1384`
+`index.html:220-863` · `editor.html:395-1038` · `markdown-editor.html:842-1485`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -153,38 +153,66 @@ both.
 
 ---
 
-## markdown-editor.html — 2706 lines · Markdown editor
+## markdown-editor.html — 3530 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
-| 8–736 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). `@media` 622, 651 |
-| 737 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 741–1384 | **Shared nav + `ScuLaFolder`** |
-| 1386–~1598 | Markup: header, toolbar, workspace, panels, modals |
-| 1599–2704 | App script |
+| 8–837 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). Workbooks panel **181–271**. `@media` 722, 751 |
+| 838 | **mammoth.js CDN** (docx import) — only external dep in the repo |
+| 842–1485 | **Shared nav + `ScuLaFolder`** |
+| 1487–~1747 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
+| 1748–3528 | App script |
 
 | Line | Function / region |
 |---|---|
-| 1723–1725 | `editor`, `preview` refs, `savedRange` |
-| 1728–1750 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 1752–1825 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 1827–1862 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| 1864–1866 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
-| 1874–1919 | Responsive: `isSmallScreen`, `isMobile`, `setView`, `togglePanel`, `toggleNav` |
-| 2017–2074 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| 2088 | `resolveImageSrc` — image-path rewrite, export-only |
-| 2094 | `applyInline(text, opts)` |
-| **2105** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 2207–2213 | `updatePreview`, `updateNav` |
-| 2295–2323 | `updateStatus`, `newFile`, `openFile`, `importDocx` |
-| 2365 | `htmlToMarkdown` (docx → md) |
-| 2467–2474 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
-| ~1762–1786 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 2523–2614 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 2630–2641 | Link modal: `openLinkModal`, `insertLink` |
-| 2678–2704 | `applyResponsiveDefaults`, init |
+| 1755 | `I18N` (`ro:` 1756 / `en:` 1823), `t()`, `store`, `applyUILang` |
+| 1939–1941 | `editor`, `preview` refs, `savedRange` |
+| 1944–1966 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 1968–2041 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
+| 2043–2078 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| 2080–2082 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
+| 2090–2130 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2101) + `togglePanelById` — one map drives all three side panels |
+| 2234–2290 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| 2305 | `resolveImageSrc` — image-path rewrite, export-only |
+| 2311 | `applyInline(text, opts)` |
+| **2322** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 2424–2430 | `updatePreview`, `updateNav` |
+| 2512 | `updateStatus` |
+| **2533–3117** | **Workbooks** — see the sub-table below |
+| 3119–3139 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
+| 3141 | `importDocx` |
+| 3184 | `htmlToMarkdown` (docx → md) |
+| 3286–3293 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
+| ~3298–3328 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 3342–3447 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 3449–3470 | Link modal: `openLinkModal`, `insertLink` |
+| 3499–3528 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
+
+### Workbooks (2533–3117) — `docs/FEATURES.md` § E
+
+A workbook holds chapters; one chapter is one markdown file. IndexedDB
+(`scula-md`) is the source of truth on every device; the `markdown` folder
+is a mirror, and each record carries the `folder`/`file` it owns — that
+record **is** the UI↔folder correspondence.
+
+| Line | Region |
+|---|---|
+| 2533–2543 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
+| 2545–2589 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
+| 2591–2620 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 2632–2664 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 2666–2772 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 2777–2926 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| 2928–2960 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
+| 2962–3091 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| 3094–3117 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
+
+**Two writes, two moments.** Typing autosaves to IndexedDB only (no
+permission prompt is legal outside a gesture); the disk mirror happens on
+explicit saves — `saveToWorkbook`, `confirmSaveToWorkbook`, rename, delete,
+`syncAllToFolder` — all of which run inside a click.
 
 **Parser is unified (2026-08).** `parseMarkdown(md, {forExport})` and
 `applyInline(text, {forExport})` serve both preview (`forExport` falsy) and
@@ -194,9 +222,9 @@ prefixed, and a bare image-path line becomes a standalone `<img>`, only
 when exporting). New markdown syntax now needs exactly one edit, in
 `parseMarkdown`/`applyInline`, not two.
 
-**One trap remains:** exported HTML must stay self-contained (around
-2479–2503). It ships to people who don't have the app, so it uses literal
-hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
+**One trap remains:** exported HTML must stay self-contained (its `<style>`
+runs 3304–3324). It ships to people who don't have the app, so it uses
+literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 

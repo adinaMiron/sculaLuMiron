@@ -228,7 +228,7 @@ UI chrome, so it should stay a predictable white regardless of what
 theme the app happens to be in when you hit export.
 
 Same principle for the **exported-HTML template** in
-`markdown-editor.html:1846-1870`: it ships standalone to people without
+`markdown-editor.html:3304-3324`: it ships standalone to people without
 the app, so it must keep literal hex. Do not tokenise it.
 
 ## Theme switching + persistence

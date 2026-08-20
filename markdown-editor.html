@@ -178,6 +178,100 @@
     white-space: nowrap;
   }
 
+  /* ── Workbooks panel (workbook → chapters, see docs/FEATURES.md § E) ── */
+  #wb-panel {
+    width: var(--panel-w);
+    min-width: var(--panel-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+    order: -1;
+  }
+  #wb-panel.collapsed { width: 0; min-width: 0; }
+
+  #wb-where {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #wb-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+  #wb-tree::-webkit-scrollbar { width: 4px; }
+  #wb-tree::-webkit-scrollbar-track { background: transparent; }
+  #wb-tree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .wb-empty { padding: 16px 12px; font-size: 12px; color: var(--text-3); line-height: 1.7; }
+
+  .wb-book { border-bottom: 1px solid var(--border); }
+  .wb-book-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px 7px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-2);
+    letter-spacing: 0.04em;
+  }
+  .wb-book-row:hover { background: var(--surface-2); color: var(--text); }
+  .wb-twist { flex-shrink: 0; width: 10px; font-size: 9px; color: var(--text-3); }
+  .wb-book-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wb-count { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); }
+  .wb-acts { display: flex; gap: 1px; flex-shrink: 0; }
+  .wb-act {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px 5px;
+    border-radius: 4px;
+    transition: color 0.12s, background 0.12s;
+  }
+  .wb-act:hover { color: var(--accent-2); background: var(--bg); }
+
+  .wb-chapters { display: none; padding-bottom: 4px; }
+  .wb-book.open .wb-chapters { display: block; }
+  .wb-ch-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px 6px 24px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-2);
+    border-left: 2px solid transparent;
+  }
+  .wb-ch-row:hover { background: var(--surface-2); color: var(--text); }
+  .wb-ch-row.current { border-left-color: var(--accent); background: var(--surface-2); color: var(--accent-2); }
+  .wb-ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wb-ch-empty { padding: 6px 10px 6px 26px; font-size: 11px; color: var(--text-3); font-style: italic; }
+
+  .wb-crumb {
+    font-size: 11px;
+    color: var(--accent-2);
+    font-family: var(--font-mono);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .wb-crumb[hidden] { display: none; }
+
+  #stat-wb { color: var(--text-2); }
+
   /* ── Tree ── */
   #tree-container {
     flex: 1;
@@ -366,7 +460,7 @@
   }
   .modal-title { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; color: var(--text); }
   .field label { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
-  .field input {
+  .field input, .field select {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -378,7 +472,8 @@
     outline: none;
     transition: border-color 0.15s;
   }
-  .field input:focus { border-color: var(--accent); }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .local-pick { display: flex; align-items: center; gap: 10px; }
   .btn-pick {
@@ -632,15 +727,16 @@
     .toolbar-sep { margin: 0 4px; }
 
     /* Panels float over the content instead of squeezing it */
-    #img-panel, #nav-panel {
+    #wb-panel, #img-panel, #nav-panel {
       position: absolute;
       top: 0; bottom: 0;
       z-index: 50;
       box-shadow: 0 0 28px #00000088;
     }
+    #wb-panel { left: 0; }
     #img-panel { left: 0; }
     #nav-panel { right: 0; }
-    #img-panel.collapsed, #nav-panel.collapsed {
+    #wb-panel.collapsed, #img-panel.collapsed, #nav-panel.collapsed {
       width: 0; min-width: 0; box-shadow: none;
     }
     .workspace { position: relative; }
@@ -715,6 +811,11 @@
     .tree-thumb { width: 38px; height: 38px; }
     .tree-dir-label { padding: 8px 10px; }
     .nav-item { padding: 7px 12px; }
+    /* px on purpose: 44px touch-target floor, see docs/FEATURES.md */
+    .wb-book-row { padding: 12px 8px 12px 10px; }
+    .wb-ch-row { padding: 11px 8px 11px 24px; }
+    .wb-act { padding: 9px 8px; font-size: 14px; }
+    .wb-crumb { max-width: 100%; width: 100%; }
 
     /* Status bar: keep it slim */
     #status-bar { gap: 12px; font-size: 10px; padding: 4px 12px; }
@@ -1386,12 +1487,14 @@
 <header>
   <div class="logo">Markdown <span>/ editor</span></div>
   <div class="header-actions">
+    <span class="wb-crumb" id="wb-crumb" hidden></span>
     <span class="file-name" id="current-file">untitled.md</span>
     <button class="btn" onclick="newFile()" data-i="newFileBtn">New</button>
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
-    <button class="btn btn-primary" onclick="saveFile()" data-i="saveFileBtn">Save ↓</button>
+    <button class="btn" onclick="saveFile()" data-i="saveFileBtn" data-i-title="saveFileTip" title="Save a copy of the file (Ctrl+Shift+S)">Save ↓</button>
+    <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
   </div>
 </header>
 
@@ -1447,6 +1550,7 @@
   <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
 
   <div class="toolbar-sep"></div>
+  <button class="tb-btn" id="btn-workbooks" onclick="toggleWorkbooks()" data-i="workbooksBtn" data-i-title="workbooksTip" title="Workbooks (Ctrl+2)">📓 Workbooks</button>
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
 </div>
@@ -1459,6 +1563,22 @@
 <div id="panel-backdrop" onclick="closeAllPanels()"></div>
 
 <div class="workspace">
+
+  <!-- Workbooks: a workbook holds chapters, one chapter is one .md file.
+       IndexedDB is the source of truth, the markdown folder is the mirror —
+       see docs/FEATURES.md § E. -->
+  <div id="wb-panel" class="collapsed">
+    <div class="panel-header">
+      <span class="panel-title" data-i="workbooksTitle">Workbooks</span>
+      <button class="panel-close" onclick="toggleWorkbooks()" data-i-title="closePanelTip" title="Close panel">✕</button>
+    </div>
+    <div class="panel-actions">
+      <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
+      <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Write every chapter into the markdown folder">⇩ Sync to folder</button>
+      <div id="wb-where"></div>
+    </div>
+    <div id="wb-tree"></div>
+  </div>
 
   <!-- Image Explorer Side Panel -->
   <div id="img-panel" class="collapsed">
@@ -1484,7 +1604,7 @@
   <div class="main">
     <div class="pane" id="editor-pane">
       <div class="pane-header" data-i="paneSourceHeader">Markdown Source</div>
-      <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus()" onkeydown="handleTab(event)" data-i-placeholder="editorPlaceholder" placeholder="Start writing Markdown here…
+      <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus(); scheduleAutosave()" onkeydown="handleTab(event)" data-i-placeholder="editorPlaceholder" placeholder="Start writing Markdown here…
 
 # Hello, World!
 ## A subtitle
@@ -1516,6 +1636,7 @@ Use the toolbar above to insert formatting.
   <span id="stat-words">0 words</span>
   <span id="stat-lines">0 lines</span>
   <span id="stat-chars">0 chars</span>
+  <span id="stat-wb"></span>
 </div>
 
 <!-- Image URL modal -->
@@ -1547,6 +1668,34 @@ Use the toolbar above to insert formatting.
     <div class="modal-actions">
       <button class="btn" onclick="closeImageModal()" data-i="cancelBtn">Cancel</button>
       <button class="btn btn-primary" onclick="insertImage()" data-i="insertBtn">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save-to-workbook modal -->
+<div class="image-modal" id="workbook-modal">
+  <div class="modal-box">
+    <div class="modal-title" data-i="modalTitleSaveWorkbook">Save to workbook</div>
+    <div class="field">
+      <label data-i="lblWorkbook">Workbook</label>
+      <select id="wb-select" onchange="onWorkbookSelectChange()"></select>
+    </div>
+    <div class="field" id="wb-new-field" hidden>
+      <label data-i="lblNewWorkbookName">New workbook name</label>
+      <input type="text" id="wb-new-name" oninput="paintWorkbookPathHint()" data-i-placeholder="newWorkbookPlaceholder" placeholder="Notes" />
+    </div>
+    <div class="field">
+      <label data-i="lblChapter">Chapter</label>
+      <select id="wb-chapter-select" onchange="onChapterSelectChange()"></select>
+    </div>
+    <div class="field" id="wb-title-field">
+      <label data-i="lblChapterTitle">Chapter title</label>
+      <input type="text" id="wb-chapter-title" oninput="paintWorkbookPathHint()" data-i-placeholder="chapterTitlePlaceholder" placeholder="Chapter 1" />
+    </div>
+    <div class="field-hint" id="wb-path-hint"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeWorkbookModal()" data-i="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSaveToWorkbook()" data-i="saveBtn">Save</button>
     </div>
   </div>
 </div>
@@ -1637,7 +1786,39 @@ const I18N = {
     mammothNotLoaded:"Mammoth.js nu s-a încărcat încă. Verifică-ți conexiunea la internet și încearcă din nou.",
     confirmReplace:"Înlocuiești conținutul curent cu documentul importat?",
     importFailed:msg=>`Import DOCX eșuat: ${msg}`,
-    scanningFolder:"Se scanează folderul…", noImagesFound:"Nicio imagine găsită.", errorReadingFolder:"Eroare la citirea folderului."
+    scanningFolder:"Se scanează folderul…", noImagesFound:"Nicio imagine găsită.", errorReadingFolder:"Eroare la citirea folderului.",
+    /* ── Caiete și capitole (vezi docs/FEATURES.md § E) ── */
+    workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
+    newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
+    syncFolderTip:"Scrie fiecare capitol în dosarul markdown",
+    saveToWorkbookBtn:"📓 Salvează în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
+    saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
+    wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
+    wbNoChapters:"niciun capitol încă",
+    wbLocalOnly:"💾 salvat local (fără dosar)",
+    addChapterTip:"Capitol nou", renameWorkbookTip:"Redenumește caietul", deleteWorkbookTip:"Șterge caietul",
+    renameChapterTip:"Redenumește capitolul", exportChapterTip:"Exportă capitolul", deleteChapterTip:"Șterge capitolul",
+    promptNewWorkbook:"Numele caietului:", defaultWorkbookName:"Caiet nou",
+    promptNewChapter:"Titlul capitolului:", defaultChapterName:"Capitol nou",
+    promptRenameWorkbook:"Nume nou pentru caiet:", promptRenameChapter:"Titlu nou pentru capitol:",
+    confirmDeleteWorkbook:n=>`Ștergi caietul „${n}” și toate capitolele lui?`,
+    confirmDeleteChapter:n=>`Ștergi capitolul „${n}”?`,
+    confirmLeaveUnsaved:"Textul curent nu e salvat în niciun caiet. Îl abandonezi?",
+    untitledWorkbook:"caiet", untitledChapter:"capitol",
+    workbookCreated:n=>`Caiet creat: ${n}`,
+    chapterOpened:n=>`Capitol deschis: ${n}`,
+    wbEditing:"se scrie…", wbAutosaved:"salvat automat",
+    wbSavedTo:p=>`Salvat în ${p}`,
+    wbSavedLocal:"Capitol salvat pe acest dispozitiv.",
+    wbSynced:n=>`${n} capitol${n===1?'':'e'} scrise în dosar.`,
+    wbStoreFailed:"Nu s-a putut salva local (IndexedDB indisponibil).",
+    wbRestored:n=>`Reluat: ${n}`,
+    wbRemoved:"Șters.",
+    modalTitleSaveWorkbook:"Salvează în caiet", lblWorkbook:"Caiet", lblNewWorkbookName:"Numele caietului nou",
+    newWorkbookPlaceholder:"Notițe", lblChapter:"Capitol", lblChapterTitle:"Titlul capitolului",
+    chapterTitlePlaceholder:"Capitolul 1", optNewWorkbook:"— caiet nou —", optNewChapter:"— capitol nou —",
+    needWorkbookName:"Dă un nume caietului.", needChapterTitle:"Dă un titlu capitolului.",
+    saveBtn:"Salvează", wbPathHint:p=>`Fișier: ${p}`
   },
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
@@ -1672,7 +1853,39 @@ const I18N = {
     mammothNotLoaded:"Mammoth.js is not loaded yet. Please check your internet connection and try again.",
     confirmReplace:"Replace current content with imported document?",
     importFailed:msg=>`Failed to import DOCX: ${msg}`,
-    scanningFolder:"Scanning folder…", noImagesFound:"No images found.", errorReadingFolder:"Error reading folder."
+    scanningFolder:"Scanning folder…", noImagesFound:"No images found.", errorReadingFolder:"Error reading folder.",
+    /* ── Workbooks and chapters (see docs/FEATURES.md § E) ── */
+    workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
+    newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
+    syncFolderTip:"Write every chapter into the markdown folder",
+    saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
+    saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
+    wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
+    wbNoChapters:"no chapters yet",
+    wbLocalOnly:"💾 saved locally (no folder)",
+    addChapterTip:"New chapter", renameWorkbookTip:"Rename workbook", deleteWorkbookTip:"Delete workbook",
+    renameChapterTip:"Rename chapter", exportChapterTip:"Export chapter", deleteChapterTip:"Delete chapter",
+    promptNewWorkbook:"Workbook name:", defaultWorkbookName:"New workbook",
+    promptNewChapter:"Chapter title:", defaultChapterName:"New chapter",
+    promptRenameWorkbook:"New workbook name:", promptRenameChapter:"New chapter title:",
+    confirmDeleteWorkbook:n=>`Delete the workbook “${n}” and every chapter in it?`,
+    confirmDeleteChapter:n=>`Delete the chapter “${n}”?`,
+    confirmLeaveUnsaved:"The current text isn't saved in any workbook. Discard it?",
+    untitledWorkbook:"workbook", untitledChapter:"chapter",
+    workbookCreated:n=>`Workbook created: ${n}`,
+    chapterOpened:n=>`Chapter open: ${n}`,
+    wbEditing:"editing…", wbAutosaved:"autosaved",
+    wbSavedTo:p=>`Saved to ${p}`,
+    wbSavedLocal:"Chapter saved on this device.",
+    wbSynced:n=>`${n} chapter${n===1?'':'s'} written to the folder.`,
+    wbStoreFailed:"Couldn't save locally (IndexedDB unavailable).",
+    wbRestored:n=>`Resumed: ${n}`,
+    wbRemoved:"Deleted.",
+    modalTitleSaveWorkbook:"Save to workbook", lblWorkbook:"Workbook", lblNewWorkbookName:"New workbook name",
+    newWorkbookPlaceholder:"Notes", lblChapter:"Chapter", lblChapterTitle:"Chapter title",
+    chapterTitlePlaceholder:"Chapter 1", optNewWorkbook:"— new workbook —", optNewChapter:"— new chapter —",
+    needWorkbookName:"Give the workbook a name.", needChapterTitle:"Give the chapter a title.",
+    saveBtn:"Save", wbPathHint:p=>`File: ${p}`
   }
 };
 let UI = "ro";
@@ -1711,6 +1924,9 @@ function applyUILang(){
   if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
   try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
   if(typeof updateStatus === "function") updateStatus();
+  // The workbook tree is generated, not markup, so data-i can't reach it.
+  // wbBooted is a `var` on purpose: this runs before the rest of the script.
+  if(typeof renderWorkbooks === "function" && wbBooted) renderWorkbooks();
 }
 window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
 (async function initUILang(){
@@ -1881,45 +2097,46 @@ function setView(view) {
   document.getElementById('tab-preview').classList.toggle('active', view === 'preview');
 }
 
+// Every side panel, paired with the toolbar button that opens it.
+const PANELS = {
+  'wb-panel': 'btn-workbooks',
+  'img-panel': 'btn-explorer',
+  'nav-panel': 'btn-nav'
+};
+
 function syncBackdrop() {
-  const anyOpen = !document.getElementById('img-panel').classList.contains('collapsed')
-               || !document.getElementById('nav-panel').classList.contains('collapsed');
+  const anyOpen = Object.keys(PANELS).some(id => !document.getElementById(id).classList.contains('collapsed'));
   document.getElementById('panel-backdrop').classList.toggle('show', anyOpen && isSmallScreen());
 }
 
 function closeAllPanels() {
-  ['img-panel', 'nav-panel'].forEach(id => document.getElementById(id).classList.add('collapsed'));
-  document.getElementById('btn-explorer').classList.remove('active');
-  document.getElementById('btn-nav').classList.remove('active');
+  Object.keys(PANELS).forEach(id => {
+    document.getElementById(id).classList.add('collapsed');
+    document.getElementById(PANELS[id]).classList.remove('active');
+  });
   syncBackdrop();
 }
 
-function togglePanel() {
-  const panel = document.getElementById('img-panel');
-  const btn = document.getElementById('btn-explorer');
+function togglePanelById(id) {
+  const panel = document.getElementById(id);
+  const btn = document.getElementById(PANELS[id]);
   const willOpen = panel.classList.contains('collapsed');
-  // On small screens only one panel at a time
+  // On small screens the panels overlay the text, so only one at a time
   if (willOpen && isSmallScreen()) {
-    document.getElementById('nav-panel').classList.add('collapsed');
-    document.getElementById('btn-nav').classList.remove('active');
+    Object.keys(PANELS).forEach(other => {
+      if (other === id) return;
+      document.getElementById(other).classList.add('collapsed');
+      document.getElementById(PANELS[other]).classList.remove('active');
+    });
   }
   const collapsed = panel.classList.toggle('collapsed');
   btn.classList.toggle('active', !collapsed);
   syncBackdrop();
 }
 
-function toggleNav() {
-  const panel = document.getElementById('nav-panel');
-  const btn = document.getElementById('btn-nav');
-  const willOpen = panel.classList.contains('collapsed');
-  if (willOpen && isSmallScreen()) {
-    document.getElementById('img-panel').classList.add('collapsed');
-    document.getElementById('btn-explorer').classList.remove('active');
-  }
-  const collapsed = panel.classList.toggle('collapsed');
-  btn.classList.toggle('active', !collapsed);
-  syncBackdrop();
-}
+function toggleWorkbooks() { togglePanelById('wb-panel'); }
+function togglePanel() { togglePanelById('img-panel'); }
+function toggleNav() { togglePanelById('nav-panel'); }
 
 async function setWorkingFolder() {
   if (!window.showDirectoryPicker) {
@@ -2300,10 +2517,613 @@ function updateStatus() {
   document.getElementById('stat-chars').textContent = t('statChars', text.length);
 }
 
+/* ============================================================
+   Workbooks — a workbook holds chapters; one chapter is one
+   markdown file, the way OneNote holds pages in a notebook.
+
+   IndexedDB (`scula-md`) is the source of truth and works on
+   every device, phones included. Where a default folder exists
+   (desktop, see docs/FEATURES.md § D) the same chapters are
+   mirrored to <folder>/markdown/<workbook>/<chapter>.md, and
+   every record keeps the folder + file name it owns — that
+   record *is* the correspondence between the UI and the folder.
+
+   Full description: docs/FEATURES.md § E.
+   ============================================================ */
+const WB_DB = 'scula-md', WB_VER = 1;
+const WB_BOOKS = 'workbooks', WB_CHAPTERS = 'chapters', WB_META = 'meta';
+
+var wbBooted = false;        // var: applyUILang() reads it before this runs
+let wbBooks = [];            // [{ id, name, folder, created, updated, order }]
+let wbChapters = [];         // [{ id, workbookId, title, file, content, … }]
+let wbCurrentId = null;      // open chapter, or null for a loose file
+let wbDirty = false;
+let wbSaveTimer = 0;
+const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
+
+/* ── IndexedDB plumbing ── */
+function wbDb() {
+  return new Promise((res, rej) => {
+    let r;
+    try { r = indexedDB.open(WB_DB, WB_VER); } catch (e) { rej(e); return; }
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains(WB_BOOKS)) db.createObjectStore(WB_BOOKS, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(WB_CHAPTERS)) {
+        db.createObjectStore(WB_CHAPTERS, { keyPath: 'id' }).createIndex('byWorkbook', 'workbookId');
+      }
+      if (!db.objectStoreNames.contains(WB_META)) db.createObjectStore(WB_META);
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function wbTx(store, mode, run) {
+  return wbDb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, mode);
+    const req = run(tx.objectStore(store));
+    tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+    tx.onabort = () => { db.close(); rej(tx.error); };
+  }));
+}
+const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
+const wbPut = (store, v) => wbTx(store, 'readwrite', s => s.put(v));
+const wbDrop = (store, k) => wbTx(store, 'readwrite', s => s.delete(k));
+// The meta store has no keyPath — put(value, key), get(key).
+const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
+const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
+
+async function wbPersist(store, value) {
+  try { await wbPut(store, value); return true; }
+  catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
+}
+
+/* ── Small helpers ── */
+function wbNewId(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function wbByOrder(a, b) { return (a.order || 0) - (b.order || 0) || (a.created || 0) - (b.created || 0); }
+function wbBook(id) { return wbBooks.find(b => b.id === id) || null; }
+function wbChapter(id) { return wbChapters.find(c => c.id === id) || null; }
+function wbChaptersOf(id) { return wbChapters.filter(c => c.workbookId === id).sort(wbByOrder); }
+
+// A name every file system accepts. Romanian diacritics survive — they are
+// valid in file names everywhere the apps run, and stripping them would make
+// the folder unrecognisable next to the UI it mirrors.
+function wbSlug(name, fallback) {
+  let s = String(name || '').trim()
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '');
+  if (s.length > 60) s = s.slice(0, 60).replace(/-+$/, '');
+  return s || fallback;
+}
+function wbUniqueFolder(name, exceptId) {
+  const base = wbSlug(name, t('untitledWorkbook'));
+  const taken = new Set(wbBooks.filter(b => b.id !== exceptId).map(b => b.folder.toLowerCase()));
+  let n = base, i = 1;
+  while (taken.has(n.toLowerCase())) n = base + '-' + (++i);
+  return n;
+}
+function wbUniqueFile(workbookId, title, exceptId) {
+  const base = wbSlug(title, t('untitledChapter'));
+  const taken = new Set(wbChapters.filter(c => c.workbookId === workbookId && c.id !== exceptId)
+                                  .map(c => c.file.toLowerCase()));
+  let n = base + '.md', i = 1;
+  while (taken.has(n.toLowerCase())) n = base + '-' + (++i) + '.md';
+  return n;
+}
+function wbSay(msg, alsoToast) {
+  const el = document.getElementById('stat-wb');
+  if (el) el.textContent = msg || '';
+  if (alsoToast && msg && typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(msg);
+}
+function wbGuessTitle() {
+  const m = editor.value.match(/^#{1,3}\s+(.+)$/m);
+  if (m) return m[1].trim().slice(0, 80);
+  const base = (document.getElementById('current-file').textContent || '').replace(/\.(md|txt)$/i, '');
+  return base && base !== 'untitled' ? base : t('defaultChapterName');
+}
+
+/* ── The folder mirror ──
+   Only the "folder" route owns a directory we can write into. On the share
+   and download routes the chapter still lives in IndexedDB, and a person who
+   wants the file in their hands uses exportChapter() — docs/FEATURES.md § D. */
+function wbFolderMode() {
+  return typeof ScuLaFolder !== 'undefined' && ScuLaFolder.mode() === 'folder';
+}
+async function wbMirrorWrite(book, chapter, text) {
+  if (!wbFolderMode()) return null;
+  try {
+    const md = await ScuLaFolder.dir(true);                     // <root>/markdown
+    if (!md) return null;
+    const bookDir = await md.getDirectoryHandle(book.folder, { create: true });
+    const fh = await bookDir.getFileHandle(chapter.file, { create: true });
+    const w = await fh.createWritable();
+    await w.write(new Blob([text], { type: 'text/markdown' }));
+    await w.close();
+    return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
+  } catch (e) { return null; }
+}
+// Best effort, and never recursive: only files this app knows it wrote are
+// removed, and an empty workbook folder is dropped only if the FS agrees it
+// is empty. Nothing a person put there by hand is ever deleted.
+async function wbMirrorRemove(folder, file) {
+  if (!wbFolderMode()) return;
+  try {
+    const md = await ScuLaFolder.dir(true);
+    if (!md) return;
+    const bookDir = await md.getDirectoryHandle(folder);
+    if (file) await bookDir.removeEntry(file);
+    else await md.removeEntry(folder);
+  } catch (e) { /* not there, or not empty — leave it alone */ }
+}
+
+/* ── Panel rendering ── */
+function wbActBtn(label, title, fn) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'wb-act';
+  b.textContent = label;
+  b.title = title;
+  b.setAttribute('aria-label', title);
+  b.addEventListener('click', ev => { ev.stopPropagation(); fn(); });
+  return b;
+}
+function renderWorkbooks() {
+  const tree = document.getElementById('wb-tree');
+  if (!tree) return;
+  tree.textContent = '';
+
+  if (!wbBooks.length) {
+    const empty = document.createElement('div');
+    empty.className = 'wb-empty';
+    empty.textContent = t('wbEmpty');
+    tree.appendChild(empty);
+  }
+
+  wbBooks.slice().sort(wbByOrder).forEach(book => {
+    const chapters = wbChaptersOf(book.id);
+    const open = wbOpenBooks.has(book.id);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'wb-book' + (open ? ' open' : '');
+
+    const row = document.createElement('div');
+    row.className = 'wb-book-row';
+    row.title = book.folder + '/';
+    row.addEventListener('click', () => {
+      if (open) wbOpenBooks.delete(book.id); else wbOpenBooks.add(book.id);
+      renderWorkbooks();
+    });
+
+    const twist = document.createElement('span');
+    twist.className = 'wb-twist';
+    twist.textContent = open ? '▼' : '▶';
+    const name = document.createElement('span');
+    name.className = 'wb-book-name';
+    name.textContent = '📓 ' + book.name;
+    const count = document.createElement('span');
+    count.className = 'wb-count';
+    count.textContent = chapters.length;
+
+    const acts = document.createElement('div');
+    acts.className = 'wb-acts';
+    acts.appendChild(wbActBtn('＋', t('addChapterTip'), () => newChapter(book.id)));
+    acts.appendChild(wbActBtn('✎', t('renameWorkbookTip'), () => renameWorkbook(book.id)));
+    acts.appendChild(wbActBtn('🗑', t('deleteWorkbookTip'), () => deleteWorkbook(book.id)));
+
+    row.appendChild(twist); row.appendChild(name); row.appendChild(count); row.appendChild(acts);
+    wrap.appendChild(row);
+
+    const list = document.createElement('div');
+    list.className = 'wb-chapters';
+    if (!chapters.length) {
+      const none = document.createElement('div');
+      none.className = 'wb-ch-empty';
+      none.textContent = t('wbNoChapters');
+      list.appendChild(none);
+    }
+    chapters.forEach(ch => {
+      const chRow = document.createElement('div');
+      chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '');
+      chRow.title = book.folder + '/' + ch.file;
+      chRow.addEventListener('click', () => openChapter(ch.id));
+
+      const chName = document.createElement('span');
+      chName.className = 'wb-ch-name';
+      chName.textContent = '📄 ' + ch.title;
+
+      const chActs = document.createElement('div');
+      chActs.className = 'wb-acts';
+      chActs.appendChild(wbActBtn('✎', t('renameChapterTip'), () => renameChapter(ch.id)));
+      chActs.appendChild(wbActBtn('⇪', t('exportChapterTip'), () => exportChapter(ch.id)));
+      chActs.appendChild(wbActBtn('🗑', t('deleteChapterTip'), () => deleteChapter(ch.id)));
+
+      chRow.appendChild(chName); chRow.appendChild(chActs);
+      list.appendChild(chRow);
+    });
+    wrap.appendChild(list);
+    tree.appendChild(wrap);
+  });
+
+  paintWorkbookWhere();
+  paintWorkbookCrumb();
+}
+function paintWorkbookWhere() {
+  const el = document.getElementById('wb-where');
+  if (!el) return;
+  el.textContent = wbFolderMode()
+    ? '📂 ' + ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/'
+    : t('wbLocalOnly');
+}
+function paintWorkbookCrumb() {
+  const crumb = document.getElementById('wb-crumb');
+  if (!crumb) return;
+  const ch = wbChapter(wbCurrentId);
+  const book = ch ? wbBook(ch.workbookId) : null;
+  if (ch && book) {
+    crumb.hidden = false;
+    crumb.textContent = '📓 ' + book.name + ' › ' + ch.title;
+    crumb.title = book.folder + '/' + ch.file;
+  } else {
+    crumb.hidden = true;
+    crumb.textContent = '';
+  }
+}
+
+/* ── Workbook / chapter operations ── */
+async function createWorkbook() {
+  const name = (prompt(t('promptNewWorkbook'), t('defaultWorkbookName')) || '').trim();
+  if (!name) return null;
+  const book = {
+    id: wbNewId('wb_'), name, folder: wbUniqueFolder(name),
+    created: Date.now(), updated: Date.now(), order: wbBooks.length
+  };
+  wbBooks.push(book);
+  if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); return null; }
+  wbOpenBooks.add(book.id);
+  renderWorkbooks();
+  wbSay(t('workbookCreated', book.name));
+  return book;
+}
+
+async function renameWorkbook(id) {
+  const book = wbBook(id);
+  if (!book) return;
+  const name = (prompt(t('promptRenameWorkbook'), book.name) || '').trim();
+  if (!name || name === book.name) return;
+  const oldFolder = book.folder;
+  book.name = name;
+  book.folder = wbUniqueFolder(name, book.id);
+  book.updated = Date.now();
+  if (!await wbPersist(WB_BOOKS, book)) return;
+  if (book.folder !== oldFolder && wbFolderMode()) {
+    for (const ch of wbChaptersOf(book.id)) {
+      await wbMirrorWrite(book, ch, ch.content || '');
+      await wbMirrorRemove(oldFolder, ch.file);
+    }
+    await wbMirrorRemove(oldFolder, null);
+  }
+  renderWorkbooks();
+}
+
+async function deleteWorkbook(id) {
+  const book = wbBook(id);
+  if (!book) return;
+  if (!confirm(t('confirmDeleteWorkbook', book.name))) return;
+  const chapters = wbChaptersOf(book.id);
+  for (const ch of chapters) {
+    try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
+    await wbMirrorRemove(book.folder, ch.file);
+  }
+  await wbMirrorRemove(book.folder, null);
+  try { await wbDrop(WB_BOOKS, book.id); } catch (e) {}
+  wbChapters = wbChapters.filter(c => c.workbookId !== book.id);
+  wbBooks = wbBooks.filter(b => b.id !== book.id);
+  wbOpenBooks.delete(book.id);
+  if (chapters.some(c => c.id === wbCurrentId)) detachChapter();
+  renderWorkbooks();
+  wbSay(t('wbRemoved'));
+}
+
+async function newChapter(workbookId) {
+  const book = wbBook(workbookId);
+  if (!book) return;
+  const title = (prompt(t('promptNewChapter'), t('defaultChapterName')) || '').trim();
+  if (!title) return;
+  if (!canLeaveEditor()) return;
+  await flushChapter();
+  const ch = {
+    id: wbNewId('ch_'), workbookId: book.id, title,
+    file: wbUniqueFile(book.id, title), content: '',
+    created: Date.now(), updated: Date.now(), order: wbChaptersOf(book.id).length
+  };
+  wbChapters.push(ch);
+  if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); return; }
+  wbOpenBooks.add(book.id);
+  loadChapterIntoEditor(ch);
+  await wbMirrorWrite(book, ch, '');
+}
+
+function loadChapterIntoEditor(ch) {
+  wbCurrentId = ch.id;
+  wbDirty = false;
+  clearTimeout(wbSaveTimer);
+  editor.value = ch.content || '';
+  document.getElementById('current-file').textContent = ch.file;
+  updatePreview(); updateStatus(); updateNav();
+  renderWorkbooks();
+  wbMetaSet('last', ch.id).catch(() => {});
+  wbSay(t('chapterOpened', ch.title));
+}
+
+async function openChapter(id) {
+  const ch = wbChapter(id);
+  if (!ch || ch.id === wbCurrentId) return;
+  if (!canLeaveEditor()) return;
+  await flushChapter();
+  loadChapterIntoEditor(ch);
+  if (isSmallScreen()) closeAllPanels();
+}
+
+async function renameChapter(id) {
+  const ch = wbChapter(id);
+  if (!ch) return;
+  const title = (prompt(t('promptRenameChapter'), ch.title) || '').trim();
+  if (!title || title === ch.title) return;
+  const book = wbBook(ch.workbookId);
+  const oldFile = ch.file;
+  ch.title = title;
+  ch.file = wbUniqueFile(ch.workbookId, title, ch.id);
+  ch.updated = Date.now();
+  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  if (book && ch.file !== oldFile && wbFolderMode()) {
+    await wbMirrorWrite(book, ch, ch.content || '');
+    await wbMirrorRemove(book.folder, oldFile);
+  }
+  if (ch.id === wbCurrentId) document.getElementById('current-file').textContent = ch.file;
+  renderWorkbooks();
+}
+
+async function deleteChapter(id) {
+  const ch = wbChapter(id);
+  if (!ch) return;
+  if (!confirm(t('confirmDeleteChapter', ch.title))) return;
+  const book = wbBook(ch.workbookId);
+  try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
+  if (book) await wbMirrorRemove(book.folder, ch.file);
+  wbChapters = wbChapters.filter(c => c.id !== ch.id);
+  if (ch.id === wbCurrentId) detachChapter();
+  renderWorkbooks();
+  wbSay(t('wbRemoved'));
+}
+
+// Hands one chapter out through the shared route: the markdown folder on
+// desktop, the OS share sheet on a phone, a download otherwise.
+function exportChapter(id) {
+  const ch = wbChapter(id);
+  if (!ch) return;
+  const book = wbBook(ch.workbookId);
+  const name = (book ? book.folder + '-' : '') + ch.file;
+  ScuLaFolder.save(name, new Blob([ch.content || ''], { type: 'text/markdown' }));
+}
+
+async function syncAllToFolder() {
+  if (!wbFolderMode()) { ScuLaFolder.chooser(); return; }
+  await flushChapter();
+  let n = 0;
+  for (const book of wbBooks) {
+    for (const ch of wbChaptersOf(book.id)) {
+      if (await wbMirrorWrite(book, ch, ch.content || '')) n++;
+    }
+  }
+  wbSay(t('wbSynced', n), true);
+}
+
+/* ── Autosave: the open chapter is written back to IndexedDB as you type,
+   so nothing is lost on any device. Disk mirroring stays on explicit saves,
+   which is where a permission prompt is allowed to happen. ── */
+function scheduleAutosave() {
+  if (!wbCurrentId) return;
+  wbDirty = true;
+  wbSay(t('wbEditing'));
+  clearTimeout(wbSaveTimer);
+  wbSaveTimer = setTimeout(() => { flushChapter(); }, 800);
+}
+async function flushChapter() {
+  clearTimeout(wbSaveTimer);
+  if (!wbCurrentId || !wbDirty) return;
+  const ch = wbChapter(wbCurrentId);
+  if (!ch) { wbDirty = false; return; }
+  ch.content = editor.value;
+  ch.updated = Date.now();
+  wbDirty = false;
+  if (await wbPersist(WB_CHAPTERS, ch)) wbSay(t('wbAutosaved'));
+}
+function detachChapter() {
+  clearTimeout(wbSaveTimer);
+  wbCurrentId = null;
+  wbDirty = false;
+  wbMetaSet('last', '').catch(() => {});
+  wbSay('');
+  renderWorkbooks();
+}
+// A chapter is always safe to leave (autosave already stored it); a loose
+// file with text in it is not.
+function canLeaveEditor() {
+  if (wbCurrentId) return true;
+  if (!editor.value.trim()) return true;
+  return confirm(t('confirmLeaveUnsaved'));
+}
+
+/* ── Saving into a workbook ── */
+async function saveToWorkbook() {
+  if (!wbCurrentId) { openWorkbookModal(); return; }
+  const ch = wbChapter(wbCurrentId);
+  const book = ch && wbBook(ch.workbookId);
+  if (!ch || !book) { detachChapter(); openWorkbookModal(); return; }
+  clearTimeout(wbSaveTimer);
+  ch.content = editor.value;
+  ch.updated = Date.now();
+  wbDirty = false;
+  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  const path = await wbMirrorWrite(book, ch, ch.content);
+  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  renderWorkbooks();
+}
+
+function openWorkbookModal() {
+  const sel = document.getElementById('wb-select');
+  sel.textContent = '';
+  wbBooks.slice().sort(wbByOrder).forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.id; o.textContent = b.name;
+    sel.appendChild(o);
+  });
+  const fresh = document.createElement('option');
+  fresh.value = '__new__'; fresh.textContent = t('optNewWorkbook');
+  sel.appendChild(fresh);
+
+  const current = wbChapter(wbCurrentId);
+  sel.value = current ? current.workbookId : (wbBooks.length ? sel.options[0].value : '__new__');
+  document.getElementById('wb-new-name').value = '';
+  document.getElementById('wb-chapter-title').value = current ? current.title : wbGuessTitle();
+  onWorkbookSelectChange();
+  if (current) document.getElementById('wb-chapter-select').value = current.id;
+  onChapterSelectChange();
+  document.getElementById('workbook-modal').classList.add('open');
+  setTimeout(() => {
+    const focusNew = sel.value === '__new__';
+    document.getElementById(focusNew ? 'wb-new-name' : 'wb-chapter-title').focus();
+  }, 40);
+}
+function closeWorkbookModal() { document.getElementById('workbook-modal').classList.remove('open'); }
+
+function onWorkbookSelectChange() {
+  const sel = document.getElementById('wb-select');
+  const isNew = sel.value === '__new__';
+  document.getElementById('wb-new-field').hidden = !isNew;
+
+  const chSel = document.getElementById('wb-chapter-select');
+  chSel.textContent = '';
+  const fresh = document.createElement('option');
+  fresh.value = '__new__'; fresh.textContent = t('optNewChapter');
+  chSel.appendChild(fresh);
+  if (!isNew) {
+    wbChaptersOf(sel.value).forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.title;
+      chSel.appendChild(o);
+    });
+  }
+  chSel.value = '__new__';
+  onChapterSelectChange();
+}
+function onChapterSelectChange() {
+  const chSel = document.getElementById('wb-chapter-select');
+  document.getElementById('wb-title-field').hidden = chSel.value !== '__new__';
+  paintWorkbookPathHint();
+}
+function paintWorkbookPathHint() {
+  const hint = document.getElementById('wb-path-hint');
+  if (!hint) return;
+  const sel = document.getElementById('wb-select');
+  const chSel = document.getElementById('wb-chapter-select');
+  const book = sel.value === '__new__' ? null : wbBook(sel.value);
+  const folder = book ? book.folder
+    : wbSlug(document.getElementById('wb-new-name').value, t('untitledWorkbook'));
+  const chosen = chSel.value === '__new__' ? null : wbChapter(chSel.value);
+  const file = chosen ? chosen.file
+    : wbSlug(document.getElementById('wb-chapter-title').value, t('untitledChapter')) + '.md';
+  const sub = typeof ScuLaFolder !== 'undefined' ? ScuLaFolder.subdir() : 'markdown';
+  hint.textContent = t('wbPathHint', sub + '/' + folder + '/' + file);
+}
+
+async function confirmSaveToWorkbook() {
+  const sel = document.getElementById('wb-select');
+  let book;
+  if (sel.value === '__new__') {
+    const name = document.getElementById('wb-new-name').value.trim();
+    if (!name) { alert(t('needWorkbookName')); return; }
+    book = {
+      id: wbNewId('wb_'), name, folder: wbUniqueFolder(name),
+      created: Date.now(), updated: Date.now(), order: wbBooks.length
+    };
+    wbBooks.push(book);
+    if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); return; }
+  } else {
+    book = wbBook(sel.value);
+    if (!book) return;
+  }
+
+  const chSel = document.getElementById('wb-chapter-select');
+  let ch;
+  if (chSel.value === '__new__') {
+    const title = document.getElementById('wb-chapter-title').value.trim();
+    if (!title) { alert(t('needChapterTitle')); return; }
+    ch = {
+      id: wbNewId('ch_'), workbookId: book.id, title,
+      file: wbUniqueFile(book.id, title), content: editor.value,
+      created: Date.now(), updated: Date.now(), order: wbChaptersOf(book.id).length
+    };
+    wbChapters.push(ch);
+    if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); return; }
+  } else {
+    ch = wbChapter(chSel.value);
+    if (!ch) return;
+    ch.content = editor.value;
+    ch.updated = Date.now();
+    if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  }
+
+  clearTimeout(wbSaveTimer);
+  wbCurrentId = ch.id;
+  wbDirty = false;
+  wbOpenBooks.add(book.id);
+  document.getElementById('current-file').textContent = ch.file;
+  wbMetaSet('last', ch.id).catch(() => {});
+  closeWorkbookModal();
+  renderWorkbooks();
+  const path = await wbMirrorWrite(book, ch, ch.content);
+  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+}
+
+/* ── Boot: load the tree, then reopen whatever was last edited ── */
+async function loadWorkbooks() {
+  try {
+    const [books, chapters] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS)]);
+    wbBooks = (books || []).sort(wbByOrder);
+    wbChapters = (chapters || []).sort(wbByOrder);
+  } catch (e) { wbBooks = []; wbChapters = []; }
+  wbBooted = true;
+  renderWorkbooks();
+  // The stored folder handle reloads asynchronously and the shared block
+  // fires no event for it, so the "where do files go" line has to wait.
+  ScuLaFolder.ready.then(paintWorkbookWhere, paintWorkbookWhere);
+
+  let last = null;
+  try { last = await wbMetaGet('last'); } catch (e) {}
+  const ch = last ? wbChapter(last) : null;
+  // Only resume into an untouched editor — never overwrite typing that
+  // started while IndexedDB was still opening.
+  if (ch && !editor.value.trim()) {
+    wbOpenBooks.add(ch.workbookId);
+    loadChapterIntoEditor(ch);
+    wbSay(t('wbRestored', ch.title));
+  }
+}
+window.addEventListener('scula-folder', paintWorkbookWhere);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushChapter(); });
+window.addEventListener('beforeunload', () => { flushChapter(); });
+
 /* ── File operations ── */
 function newFile() {
-  if (editor.value && !confirm(t('confirmDiscard'))) return;
+  if (wbCurrentId) flushChapter();
+  else if (editor.value && !confirm(t('confirmDiscard'))) return;
   editor.value = '';
+  detachChapter();
   document.getElementById('current-file').textContent = 'untitled.md';
   updatePreview(); updateStatus();
 }
@@ -2313,6 +3133,7 @@ function handleFileOpen(event) {
   const reader = new FileReader();
   reader.onload = e => {
     editor.value = e.target.result;
+    detachChapter();
     document.getElementById('current-file').textContent = file.name;
     updatePreview(); updateStatus();
   };
@@ -2346,6 +3167,7 @@ function handleDocxImport(event) {
 
       editor.value = md;
       const mdName = file.name.replace(/\.docx$/i, '.md');
+      detachChapter();
       document.getElementById('current-file').textContent = mdName;
       updatePreview(); updateStatus();
 
@@ -2663,7 +3485,9 @@ document.addEventListener('keydown', e => {
     if (isSmallScreen()) closeAllPanels();
   }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }
-  if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === '2') { e.preventDefault(); toggleWorkbooks(); }
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); saveFile(); }
+  else if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveToWorkbook(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*','*'); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); openLinkModal(); }
@@ -2680,9 +3504,11 @@ function applyResponsiveDefaults() {
     // Panels overlay the content, so start them closed
     closeAllPanels();
   } else {
-    // Desktop: nav visible by default, explorer closed
-    document.getElementById('nav-panel').classList.remove('collapsed');
-    document.getElementById('btn-nav').classList.add('active');
+    // Desktop: workbooks and nav visible by default, image explorer closed
+    ['wb-panel', 'nav-panel'].forEach(id => {
+      document.getElementById(id).classList.remove('collapsed');
+      document.getElementById(PANELS[id]).classList.add('active');
+    });
     document.getElementById('img-panel').classList.add('collapsed');
     document.getElementById('btn-explorer').classList.remove('active');
     document.getElementById('panel-backdrop').classList.remove('show');
@@ -2691,6 +3517,7 @@ function applyResponsiveDefaults() {
 
 setView('source');
 applyResponsiveDefaults();
+loadWorkbooks();
 
 let lastSmall = isSmallScreen();
 window.addEventListener('resize', () => {
