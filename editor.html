@@ -2,7 +2,13 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- maximum-scale/user-scalable lock the *browser's* page zoom off: pinching
+     used to scale the whole document, so the toolbar, the floating panels and
+     the layers sidebar grew along with the drawing. The app has its own canvas
+     zoom (buttons, Ctrl+scroll, two-finger pinch over the canvas area), which
+     is what a pinch should reach instead. See also html,body{touch-action}
+     below and the gesture blockers in the script (§ Zoom). -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#14201A">
 <title>Image Marker — draw, write, arrow</title>
@@ -53,6 +59,12 @@
     background: var(--bg); color: var(--text);
     font-family: 'Raleway', 'Roboto', sans-serif;
     overflow: hidden;
+    /* Chrome (the UI kind) must not scale with a pinch. Listing only the pan
+       values drops pinch-zoom *and* double-tap zoom for every descendant,
+       while one-finger scrolling inside #canvasWrap / #sidebar / .panelBody
+       keeps working. Elements that need to swallow gestures entirely
+       (#overlayCanvas, .panelHead) still set their own touch-action:none. */
+    touch-action: pan-x pan-y;
   }
   body{ display:flex; flex-direction:column; }
   #app{ display:flex; flex-direction:column; flex:1; min-height:0; }
@@ -1971,6 +1983,53 @@ canvasWrap.addEventListener('wheel', (e) => {
   e.preventDefault();
   setZoom(state.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1));
 }, { passive: false });
+
+/* --- Keep a pinch off the browser's page zoom ---------------------------
+   A pinch anywhere used to scale the whole document, so the toolbar, the
+   floating panels and the layers sidebar zoomed together with the drawing.
+   The viewport meta + html,body{touch-action:pan-x pan-y} handle that on
+   Android/Chrome; iOS Safari ignores user-scalable=no and drives its own
+   page zoom from these non-standard gesture events, so block them too.
+   preventDefault here does not touch Pointer Events, so the app's own
+   canvas pinch below is unaffected. */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(type => {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+});
+
+/* A pinch that lands on the checkered padding around the image (or on the
+   empty state) is still "pinch the canvas" as far as the user is concerned,
+   but it never reaches #overlayCanvas, so the gesture pipeline further down
+   never sees it - and with page zoom now off it would otherwise do nothing.
+   Zoom only: panning stays with the browser, which scrolls #canvasWrap
+   natively (touch-action allows pan), so we must not move scrollLeft/Top as
+   well or the area would pan at double speed. */
+const wrapPointers = new Map();
+let wrapPinch = null;
+function wrapPinchDist(){
+  const p = [...wrapPointers.values()];
+  return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+}
+canvasWrap.addEventListener('pointerdown', (e) => {
+  // gestures over the image itself belong to the canvas pipeline
+  if (e.pointerType !== 'touch' || e.target === overlayCanvas) return;
+  wrapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  // recomputed on every second finger, so lifting one and putting it back
+  // resumes from the current spread instead of jumping
+  if (wrapPointers.size === 2) wrapPinch = { startDist: wrapPinchDist(), startZoom: state.zoom };
+});
+canvasWrap.addEventListener('pointermove', (e) => {
+  if (!wrapPointers.has(e.pointerId)) return;
+  wrapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!wrapPinch || wrapPointers.size !== 2) return;
+  const dist = wrapPinchDist();
+  if (dist > 0 && wrapPinch.startDist > 0) setZoom(wrapPinch.startZoom * (dist / wrapPinch.startDist));
+});
+function endWrapPointer(e){
+  wrapPointers.delete(e.pointerId);
+  if (wrapPointers.size === 0) wrapPinch = null;
+}
+canvasWrap.addEventListener('pointerup', endWrapPointer);
+canvasWrap.addEventListener('pointercancel', endWrapPointer);
 
 /* ===================== Pan ===================== */
 let panOrigin = null;

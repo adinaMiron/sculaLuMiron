@@ -157,6 +157,40 @@ Pan: Alt+drag or middle-click drag (`startPan/updatePan/endPan`, ~L873,
 short-circuits at the top of `onDown`/`onMove`/`onUp` before any tool
 logic runs) or arrow keys (40px, 120px w/ Shift) via `canvasWrap.scrollLeft/Top`.
 
+**The browser's own page zoom is switched off** (2026-08) — a pinch used to
+scale the entire document, so the toolbar, the floating panels and the layers
+sidebar grew along with the drawing. Only the canvas should zoom. Three
+independent pieces do it, because no single one covers every engine; treat
+them as one unit:
+
+1. `<meta name="viewport" … maximum-scale=1, user-scalable=no …>` — Android
+   Chrome and friends.
+2. `html,body{ touch-action: pan-x pan-y }` — naming only the pan values
+   drops pinch-zoom *and* double-tap zoom for every descendant, while
+   one-finger scrolling inside `#canvasWrap` / `#sidebar` / `.panelBody`
+   still works. `#overlayCanvas` and `.panelHead` keep their stricter
+   `touch-action:none`; the intersection is still `none`, so nothing there
+   changes.
+3. `gesturestart` / `gesturechange` / `gestureend` → `preventDefault()` on
+   `document` (§ Zoom in the script) — iOS Safari ignores `user-scalable=no`
+   and drives page zoom from these non-standard events. `preventDefault`
+   here does not affect Pointer Events, so the canvas pinch is untouched.
+
+A pinch on the checkered padding around the image never reaches
+`#overlayCanvas`, so with page zoom gone it would do nothing at all. A small
+zoom-only pinch handler on `#canvasWrap` (`wrapPointers`/`wrapPinch`, § Zoom)
+covers that case; it deliberately does **not** move `scrollLeft/Top`, because
+`touch-action` still lets the browser scroll that container natively and doing
+both would pan at double speed. The `#overlayCanvas` pinch does pan by hand —
+it must, `touch-action:none` there leaves no native scrolling to inherit.
+
+Verified with CDP-synthesized pinches on an emulated Pixel 5: a control page
+zooms to `visualViewport.scale` 2.5, editor.html stays at 1 for a pinch on the
+toolbar and on the sidebar with the canvas zoom untouched at 44%; a pinch over
+the image zooms the canvas 44%→353% at page scale 1; a pinch on the padding
+zooms 44%→177%; one-finger scroll of `#canvasWrap` still moves it (0→120px);
+one-finger touch draw still creates a layer.
+
 ## Export
 
 - `renderComposite(w, h, opts)` (~L2122) — the one function that draws
@@ -190,8 +224,12 @@ touch-target floor.
 
 Works on phones and tablets. Key pieces, all easy to break accidentally:
 - `<meta name="viewport" content="width=device-width, initial-scale=1,
-  viewport-fit=cover">` — without it mobile browsers lay out at 980px and
-  shrink-to-fit, making everything unusably tiny.
+  maximum-scale=1, user-scalable=no, viewport-fit=cover">` — without
+  `width=device-width` mobile browsers lay out at 980px and shrink-to-fit,
+  making everything unusably tiny; `maximum-scale`/`user-scalable` are the
+  page-zoom lock described in § Zoom / Pan (the trade-off is deliberate: the
+  browser's magnify-the-whole-page gesture is gone, the canvas has its own
+  zoom, and the chrome scales with viewport width instead).
 - `#overlayCanvas { touch-action: none; }` — **critical.** Without it the
   browser claims a one-finger drag as a page pan and fires `pointercancel`
   mid-stroke, so drawing silently fails on real devices (note: an emulator
@@ -204,7 +242,10 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
   in-progress draw so a pinch never leaves a stray half-shape; the gesture
   stays latched until *all* fingers lift so releasing one doesn't start
   drawing with the other. Double-tap ⇒ `onDblClick` (touch doesn't fire
-  `dblclick` reliably) for editing text / rect labels.
+  `dblclick` reliably) for editing text / rect labels. A pinch on the
+  checkered padding *around* the image zooms too, via the separate zoom-only
+  `#canvasWrap` handler (§ Zoom / Pan). A pinch on the toolbar, the panels or
+  the layers sidebar now does nothing at all — that is the point.
 - **Chrome layout (2026-08 rework).** The toolbar used to hold everything in
   one row: on phones and tablets that meant `overflow-x:auto`, so reaching a
   tool was a swipe through nine other buttons. It is now split in three:

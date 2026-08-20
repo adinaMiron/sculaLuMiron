@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:220-863` · `editor.html:379-1022` · `markdown-editor.html:741-1384`
+`index.html:220-863` · `editor.html:391-1034` · `markdown-editor.html:741-1384`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -80,7 +80,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 3754 lines · "Image Marker" (canvas annotation)
+## editor.html — 3813 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -96,51 +96,58 @@ touch" for why and how.
 
 | Lines | Contents |
 |---|---|
-| 9–376 | App CSS. `:root` **24–40**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
-| 60–105 | Top toolbar |
-| 221–308 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel` |
-| 309–376 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 379–1022 | **Shared nav + `ScuLaFolder`** |
-| 1028–1056 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1057–1093 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1094–1185 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1186–1304 | Markup: modals, stage, sidebar |
-| 1305–3752 | App script |
+| 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
+| 15–388 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
+| 72–117 | Top toolbar |
+| 233–320 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel` |
+| 321–388 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 391–1034 | **Shared nav + `ScuLaFolder`** |
+| 1040–1068 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1069–1105 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1106–1198 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1199–1316 | Markup: modals, stage, sidebar |
+| 1317–3813 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1309 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1507 | State — `state` object, style defaults, `PALETTE` |
-| 1554 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1596 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
-| 1620 | Loading an image |
-| 1653 | Screen snapshot |
-| 1693 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1839 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| 1941 | Zoom |
-| 1975 | Pan — `startPan`/`updatePan`/`endPan` |
-| 1997 | New canvas modal |
-| **2079** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 2574 | Layer list (sidebar) — `renderLayerList` |
-| **2622** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **2844** | **Floating panels** — `placePanel`, `defaultPos`, drag, persistence |
-| **3016** | **Selection panel contents** — `ROW_TYPES`, `syncSelectionPanel` |
-| 3070 | Text box auto-fit |
-| 3081 | Pointer/canvas coords — `canvasPoint()` |
-| 3112 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
-| 3443 | Text editing overlay — `openTextEditor` |
-| 3522 | Keyboard shortcuts |
-| 3550 | Save — `renderComposite`, **`saveOut()`** 3581 (one line onto `ScuLaFolder.save`) |
-| 3589 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 3738 | Fonts ready — `document.fonts.load()` startup pass |
+| 1321 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1519 | State — `state` object, style defaults, `PALETTE` |
+| 1566 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1608 | History — `pushHistory`/`snapshot`/`undo`/`redo` |
+| 1632 | Loading an image |
+| 1665 | Screen snapshot |
+| 1705 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1851 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| 1953 | Zoom — buttons, Ctrl+scroll, **`gesture*` page-zoom blockers**, `#canvasWrap` pinch |
+| 2034 | Pan — `startPan`/`updatePan`/`endPan` |
+| 2056 | New canvas modal |
+| **2138** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| 2633 | Layer list (sidebar) — `renderLayerList` |
+| **2681** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **2903** | **Floating panels** — `placePanel`, `defaultPos`, drag, persistence |
+| **3075** | **Selection panel contents** — `ROW_TYPES`, `syncSelectionPanel` |
+| 3129 | Text box auto-fit |
+| 3140 | Pointer/canvas coords — `canvasPoint()` |
+| 3171 | Pointer interaction — `onDown`/`onMove`/`onUp`, touch, pinch |
+| 3502 | Text editing overlay — `openTextEditor` |
+| 3581 | Keyboard shortcuts |
+| 3609 | Save — `renderComposite`, **`saveOut()`** 3640 (one line onto `ScuLaFolder.save`) |
+| 3648 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 3797 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2079–2574); go straight to the
+Largest region by far is Rendering (2138–2633); go straight to the
 specific `drawX()` you need.
 
-**Two lists must stay in step:** `ROW_TYPES` (3016) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (2622)
+**Zoom is the app's, never the browser's.** Three places cooperate and must
+stay together — the viewport meta (5–11), `html,body{touch-action}` (57–68)
+and the `gesture*` blockers in § Zoom. Remove any one and a pinch starts
+scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
+
+**Two lists must stay in step:** `ROW_TYPES` (3089) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (2681)
 say which types each control actually writes to. Add a control → add it to
 both.
 
