@@ -8,11 +8,11 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1647 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 3829 | 38k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 2706 | 24k | Markdown editor + live preview | dark (earth) |
+| `markdown-editor.html` | 3530 | 31k | Markdown editor + live preview + workbooks | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~78k tokens; `editor.html` alone is 38k. **Never
+Reading all three costs ~85k tokens; `editor.html` alone is 38k. **Never
 `view` an entire app file.** Locate first, then read a narrow range.
 
 ```bash
@@ -39,7 +39,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all three files (`index.html:220-863`, `editor.html:395-1038`,
-`markdown-editor.html:741-1384`). It carries the nav links, the UI-language
+`markdown-editor.html:842-1485`). It carries the nav links, the UI-language
 toggle, **and `window.ScuLaFolder`** — which decides where every saved file
 goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 **all three** or they drift. Verify with:
@@ -47,7 +47,7 @@ goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 ```bash
 sed -n '220,863p' index.html > /tmp/n1
 sed -n '395,1038p' editor.html > /tmp/n2
-sed -n '741,1384p' markdown-editor.html > /tmp/n3
+sed -n '842,1485p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
 
@@ -59,7 +59,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:735` (docx import). Don't add more.
+  CDN in `markdown-editor.html:838` (docx import). Don't add more.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -89,7 +89,7 @@ done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `markdown-editor.html:735` has attributes and is correctly skipped. If
+in `markdown-editor.html:838` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach —
