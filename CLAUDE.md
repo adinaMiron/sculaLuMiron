@@ -93,10 +93,15 @@ in `markdown-editor.html:735` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach —
-see `HANDOFF.md` § "Testing approach". Canvas work needs pixel assertions
-(`getImageData`), not screenshots. Anything using `getDisplayMedia`
-(screenshot/record in `editor.html`) needs a **headed** browser under
-Xvfb; headless Chromium cannot decode media streams at all.
+see `HANDOFF.md` § "Testing approach" and `tests/README.md`. Canvas work
+needs pixel assertions (`getImageData`), not screenshots. Anything using
+`getDisplayMedia` (screenshot/record in `editor.html`) needs a **headed**
+browser under Xvfb; headless Chromium cannot decode media streams at all.
+
+`tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
+pan, gestures, undo/redo, every tool). It is dev-only tooling with its own
+`package.json` — `cd tests && npm install && npm test` — and none of the
+three apps reference it; it doesn't count against Rule 3.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 

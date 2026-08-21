@@ -10,3 +10,7 @@ Thumbs.db
 # Local test scratch
 /tmp/
 *.local.html
+
+# tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
+tests/node_modules/
+tests/package-lock.json
