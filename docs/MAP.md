@@ -4,19 +4,20 @@ Line anchors so you can `sed -n 'A,Bp' file` instead of scanning. Numbers
 drift by a few lines after edits; **search by the name in the right-hand
 column** if a range looks wrong. Re-verify with `grep -n` when in doubt.
 
-Shared shape of all three files:
+Shared shape of all four files:
 
 ```
 <style>  …app CSS, :root palette at the very top…  </style>
 <body>
-<nav id="site-nav">  + its own <style> + <script>   ← triplicated block
+<nav id="site-nav">  + its own <style> + <script>   ← the shared block
 …app markup…
 <script>  …app logic, one IIFE/closure…  </script>
 ```
 
-## The triplicated block (byte-identical in all three files)
+## The shared block (byte-identical in all four files)
 
-`index.html:221-873` · `editor.html:418-1070` · `markdown-editor.html:843-1495`
+`index.html:221-875` · `editor.html:418-1072` ·
+`markdown-editor.html:843-1497` · `recipes.html:246-900`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -39,40 +40,40 @@ strings) · `supported`/`canShareFiles`/`currentMode` · toast ·
 set), `"share"` (no directory picker but `navigator.canShare({files})`,
 i.e. every phone), `"download"`. Read it before assuming what a save does.
 
-Any edit here goes into **all three** files — see the diff snippet in
+Any edit here goes into **all four** files — see the diff snippet in
 `CLAUDE.md`.
 
 ---
 
-## index.html — 1659 lines · "Caiet vocal" (voice dictation)
+## index.html — 1661 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
 | 11–217 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated) |
-| 220–872 | **Shared nav + `ScuLaFolder`** (identical in all 3 files) |
-| 873–1006 | Markup: header, controls, textarea, settings sheet |
-| 1007–1654 | App script, numbered sections below |
+| 220–874 | **Shared nav + `ScuLaFolder`** (identical in all 4 files) |
+| 875–1008 | Markup: header, controls, textarea, settings sheet |
+| 1009–1656 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1012 | **1. i18n** — `I18N` object (`ro:` 1015 / `en:` 1056), `t()` at 1099, `UI` at 1098 |
-| 1102 | 2. Providers |
-| 1127 | 3. Settings store — `KEY` 1129, `store` 1130 w/ memory fallback, `save()` 1261, `load()` 1262 |
-| 1159 | 4. DOM refs |
-| 1190 | 5. Language / engine chips |
-| 1205 | **6. UI language** — `applyUILang()` **1209** |
-| 1227 | 7. Settings sheet |
-| 1299 | 8. Secure-context check |
-| 1304 | 9. Recording (MediaRecorder) + segment rotation |
-| 1451 | 10. Transcription queue |
-| 1545 | 11. Browser dictation (Web Speech API) |
-| 1604 | 12. File import |
-| 1618 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| 1650 | 14. Init |
+| 1014 | **1. i18n** — `I18N` object (`ro:` 1017 / `en:` 1058), `t()` at 1101, `UI` at 1100 |
+| 1104 | 2. Providers |
+| 1129 | 3. Settings store — `KEY` 1131, `store` 1132 w/ memory fallback, `save()` 1263, `load()` 1264 |
+| 1161 | 4. DOM refs |
+| 1192 | 5. Language / engine chips |
+| 1207 | **6. UI language** — `applyUILang()` **1211** |
+| 1229 | 7. Settings sheet |
+| 1301 | 8. Secure-context check |
+| 1306 | 9. Recording (MediaRecorder) + segment rotation |
+| 1453 | 10. Transcription queue |
+| 1547 | 11. Browser dictation (Web Speech API) |
+| 1606 | 12. File import |
+| 1620 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| 1652 | 14. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
@@ -80,7 +81,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 4646 lines · "Image Marker" (canvas annotation)
+## editor.html — 4648 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -103,47 +104,47 @@ touch" for why and how.
 | 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
 | 247–342 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
 | 343–414 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 418–1070 | **Shared nav + `ScuLaFolder`** |
-| 1078–1105 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1107–1144 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1146–1272 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1273–1374 | Markup: modals, stage, sidebar |
-| 1376–4644 | App script |
+| 418–1072 | **Shared nav + `ScuLaFolder`** |
+| 1080–1107 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1109–1146 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1148–1274 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1275–1376 | Markup: modals, stage, sidebar |
+| 1378–4646 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1380 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1594 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
-| 1645 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1687 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
-| 1745 | Loading an image |
-| 1781 | Screen snapshot |
-| 1821 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1967 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2069** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2198 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2250 | New canvas modal |
-| **2332** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| **2688** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
-| 3165 | Layer list (sidebar) — `renderLayerList` |
-| **3215** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3468** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3652** | **Selection panel contents** — `ROW_TYPES` (3666), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
-| 3750 | Text box auto-fit |
-| 3761 | Pointer/canvas coords — `canvasPoint()` |
-| **3800** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 4315 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 4398 | Keyboard shortcuts |
-| 4442 | Save — `renderComposite`, **`saveOut()`** 4473 (one line onto `ScuLaFolder.save`) |
-| 4481 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4630 | Fonts ready — `document.fonts.load()` startup pass |
+| 1382 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1596 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
+| 1647 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1689 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1747 | Loading an image |
+| 1783 | Screen snapshot |
+| 1823 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1969 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2071** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2200 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2252 | New canvas modal |
+| **2334** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2690** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3167 | Layer list (sidebar) — `renderLayerList` |
+| **3217** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3470** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3654** | **Selection panel contents** — `ROW_TYPES` (3668), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 3752 | Text box auto-fit |
+| 3763 | Pointer/canvas coords — `canvasPoint()` |
+| **3802** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4317 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4400 | Keyboard shortcuts |
+| 4444 | Save — `renderComposite`, **`saveOut()`** 4475 (one line onto `ScuLaFolder.save`) |
+| 4483 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4632 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2332–3165); go straight to the
+Largest region by far is Rendering (2334–3167); go straight to the
 specific `drawX()` you need.
 
-### The `spline` and `polyline` layers (2688–3016)
+### The `spline` and `polyline` layers (2690–3018)
 
 The two shapes whose geometry is worth reading before touching. Unlike every
 other type they are **re-derived from their vertices on every repaint** and
@@ -183,8 +184,8 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3666) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (3215)
+**Two lists must stay in step:** `ROW_TYPES` (3668) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (3217)
 say which types each control actually writes to. Add a control → add it to
 both. `rowSplineEdit` is the one row that also needs a real layer, not just
 a matching tool, so `syncSplineControls()` hides it again afterwards — that
@@ -193,7 +194,7 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## markdown-editor.html — 3545 lines · Markdown editor
+## markdown-editor.html — 3547 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
@@ -201,36 +202,36 @@ a `polyline`, whose vertices are all corners already.
 |---|---|
 | 8–837 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). Workbooks panel **181–271**. `@media` 722, 751 |
 | 838 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 842–1494 | **Shared nav + `ScuLaFolder`** |
-| 1496–~1756 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
-| 1757–3537 | App script |
+| 842–1496 | **Shared nav + `ScuLaFolder`** |
+| 1498–~1758 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
+| 1759–3539 | App script |
 
 | Line | Function / region |
 |---|---|
-| 1764 | `I18N` (`ro:` 1765 / `en:` 1832), `t()`, `store`, `applyUILang` |
-| 1948–1950 | `editor`, `preview` refs, `savedRange` |
-| 1953–1975 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 1977–2050 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 2052–2087 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| 2089–2091 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
-| 2099–2139 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2110) + `togglePanelById` — one map drives all three side panels |
-| 2243–2299 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| 2314 | `resolveImageSrc` — image-path rewrite, export-only |
-| 2320 | `applyInline(text, opts)` |
-| **2331** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 2433–2439 | `updatePreview`, `updateNav` |
-| 2521 | `updateStatus` |
-| **2542–3126** | **Workbooks** — see the sub-table below |
-| 3128–3148 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
-| 3150 | `importDocx` |
-| 3193 | `htmlToMarkdown` (docx → md) |
-| 3295–3302 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
-| ~3307–3337 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 3351–3456 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 3458–3479 | Link modal: `openLinkModal`, `insertLink` |
-| 3508–3537 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
+| 1766 | `I18N` (`ro:` 1767 / `en:` 1834), `t()`, `store`, `applyUILang` |
+| 1950–1952 | `editor`, `preview` refs, `savedRange` |
+| 1955–1977 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 1979–2052 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
+| 2054–2089 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| 2091–2093 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
+| 2101–2141 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2112) + `togglePanelById` — one map drives all three side panels |
+| 2245–2301 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| 2316 | `resolveImageSrc` — image-path rewrite, export-only |
+| 2322 | `applyInline(text, opts)` |
+| **2333** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 2435–2441 | `updatePreview`, `updateNav` |
+| 2523 | `updateStatus` |
+| **2544–3128** | **Workbooks** — see the sub-table below |
+| 3130–3150 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
+| 3152 | `importDocx` |
+| 3195 | `htmlToMarkdown` (docx → md) |
+| 3297–3304 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
+| ~3309–3339 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 3353–3458 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 3460–3481 | Link modal: `openLinkModal`, `insertLink` |
+| 3510–3539 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
-### Workbooks (2542–3126) — `docs/FEATURES.md` § E
+### Workbooks (2544–3128) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -239,15 +240,15 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 2542–2552 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
-| 2554–2598 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
-| 2600–2629 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 2641–2673 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 2675–2781 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 2786–2935 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| 2937–2969 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
-| 2971–3100 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| 3103–3126 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
+| 2544–2554 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
+| 2556–2600 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
+| 2602–2631 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 2643–2675 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 2677–2783 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 2788–2937 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| 2939–2971 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
+| 2973–3102 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| 3105–3128 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture); the disk mirror happens on
@@ -263,8 +264,85 @@ when exporting). New markdown syntax now needs exactly one edit, in
 `parseMarkdown`/`applyInline`, not two.
 
 **One trap remains:** exported HTML must stay self-contained (its `<style>`
-runs 3313–3333). It ships to people who don't have the app, so it uses
+runs 3315–3335). It ships to people who don't have the app, so it uses
 literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
+
+---
+
+## recipes.html — 2884 lines · "Rețete" (PDF / photo → recipe markdown)
+
+`lang="ro"`. The *why*, the format contract and the USDA plan live in
+**`docs/RECIPES.md`** — read that before changing the markdown it writes.
+Map only below.
+
+| Lines | Contents |
+|---|---|
+| 11–243 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, markdown preview 189–222, narrow 223–235, touch 236–242 |
+| 246–900 | **Shared nav + `ScuLaFolder`** |
+| 904–1014 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown |
+| 1016–2882 | App script, numbered sections below |
+
+| Line | Section |
+|---|---|
+| 1035 | **1. i18n** — `I18N` (`ro:` 1036 / `en:` 1155), `t()`, `applyUILang()` |
+| 1237 | 2. Settings store (`scula:recipes`) |
+| **1263** | **3. `PdfText`** — the dependency-free PDF reader |
+| **1965** | **4. `Recipes`** — the parser |
+| 2234 | 5. The app — state, review cards, markdown |
+| 2507 | 6. Getting the text in — `ingest`/`analyse`/`handleFile`, then OCR |
+| 2652 | 7. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
+| 2754 | 8. Wiring + init |
+
+### `PdfText` (1263–1962)
+
+`extract(buffer)` is the only entry point; everything else is one stage of
+it. Order matters — object streams must be expanded before the page tree is
+walked, or a modern PDF looks empty.
+
+| Function | What |
+|---|---|
+| `latin1` / `bytesOf` | bytes ↔ a one-char-per-byte string, so string offsets *are* byte offsets |
+| `inflate` | `DecompressionStream`, zlib then raw. The reason this needs no library |
+| `unpredict` | PNG predictors (`/Predictor >= 10`) |
+| `dictValue(dict, key)` | the loose dictionary reader: `<< >>`, `[ ]`, `/Name`, number, or `n g R` |
+| `scanObjects` | every `N 0 obj` in the file; no xref is consulted at all |
+| `decodeStream` | the `/Filter` chain + `/DecodeParms`; `null` for anything that isn't text (images, LZW) |
+| `expandObjStreams` | `/Type /ObjStm` → the dictionaries hidden inside it |
+| `pageList` | `/Root → /Pages → /Kids`, falling back to every `/Type /Page` |
+| `parseCMap` / `fontsOf` / `decodeShown` | `/ToUnicode` → the map that keeps ă â î ș ț; WinAnsi when a font has none |
+| **`widthsOf`** | `/Widths` (simple) and `/W` + `/DW` (CID) → real glyph advances. Guessing them instead is what puts spaces inside words |
+| **`pageText`** (1692) | the tiny interpreter: text operators plus `q`/`Q`/`cm`, with the full text matrix — see the two traps below |
+| `joinLines` (1913) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
+
+Two traps this reader was written around, both found by feeding it a PDF
+printed by Chromium rather than one hand-built in a test:
+
+- **the page can be flipped.** Skia writes `1 0 0 -1 … Tm`, so its lines
+  arrive bottom-first. `show()` normalises with the sign of the composite
+  matrix's `d`; nothing downstream needs to know.
+- **runs are split by font, not by word.** "min" arrives as `m` + `in` when
+  a diacritic pulls in a second font, so a space can only be inferred from
+  the *real* advance width — hence `widthsOf`. With a guessed width the
+  output reads "m in", "arom ă", "10m l".
+
+### `Recipes` (1965–2231)
+
+`parse(text)` → `[{ n, title, meals:[{ kind, label, name, ingredients:[{ qty,
+unit, item, fdc }], steps:[] }] }]`. `toLines` cleans and re-joins wrapped
+lines, `isStep` decides ingredient vs method, `parseIngredient` splits
+quantity/unit/name, `splitSteps` cuts prose into numbered steps.
+
+**`NOT_LETTER`, never `\b`** — after `ă` a `\b` cannot match (it is not a
+word character in a non-unicode regex), which silently turned every Romanian
+imperative into an ingredient once. Every word-end test in this block is that
+lookahead; keep new verbs and units on it.
+
+### The markdown (`buildDayMarkdown`, 2409)
+
+The output shape is a contract (`docs/RECIPES.md` § C): `#` day, `##` meal,
+`### 1. Ingrediente` as a four-column table whose last column is the empty
+USDA FDC id, `### 2. Metoda de preparare` as an ordered list, then the
+totals stub. Change it there and in that doc together.
 
 ---
 

@@ -1,6 +1,7 @@
 # tests/
 
-Ad-hoc Playwright checks for `editor.html`, written the way `HANDOFF.md` §
+Ad-hoc Playwright checks for `editor.html` and `recipes.html`, written the
+way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
@@ -58,6 +59,13 @@ viewport without editing it:
 | `spline.js` | The spline curve, mouse side: click-to-place and the four ways to finish, that the curve interpolates its vertices without cusping on bunched-up ones, the curviness slider, dragging/adding/removing/cornering a vertex, closing the path, and vertex editing on a **rotated** curve (the rotation-pivot correction in `setSplinePoints`) |
 | `polyline.js` | The polyline: the `g` shortcut, click-to-place, that every span really is straight (no ink may stray off the chain through the vertices), the property rows it does and doesn't get, dragging / inserting / removing a vertex, closing the shape by clicking the first vertex again, and filling the closed one |
 | `spline-touch.js` | The spline curve, touch side: tap-to-place, double-tap to finish without a duplicate vertex, a pinch mid-placement taking its stray point back, one-finger vertex drag, and the Points row — the only route to corner/remove without modifier keys |
+| `recipes.js` | `recipes.html`, end to end: the recipe parser on a full three-meal day, the dependency-free PDF reader on three PDFs it builds itself (uncompressed, `FlateDecode`, object streams + Identity-H) including diacritics through a `/ToUnicode` CMap, the markdown contract in `docs/RECIPES.md` § C, saving (`ScuLaFolder.save` stubbed) and the share route (phone-shaped stub), the workbook chapter records, both languages, and the two "this needs OCR" refusals |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
-used only by `withimage.js`.
+used only by `withimage.js`. `recipes.js` needs no fixture: it writes its
+PDFs at run time and deletes them afterwards.
+
+`recipes.js` is the one script that does **not** use `lib.js` or a `file://`
+URL. It serves the repo from a throwaway `http://127.0.0.1` server, because
+the workbook check reads IndexedDB and a `file://` origin is opaque. Set
+`PW_CHROME_PATH` for it the same way.

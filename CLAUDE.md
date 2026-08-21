@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Three standalone browser tools. **No build step, no framework, no package
+Four standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
@@ -8,11 +8,12 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 3545 | 31k | Markdown editor + live preview + workbooks | dark (earth) |
+| `markdown-editor.html` | 3547 | 31k | Markdown editor + live preview + workbooks | dark (earth) |
+| `recipes.html` | 2884 | 29k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~87k tokens; `editor.html` alone is 40k. **Never
+Reading all four costs ~116k tokens; `editor.html` alone is 40k. **Never
 `view` an entire app file.** Locate first, then read a narrow range.
 
 ```bash
@@ -20,7 +21,7 @@ grep -n "functionName\|#elementId" editor.html   # locate
 sed -n '1080,1140p' editor.html                  # read just that
 ```
 
-`docs/MAP.md` has line anchors for every section of all three files. Read
+`docs/MAP.md` has line anchors for every section of all four files. Read
 it instead of exploring. It is far cheaper than one file scan.
 
 ## Routing — read only what the task needs
@@ -32,26 +33,28 @@ it instead of exploring. It is far cheaper than one file scan.
 | English/Romanian UI, strings | `docs/I18N.md` |
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
+| PDF/OCR reading, recipe markdown, USDA plans | `docs/RECIPES.md` |
 
 Do not read a doc the task doesn't touch.
 
-## Rule 2: the nav block is triplicated
+## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:221-873`, `editor.html:418-1070`,
-`markdown-editor.html:843-1495`). It carries the nav links, the UI-language
-toggle, **and `window.ScuLaFolder`** — which decides where every saved file
-goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
-**all three** or they drift. Verify with:
+in all four files (`index.html:221-875`, `editor.html:418-1072`,
+`markdown-editor.html:843-1497`, `recipes.html:246-900`). It carries the nav
+links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
+where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
+must be applied to **all four** or they drift. Verify with:
 
 ```bash
-sed -n '221,873p' index.html > /tmp/n1
-sed -n '418,1070p' editor.html > /tmp/n2
-sed -n '843,1495p' markdown-editor.html > /tmp/n3
-diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
+sed -n '221,875p' index.html            > /tmp/n1
+sed -n '418,1072p' editor.html          > /tmp/n2
+sed -n '843,1497p' markdown-editor.html > /tmp/n3
+sed -n '246,900p' recipes.html          > /tmp/n4
+diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
-Adding a page means adding a link to all three navs **and** an entry in the
+Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
 
 ## Rule 3: respect the constraints
@@ -59,7 +62,10 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:838` (docx import). Don't add more.
+  CDN in `markdown-editor.html:838` (docx import). Don't add more. The OCR
+  engine in `recipes.html` is not a dependency: nothing loads it unless the
+  person presses the button, the page works without it, and the address is
+  a field they can point at a local copy — `docs/RECIPES.md` § OCR.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -81,8 +87,8 @@ block's `SUBDIR` map, so the new page gets its own folder.
 ## Verification (no test framework exists)
 
 ```bash
-# JS in every <script> block still parses (verified working on all 3 files)
-for f in index.html editor.html markdown-editor.html; do
+# JS in every <script> block still parses (verified working on all 4 files)
+for f in index.html editor.html markdown-editor.html recipes.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
@@ -99,9 +105,11 @@ needs pixel assertions (`getImageData`), not screenshots. Anything using
 browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
-pan, gestures, undo/redo, every tool). It is dev-only tooling with its own
-`package.json` — `cd tests && npm install && npm test` — and none of the
-three apps reference it; it doesn't count against Rule 3.
+pan, gestures, undo/redo, every tool) and for `recipes.html`
+(`recipes.js` — the PDF reader, the parser, the markdown, both save
+routes). It is dev-only tooling with its own `package.json` — `cd tests &&
+npm install && npm test` — and none of the four apps reference it; it
+doesn't count against Rule 3.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 

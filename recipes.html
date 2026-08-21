@@ -1,0 +1,2884 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14201A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rețete">
+<title>Rețete — din PDF / poză în markdown</title>
+<style>
+  :root{
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    /* surfaces, back → front */
+    --bg:#14201A;
+    --surface:#1B2A22;
+    --surface-2:#22342A;
+    --border:#2E4739;
+
+    /* text, strongest → weakest */
+    --text:#F3EEE1;
+    --text-2:#9FB3A5;
+    --text-3:#5A6A60;
+
+    /* brand */
+    --accent:#C1BB45;
+    --accent-2:#D3CD7C;
+    --accent-soft:color-mix(in srgb, var(--accent) 14%, var(--surface));
+    --on-accent:#1A2117;
+
+    /* status */
+    --danger:#C4643C;
+    --ok:#7FA05A;
+
+    /* shape + type */
+    --radius:14px;
+    --shadow:0 2px 10px rgba(0,0,0,.35);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    font-size:1rem;
+    line-height:1.5;
+    min-height:100vh;
+  }
+
+  /* ---------- page frame ---------- */
+  .wrap{max-width:78rem;margin:0 auto;padding:1.25rem 1rem 5rem}
+  header.page{margin:0 0 1.25rem}
+  header.page h1{
+    font-family:var(--font-display);
+    font-size:clamp(1.6rem,4.5vw,2.3rem);
+    margin:.2rem 0 .3rem;
+    letter-spacing:.01em;
+  }
+  header.page p{margin:0;color:var(--text-2);font-size:.9rem;max-width:52rem}
+
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:1rem;align-items:start}
+  @media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr)} }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:1rem;
+    margin:0 0 1rem;
+    box-shadow:var(--shadow);
+  }
+  .card > h2{
+    font-size:.78rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--text-2);
+    margin:0 0 .75rem;
+    font-weight:600;
+  }
+  .card > h2 .step{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:1.35rem;height:1.35rem;margin-right:.5rem;
+    border-radius:999px;background:var(--accent);color:var(--on-accent);
+    font-size:.72rem;font-weight:700;letter-spacing:0;
+  }
+  .hint{color:var(--text-2);font-size:.82rem;line-height:1.5;margin:.5rem 0 0}
+  .hint code{font-family:var(--font-mono);font-size:.78rem;color:var(--accent-2)}
+
+  /* ---------- buttons ---------- */
+  button{font-family:inherit}
+  .btn{
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:var(--surface-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:.55rem 1rem;
+    font-size:.88rem;
+    cursor:pointer;
+    min-height:2.5rem;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent-2)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+  .btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2);color:var(--on-accent)}
+  .btn.ghost{background:transparent}
+  .btn.mini{padding:.3rem .6rem;font-size:.78rem;min-height:1.9rem;border-radius:.6rem}
+  .btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+  .row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+  .row.end{justify-content:flex-end}
+  .spacer{flex:1 1 auto}
+
+  /* ---------- drop zone ---------- */
+  #drop{
+    border:1.5px dashed var(--border);
+    border-radius:var(--radius);
+    background:var(--surface-2);
+    padding:1.5rem 1rem;
+    text-align:center;
+    transition:border-color .15s ease,background .15s ease;
+  }
+  #drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  #drop .big{font-size:1.05rem;margin:0 0 .15rem}
+  #drop .dsub{color:var(--text-2);font-size:.82rem;margin:0 0 .9rem}
+  input[type=file]{display:none}
+
+  /* ---------- fields ---------- */
+  label.field{display:block;margin:0 0 .6rem}
+  label.field > span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);margin:0 0 .25rem}
+  input[type=checkbox]{accent-color:var(--accent);width:1rem;height:1rem;flex:0 0 auto}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;
+    background:var(--bg);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:.6rem;
+    padding:.5rem .6rem;
+    font-family:inherit;
+    font-size:.9rem;
+    line-height:1.45;
+  }
+  textarea{resize:vertical;min-height:6rem;font-family:var(--font-mono);font-size:.82rem}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text-2) 50%),linear-gradient(135deg,var(--text-2) 50%,transparent 50%);background-position:calc(100% - 1rem) 55%,calc(100% - .7rem) 55%;background-size:.3rem .3rem,.3rem .3rem;background-repeat:no-repeat;padding-right:1.8rem}
+
+  /* ---------- status ---------- */
+  #status{
+    margin:.75rem 0 0;min-height:1.2rem;
+    font-size:.85rem;color:var(--text-2);
+    display:flex;gap:.5rem;align-items:center;
+  }
+  #status.work{color:var(--accent-2)}
+  #status.err{color:var(--danger)}
+  #status .dot{width:.5rem;height:.5rem;border-radius:999px;background:currentColor;flex:0 0 auto}
+  #status.work .dot{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.25}}
+
+  /* ---------- day / meal cards ---------- */
+  .day{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);margin:0 0 .9rem;overflow:hidden}
+  .day > .dayhead{
+    display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;
+    padding:.7rem .8rem;background:var(--surface-2);border-bottom:1px solid var(--border);
+  }
+  .day > .dayhead input{flex:1 1 10rem;font-weight:600;background:var(--bg)}
+  .day > .daybody{padding:.8rem}
+  .meal{border:1px solid var(--border);border-radius:.7rem;padding:.7rem;margin:0 0 .7rem;background:var(--bg)}
+  .meal:last-child{margin-bottom:0}
+  .mealhead{display:flex;gap:.4rem;align-items:center;margin:0 0 .6rem;flex-wrap:wrap}
+  .mealhead select{flex:0 0 auto;width:auto;min-width:8.5rem;background:var(--surface-2)}
+  .mealhead input.mname{flex:1 1 10rem;background:var(--surface-2);font-weight:600}
+  .sub{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin:.6rem 0 .35rem}
+  .ing{display:grid;grid-template-columns:4.2rem 4.2rem minmax(0,1fr) auto;gap:.35rem;margin:0 0 .35rem;align-items:center}
+  .ing input{background:var(--surface-2);padding:.4rem .5rem;font-size:.85rem}
+  .ing .acts{display:flex;gap:.25rem}
+  .iconbtn{
+    background:transparent;border:1px solid var(--border);color:var(--text-2);
+    border-radius:.5rem;width:1.9rem;height:1.9rem;line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:.8rem;padding:0;flex:0 0 auto;
+  }
+  .iconbtn:hover{color:var(--accent);border-color:var(--accent)}
+  .iconbtn.danger:hover{color:var(--danger);border-color:var(--danger)}
+  .meal textarea.steps{min-height:4.5rem;background:var(--surface-2);font-family:var(--font-ui);font-size:.85rem}
+  .empty{color:var(--text-3);font-size:.85rem;padding:1.5rem 0;text-align:center}
+
+  /* ---------- markdown preview ---------- */
+  #mdPreview{
+    background:var(--bg);border:1px solid var(--border);border-radius:.7rem;
+    padding:.9rem 1rem;max-height:34rem;overflow:auto;font-size:.9rem;
+  }
+  #mdPreview h1{font-family:var(--font-display);font-size:1.35rem;margin:.2rem 0 .5rem;color:var(--accent-2)}
+  #mdPreview h2{font-size:1.05rem;margin:1.1rem 0 .4rem;border-bottom:1px solid var(--border);padding-bottom:.25rem}
+  #mdPreview h3{font-size:.9rem;margin:.8rem 0 .3rem;color:var(--text-2);letter-spacing:.04em}
+  #mdPreview table{border-collapse:collapse;width:100%;margin:.4rem 0 .6rem;font-size:.83rem}
+  #mdPreview th,#mdPreview td{border:1px solid var(--border);padding:.3rem .45rem;text-align:left}
+  #mdPreview th{background:var(--surface-2);color:var(--text-2);font-weight:600}
+  #mdPreview ol,#mdPreview ul{margin:.3rem 0 .6rem;padding-left:1.2rem}
+  #mdPreview li{margin:.15rem 0}
+  #mdPreview em{color:var(--text-2)}
+  #mdPreview p{margin:.3rem 0}
+  .tabs{display:flex;gap:.3rem;margin:0 0 .6rem}
+  .tabs button{
+    background:transparent;border:1px solid var(--border);color:var(--text-2);
+    border-radius:999px;padding:.35rem .8rem;font-size:.78rem;cursor:pointer;
+  }
+  .tabs button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+  #mdText{min-height:20rem;max-height:34rem}
+
+  details.more{margin:.6rem 0 0}
+  details.more > summary{
+    cursor:pointer;color:var(--text-2);font-size:.82rem;list-style:none;
+    padding:.35rem 0;user-select:none;
+  }
+  details.more > summary::-webkit-details-marker{display:none}
+  details.more > summary::before{content:"▸ ";color:var(--accent)}
+  details.more[open] > summary::before{content:"▾ "}
+
+  /* Narrow: the ingredient name is the field people actually type in, so it
+     gets a row of its own and the small numbers share the one below. */
+  @media (max-width:560px){
+    .ing{
+      grid-template-columns:4.2rem 4.2rem minmax(0,1fr);
+      grid-template-areas:"item item item" "qty unit acts";
+      margin-bottom:.55rem;
+    }
+    .ing input:nth-child(1){grid-area:qty}
+    .ing input:nth-child(2){grid-area:unit}
+    .ing input:nth-child(3){grid-area:item}
+    .ing .acts{grid-area:acts;justify-content:flex-end}
+  }
+
+  /* Touch: px is deliberate here — the 44px target floor (docs/FEATURES.md). */
+  @media (hover:none) and (pointer:coarse){
+    .btn{min-height:44px;padding:10px 16px}
+    .btn.mini{min-height:36px}
+    .iconbtn{width:36px;height:36px}
+    input[type=text],input[type=number],select{min-height:40px;font-size:16px}
+    textarea{font-size:14px}
+  }
+</style>
+</head>
+<body>
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Caiet vocal</a>
+  <a href="editor.html" data-page="editor.html">Editor</a>
+  <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so there the button
+     could only ever name the fallback route - not worth a slot in the nav.
+     Saves still take the share route on their own, and ScuLaFolder.chooser()
+     still opens the sheet. The language toggle inherits the auto margin that
+     used to push it to the right. */
+  @media (hover: none) and (pointer: coarse){
+    #site-nav #navFolderBtn{ display:none; }
+    #site-nav #navLangBtn{ margin-left:auto; }
+  }
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "index.html": "transcript",
+    "editor.html": "desen",
+    "markdown-editor.html": "markdown",
+    "recipes.html": "retete"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+<div class="wrap">
+  <header class="page">
+    <h1 data-i="title">Rețete</h1>
+    <p data-i="intro">Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.</p>
+  </header>
+
+  <div class="cols">
+    <section>
+      <!-- ===== 1. source ===== -->
+      <div class="card">
+        <h2><span class="step">1</span><span data-i="stepSource">Sursa</span></h2>
+        <div id="drop">
+          <p class="big" data-i="dropBig">Trage aici un PDF sau o poză</p>
+          <p class="dsub" data-i="dropSub">PDF, JPG, PNG, WEBP sau text. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
+          <div class="row" style="justify-content:center">
+            <button type="button" class="btn primary" id="btnPick" data-i="pickFile">Alege fișier</button>
+            <button type="button" class="btn" id="btnCam" data-i="camera">Fotografiază</button>
+            <button type="button" class="btn ghost" id="btnPaste" data-i="pasteText">Lipesc textul</button>
+          </div>
+        </div>
+        <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf">
+        <input type="file" id="cam" accept="image/*" capture="environment">
+        <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span></div>
+        <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză au nevoie de recunoaștere optică (OCR) — vezi mai jos.</p>
+
+        <details class="more" id="ocrBox">
+          <summary data-i="ocrTitle">Text din poze (OCR)</summary>
+          <p class="hint" data-i="ocrIntro">Aplicațiile astea nu au biblioteci incluse. Cea mai simplă cale rămâne cea de pe telefon: ține degetul pe text în poză, copiază, apoi „Lipesc textul”. Pentru citire automată poți încărca, doar când vrei tu, un motor OCR de pe internet.</p>
+          <div class="row" style="margin-top:.5rem">
+            <button type="button" class="btn mini" id="btnOcrLoad" data-i="ocrLoad">Încarcă motorul OCR</button>
+            <span id="ocrState" class="hint" style="margin:0"></span>
+          </div>
+          <label class="field" style="margin-top:.6rem">
+            <span data-i="ocrLangs">Limbi OCR</span>
+            <input type="text" id="ocrLangs" value="ron+eng" spellcheck="false">
+          </label>
+          <label class="field">
+            <span data-i="ocrUrl">Adresa motorului OCR</span>
+            <input type="text" id="ocrUrl" spellcheck="false">
+          </label>
+          <label class="field">
+            <span data-i="ocrData">Adresa fișierelor de limbă</span>
+            <input type="text" id="ocrData" spellcheck="false">
+          </label>
+          <p class="hint" data-i="ocrLocal">Poți pune aici căi locale (de exemplu <code>./ocr/tesseract.min.js</code>) dacă vrei să meargă și fără internet.</p>
+        </details>
+      </div>
+
+      <!-- ===== 2. raw text ===== -->
+      <div class="card" id="textCard" hidden>
+        <h2><span class="step">2</span><span data-i="stepText">Textul citit</span></h2>
+        <p class="hint" style="margin:0 0 .5rem" data-i="textHint">Corectează aici ce a citit greșit, apoi analizează din nou.</p>
+        <textarea id="rawText" spellcheck="false" data-i-placeholder="rawPlaceholder"></textarea>
+        <div class="row" style="margin-top:.6rem">
+          <button type="button" class="btn primary" id="btnParse" data-i="reparse">Analizează textul</button>
+          <span class="spacer"></span>
+          <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)">
+            <input type="checkbox" id="appendMode">
+            <span data-i="appendMode">Adaugă la zilele deja extrase</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <!-- ===== 3. review ===== -->
+      <div class="card">
+        <h2><span class="step">3</span><span data-i="stepCheck">Verifică rețetele</span></h2>
+        <div id="days"></div>
+        <p class="empty" id="daysEmpty" data-i="noDays">Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.</p>
+        <div class="row" style="margin-top:.7rem">
+          <button type="button" class="btn mini" id="btnAddDay" data-i="addDay">+ zi</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn mini danger ghost" id="btnClear" data-i="clearAll">Șterge tot</button>
+        </div>
+      </div>
+
+      <!-- ===== 4. markdown ===== -->
+      <div class="card" id="mdCard" hidden>
+        <h2><span class="step">4</span><span data-i="stepSave">Markdown</span></h2>
+        <div class="tabs">
+          <button type="button" id="tabPreview" aria-pressed="true" data-i="tabPreview">Previzualizare</button>
+          <button type="button" id="tabSource" aria-pressed="false" data-i="tabSource">Markdown</button>
+        </div>
+        <div id="mdPreview"></div>
+        <textarea id="mdText" spellcheck="false" hidden readonly></textarea>
+
+        <label class="field" style="margin-top:.8rem">
+          <span data-i="workbookName">Caietul în care se adaugă zilele</span>
+          <input type="text" id="wbName" value="Rețete">
+        </label>
+        <div class="row" style="gap:.9rem;margin:0 0 .8rem">
+          <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)">
+            <input type="checkbox" id="optSource" checked>
+            <span data-i="optSource">Notează sursa</span>
+          </label>
+          <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)">
+            <input type="checkbox" id="optTotals" checked>
+            <span data-i="optTotals">Tabel de totaluri (pentru USDA)</span>
+          </label>
+        </div>
+        <div class="row">
+          <button type="button" class="btn primary" id="btnWorkbook" data-i="toWorkbook">Adaugă în caiet</button>
+          <button type="button" class="btn" id="btnSaveMd" data-i="saveMd">Salvează .md</button>
+          <button type="button" class="btn ghost" id="btnCopy" data-i="copyMd">Copiază</button>
+        </div>
+        <p class="hint" data-i="saveHint">„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Rețete — PDF / poză → markdown
+   ------------------------------------------------------------
+   Pipeline, left to right on the page:
+
+     file ──► text ──► model ──► markdown ──► .md file / caiet
+              │        │
+              │        └─ parseRecipes(): zile ▸ mese ▸ ingrediente + pași
+              └─ PdfText (no dependency) sau OCR (opt-in) sau text lipit
+
+   Everything runs on the device; nothing is uploaded. The one exception
+   is the OCR engine, which is *not* bundled and is fetched only when the
+   person explicitly asks for it — see docs/RECIPES.md § OCR.
+   ============================================================ */
+(function(){
+"use strict";
+
+/* ============================================================
+   1. i18n  (docs/I18N.md)
+   ============================================================ */
+const I18N = {
+  ro:{
+    title:"Rețete",
+    intro:"Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.",
+    stepSource:"Sursa",
+    dropBig:"Trage aici un PDF sau o poză",
+    dropSub:"PDF, JPG, PNG, WEBP sau text. Poți și să lipești o poză din clipboard (Ctrl+V).",
+    pickFile:"Alege fișier",
+    camera:"Fotografiază",
+    pasteText:"Lipesc textul",
+    srcHintPdf:"Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză au nevoie de recunoaștere optică (OCR) — vezi mai jos.",
+    ocrTitle:"Text din poze (OCR)",
+    ocrIntro:"Aplicațiile astea nu au biblioteci incluse. Cea mai simplă cale rămâne cea de pe telefon: ține degetul pe text în poză, copiază, apoi „Lipesc textul”. Pentru citire automată poți încărca, doar când vrei tu, un motor OCR de pe internet.",
+    ocrLoad:"Încarcă motorul OCR",
+    ocrLangs:"Limbi OCR",
+    ocrUrl:"Adresa motorului OCR",
+    ocrData:"Adresa fișierelor de limbă",
+    ocrLocal:"Poți pune aici căi locale (de exemplu <code>./ocr/tesseract.min.js</code>) dacă vrei să meargă și fără internet.",
+    stepText:"Textul citit",
+    textHint:"Corectează aici ce a citit greșit, apoi analizează din nou.",
+    rawPlaceholder:"Lipește aici textul rețetei…",
+    reparse:"Analizează textul",
+    appendMode:"Adaugă la zilele deja extrase",
+    stepCheck:"Verifică rețetele",
+    noDays:"Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.",
+    addDay:"+ zi",
+    clearAll:"Șterge tot",
+    stepSave:"Markdown",
+    tabPreview:"Previzualizare",
+    tabSource:"Markdown",
+    workbookName:"Caietul în care se adaugă zilele",
+    optSource:"Notează sursa",
+    optTotals:"Tabel de totaluri (pentru USDA)",
+    toWorkbook:"Adaugă în caiet",
+    saveMd:"Salvează .md",
+    copyMd:"Copiază",
+    saveHint:"„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.",
+
+    /* meals */
+    mBreakfast:"Mic dejun", mSnack:"Gustare", mLunch:"Prânz",
+    mDinner:"Cina", mDessert:"Desert", mOther:"Masă",
+
+    /* review cards */
+    dayName:"Numele zilei / capitolului",
+    mealName:"Numele preparatului",
+    ingredients:"Ingrediente",
+    method:"Metoda de preparare",
+    addIng:"+ ingredient",
+    addMeal:"+ masă",
+    delDay:"Șterge ziua",
+    delMeal:"Șterge masa",
+    delIng:"Șterge ingredientul",
+    toMethod:"Mută la metoda de preparare",
+    colQty:"Cant.", colUnit:"Unit.", colItem:"Ingredient",
+    stepsPlaceholder:"Un pas pe linie…",
+    mealsCount:n => n === 1 ? "1 masă" : n + " mese",
+
+    /* markdown */
+    mdIngredients:"1. Ingrediente",
+    mdMethod:"2. Metoda de preparare",
+    mdColQty:"Cantitate", mdColUnit:"Unitate", mdColItem:"Ingredient", mdColFdc:"USDA FDC",
+    mdTotals:"Total pe zi",
+    mdColMeal:"Masă", mdColKcal:"kcal", mdColProt:"Proteine (g)",
+    mdColCarb:"Carbohidrați (g)", mdColFat:"Grăsimi (g)", mdTotalRow:"Total",
+    mdSource:s => "Sursă: " + s,
+    mdDay:n => "Ziua " + n,
+
+    /* status */
+    stReading:f => "Citesc „" + f + "”…",
+    stPdfPages:n => "PDF citit: " + n + (n === 1 ? " pagină." : " pagini."),
+    stPdfNoText:"PDF-ul nu conține text de citit (pare scanat). Fă o poză paginii sau lipește textul.",
+    stPdfFailed:"Nu am putut citi PDF-ul. Deschide-l și copiază textul, apoi „Lipesc textul”.",
+    stOcrNeed:"Poza are nevoie de OCR. Deschide „Text din poze” și încarcă motorul, sau lipește textul copiat de pe telefon.",
+    stOcrLoading:"Încarc motorul OCR…",
+    stOcrReady:"Motorul OCR e pregătit.",
+    stOcrFailed:"Nu am putut încărca motorul OCR. Verifică adresa sau lipește textul.",
+    stOcrRun:p => "Recunosc textul… " + p + "%",
+    stFound:(d) => d === 1 ? "Am găsit o zi." : "Am găsit " + d + " zile.",
+    stNothing:"Nu am recunoscut nicio rețetă. Verifică textul din pasul 2 — sau adaugă manual o zi.",
+    stCopied:"Markdown copiat.",
+    stCopyFailed:"Nu am putut copia. Selectează textul din fila „Markdown”.",
+    stWbSaved:n => n === 1 ? "Un capitol adăugat în caiet." : n + " capitole adăugate în caiet.",
+    stWbFailed:"Nu am putut scrie în caiet pe acest dispozitiv.",
+    stEmpty:"Nu e nimic de salvat încă.",
+    askClear:"Ștergi toate zilele extrase?",
+    unnamed:"Fără nume",
+    ocrLoaded:"încărcat",
+    ocrNotLoaded:"neîncărcat"
+  },
+  en:{
+    title:"Recipes",
+    intro:"Read the text out of a PDF or a photo, split it into days and meals and write a clean recipe in markdown: 1. Ingredients, 2. Method. The file stays with you — nothing leaves the device.",
+    stepSource:"Source",
+    dropBig:"Drop a PDF or a photo here",
+    dropSub:"PDF, JPG, PNG, WEBP or text. You can also paste a picture from the clipboard (Ctrl+V).",
+    pickFile:"Choose file",
+    camera:"Take a photo",
+    pasteText:"Paste text",
+    srcHintPdf:"A PDF with real text is read directly, with no library at all. A scanned PDF or a photo needs optical recognition (OCR) — see below.",
+    ocrTitle:"Text from pictures (OCR)",
+    ocrIntro:"These apps bundle no libraries. The simplest route is the one your phone already has: long-press the text in the picture, copy, then “Paste text”. For automatic reading you can load an OCR engine from the internet, only when you ask for it.",
+    ocrLoad:"Load the OCR engine",
+    ocrLangs:"OCR languages",
+    ocrUrl:"OCR engine address",
+    ocrData:"Language files address",
+    ocrLocal:"You can point these at local paths (e.g. <code>./ocr/tesseract.min.js</code>) to keep it working offline.",
+    stepText:"The text that was read",
+    textHint:"Fix anything misread here, then analyse it again.",
+    rawPlaceholder:"Paste the recipe text here…",
+    reparse:"Analyse the text",
+    appendMode:"Add to the days already extracted",
+    stepCheck:"Check the recipes",
+    noDays:"Nothing yet. Choose a PDF, a photo, or paste a recipe.",
+    addDay:"+ day",
+    clearAll:"Clear all",
+    stepSave:"Markdown",
+    tabPreview:"Preview",
+    tabSource:"Markdown",
+    workbookName:"Workbook the days are added to",
+    optSource:"Note the source",
+    optTotals:"Totals table (for USDA)",
+    toWorkbook:"Add to workbook",
+    saveMd:"Save .md",
+    copyMd:"Copy",
+    saveHint:"“Add to workbook” writes each day as a new chapter in the Markdown editor, on this device. From there you can sync it to your folder.",
+
+    mBreakfast:"Breakfast", mSnack:"Snack", mLunch:"Lunch",
+    mDinner:"Dinner", mDessert:"Dessert", mOther:"Meal",
+
+    dayName:"Day / chapter name",
+    mealName:"Dish name",
+    ingredients:"Ingredients",
+    method:"Method",
+    addIng:"+ ingredient",
+    addMeal:"+ meal",
+    delDay:"Delete the day",
+    delMeal:"Delete the meal",
+    delIng:"Delete the ingredient",
+    toMethod:"Move to the method",
+    colQty:"Qty", colUnit:"Unit", colItem:"Ingredient",
+    stepsPlaceholder:"One step per line…",
+    mealsCount:n => n === 1 ? "1 meal" : n + " meals",
+
+    mdIngredients:"1. Ingredients",
+    mdMethod:"2. Method",
+    mdColQty:"Amount", mdColUnit:"Unit", mdColItem:"Ingredient", mdColFdc:"USDA FDC",
+    mdTotals:"Day total",
+    mdColMeal:"Meal", mdColKcal:"kcal", mdColProt:"Protein (g)",
+    mdColCarb:"Carbs (g)", mdColFat:"Fat (g)", mdTotalRow:"Total",
+    mdSource:s => "Source: " + s,
+    mdDay:n => "Day " + n,
+
+    stReading:f => "Reading “" + f + "”…",
+    stPdfPages:n => "PDF read: " + n + (n === 1 ? " page." : " pages."),
+    stPdfNoText:"This PDF holds no readable text (it looks scanned). Photograph the page or paste the text.",
+    stPdfFailed:"Couldn't read the PDF. Open it, copy the text, then use “Paste text”.",
+    stOcrNeed:"A photo needs OCR. Open “Text from pictures” and load the engine, or paste the text your phone copied.",
+    stOcrLoading:"Loading the OCR engine…",
+    stOcrReady:"The OCR engine is ready.",
+    stOcrFailed:"Couldn't load the OCR engine. Check the address, or paste the text.",
+    stOcrRun:p => "Recognising text… " + p + "%",
+    stFound:(d) => d === 1 ? "Found one day." : "Found " + d + " days.",
+    stNothing:"No recipe recognised. Check the text in step 2 — or add a day by hand.",
+    stCopied:"Markdown copied.",
+    stCopyFailed:"Couldn't copy. Select the text in the “Markdown” tab instead.",
+    stWbSaved:n => n === 1 ? "One chapter added to the workbook." : n + " chapters added to the workbook.",
+    stWbFailed:"Couldn't write to the workbook on this device.",
+    stEmpty:"Nothing to save yet.",
+    askClear:"Delete every extracted day?",
+    unnamed:"Untitled",
+    ocrLoaded:"loaded",
+    ocrNotLoaded:"not loaded"
+  }
+};
+let UI = "ro";
+function t(k, a){
+  const v = (I18N[UI] || I18N.ro)[k];
+  return typeof v === "function" ? v(a) : v;
+}
+const LANG_KEY = "scula:ui-lang";
+
+/* Runs before the rest of the script has finished defining things — keep it
+   to the generic data-i loop plus things that exist at parse time
+   (docs/I18N.md, "Because applyUILang() runs inside an async IIFE…"). */
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  const UI_ATTRS = ["placeholder","title","aria-label","value","alt"];
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label","aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  // The two hints carry a <code> sample, so they are HTML, not text.
+  const local = document.querySelector('[data-i="ocrLocal"]');
+  if(local) local.innerHTML = t("ocrLocal");
+  if(typeof renderDays === "function" && booted){ renderDays(); renderMarkdown(); }
+  if(typeof paintOcrState === "function") paintOcrState();
+}
+
+/* ============================================================
+   2. Settings store (persists where storage exists, memory otherwise)
+   ============================================================ */
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__rt","1"); localStorage.removeItem("__rt"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+const PREF_KEY = "scula:recipes";
+
+/* ============================================================
+   3. PdfText — text out of a PDF, with no library
+   ------------------------------------------------------------
+   Only what a text PDF needs, nothing of what a *renderer* needs:
+
+     bytes ─► indirect objects (scanned, no xref walk)
+           ─► FlateDecode via DecompressionStream (a web standard,
+              so this stays dependency-free — CLAUDE.md rule 3)
+           ─► object streams expanded (modern PDFs hide the page and
+              font dictionaries in there)
+           ─► page tree ─► content streams ─► the text operators
+           ─► /ToUnicode CMaps, so subset fonts and ă â î ș ț survive
+
+   Scanned PDFs hold pictures, not text: extract() returns "" and the
+   caller offers OCR. Encrypted PDFs are refused rather than mangled.
+   ============================================================ */
+const PdfText = (function(){
+
+  function latin1(bytes){
+    let s = "", CH = 0x8000;
+    for(let i = 0; i < bytes.length; i += CH){
+      s += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CH, bytes.length)));
+    }
+    return s;
+  }
+  function bytesOf(str){
+    const b = new Uint8Array(str.length);
+    for(let i = 0; i < str.length; i++) b[i] = str.charCodeAt(i) & 0xff;
+    return b;
+  }
+
+  async function inflate(bytes){
+    if(typeof DecompressionStream !== "function") throw new Error("no DecompressionStream");
+    let last = null;
+    for(const fmt of ["deflate","deflate-raw"]){
+      try{
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(fmt));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }catch(e){ last = e; }
+    }
+    throw last || new Error("inflate failed");
+  }
+
+  function hexDecode(bytes){
+    const s = latin1(bytes).replace(/[^0-9a-fA-F>]/g, "");
+    const end = s.indexOf(">");
+    const h = (end < 0 ? s : s.slice(0, end));
+    const out = new Uint8Array(h.length >> 1);
+    for(let i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+    return out;
+  }
+  function a85Decode(bytes){
+    const s = latin1(bytes).replace(/\s/g, "").replace(/^<~/, "");
+    const end = s.indexOf("~>");
+    const body = end < 0 ? s : s.slice(0, end);
+    const out = [];
+    let tuple = 0, n = 0;
+    for(let i = 0; i < body.length; i++){
+      const c = body[i];
+      if(c === "z" && n === 0){ out.push(0,0,0,0); continue; }
+      tuple = tuple * 85 + (body.charCodeAt(i) - 33);
+      if(++n === 5){
+        for(let k = 3; k >= 0; k--) out.push((tuple >>> (k * 8)) & 0xff);
+        tuple = 0; n = 0;
+      }
+    }
+    if(n > 1){
+      for(let i = n; i < 5; i++) tuple = tuple * 85 + 84;
+      for(let k = 3; k >= 4 - (n - 1); k--) out.push((tuple >>> (k * 8)) & 0xff);
+    }
+    return new Uint8Array(out);
+  }
+
+  // PNG predictors (/Predictor >= 10). Object streams rarely use one, xref
+  // streams always do; cheap enough to always support.
+  function unpredict(data, colors, bpc, columns){
+    const bpp = Math.max(1, (colors * bpc) >> 3);
+    const rowLen = Math.ceil(colors * bpc * columns / 8);
+    const rows = Math.floor(data.length / (rowLen + 1));
+    const out = new Uint8Array(rows * rowLen);
+    let prev = new Uint8Array(rowLen);
+    for(let r = 0; r < rows; r++){
+      const ft = data[r * (rowLen + 1)];
+      const src = data.subarray(r * (rowLen + 1) + 1, (r + 1) * (rowLen + 1));
+      const cur = new Uint8Array(rowLen);
+      for(let i = 0; i < rowLen; i++){
+        const raw = src[i] || 0, a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+        let v = raw;
+        if(ft === 1) v = raw + a;
+        else if(ft === 2) v = raw + b;
+        else if(ft === 3) v = raw + ((a + b) >> 1);
+        else if(ft === 4){
+          const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+          v = raw + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c);
+        }
+        cur[i] = v & 0xff;
+      }
+      out.set(cur, r * rowLen);
+      prev = cur;
+    }
+    return out;
+  }
+
+  /* ---- dictionary reading (loose, but bracket-aware) ---- */
+  // Returns the raw text of `key`'s value: a << >> dict, an [ ] array, a
+  // /Name, a number, or an "n g R" reference.
+  function dictValue(dict, key){
+    const at = dict.indexOf(key);
+    if(at < 0) return null;
+    let i = at + key.length;
+    while(i < dict.length && /\s/.test(dict[i])) i++;
+    if(dict[i] === "<" && dict[i+1] === "<"){
+      let depth = 0, j = i;
+      while(j < dict.length){
+        if(dict[j] === "<" && dict[j+1] === "<"){ depth++; j += 2; continue; }
+        if(dict[j] === ">" && dict[j+1] === ">"){ depth--; j += 2; if(!depth) return dict.slice(i, j); continue; }
+        j++;
+      }
+      return dict.slice(i);
+    }
+    if(dict[i] === "["){
+      let depth = 0, j = i;
+      while(j < dict.length){
+        if(dict[j] === "[") depth++;
+        else if(dict[j] === "]"){ depth--; if(!depth) return dict.slice(i, j + 1); }
+        j++;
+      }
+      return dict.slice(i);
+    }
+    const rest = dict.slice(i, i + 64);
+    const ref = rest.match(/^(\d+)\s+(\d+)\s+R\b/);
+    if(ref) return ref[0];
+    const tok = rest.match(/^(\/[^\s/[\]<>()]*|[-+.\d]+|true|false|null)/);
+    return tok ? tok[0] : null;
+  }
+  function refNum(value){
+    const m = value && String(value).match(/^(\d+)\s+\d+\s+R$/);
+    return m ? +m[1] : null;
+  }
+
+  /* ---- objects ---- */
+  function scanObjects(raw, bytes){
+    const objs = new Map();
+    const re = /(?:^|[^0-9])(\d{1,9})\s+(\d{1,5})\s+obj\b/g;
+    let m;
+    while((m = re.exec(raw))){
+      const num = +m[1];
+      const start = m.index + m[0].length;
+      let end = raw.indexOf("endobj", start);
+      if(end < 0) end = raw.length;
+      const body = raw.slice(start, end);
+      const sm = body.match(/stream(\r\n|\n|\r)/);
+      let dict = body, data = null;
+      if(sm){
+        const dataStart = start + sm.index + sm[0].length;
+        let len = null;
+        const lm = body.slice(0, sm.index).match(/\/Length\s+(\d+)(?!\s+\d+\s+R)/);
+        if(lm) len = +lm[1];
+        let dataEnd;
+        if(len !== null && raw.slice(dataStart + len, dataStart + len + 20).search(/\s*endstream/) === 0){
+          dataEnd = dataStart + len;
+        }else{
+          const es = raw.indexOf("endstream", dataStart);
+          dataEnd = es < 0 ? end : es;
+          while(dataEnd > dataStart && (raw[dataEnd-1] === "\n" || raw[dataEnd-1] === "\r")) dataEnd--;
+        }
+        dict = body.slice(0, sm.index);
+        data = bytes.subarray(dataStart, dataEnd);
+      }
+      objs.set(num, { num, dict, data });          // later generation wins
+      re.lastIndex = end;
+    }
+    return objs;
+  }
+
+  async function decodeStream(o){
+    if(!o || !o.data) return null;
+    let data = o.data;
+    const f = dictValue(o.dict, "/Filter");
+    const names = f ? (f.match(/\/[A-Za-z0-9]+/g) || []) : [];
+    for(const n of names){
+      if(n === "/FlateDecode") data = await inflate(data);
+      else if(n === "/ASCIIHexDecode") data = hexDecode(data);
+      else if(n === "/ASCII85Decode") data = a85Decode(data);
+      else return null;                    // image / LZW / crypt: not our text
+    }
+    const parms = dictValue(o.dict, "/DecodeParms") || dictValue(o.dict, "/DP") || "";
+    const pred = +((parms.match(/\/Predictor\s+(\d+)/) || [])[1] || 0);
+    if(pred >= 10){
+      const colors = +((parms.match(/\/Colors\s+(\d+)/) || [])[1] || 1);
+      const bpc = +((parms.match(/\/BitsPerComponent\s+(\d+)/) || [])[1] || 8);
+      const columns = +((parms.match(/\/Columns\s+(\d+)/) || [])[1] || 1);
+      data = unpredict(data, colors, bpc, columns);
+    }
+    return data;
+  }
+
+  // /Type /ObjStm holds whole dictionaries (pages, fonts) compressed inside
+  // another object — without expanding them a modern PDF looks empty.
+  async function expandObjStreams(objs){
+    for(const o of Array.from(objs.values())){
+      if(!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
+      let data;
+      try{ data = await decodeStream(o); }catch(e){ continue; }
+      if(!data) continue;
+      const s = latin1(data);
+      const n = +((o.dict.match(/\/N\s+(\d+)/) || [])[1] || 0);
+      const first = +((o.dict.match(/\/First\s+(\d+)/) || [])[1] || 0);
+      if(!n || !first) continue;
+      const head = s.slice(0, first).trim().split(/\s+/).map(Number);
+      for(let i = 0; i < n; i++){
+        const num = head[2*i], off = head[2*i+1];
+        if(!isFinite(num) || !isFinite(off)) continue;
+        const to = (i + 1 < n && isFinite(head[2*i+3])) ? first + head[2*i+3] : s.length;
+        if(objs.has(num)) continue;                 // a file-level object is newer
+        objs.set(num, { num, dict: s.slice(first + off, to), data:null });
+      }
+    }
+  }
+
+  /* ---- page tree ---- */
+  function pageList(objs){
+    const out = [];
+    const seen = new Set();
+    const catalog = Array.from(objs.values()).find(o => /\/Type\s*\/Catalog/.test(o.dict));
+    const rootRef = catalog && refNum(dictValue(catalog.dict, "/Pages"));
+    function walk(o, inherited){
+      if(!o || seen.has(o.num)) return;
+      seen.add(o.num);
+      const res = dictValue(o.dict, "/Resources");
+      const inh = { resources: res || inherited.resources };
+      if(/\/Type\s*\/Pages/.test(o.dict) || dictValue(o.dict, "/Kids")){
+        const kids = dictValue(o.dict, "/Kids") || "";
+        (kids.match(/\d+\s+\d+\s+R/g) || []).forEach(r => walk(objs.get(+r.split(/\s+/)[0]), inh));
+        return;
+      }
+      out.push({ obj:o, resources: inh.resources });
+    }
+    if(rootRef !== null && objs.has(rootRef)) walk(objs.get(rootRef), {});
+    if(!out.length){
+      Array.from(objs.values())
+        .filter(o => /\/Type\s*\/Page(?![a-zA-Z])/.test(o.dict))
+        .sort((a,b) => a.num - b.num)
+        .forEach(o => out.push({ obj:o, resources: dictValue(o.dict, "/Resources") }));
+    }
+    return out;
+  }
+
+  /* ---- /ToUnicode CMaps ---- */
+  function hexToStr(h){
+    let s = "";
+    for(let i = 0; i + 4 <= h.length; i += 4){
+      const code = parseInt(h.substr(i, 4), 16);
+      if(isFinite(code)) s += String.fromCharCode(code);
+    }
+    return s;
+  }
+  function parseCMap(text){
+    const map = new Map();
+    let width = 1;
+    const charRe = /beginbfchar([\s\S]*?)endbfchar/g;
+    let m;
+    while((m = charRe.exec(text))){
+      const pairRe = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]*)>/g;
+      let p;
+      while((p = pairRe.exec(m[1]))){
+        if(p[1].length > 2) width = 2;
+        map.set(parseInt(p[1], 16), hexToStr(p[2]));
+      }
+    }
+    const rangeRe = /beginbfrange([\s\S]*?)endbfrange/g;
+    while((m = rangeRe.exec(text))){
+      const body = m[1];
+      const lineRe = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*(<[0-9a-fA-F]*>|\[[\s\S]*?\])/g;
+      let r;
+      while((r = lineRe.exec(body))){
+        const lo = parseInt(r[1], 16), hi = parseInt(r[2], 16);
+        if(r[1].length > 2) width = 2;
+        if(hi - lo > 65535) continue;
+        if(r[3][0] === "["){
+          const items = r[3].match(/<([0-9a-fA-F]*)>/g) || [];
+          items.forEach((it, i) => map.set(lo + i, hexToStr(it.slice(1, -1))));
+        }else{
+          const base = r[3].slice(1, -1);
+          const baseVal = parseInt(base, 16);
+          const tail = base.length > 4 ? base.slice(0, base.length - 4) : "";
+          for(let c = lo; c <= hi; c++){
+            const v = baseVal + (c - lo);
+            map.set(c, base.length <= 4 ? String.fromCharCode(v)
+                                        : hexToStr(tail + ("0000" + (v & 0xffff).toString(16)).slice(-4)));
+          }
+        }
+      }
+    }
+    return { map, width };
+  }
+
+  // 0x80–0x9F is where WinAnsi and Latin-1 disagree; the rest passes through.
+  const WIN_ANSI_HIGH = {
+    128:"€",130:"‚",131:"ƒ",132:"„",133:"…",134:"†",135:"‡",136:"ˆ",137:"‰",138:"Š",
+    139:"‹",140:"Œ",142:"Ž",145:"‘",146:"’",147:"“",148:"”",149:"•",150:"–",151:"—",
+    152:"˜",153:"™",154:"š",155:"›",156:"œ",158:"ž",159:"Ÿ"
+  };
+
+  // Glyph widths, in 1/1000 em. Without them the only way to know where a run
+  // ended is to guess an average character width — and a guess inserts spaces
+  // inside words ("m in", "arom ă") on any PDF whose producer splits a line
+  // into one run per font, which is most of them.
+  function widthsOf(fo, objs){
+    if(/\/Subtype\s*\/Type0/.test(fo.dict)){
+      const dfs = dictValue(fo.dict, "/DescendantFonts") || "";
+      const dref = refNum((dfs.match(/\d+\s+\d+\s+R/) || [""])[0]);
+      const df = dref !== null ? objs.get(dref) : null;
+      const dict = df ? df.dict : dfs;
+      const dw = +((dict.match(/\/DW\s+([\d.]+)/) || [])[1] || 1000);
+      const w = dictValue(dict, "/W");
+      const map = new Map();
+      if(w){
+        // /W is [ c [w w w] cFirst cLast w … ] — both forms, interleaved.
+        const toks = w.replace(/[[\]]/g, " $& ").trim().split(/\s+/);
+        let i = 0;
+        const nums = [];
+        while(i < toks.length){
+          const tk = toks[i++];
+          if(tk === "[") { nums.push("["); continue; }
+          if(tk === "]") { nums.push("]"); continue; }
+          if(/^[-+.\d]+$/.test(tk)) nums.push(parseFloat(tk));
+        }
+        let k = 1;                                   // skip the outer "["
+        while(k < nums.length){
+          const first = nums[k];
+          if(typeof first !== "number"){ k++; continue; }
+          if(nums[k+1] === "["){
+            let c = first, j = k + 2;
+            while(j < nums.length && typeof nums[j] === "number") map.set(c++, nums[j++]);
+            k = j + 1;                               // past the closing "]"
+          }else if(typeof nums[k+1] === "number" && typeof nums[k+2] === "number"){
+            for(let c = first; c <= nums[k+1] && c - first < 65536; c++) map.set(c, nums[k+2]);
+            k += 3;
+          }else k++;
+        }
+      }
+      return code => (map.has(code) ? map.get(code) : dw);
+    }
+    let widths = dictValue(fo.dict, "/Widths");
+    const wref = refNum(widths);
+    if(wref !== null && objs.has(wref)) widths = objs.get(wref).dict;
+    const first = +((fo.dict.match(/\/FirstChar\s+(\d+)/) || [])[1] || 0);
+    const list = widths ? (widths.match(/[-+.\d]+/g) || []).map(Number) : [];
+    if(!list.length) return null;                    // caller falls back to a guess
+    return code => {
+      const w = list[code - first];
+      return typeof w === "number" && w > 0 ? w : 500;
+    };
+  }
+
+  async function fontsOf(resources, objs){
+    const fonts = new Map();
+    let dict = resources;
+    const rr = refNum(resources);
+    if(rr !== null && objs.has(rr)) dict = objs.get(rr).dict;
+    if(!dict) return fonts;
+    let fdict = dictValue(dict, "/Font");
+    const fr = refNum(fdict);
+    if(fr !== null && objs.has(fr)) fdict = objs.get(fr).dict;
+    if(!fdict) return fonts;
+    const entryRe = /(\/[A-Za-z0-9#.+-]+)\s+(\d+)\s+\d+\s+R/g;
+    let m;
+    while((m = entryRe.exec(fdict))){
+      const fo = objs.get(+m[2]);
+      if(!fo) continue;
+      const two = /\/Subtype\s*\/Type0/.test(fo.dict);
+      let cmap = null;
+      const tu = refNum(dictValue(fo.dict, "/ToUnicode"));
+      if(tu !== null && objs.has(tu)){
+        try{
+          const data = await decodeStream(objs.get(tu));
+          if(data) cmap = parseCMap(latin1(data));
+        }catch(e){ /* fall back to byte decoding */ }
+      }
+      let width = null;
+      try{ width = widthsOf(fo, objs); }catch(e){}
+      fonts.set(m[1], { two, cmap, width });
+    }
+    return fonts;
+  }
+
+  function codesOf(str, font){
+    const w = font && (font.two || (font.cmap && font.cmap.width === 2)) ? 2 : 1;
+    const out = [];
+    for(let i = 0; i < str.length; i += w){
+      out.push(w === 2 ? ((str.charCodeAt(i) << 8) | (str.charCodeAt(i+1) || 0)) : str.charCodeAt(i));
+    }
+    return out;
+  }
+
+  function decodeShown(str, font){
+    const codes = codesOf(str, font);
+    if(font && font.cmap && font.cmap.map.size){
+      const single = codes.length === str.length;
+      return codes.map((code, i) => {
+        const mapped = font.cmap.map.get(code);
+        if(mapped !== undefined) return mapped;
+        return single ? (WIN_ANSI_HIGH[code] || str[i]) : "";
+      }).join("");
+    }
+    if(font && font.two) return codes.map(c => String.fromCharCode(c)).join("");
+    let out = "";
+    for(let i = 0; i < str.length; i++){
+      const c = str.charCodeAt(i);
+      out += WIN_ANSI_HIGH[c] || str[i];
+    }
+    return out;
+  }
+
+  /* ---- the content stream ----
+     A tiny PDF interpreter: the text operators, plus just enough of the
+     graphics state (q/Q/cm) and of the text matrix to know where each run
+     lands on the page. Both matter: a producer that flips the page (Skia
+     writes `1 0 0 -1 … Tm`) hands its lines over bottom-first, and without
+     the real glyph widths every gap between two runs looks like a space. */
+  function mul(m, n){                                 // m applied first, then n
+    return [
+      m[0]*n[0] + m[1]*n[2],        m[0]*n[1] + m[1]*n[3],
+      m[2]*n[0] + m[3]*n[2],        m[2]*n[1] + m[3]*n[3],
+      m[4]*n[0] + m[5]*n[2] + n[4], m[4]*n[1] + m[5]*n[3] + n[5]
+    ];
+  }
+  const IDENTITY = [1,0,0,1,0,0];
+
+  function pageText(content, fonts){
+    const s = content;
+    const out = [];
+    let line = null;                 // { y, size, parts:[{x, text}] }
+    let stack = [];
+    let font = null, size = 12, leading = 0, charSp = 0, wordSp = 0, hscale = 1;
+    let tm = IDENTITY.slice(), tlm = IDENTITY.slice();
+    let ctm = IDENTITY.slice();
+    const gs = [];
+    let prevEnd = null;              // device x where the last run stopped
+
+    function trm(){ return mul(tm, ctm); }
+    function flush(){
+      if(!line) return;
+      const text = line.parts.join("").replace(/\s+/g, " ").trim();
+      if(text) out.push({ y: line.y, text });
+      line = null;
+      prevEnd = null;
+    }
+    function advance(str){
+      const codes = codesOf(str, font);
+      let w = 0;
+      for(const c of codes){
+        const gw = font && font.width ? font.width(c) : 500;
+        w += (gw / 1000) * size + charSp + (c === 32 && codes.length === str.length ? wordSp : 0);
+      }
+      tm = mul([1, 0, 0, 1, w * hscale, 0], tm);
+    }
+    function show(str){
+      const text = decodeShown(str, font);
+      const m = trm();
+      const x = m[4], y = m[5];
+      const eff = Math.max(1, size * Math.hypot(m[2], m[3]));
+      // A flipped page (negative composite d) counts down the page instead of
+      // up it; normalising the sign here keeps one reading order downstream.
+      const dir = m[3] < 0 ? -1 : 1;
+      const ry = y * dir;
+      if(!text){ advance(str); return; }
+      if(line && Math.abs(line.y - ry) > Math.max(1.2, 0.32 * eff)) flush();
+      if(!line) line = { y: ry, size: eff, parts: [] };
+      else if(prevEnd !== null && x - prevEnd > 0.18 * eff &&
+              !/\s$/.test(line.parts[line.parts.length - 1] || "") && !/^\s/.test(text)){
+        line.parts.push(" ");
+      }
+      line.parts.push(text);
+      advance(str);
+      prevEnd = trm()[4];
+    }
+    function showArray(items){
+      for(const it of items){
+        if(typeof it === "number"){
+          // TJ numbers move the pen back, in thousandths of an em.
+          tm = mul([1, 0, 0, 1, -(it / 1000) * size * hscale, 0], tm);
+          if(prevEnd !== null) prevEnd = trm()[4];
+        }else show(it);
+      }
+    }
+    function nextLine(dx, dy){
+      tlm = mul([1, 0, 0, 1, dx, dy], tlm);
+      tm = tlm.slice();
+      prevEnd = null;
+    }
+
+    let i = 0;
+    while(i < s.length){
+      const c = s[i];
+      if(c === "%"){ while(i < s.length && s[i] !== "\n" && s[i] !== "\r") i++; continue; }
+      if(/\s/.test(c)){ i++; continue; }
+      if(c === "("){
+        let depth = 1, j = i + 1, str = "";
+        while(j < s.length && depth){
+          const ch = s[j];
+          if(ch === "\\"){
+            const n = s[j+1];
+            if(n === "n") str += "\n";
+            else if(n === "r") str += "\r";
+            else if(n === "t") str += "\t";
+            else if(n === "b") str += "\b";
+            else if(n === "f") str += "\f";
+            else if(n === "\n"){ /* line continuation */ }
+            else if(n === "\r"){ if(s[j+2] === "\n") j++; }
+            else if(n >= "0" && n <= "7"){
+              const oct = s.slice(j+1, j+4).match(/^[0-7]{1,3}/)[0];
+              str += String.fromCharCode(parseInt(oct, 8));
+              j += oct.length - 1;
+            }else str += n;
+            j += 2; continue;
+          }
+          if(ch === "("){ depth++; str += ch; j++; continue; }
+          if(ch === ")"){ depth--; if(depth) str += ch; j++; continue; }
+          str += ch; j++;
+        }
+        stack.push(str); i = j; continue;
+      }
+      if(c === "<" && s[i+1] === "<"){                       // inline dict: skip
+        let depth = 0, j = i;
+        while(j < s.length){
+          if(s[j] === "<" && s[j+1] === "<"){ depth++; j += 2; continue; }
+          if(s[j] === ">" && s[j+1] === ">"){ depth--; j += 2; if(!depth) break; continue; }
+          j++;
+        }
+        i = j; continue;
+      }
+      if(c === "<"){
+        const j = s.indexOf(">", i);
+        const h = s.slice(i + 1, j < 0 ? s.length : j).replace(/[^0-9a-fA-F]/g, "");
+        let str = "";
+        for(let k = 0; k < h.length; k += 2) str += String.fromCharCode(parseInt((h.substr(k, 2) + "0").slice(0, 2), 16));
+        stack.push(str); i = (j < 0 ? s.length : j + 1); continue;
+      }
+      if(c === "["){
+        let j = i + 1, depth = 1;
+        while(j < s.length && depth){
+          if(s[j] === "(" ){ let d2 = 1; j++; while(j < s.length && d2){ if(s[j] === "\\") j++; else if(s[j] === "(") d2++; else if(s[j] === ")") d2--; j++; } continue; }
+          if(s[j] === "[") depth++;
+          else if(s[j] === "]") depth--;
+          j++;
+        }
+        const inner = s.slice(i + 1, j - 1);
+        // Re-run the scanner over the array body: strings and numbers only.
+        const items = [];
+        let k = 0;
+        while(k < inner.length){
+          const ch = inner[k];
+          if(/\s/.test(ch)){ k++; continue; }
+          if(ch === "("){
+            let d2 = 1, str = "", m = k + 1;
+            while(m < inner.length && d2){
+              const cc = inner[m];
+              if(cc === "\\"){
+                const n = inner[m+1];
+                if(n >= "0" && n <= "7"){
+                  const oct = inner.slice(m+1, m+4).match(/^[0-7]{1,3}/)[0];
+                  str += String.fromCharCode(parseInt(oct, 8)); m += oct.length + 1; continue;
+                }
+                str += n === "n" ? "\n" : n === "r" ? "\r" : n === "t" ? "\t" : n;
+                m += 2; continue;
+              }
+              if(cc === "("){ d2++; str += cc; m++; continue; }
+              if(cc === ")"){ d2--; if(d2) str += cc; m++; continue; }
+              str += cc; m++;
+            }
+            items.push(str); k = m; continue;
+          }
+          if(ch === "<"){
+            const e = inner.indexOf(">", k);
+            const h = inner.slice(k + 1, e < 0 ? inner.length : e).replace(/[^0-9a-fA-F]/g, "");
+            let str = "";
+            for(let q = 0; q < h.length; q += 2) str += String.fromCharCode(parseInt((h.substr(q, 2) + "0").slice(0, 2), 16));
+            items.push(str); k = (e < 0 ? inner.length : e + 1); continue;
+          }
+          const num = inner.slice(k).match(/^[-+]?[\d.]+/);
+          if(num){ items.push(parseFloat(num[0])); k += num[0].length; continue; }
+          k++;
+        }
+        stack.push(items); i = j; continue;
+      }
+      if(c === "/"){
+        const m = s.slice(i).match(/^\/[^\s/[\]<>(){}%]*/);
+        stack.push(m ? m[0] : "/"); i += m ? m[0].length : 1; continue;
+      }
+      const num = s.slice(i, i + 40).match(/^[-+]?(\d+\.?\d*|\.\d+)/);
+      if(num){ stack.push(parseFloat(num[0])); i += num[0].length; continue; }
+      const opm = s.slice(i, i + 12).match(/^[A-Za-z'"*][A-Za-z0-9*'"]*/);
+      if(!opm){ i++; continue; }
+      const op = opm[0];
+      i += op.length;
+      const a = stack;
+      switch(op){
+        case "q": gs.push({ ctm: ctm.slice() }); break;
+        case "Q": { const g = gs.pop(); if(g) ctm = g.ctm; break; }
+        case "cm": {
+          const m6 = a.slice(-6);
+          if(m6.length === 6 && m6.every(v => typeof v === "number")) ctm = mul(m6, ctm);
+          break;
+        }
+        case "BT": tm = IDENTITY.slice(); tlm = IDENTITY.slice(); flush(); break;
+        case "ET": flush(); break;
+        case "Tf":
+          size = typeof a[a.length-1] === "number" ? a[a.length-1] : size;
+          font = fonts.get(a[a.length-2]) || null;
+          break;
+        case "TL": leading = a[a.length-1] || 0; break;
+        case "Tc": charSp = a[a.length-1] || 0; break;
+        case "Tw": wordSp = a[a.length-1] || 0; break;
+        case "Tz": hscale = (a[a.length-1] || 100) / 100; break;
+        case "Td": case "TD":
+          if(op === "TD") leading = -(a[a.length-1] || 0);
+          nextLine(a[a.length-2] || 0, a[a.length-1] || 0);
+          break;
+        case "Tm": {
+          const m6 = a.slice(-6);
+          if(m6.length === 6 && m6.every(v => typeof v === "number")){
+            tlm = m6.slice(); tm = m6.slice(); prevEnd = null;
+          }
+          break;
+        }
+        case "T*": nextLine(0, -leading); break;
+        case "Tj": show(String(a[a.length-1] || "")); break;
+        case "TJ": if(Array.isArray(a[a.length-1])) showArray(a[a.length-1]); break;
+        case "'":
+          nextLine(0, -leading);
+          show(String(a[a.length-1] || ""));
+          break;
+        case '"':
+          if(typeof a[a.length-3] === "number") wordSp = a[a.length-3];
+          if(typeof a[a.length-2] === "number") charSp = a[a.length-2];
+          nextLine(0, -leading);
+          show(String(a[a.length-1] || ""));
+          break;
+        default: break;
+      }
+      stack = [];
+    }
+    flush();
+    return out;
+  }
+
+  // Lines come out in drawing order; a two-column or out-of-order page is
+  // put back into reading order by their y, and a wide vertical gap becomes
+  // a paragraph break.
+  function joinLines(lines){
+    const rows = lines.slice();
+    let sorted = true;
+    for(let i = 1; i < rows.length; i++) if(rows[i].y > rows[i-1].y + 1){ sorted = false; break; }
+    if(!sorted) rows.sort((a,b) => b.y - a.y);
+    const out = [];
+    let prevY = null;
+    for(const r of rows){
+      if(prevY !== null && prevY - r.y > 24) out.push("");
+      out.push(r.text);
+      prevY = r.y;
+    }
+    return out.join("\n");
+  }
+
+  async function extract(buffer){
+    const bytes = new Uint8Array(buffer);
+    const raw = latin1(bytes);
+    if(raw.slice(0, 1024).indexOf("%PDF-") < 0 && raw.indexOf("%PDF-") < 0) throw new Error("not a pdf");
+    const objs = scanObjects(raw, bytes);
+    if(Array.from(objs.values()).some(o => /\/Type\s*\/(Encrypt|XRef)/.test(o.dict) && /\/Encrypt/.test(o.dict))){
+      throw new Error("encrypted");
+    }
+    if(/\/Encrypt\s+\d+\s+\d+\s+R/.test(raw)) throw new Error("encrypted");
+    await expandObjStreams(objs);
+    const pages = pageList(objs);
+    const chunks = [];
+    for(const page of pages){
+      let fonts = new Map();
+      try{ fonts = await fontsOf(page.resources, objs); }catch(e){}
+      const cRaw = dictValue(page.obj.dict, "/Contents");
+      const refs = cRaw ? (cRaw.match(/\d+\s+\d+\s+R/g) || []) : [];
+      let content = "";
+      for(const r of refs){
+        const co = objs.get(+r.split(/\s+/)[0]);
+        if(!co) continue;
+        try{
+          const data = await decodeStream(co);
+          if(data) content += latin1(data) + "\n";
+        }catch(e){ /* one unreadable stream must not lose the page */ }
+      }
+      if(!content) continue;
+      const text = joinLines(pageText(content, fonts));
+      if(text.trim()) chunks.push(text);
+    }
+    return { pages: pages.length, text: chunks.join("\n\n") };
+  }
+
+  return { extract, _latin1: latin1, _bytesOf: bytesOf, _pageText: pageText, _parseCMap: parseCMap };
+})();
+
+/* ============================================================
+   4. The recipe parser
+   ------------------------------------------------------------
+   Free text ─► days ─► meals ─► { ingredients[], steps[] }.
+
+   The layout it is written for is the common meal-plan one, in Romanian
+   or English:
+
+       ZIUA 3
+       Mic dejun: Terci de ovăz proteic
+       • 60g fulgi de ovăz fini
+       • 25g unt de arahide și o banană medie
+       • Toarnă apa peste ovăz, lasă 2-3 min. Adaugă proteina…
+
+   Nothing here is layout-specific beyond that: a lone recipe with no day
+   and no meal header still parses, into one day with one meal.
+   ============================================================ */
+const Recipes = (function(){
+
+  const MEALS = [
+    { kind:"breakfast", re:/^(mic\s*dejun(ul)?|micul\s*dejun|breakfast)$/i },
+    { kind:"lunch",     re:/^(pr[âaă]nz(ul)?|lunch)$/i },
+    { kind:"dinner",    re:/^(cin[aă]|dinner|supper)$/i },
+    { kind:"snack",     re:/^(gustare(a)?\s*\d?|gustări|snack\s*\d?|snacks?)$/i },
+    { kind:"dessert",   re:/^(desert(ul)?|dessert)$/i }
+  ];
+  const MEAL_HEAD = /^([A-Za-zĂÂÎȘȚăâîșț]+(?:\s+[A-Za-zĂÂÎȘȚăâîșț]+){0,2}\s*\d?)\s*[:：]\s*(.*)$/;
+  const DAY_HEAD  = /^(?:ziua|zi|day)\s*[:.\-]?\s*(\d{1,3}|[IVXLC]+)\b\s*[:.\-–—]?\s*(.*)$/i;
+
+  const UNITS = ("g|gr|grame|kg|mg|ml|cl|dl|l|litri|litru|buc|bucata|bucată|bucati|bucăți|" +
+    "lingur[iăa]|lingurit[ăae]|lingurițe|lingurita|linguriță|cana|cană|cani|căni|" +
+    "cea[sș]c[ăa]|ce[sș]ti|felie|felii|plic|plicuri|c[ăa][tț]el|c[ăa][tț]ei|pahar|pahare|" +
+    "praf|v[âa]rf|cutie|cutii|conserv[ăa]|" +
+    "kcal|oz|lb|lbs|cup|cups|tbsp|tsp|tbs|tblsp|pinch|slice|slices|clove|cloves|can|cans|scoop|scoops")
+    .split("|").join("|");
+  // \b is useless here: after "cană" the boundary is between two non-word
+  // characters, so it never matches. A lookahead for "not another letter" is
+  // the same test that also works with ă â î ș ț.
+  const NOT_LETTER = "(?![A-Za-z\u0102\u00c2\u00ce\u0218\u021a\u0103\u00e2\u00ee\u0219\u021b])";
+  const UNIT_RE = new RegExp("^(" + UNITS + ")\\.?" + NOT_LETTER, "i");
+  const FRACTIONS = { "½":"1/2", "¼":"1/4", "¾":"3/4", "⅓":"1/3", "⅔":"2/3", "⅛":"1/8" };
+  const QTY_RE = /^([½¼¾⅓⅔⅛]|\d+\s*[½¼¾⅓⅔⅛]|\d+\/\d+|\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?)\s*/;
+
+  // Imperatives that start a cooking step. First word only — that is what
+  // separates "Taie cartofii…" from "2 cartofi tăiați".
+  const VERBS = new RegExp("^(toarn[ăa]|adaug[ăa]|amestec[ăa]|taie|coace|coaceți|g[ăa]te[sș]te|fierbe|" +
+    "serve[sș]te|pr[ăa]je[sș]te|pune|las[ăa]|bate|[îi]ncinge|asezoneaz[ăa]|" +
+    "presar[ăa]|stoarce|cur[ăa][țt][ăa]|spal[ăa]|toac[ăa]|rade|mixeaz[ăa]|" +
+    "[îi]ncorporeaz[ăa]|acoper[ăa]|scurge|marineaz[ăa]|[îi]mparte|decoreaz[ăa]|" +
+    "combin[ăa]|preg[ăa]te[sș]te|[îi]nc[ăa]lze[sș]te|r[ăa]ce[sș]te|" +
+    "mix|add|pour|stir|cut|chop|bake|cook|boil|serve|fry|put|leave|heat|season|" +
+    "sprinkle|whisk|blend|drain|combine|prepare|cover|grill|roast|slice|" +
+    "transfer|divide|top|garnish|marinate|refrigerate|chill)" + NOT_LETTER, "i");
+  // "Se pune la cuptor…" — the impersonal form Romanian recipes also use.
+  const REFLEXIVE = /^se\s+[a-z\u0103\u00e2\u00ee\u0219\u021b]{3,}/i;
+
+  function clean(text){
+    return String(text || "")
+      .replace(/\r\n?/g, "\n")
+      .replace(/ /g, " ")
+      .replace(/[‘’]/g, "'")
+      .replace(/­/g, "")
+      .replace(/\t/g, " ");
+  }
+
+  // Screenshot chrome, page numbers, file names: never part of a recipe.
+  function isNoise(line){
+    const s = line.trim();
+    if(!s) return true;
+    if(s.length < 2) return true;
+    if(/^\d{1,2}[:.]\d{2}(\s*(AM|PM))?$/i.test(s)) return true;        // clock
+    if(/^(◀|◁|<)?\s*(files|fișiere|back|[îi]napoi)$/i.test(s)) return true;
+    if(/^(pagina|page|pag\.?)\s*\d+/i.test(s)) return true;
+    if(/^\d{1,3}$/.test(s)) return true;                                // page number
+    if(/^[-–—_.•·]+$/.test(s)) return true;
+    if(/^(https?:\/\/|www\.)/i.test(s)) return true;
+    return false;
+  }
+
+  const BULLET = /^[•·‣▪◦●○*•▪●]\s*|^[-–—]\s+/;
+
+  function stripBullet(line){
+    return { bullet: BULLET.test(line), text: line.replace(BULLET, "").trim() };
+  }
+
+  function toLines(text){
+    const raw = clean(text).split("\n");
+    const out = [];
+    for(let line of raw){
+      line = line.replace(/\s+/g, " ").trim();
+      if(isNoise(line)) continue;
+      const b = stripBullet(line);
+      if(!b.text) continue;
+      out.push({ bullet: b.bullet, text: b.text });
+    }
+    // A wrapped line carries on the previous one: no bullet of its own, no
+    // header colon, starts lowercase, and the line above it both ends
+    // mid-sentence *and* is long enough to have actually hit the wrap. That
+    // last test is what keeps "150g cotlet de porc" and the short line under
+    // it two ingredients rather than one — a PDF often drops the bullets.
+    const WRAP_MIN = 45;
+    const joined = [];
+    for(const l of out){
+      const prev = joined[joined.length - 1];
+      const starts = /^[a-zăâîșț(]/.test(l.text) && !MEAL_HEAD.test(l.text);
+      const cut = prev && !/[.!?:;)]$/.test(prev.text) && prev.text.length >= WRAP_MIN;
+      if(prev && !l.bullet && starts && cut && !DAY_HEAD.test(l.text)){
+        prev.text += " " + l.text;
+        continue;
+      }
+      joined.push({ bullet:l.bullet, text:l.text });
+    }
+    return joined;
+  }
+
+  function mealKind(word){
+    const w = word.trim().toLowerCase().replace(/\s+/g, " ");
+    for(const m of MEALS) if(m.re.test(w)) return m.kind;
+    return null;
+  }
+
+  function looksLikeQty(text){
+    return QTY_RE.test(text.trim());
+  }
+
+  function isStep(text){
+    const s = text.trim();
+    if(looksLikeQty(s)) return false;
+    if(VERBS.test(s) || REFLEXIVE.test(s)) return true;
+    // Two sentences, or one long one with a verb-ish tail: prose, not a
+    // shopping-list line.
+    const sentences = (s.match(/[.!?](\s|$)/g) || []).length;
+    if(sentences >= 2) return true;
+    if(s.length > 90) return true;
+    if(s.length > 55 && /[.!?]$/.test(s)) return true;
+    return false;
+  }
+
+  // "250g broccoli, 150g cartofi" is two ingredients; "sos de iaurt cu
+  // usturoi" is one. Split only where the next piece starts with a number.
+  function splitIngredients(text){
+    const parts = [];
+    let buf = "";
+    const chunks = text.split(/,\s*/);
+    chunks.forEach((c, i) => {
+      if(i === 0){ buf = c; return; }
+      if(/^\d/.test(c)){ parts.push(buf); buf = c; }
+      else buf += ", " + c;
+    });
+    if(buf) parts.push(buf);
+    return parts.filter(p => p.trim());
+  }
+
+  function parseIngredient(text){
+    let s = text.trim().replace(/^[-–—•]\s*/, "");
+    let qty = "", unit = "";
+    const q = s.match(QTY_RE);
+    if(q){
+      qty = q[1].trim().replace(/\s+/g, " ");
+      Object.keys(FRACTIONS).forEach(f => { qty = qty.replace(f, (qty.length > 1 ? " " : "") + FRACTIONS[f]).trim(); });
+      s = s.slice(q[0].length);
+      const u = s.match(UNIT_RE);
+      if(u){ unit = u[1]; s = s.slice(u[0].length).trim(); }
+    }
+    s = s.replace(/^[-–—:•]\s*/, "").trim();
+    if(!s && (qty || unit)){ s = (qty + " " + unit).trim(); qty = ""; unit = ""; }
+    return { qty, unit, item: s, fdc: "" };
+  }
+
+  // "Toarnă apa peste ovăz, lasă 2-3 min. Adaugă proteina și banana." → 2 steps.
+  function splitSteps(text){
+    const out = [];
+    const parts = text.split(/([.!?])\s+/);
+    let buf = "";
+    for(let i = 0; i < parts.length; i += 2){
+      const body = parts[i] || "";
+      const mark = parts[i+1] || "";
+      buf += body + mark;
+      const next = parts[i+2] || "";
+      const startsNew = /^["'(]?[A-ZĂÂÎȘȚ]/.test(next.trim());
+      const longEnough = buf.trim().length > 12;
+      if(mark && startsNew && longEnough){ out.push(buf.trim()); buf = ""; }
+      else if(mark) buf += " ";
+    }
+    if(buf.trim()) out.push(buf.trim());
+    return out.filter(Boolean);
+  }
+
+  function newMeal(kind, label, name){
+    return { kind: kind || "other", label: label || "", name: name || "", ingredients: [], steps: [] };
+  }
+  function newDay(n, title){
+    return { n: n || null, title: title || "", meals: [] };
+  }
+
+  function romanToInt(s){
+    const map = { I:1, V:5, X:10, L:50, C:100 };
+    let n = 0;
+    for(let i = 0; i < s.length; i++){
+      const v = map[s[i].toUpperCase()] || 0, next = map[(s[i+1] || "").toUpperCase()] || 0;
+      n += v < next ? -v : v;
+    }
+    return n || null;
+  }
+
+  function parse(text){
+    const lines = toLines(text);
+    const days = [];
+    let day = null, meal = null, inSteps = false;
+
+    function ensureDay(){ if(!day){ day = newDay(days.length + 1, ""); days.push(day); } return day; }
+    function ensureMeal(){
+      if(!meal){ meal = newMeal("other", "", ""); ensureDay().meals.push(meal); inSteps = false; }
+      return meal;
+    }
+
+    for(const l of lines){
+      const text2 = l.text;
+
+      const dm = text2.match(DAY_HEAD);
+      if(dm && !l.bullet){
+        const n = /^\d+$/.test(dm[1]) ? +dm[1] : romanToInt(dm[1]);
+        day = newDay(n, "");
+        days.push(day);
+        meal = null; inSteps = false;
+        const rest = (dm[2] || "").trim();
+        if(rest && !MEAL_HEAD.test(rest)) day.title = rest;
+        else if(rest){
+          const mm = rest.match(MEAL_HEAD);
+          const kind = mealKind(mm[1]);
+          meal = newMeal(kind, kind ? "" : mm[1], mm[2].trim());
+          day.meals.push(meal);
+        }
+        continue;
+      }
+
+      const mm = text2.match(MEAL_HEAD);
+      if(mm && !l.bullet){
+        const kind = mealKind(mm[1]);
+        // A colon inside prose ("Notă: …") is not a meal header.
+        if(kind || (mm[1].split(" ").length <= 2 && mm[2].length && !isStep(text2) && !looksLikeQty(text2))){
+          ensureDay();
+          meal = newMeal(kind, kind ? "" : mm[1].trim(), mm[2].trim());
+          day.meals.push(meal);
+          inSteps = false;
+          continue;
+        }
+      }
+
+      const step = isStep(text2);
+      const m2 = ensureMeal();
+      if(!m2.name && !m2.ingredients.length && !m2.steps.length && !step && !looksLikeQty(text2) && text2.length < 60){
+        m2.name = text2;                       // meal title on its own line
+        continue;
+      }
+      if(step || (inSteps && !looksLikeQty(text2))){
+        inSteps = true;
+        splitSteps(text2).forEach(s => m2.steps.push(s));
+      }else{
+        splitIngredients(text2).forEach(p => m2.ingredients.push(parseIngredient(p)));
+      }
+    }
+
+    return days.filter(d => d.meals.some(m => m.name || m.ingredients.length || m.steps.length));
+  }
+
+  return { parse, parseIngredient, splitSteps, splitIngredients, isStep, newDay, newMeal, mealKind };
+})();
+
+/* ============================================================
+   5. The app — state, review cards, markdown
+   ============================================================ */
+var booted = false;                       // var: applyUILang() reads it early
+const model = { days: [], source: "" };
+const $ = id => document.getElementById(id);
+const els = {
+  drop:$("drop"), file:$("file"), cam:$("cam"),
+  btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"),
+  status:$("status"), statusText:$("statusText"),
+  textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
+  days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
+  mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
+  tabPreview:$("tabPreview"), tabSource:$("tabSource"),
+  wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"),
+  btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnCopy:$("btnCopy"),
+  ocrBox:$("ocrBox"), btnOcrLoad:$("btnOcrLoad"), ocrState:$("ocrState"),
+  ocrLangs:$("ocrLangs"), ocrUrl:$("ocrUrl"), ocrData:$("ocrData")
+};
+
+function setStatus(msg, kind){
+  els.statusText.textContent = msg || "";
+  els.status.className = kind || "";
+  els.status.querySelector(".dot").hidden = !msg;
+}
+
+function mealLabel(meal){
+  if(meal.kind && meal.kind !== "other") return t("m" + meal.kind.charAt(0).toUpperCase() + meal.kind.slice(1));
+  return meal.label || t("mOther");
+}
+function dayTitle(day, i){
+  if(day.title) return day.title;
+  return t("mdDay", day.n || (i + 1));
+}
+
+/* ---------- review cards ---------- */
+function iconBtn(glyph, titleKey, onClick, danger){
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "iconbtn" + (danger ? " danger" : "");
+  b.textContent = glyph;
+  b.title = t(titleKey);
+  b.setAttribute("aria-label", b.title);
+  b.addEventListener("click", onClick);
+  return b;
+}
+function textInput(value, placeholder, onInput, cls){
+  const el = document.createElement("input");
+  el.type = "text";
+  el.value = value || "";
+  if(placeholder) el.placeholder = placeholder;
+  if(cls) el.className = cls;
+  el.addEventListener("input", () => { onInput(el.value); renderMarkdown(); });
+  return el;
+}
+
+function renderDays(){
+  const host = els.days;
+  host.textContent = "";
+  els.daysEmpty.hidden = model.days.length > 0;
+  els.mdCard.hidden = model.days.length === 0;
+
+  model.days.forEach((day, di) => {
+    const card = document.createElement("div");
+    card.className = "day";
+
+    const head = document.createElement("div");
+    head.className = "dayhead";
+    head.appendChild(textInput(dayTitle(day, di), t("dayName"), v => { day.title = v; }));
+    const count = document.createElement("span");
+    count.className = "hint";
+    count.style.margin = "0";
+    count.textContent = t("mealsCount", day.meals.length);
+    head.appendChild(count);
+    head.appendChild(iconBtn("⤓", "saveMd", () => saveDay(day, di)));
+    head.appendChild(iconBtn("✕", "delDay", () => { model.days.splice(di, 1); renderDays(); renderMarkdown(); }, true));
+    card.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "daybody";
+
+    day.meals.forEach((meal, mi) => {
+      const box = document.createElement("div");
+      box.className = "meal";
+
+      const mh = document.createElement("div");
+      mh.className = "mealhead";
+      const sel = document.createElement("select");
+      [["breakfast","mBreakfast"],["snack","mSnack"],["lunch","mLunch"],
+       ["dinner","mDinner"],["dessert","mDessert"],["other","mOther"]].forEach(([kind, key]) => {
+        const o = document.createElement("option");
+        o.value = kind;
+        o.textContent = kind === "other" && meal.label ? meal.label : t(key);
+        if(meal.kind === kind) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener("change", () => { meal.kind = sel.value; renderMarkdown(); });
+      mh.appendChild(sel);
+      mh.appendChild(textInput(meal.name, t("mealName"), v => { meal.name = v; }, "mname"));
+      mh.appendChild(iconBtn("✕", "delMeal", () => { day.meals.splice(mi, 1); renderDays(); renderMarkdown(); }, true));
+      box.appendChild(mh);
+
+      const iLab = document.createElement("p");
+      iLab.className = "sub";
+      iLab.textContent = t("ingredients");
+      box.appendChild(iLab);
+
+      meal.ingredients.forEach((ing, ii) => {
+        const row = document.createElement("div");
+        row.className = "ing";
+        row.appendChild(textInput(ing.qty, t("colQty"), v => { ing.qty = v; }));
+        row.appendChild(textInput(ing.unit, t("colUnit"), v => { ing.unit = v; }));
+        row.appendChild(textInput(ing.item, t("colItem"), v => { ing.item = v; }));
+        const acts = document.createElement("div");
+        acts.className = "acts";
+        acts.appendChild(iconBtn("↧", "toMethod", () => {
+          const line = [ing.qty, ing.unit, ing.item].filter(Boolean).join(" ");
+          meal.ingredients.splice(ii, 1);
+          meal.steps.push(line);
+          renderDays(); renderMarkdown();
+        }));
+        acts.appendChild(iconBtn("✕", "delIng", () => {
+          meal.ingredients.splice(ii, 1); renderDays(); renderMarkdown();
+        }, true));
+        row.appendChild(acts);
+        box.appendChild(row);
+      });
+
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "btn mini ghost";
+      add.textContent = t("addIng");
+      add.addEventListener("click", () => {
+        meal.ingredients.push({ qty:"", unit:"", item:"", fdc:"" });
+        renderDays(); renderMarkdown();
+      });
+      box.appendChild(add);
+
+      const sLab = document.createElement("p");
+      sLab.className = "sub";
+      sLab.textContent = t("method");
+      box.appendChild(sLab);
+
+      const ta = document.createElement("textarea");
+      ta.className = "steps";
+      ta.value = meal.steps.join("\n");
+      ta.placeholder = t("stepsPlaceholder");
+      ta.addEventListener("input", () => {
+        meal.steps = ta.value.split("\n").map(s => s.trim()).filter(Boolean);
+        renderMarkdown();
+      });
+      box.appendChild(ta);
+
+      body.appendChild(box);
+    });
+
+    const addMeal = document.createElement("button");
+    addMeal.type = "button";
+    addMeal.className = "btn mini";
+    addMeal.textContent = t("addMeal");
+    addMeal.addEventListener("click", () => {
+      day.meals.push(Recipes.newMeal("other", "", ""));
+      renderDays(); renderMarkdown();
+    });
+    body.appendChild(addMeal);
+
+    card.appendChild(body);
+    host.appendChild(card);
+  });
+}
+
+/* ---------- markdown ----------
+   The shape here is the contract the future USDA linker reads back —
+   docs/RECIPES.md § "The markdown contract". Keep both in step. */
+function cell(v){ return String(v == null ? "" : v).replace(/\|/g, "\\|").replace(/\n/g, " ").trim(); }
+
+function buildDayMarkdown(day, di){
+  const L = [];
+  L.push("# " + dayTitle(day, di));
+  L.push("");
+  if(els.optSource.checked && model.source){
+    L.push("*" + t("mdSource", model.source) + "*");
+    L.push("");
+  }
+  day.meals.forEach(meal => {
+    const name = (meal.name || "").trim();
+    L.push("## " + mealLabel(meal) + (name ? ": " + name : ""));
+    L.push("");
+    L.push("### " + t("mdIngredients"));
+    L.push("");
+    L.push("| " + [t("mdColQty"), t("mdColUnit"), t("mdColItem"), t("mdColFdc")].join(" | ") + " |");
+    L.push("| --- | --- | --- | --- |");
+    if(!meal.ingredients.length) L.push("|  |  |  |  |");
+    meal.ingredients.forEach(ing => {
+      L.push("| " + [cell(ing.qty), cell(ing.unit), cell(ing.item), cell(ing.fdc)].join(" | ") + " |");
+    });
+    L.push("");
+    L.push("### " + t("mdMethod"));
+    L.push("");
+    if(meal.steps.length) meal.steps.forEach((s, i) => L.push((i + 1) + ". " + s));
+    else L.push("1. ");
+    L.push("");
+  });
+  if(els.optTotals.checked){
+    L.push("## " + t("mdTotals"));
+    L.push("");
+    L.push("| " + [t("mdColMeal"), t("mdColKcal"), t("mdColProt"), t("mdColCarb"), t("mdColFat")].join(" | ") + " |");
+    L.push("| --- | --- | --- | --- | --- |");
+    day.meals.forEach(meal => {
+      const name = (meal.name || "").trim();
+      L.push("| " + cell(mealLabel(meal) + (name ? ": " + name : "")) + " |  |  |  |  |");
+    });
+    L.push("| **" + t("mdTotalRow") + "** |  |  |  |  |");
+    L.push("");
+  }
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+function allMarkdown(){
+  return model.days.map((d, i) => buildDayMarkdown(d, i)).join("\n---\n\n");
+}
+
+/* A deliberately small renderer: exactly the subset this page emits
+   (headings, tables, ordered lists, *em*, **strong**) — enough to show the
+   file as markdown-editor.html will show it, without a second parser to
+   keep in sync with anything. */
+function renderPreview(md){
+  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const inline = s => esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+  const out = [];
+  let table = [], ol = false;
+  const flushTable = () => {
+    if(!table.length) return;
+    const rows = table.map(r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
+    table = [];
+    const sep = rows[1] && rows[1].every(c => /^:?-+:?$/.test(c));
+    out.push("<table>");
+    if(sep){
+      out.push("<thead><tr>" + rows[0].map(c => "<th>" + inline(c) + "</th>").join("") + "</tr></thead><tbody>");
+      rows.slice(2).forEach(r => out.push("<tr>" + r.map(c => "<td>" + inline(c) + "</td>").join("") + "</tr>"));
+      out.push("</tbody>");
+    }else{
+      rows.forEach(r => out.push("<tr>" + r.map(c => "<td>" + inline(c) + "</td>").join("") + "</tr>"));
+    }
+    out.push("</table>");
+  };
+  const closeOl = () => { if(ol){ out.push("</ol>"); ol = false; } };
+  md.split("\n").forEach(line => {
+    const s = line.trim();
+    if(s.startsWith("|") && s.endsWith("|")){ closeOl(); table.push(s); return; }
+    flushTable();
+    const h = s.match(/^(#{1,6})\s+(.*)$/);
+    if(h){ closeOl(); out.push("<h" + h[1].length + ">" + inline(h[2]) + "</h" + h[1].length + ">"); return; }
+    const li = s.match(/^\d+\.\s+(.*)$/);
+    if(li){ if(!ol){ out.push("<ol>"); ol = true; } out.push("<li>" + inline(li[1]) + "</li>"); return; }
+    closeOl();
+    if(s === "---"){ out.push("<hr>"); return; }
+    if(s) out.push("<p>" + inline(s) + "</p>");
+  });
+  flushTable(); closeOl();
+  return out.join("\n");
+}
+
+function renderMarkdown(){
+  const md = allMarkdown();
+  els.mdText.value = md;
+  els.mdPreview.innerHTML = renderPreview(md);
+  els.mdCard.hidden = model.days.length === 0;
+}
+
+/* ============================================================
+   6. Getting the text in
+   ============================================================ */
+function ingest(text, sourceName){
+  const append = els.appendMode.checked && model.days.length > 0;
+  els.textCard.hidden = false;
+  els.rawText.value = append && els.rawText.value ? els.rawText.value + "\n\n" + text : text;
+  if(sourceName) model.source = sourceName;
+  analyse(append);
+}
+
+function analyse(append){
+  const days = Recipes.parse(els.rawText.value);
+  if(!append) model.days = [];
+  days.forEach(d => model.days.push(d));
+  renderDays();
+  renderMarkdown();
+  setStatus(model.days.length ? t("stFound", model.days.length) : t("stNothing"),
+            model.days.length ? "" : "err");
+}
+
+async function handleFile(file){
+  if(!file) return;
+  setStatus(t("stReading", file.name), "work");
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+  const isImg = /^image\//.test(file.type) || /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(file.name);
+  try{
+    if(isPdf){
+      let res;
+      try{ res = await PdfText.extract(await file.arrayBuffer()); }
+      catch(e){ setStatus(t("stPdfFailed"), "err"); return; }
+      if(!res.text.trim()){ setStatus(t("stPdfNoText"), "err"); els.ocrBox.open = true; return; }
+      setStatus(t("stPdfPages", res.pages));
+      ingest(res.text, file.name);
+      return;
+    }
+    if(isImg){
+      const text = await ocrImage(file);
+      if(text === null) return;                   // ocrImage said why
+      ingest(text, file.name);
+      return;
+    }
+    ingest(await file.text(), file.name);
+  }catch(e){
+    setStatus(String(e && e.message || e), "err");
+  }
+}
+
+/* ---------- OCR (opt-in, never bundled) ----------
+   CLAUDE.md rule 3 keeps these apps dependency-free, and a page that
+   silently pulled a 4 MB recogniser off a CDN would break that. So the
+   engine is fetched only when the person presses the button, from an
+   address they can see and change (a local path works offline). Without
+   it the page still reads PDFs and still takes pasted text — which is
+   what a phone's own "copy text from picture" already gives you. */
+const OCR = {
+  url:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",
+  data:"",
+  langs:"ron+eng",
+  loading:false
+};
+function ocrLoaded(){ return typeof window.Tesseract !== "undefined"; }
+function paintOcrState(){
+  if(!els.ocrState) return;
+  els.ocrState.textContent = ocrLoaded() ? t("ocrLoaded") : t("ocrNotLoaded");
+  els.btnOcrLoad.disabled = ocrLoaded() || OCR.loading;
+}
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = () => res(true);
+    s.onerror = () => rej(new Error("script"));
+    document.head.appendChild(s);
+  });
+}
+async function loadOcr(){
+  if(ocrLoaded()) return true;
+  OCR.loading = true;
+  paintOcrState();
+  setStatus(t("stOcrLoading"), "work");
+  try{
+    await loadScript(els.ocrUrl.value.trim() || OCR.url);
+  }catch(e){ /* onerror only tells us it failed */ }
+  OCR.loading = false;
+  paintOcrState();
+  if(!ocrLoaded()){ setStatus(t("stOcrFailed"), "err"); return false; }
+  setStatus(t("stOcrReady"));
+  savePrefs();
+  return true;
+}
+
+// Phone screenshots are small and dark-on-tinted; a plain upscale to
+// grayscale with a little contrast is worth several percent of accuracy and
+// costs one canvas pass.
+async function prepImage(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("image"));
+      im.src = url;
+    });
+    const min = Math.min(img.naturalWidth, img.naturalHeight) || 1;
+    const scale = Math.min(3, Math.max(1, 1400 / min));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    const ctx = c.getContext("2d", { willReadFrequently:true });
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    try{
+      const d = ctx.getImageData(0, 0, c.width, c.height);
+      const p = d.data;
+      for(let i = 0; i < p.length; i += 4){
+        const g = 0.299 * p[i] + 0.587 * p[i+1] + 0.114 * p[i+2];
+        const v = Math.max(0, Math.min(255, (g - 128) * 1.25 + 128));
+        p[i] = p[i+1] = p[i+2] = v;
+      }
+      ctx.putImageData(d, 0, 0);
+    }catch(e){ /* tainted or huge: the plain redraw is still fine */ }
+    return c;
+  }finally{ URL.revokeObjectURL(url); }
+}
+
+async function ocrImage(file){
+  if(!ocrLoaded()){
+    els.ocrBox.open = true;
+    setStatus(t("stOcrNeed"), "err");
+    return null;
+  }
+  const opts = { logger: m => {
+    if(m && m.status === "recognizing text") setStatus(t("stOcrRun", Math.round((m.progress || 0) * 100)), "work");
+  } };
+  const langPath = els.ocrData.value.trim();
+  if(langPath) opts.langPath = langPath;
+  const img = await prepImage(file);
+  const langs = els.ocrLangs.value.trim() || OCR.langs;
+  const res = await window.Tesseract.recognize(img, langs, opts);
+  savePrefs();
+  return (res && res.data && res.data.text) || "";
+}
+
+/* ============================================================
+   7. Saving — a .md file, or a chapter in the Markdown workbook
+   ============================================================ */
+// Same rules as wbSlug() in markdown-editor.html: Romanian diacritics are
+// legal file names and survive; only what a file system rejects is replaced.
+const CTRL_CHARS = new RegExp("[\\u0000-\\u001F\\u007F]", "g");
+function slug(name, fallback){
+  let s = String(name || "").trim()
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(CTRL_CHARS, "")
+    .replace(/\s+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "");
+  if(s.length > 60) s = s.slice(0, 60).replace(/-+$/, "");
+  return s || fallback;
+}
+
+async function saveBlob(name, text){
+  const blob = new Blob([text], { type:"text/markdown" });
+  const r = await ScuLaFolder.save(name, blob, { quiet:true });
+  if(r.message) setStatus(r.message);
+  return r;
+}
+function saveDay(day, di){
+  return saveBlob(slug(dayTitle(day, di), "reteta") + ".md", buildDayMarkdown(day, di));
+}
+
+/* ---- the Markdown editor's workbook store (docs/FEATURES.md § E) ----
+   Same database, same records: a chapter written here shows up in
+   markdown-editor.html the next time it loads. The disk mirror is that
+   app's job — it writes the file on its next explicit save. */
+const WB_DB = "scula-md", WB_VER = 1;
+const WB_BOOKS = "workbooks", WB_CHAPTERS = "chapters", WB_META = "meta";
+function wbDb(){
+  return new Promise((res, rej) => {
+    let r;
+    try{ r = indexedDB.open(WB_DB, WB_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if(!db.objectStoreNames.contains(WB_BOOKS)) db.createObjectStore(WB_BOOKS, { keyPath:"id" });
+      if(!db.objectStoreNames.contains(WB_CHAPTERS)){
+        db.createObjectStore(WB_CHAPTERS, { keyPath:"id" }).createIndex("byWorkbook", "workbookId");
+      }
+      if(!db.objectStoreNames.contains(WB_META)) db.createObjectStore(WB_META);
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function wbTx(name, mode, run){
+  return wbDb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(name, mode);
+    const req = run(tx.objectStore(name));
+    tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+    tx.onabort = () => { db.close(); rej(tx.error); };
+  }));
+}
+const wbAll = name => wbTx(name, "readonly", s => s.getAll());
+const wbPut = (name, v) => wbTx(name, "readwrite", s => s.put(v));
+function wbNewId(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+async function toWorkbook(){
+  if(!model.days.length){ setStatus(t("stEmpty"), "err"); return; }
+  const name = (els.wbName.value || "").trim() || t("title");
+  try{
+    const books = await wbAll(WB_BOOKS);
+    let book = books.find(b => (b.name || "").toLowerCase() === name.toLowerCase());
+    if(!book){
+      const taken = new Set(books.map(b => (b.folder || "").toLowerCase()));
+      const base = slug(name, "retete");
+      let folder = base, i = 1;
+      while(taken.has(folder.toLowerCase())) folder = base + "-" + (++i);
+      book = { id:wbNewId("wb_"), name, folder, created:Date.now(), updated:Date.now(), order:books.length };
+      await wbPut(WB_BOOKS, book);
+    }
+    const chapters = await wbAll(WB_CHAPTERS);
+    const mine = chapters.filter(c => c.workbookId === book.id);
+    const taken = new Set(mine.map(c => (c.file || "").toLowerCase()));
+    let order = mine.length;
+    for(let di = 0; di < model.days.length; di++){
+      const title = dayTitle(model.days[di], di);
+      const base = slug(title, "reteta");
+      let file = base + ".md", i = 1;
+      while(taken.has(file.toLowerCase())) file = base + "-" + (++i) + ".md";
+      taken.add(file.toLowerCase());
+      await wbPut(WB_CHAPTERS, {
+        id: wbNewId("ch_"), workbookId: book.id, title, file,
+        content: buildDayMarkdown(model.days[di], di),
+        created: Date.now(), updated: Date.now(), order: order++
+      });
+    }
+    book.updated = Date.now();
+    await wbPut(WB_BOOKS, book);
+    setStatus(t("stWbSaved", model.days.length));
+    if(typeof ScuLaFolder !== "undefined") ScuLaFolder.toast(t("stWbSaved", model.days.length));
+    savePrefs();
+  }catch(e){
+    setStatus(t("stWbFailed"), "err");
+  }
+}
+
+/* ============================================================
+   8. Wiring
+   ============================================================ */
+async function savePrefs(){
+  try{
+    await store.set(PREF_KEY, JSON.stringify({
+      wb: els.wbName.value,
+      langs: els.ocrLangs.value,
+      url: els.ocrUrl.value,
+      data: els.ocrData.value,
+      source: els.optSource.checked,
+      totals: els.optTotals.checked
+    }));
+  }catch(e){}
+}
+async function loadPrefs(){
+  let p = null;
+  try{ p = JSON.parse((await store.get(PREF_KEY)) || "null"); }catch(e){}
+  els.ocrUrl.value = (p && p.url) || OCR.url;
+  els.ocrData.value = (p && p.data) || "";
+  els.ocrLangs.value = (p && p.langs) || OCR.langs;
+  if(p && p.wb) els.wbName.value = p.wb;
+  if(p && typeof p.source === "boolean") els.optSource.checked = p.source;
+  if(p && typeof p.totals === "boolean") els.optTotals.checked = p.totals;
+}
+
+els.btnPick.addEventListener("click", () => els.file.click());
+els.btnCam.addEventListener("click", () => els.cam.click());
+els.file.addEventListener("change", () => { handleFile(els.file.files[0]); els.file.value = ""; });
+els.cam.addEventListener("change", () => { handleFile(els.cam.files[0]); els.cam.value = ""; });
+els.btnPaste.addEventListener("click", () => {
+  els.textCard.hidden = false;
+  els.rawText.focus();
+  els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
+});
+els.btnParse.addEventListener("click", () => analyse(false));
+els.btnAddDay.addEventListener("click", () => {
+  const day = Recipes.newDay(model.days.length + 1, "");
+  day.meals.push(Recipes.newMeal("breakfast", "", ""));
+  model.days.push(day);
+  renderDays(); renderMarkdown();
+});
+els.btnClear.addEventListener("click", () => {
+  if(!model.days.length || !confirm(t("askClear"))) return;
+  model.days = [];
+  renderDays(); renderMarkdown();
+  setStatus("");
+});
+
+["dragenter","dragover"].forEach(ev => els.drop.addEventListener(ev, e => {
+  e.preventDefault(); els.drop.classList.add("over");
+}));
+["dragleave","drop"].forEach(ev => els.drop.addEventListener(ev, e => {
+  e.preventDefault(); els.drop.classList.remove("over");
+}));
+els.drop.addEventListener("drop", e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f) handleFile(f);
+});
+// A screenshot straight from the clipboard, or the text a phone copied out
+// of one — both are the fastest route in, so both are accepted.
+document.addEventListener("paste", e => {
+  if(document.activeElement === els.rawText) return;      // they are editing the text
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for(const it of items){
+    if(it.kind === "file"){
+      const f = it.getAsFile();
+      if(f){ e.preventDefault(); handleFile(f); return; }
+    }
+  }
+  const txt = e.clipboardData && e.clipboardData.getData("text");
+  if(txt && txt.trim().length > 20){ e.preventDefault(); ingest(txt, model.source); }
+});
+
+els.tabPreview.addEventListener("click", () => {
+  els.tabPreview.setAttribute("aria-pressed", "true");
+  els.tabSource.setAttribute("aria-pressed", "false");
+  els.mdPreview.hidden = false; els.mdText.hidden = true;
+});
+els.tabSource.addEventListener("click", () => {
+  els.tabSource.setAttribute("aria-pressed", "true");
+  els.tabPreview.setAttribute("aria-pressed", "false");
+  els.mdPreview.hidden = true; els.mdText.hidden = false;
+});
+
+els.btnOcrLoad.addEventListener("click", loadOcr);
+els.btnSaveMd.addEventListener("click", () => {
+  if(!model.days.length){ setStatus(t("stEmpty"), "err"); return; }
+  if(model.days.length === 1) return saveDay(model.days[0], 0);
+  const base = model.source ? slug(model.source.replace(/\.[a-z0-9]+$/i, ""), "retete") : slug(t("title"), "retete");
+  return saveBlob(base + ".md", allMarkdown());
+});
+els.btnWorkbook.addEventListener("click", toWorkbook);
+els.btnCopy.addEventListener("click", async () => {
+  const md = allMarkdown();
+  if(!md.trim()){ setStatus(t("stEmpty"), "err"); return; }
+  try{
+    await navigator.clipboard.writeText(md);
+    setStatus(t("stCopied"));
+  }catch(e){
+    els.tabSource.click();
+    els.mdText.focus(); els.mdText.select();
+    setStatus(t("stCopyFailed"), "err");
+  }
+});
+[els.wbName, els.ocrLangs, els.ocrUrl, els.ocrData].forEach(el => el.addEventListener("change", savePrefs));
+[els.optSource, els.optTotals].forEach(el => el.addEventListener("change", () => { savePrefs(); renderMarkdown(); }));
+
+window.addEventListener("scula-ui-lang", ev => {
+  UI = (ev.detail === "en" || ev.detail === "ro") ? ev.detail : UI;
+  applyUILang();
+});
+
+/* ---- init ---- */
+(async function(){
+  try{ UI = (await store.get(LANG_KEY)) === "en" ? "en" : "ro"; }catch(e){}
+  await loadPrefs();
+  booted = true;
+  applyUILang();
+  paintOcrState();
+  renderDays();
+  setStatus("");
+})();
+
+// The parser and the PDF reader are the two pieces worth testing on their
+// own — tests/recipes.js drives them through this handle.
+window.ScuLaRecipes = { Recipes, PdfText, model, analyse, allMarkdown, buildDayMarkdown, renderDays, renderMarkdown };
+
+})();
+</script>
+</body>
+</html>

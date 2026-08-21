@@ -1,7 +1,7 @@
 # FEATURES.md — adding tools and features
 
-Three scopes: a whole new app page, a new drawing tool in `editor.html`,
-or new markdown syntax. Pick the section you need.
+Four scopes: a whole new app page, a new drawing tool in `editor.html`,
+new markdown syntax, or the recipe pipeline. Pick the section you need.
 
 ---
 
@@ -10,14 +10,14 @@ or new markdown syntax. Pick the section you need.
 1. **Copy the closest existing app** as the skeleton. Keep it single-file:
    `<style>` → markup → `<script>`. No build step, no framework, no npm.
 2. **Paste the shared nav** verbatim from `index.html:221-873`.
-3. **Add the new link to all four navs** — the three existing files plus
+3. **Add the new link to every nav copy** — the existing app files plus
    the new one. They must stay byte-identical:
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
    Verify with the diff snippet in `CLAUDE.md`.
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
-   get a folder — again in all four copies.
+   get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
    and an `I18N` object with `data-i` attributes (`docs/I18N.md`) from the
    first commit. Retrofitting is what makes the other two apps expensive.
@@ -152,8 +152,8 @@ if (r.message) say(r.message);      // or drop { quiet:true } and the
                                     // shared toast says it for you
 ```
 
-`ScuLaFolder` lives in the triplicated `#site-nav` block, so it is defined
-before any app script runs. `save()` picks a route with `currentMode()`:
+`ScuLaFolder` lives in the shared `#site-nav` block copied into every app
+file, so it is defined before any app script runs. `save()` picks a route with `currentMode()`:
 
 | Mode | When | What happens |
 |---|---|---|
@@ -178,7 +178,7 @@ Full surface:
 ### The folder route (desktop)
 
 - One root folder from the `📁` nav button (`showDirectoryPicker`,
-  `mode:'readwrite'`). All three subfolders are created immediately, so
+  `mode:'readwrite'`). Every page's subfolder is created immediately, so
   the layout is visible before anything is saved. The button is
   **desktop-only** — see the share route below.
 - The `FileSystemDirectoryHandle` is stored in **IndexedDB** (`scula-fs` →
@@ -191,6 +191,7 @@ Full surface:
   | `index.html` | `transcript` |
   | `editor.html` | `desen` |
   | `markdown-editor.html` | `markdown` |
+  | `recipes.html` | `retete` |
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
@@ -328,6 +329,26 @@ workbook subfolder.
   you need a new object store or index.
 - Anything that changes `title` or `name` must go through the rename path
   so the mirror moves with it.
+
+---
+
+## F. Recipes from a PDF or a photo (`recipes.html`)
+
+A fourth page, and the one place in the repo that reads a *file format*
+rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
+— because two things there are contracts rather than code:
+
+- **the markdown it writes** (§ C there): `#` day, `##` meal, `### 1.
+  Ingrediente` as a four-column table ending in an empty USDA FDC id,
+  `### 2. Metoda de preparare` as an ordered list. Anything that reads those
+  files later — the planned nutrition pass — depends on that shape;
+- **the OCR policy** (§ A there): no recogniser is bundled or auto-loaded.
+  Pasted text and the dependency-free PDF reader are the routes that always
+  work; an engine is fetched only when the person presses the button, from
+  an address they can repoint at a local copy.
+
+It writes chapters into the same workbook store as § E, one per day, so a
+day extracted here shows up in `markdown-editor.html` on its next load.
 
 ---
 

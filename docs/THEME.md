@@ -1,19 +1,25 @@
 # THEME.md — unified colour theme
 
-Goal: one shared visual identity across all three apps, switchable
+Goal: one shared visual identity across all four apps, switchable
 light/dark, with no build step.
 
-## Current state — all three migrated
+## Current state — all four migrated
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `markdown-editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
+| `recipes.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 
-None of the three files share one `:root` block yet — each still defines
+None of the four files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
+
+`recipes.html` was written after the migrations, so it carries the full
+target set below from its first commit — including the `--text-3`,
+`--accent-2`, `--accent-soft` and `--ok` roles the older files only partly
+have. Copy its `:root` when starting a new page.
 
 | Role | `index.html` | `editor.html` | `markdown-editor.html` |
 |---|---|---|---|
