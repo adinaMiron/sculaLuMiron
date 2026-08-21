@@ -1391,7 +1391,10 @@
   function shareOut(filename, blob, quiet){
     var file = shareable(filename, blob);
     if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
-    return navigator.share({ files:[file], title: filename }).then(function(){
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
       return report({ saved:true, via:"share", name:filename, path:filename,
                       message: tx("shared")(filename) }, quiet);
     }, function(err){
