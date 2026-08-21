@@ -13,7 +13,7 @@ into the Markdown editor's own workbook store.
 file ──► text ──► model ──► markdown ──► .md file  /  workbook chapter
          │        │
          │        └─ Recipes.parse(): days ▸ meals ▸ ingredients + steps
-         └─ PdfText (no dependency) · OCR (opt-in) · pasted text
+         └─ PdfText.extract() · PdfText.images() + OCR · pasted text
 ```
 
 Line anchors are in `docs/MAP.md`. This doc is the *why* and the format
@@ -40,7 +40,7 @@ CLAUDE.md rule 3. It does only what *text* needs:
 
 What it deliberately does not do: encrypted files (refused, not mangled),
 LZW, and rendering of any kind. **A scanned PDF holds pictures, not text**
-— `extract()` returns an empty string and the page offers OCR instead.
+— `extract()` returns an empty string, and `images()` (below) takes over.
 
 Two heuristics decide the line breaks, and they are the first thing to
 touch if a particular PDF comes out jumbled:
@@ -57,34 +57,108 @@ second font is enough — so with an *estimated* character width the output
 reads `m in`, `arom ă`, `10m l`. `tests/recipes.js` prints a PDF with
 Chromium and asserts against exactly that.
 
-### Images — OCR, opt-in and never bundled
+### Scanned PDF — `PdfText.images(arrayBuffer)`
 
-There is no OCR in this repo and there should not be. A page that quietly
-pulled a multi-megabyte recogniser off a CDN would be a dependency in
-everything but name, and it would break the moment the file is opened from
-`file://` on a plane.
+A scan is a picture in a PDF wrapper, so the reader also knows how to get
+the picture back out and hand it to OCR. Just enough of the image model for
+that, and no more:
 
-So the page offers, in this order:
+| Step | What |
+|---|---|
+| find | each page's `/Resources → /XObject`, in **painting order** — the `/Im3 Do` operators in the content stream, not the (unordered) dictionary. A `/Subtype /Form` is recursed into, three deep: scanners like to wrap the page image in one |
+| filter | anything under 200×200-equivalent (`MIN_IMAGE_PX`) is a logo or a rule, not a page, and is dropped |
+| JPEG | `/DCTDecode` bytes are handed over untouched — the browser already has a JPEG decoder and it is better than any we could write |
+| pixels | everything Flate/hex/A85-packed is unpacked to RGBA here: `/DeviceGray`, `/DeviceRGB`, `/DeviceCMYK` and `/ICCBased` by its `/N`, at 1, 2, 4, 8 or 16 bits per component, plus `/ImageMask` stencils and the `/Decode [1 0]` flip |
+| refuse | `/CCITTFaxDecode`, `/JBIG2Decode`, `/JPXDecode`, `/LZWDecode` and indexed palettes come back `null`. Each needs a decoder of its own and this file is not growing one |
+| fall back | a file whose page tree yields nothing at all: every `/Subtype /Image` object in object order |
 
-1. **Paste the text.** Every phone can already copy text out of a picture
-   (iOS Live Text, Android Lens). Long-press, copy, then *Lipesc textul*.
-   This is the fastest route and needs nothing.
-2. **Load an engine, on purpose.** *Text din poze (OCR)* has a button, a
-   language field (`ron+eng`), and the engine's address — visible and
-   editable. Pressing the button injects that script and nothing else does.
-   Point it at `./ocr/tesseract.min.js` and a local `langPath` and the page
-   works offline.
+The result is `[{ page, kind:"jpeg", bytes } | { page, kind:"raw", width,
+height, rgba }]`, page-ordered. `extract()` and `images()` share one parse —
+a one-slot cache keyed on the very `ArrayBuffer` handed in — so asking both
+questions about a scan costs one pass, not two.
 
-Before recognition the image is redrawn on a canvas: upscaled so its short
-side is ~1400px (capped at 3×), greyscaled, contrast nudged. Phone
-screenshots are small and tinted, and this is worth several percent of
-accuracy for one canvas pass.
+`extract()` and `images()` are the file's only two entry points.
+
+### Images — Tesseract, run in the page
+
+**This changed in 2026-08.** It used to be that OCR needed a button press.
+It does not any more: a photo or a scanned PDF is recognised on arrival, and
+*Citește singur pozele* (on by default) is what says so. Nothing is uploaded
+— the recognition happens in this page, on this device.
+
+What still cannot live in the repo is the recogniser itself. Tesseract is
+several megabytes of wasm plus a language model per language, so it is
+**fetched on first use rather than bundled**, from an address that stays
+visible and editable:
+
+```
+the field, if filled   ▸   ./ocr/tesseract.min.js   ▸   the CDN
+```
+
+The local path is tried first with the field empty, so dropping the files
+next to the page is the whole of "make it work offline" — no configuration.
+One catch worth knowing: tesseract.js loads its worker, its wasm core and
+each language separately, and **left alone it fetches every one of them from
+a CDN**, so a local `tesseract.min.js` would still reach for the network.
+The page therefore derives `workerPath` from the folder the engine came
+from, and — when that folder is not `http(s):` — `corePath` and `langPath`
+too. An offline `./ocr/` holds:
+
+```
+tesseract.min.js  worker.min.js  tesseract-core*.js  tesseract-core*.wasm
+ron.traineddata.gz  eng.traineddata.gz
+```
+
+(`npm pack tesseract.js tesseract.js-core @tesseract.js-data/ron
+@tesseract.js-data/eng`, then flatten the four packages into one folder.
+~45 MB, which is exactly why it is not in the repo.)
+
+Three things make it fast enough to use all day:
+
+- **one worker for the session.** Starting a worker costs more than
+  recognising a page, so it is created once and kept. It is rebuilt only
+  when the languages change — the badge next to the button says which
+  languages the live one has.
+- **the language data caches itself.** Tesseract writes the traineddata into
+  IndexedDB, so only the first run on a device pays for it.
+- **prepared before it is needed.** *Pregătește motorul la deschiderea
+  paginii* starts the worker at load. It ticks itself on the first
+  successful start — a device that has done OCR once will do it again —
+  and can be unticked.
+
+Measured, with the engine local: ~3.8 s from dropping a photo to parsed
+days on a cold page, ~0.5 s once the worker is up. A two-page scanned PDF is
+~3.6 s.
+
+Before recognition the picture is redrawn on a canvas: upscaled so its short
+side is ~1600px (capped at 3×), *downscaled* if the result would pass 12
+megapixels — iOS Safari refuses a canvas much larger — then greyscaled with
+the contrast nudged. Phone screenshots are small and tinted, scans are huge,
+and this one pass is worth several percent of accuracy on both.
+
+The phone route still works and is still the fastest thing on a phone: every
+phone can copy text out of a picture (iOS Live Text, Android Lens), and
+*Lipesc textul* takes it. Untick *Citește singur pozele* and the page goes
+back to asking before it fetches anything.
+
+### Several files at once
+
+Photographing a plan page by page is the normal case on a phone, so the file
+picker, the camera button and a drop all take **several files**: the first
+replaces what is on screen, the rest append. They are queued, never
+interleaved, so one OCR worker serves the whole batch.
+
+Appending parses **only the piece that was added**. Re-parsing the whole box
+would push every day already on screen in a second time — which is what it
+used to do whenever *Adaugă la zilele deja extrase* was ticked.
 
 ### Pasted text
 
 `Ctrl+V` anywhere on the page takes either a picture (→ OCR) or text (→
 straight into step 2). Text is also editable in step 2 and re-analysed with
-one button — which is the intended fix for anything the reader got wrong.
+one button — which is the intended fix for anything the reader got wrong,
+OCR included: no OCR is perfect, and step 2 is where a stray `>` in front of
+`50g spanac` gets deleted before it reaches the markdown.
 
 ---
 
@@ -245,7 +319,24 @@ the repo, and it covers: the parser on a full three-meal day, the PDF
 reader on all three variants including diacritics through a `/ToUnicode`
 CMap, the markdown contract above, the `.md` save (with `ScuLaFolder.save`
 stubbed) and the share route (with a phone-shaped stub), the workbook
-records, both languages, and the two "this needs OCR" refusals.
+records, both languages, and the refusal when a PDF holds neither text nor
+pictures.
+
+**The OCR path is tested end to end without an engine.** The address field
+is what makes that possible: the checks point it at
+`tests/fixtures/fake-tesseract.js`, a stand-in worker that records the
+canvas it was handed and returns queued text. So a scanned PDF built at run
+time — one `/DCTDecode` page (a JPEG the browser makes on the spot), one
+`/FlateDecode` page, one logo-sized picture that must be ignored — goes all
+the way to parsed days, and the checks can assert the pixels: each page
+arrives upscaled to 3× and greyscaled, with the ink still on the left. Also
+covered: several photos in one go, and that changing the languages
+terminates the old worker instead of reusing it.
+
+What that deliberately does not prove is that *Tesseract itself* still
+works. For that, serve the four npm packages listed above from a local
+`./ocr/`, point the field at it, and drop a photo — the numbers in § A were
+measured that way.
 
 ```bash
 cd tests && npm install

@@ -217,6 +217,20 @@
   details.more > summary::-webkit-details-marker{display:none}
   details.more > summary::before{content:"▸ ";color:var(--accent)}
   details.more[open] > summary::before{content:"▾ "}
+  details.more details.more{margin:.8rem 0 0;padding:0 0 0 .1rem}
+
+  label.check{display:flex;align-items:flex-start;gap:.45rem;margin:.5rem 0 0;cursor:pointer;
+    font-size:.85rem;color:var(--text-2);line-height:1.4}
+  label.check input{margin-top:.15rem}
+
+  /* the OCR engine's state, next to its button */
+  .badge{
+    display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;
+    padding:.15rem .55rem;border-radius:999px;border:1px solid var(--border);
+    color:var(--text-2);background:var(--surface-2);white-space:nowrap;
+  }
+  .badge.on{border-color:var(--ok);color:var(--ok)}
+  .badge.work{border-color:var(--accent);color:var(--accent-2)}
 
   /* Narrow: the ingredient name is the field people actually type in, so it
      gets a row of its own and the small numbers share the one below. */
@@ -914,38 +928,53 @@
         <h2><span class="step">1</span><span data-i="stepSource">Sursa</span></h2>
         <div id="drop">
           <p class="big" data-i="dropBig">Trage aici un PDF sau o poză</p>
-          <p class="dsub" data-i="dropSub">PDF, JPG, PNG, WEBP sau text. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
+          <p class="dsub" data-i="dropSub">PDF (și scanat), JPG, PNG, WEBP sau text. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
           <div class="row" style="justify-content:center">
             <button type="button" class="btn primary" id="btnPick" data-i="pickFile">Alege fișier</button>
             <button type="button" class="btn" id="btnCam" data-i="camera">Fotografiază</button>
             <button type="button" class="btn ghost" id="btnPaste" data-i="pasteText">Lipesc textul</button>
           </div>
         </div>
-        <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf">
-        <input type="file" id="cam" accept="image/*" capture="environment">
+        <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf" multiple>
+        <input type="file" id="cam" accept="image/*" capture="environment" multiple>
         <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span></div>
-        <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză au nevoie de recunoaștere optică (OCR) — vezi mai jos.</p>
+        <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.</p>
 
         <details class="more" id="ocrBox">
           <summary data-i="ocrTitle">Text din poze (OCR)</summary>
-          <p class="hint" data-i="ocrIntro">Aplicațiile astea nu au biblioteci incluse. Cea mai simplă cale rămâne cea de pe telefon: ține degetul pe text în poză, copiază, apoi „Lipesc textul”. Pentru citire automată poți încărca, doar când vrei tu, un motor OCR de pe internet.</p>
-          <div class="row" style="margin-top:.5rem">
-            <button type="button" class="btn mini" id="btnOcrLoad" data-i="ocrLoad">Încarcă motorul OCR</button>
-            <span id="ocrState" class="hint" style="margin:0"></span>
+          <p class="hint" data-i="ocrIntro">Pozele și PDF-urile scanate sunt citite cu Tesseract, chiar aici în pagină. Motorul se aduce o singură dată, la prima poză, și rămâne pregătit cât ține pagina deschisă; limbile se țin minte pe dispozitiv, așa că a doua oară pornește imediat. Nimic nu pleacă de pe dispozitiv.</p>
+          <label class="check">
+            <input type="checkbox" id="ocrAuto" checked>
+            <span data-i="ocrAuto">Citește singur pozele și PDF-urile scanate</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="ocrWarm">
+            <span data-i="ocrWarm">Pregătește motorul la deschiderea paginii</span>
+          </label>
+          <div class="row" style="margin-top:.7rem">
+            <button type="button" class="btn mini" id="btnOcrLoad" data-i="ocrLoad">Pregătește motorul acum</button>
+            <span id="ocrState" class="badge"></span>
           </div>
-          <label class="field" style="margin-top:.6rem">
+          <label class="field" style="margin-top:.7rem">
             <span data-i="ocrLangs">Limbi OCR</span>
             <input type="text" id="ocrLangs" value="ron+eng" spellcheck="false">
           </label>
-          <label class="field">
-            <span data-i="ocrUrl">Adresa motorului OCR</span>
-            <input type="text" id="ocrUrl" spellcheck="false">
-          </label>
-          <label class="field">
-            <span data-i="ocrData">Adresa fișierelor de limbă</span>
-            <input type="text" id="ocrData" spellcheck="false">
-          </label>
-          <p class="hint" data-i="ocrLocal">Poți pune aici căi locale (de exemplu <code>./ocr/tesseract.min.js</code>) dacă vrei să meargă și fără internet.</p>
+          <details class="more" id="ocrAdv">
+            <summary data-i="ocrAdvTitle">Adrese (pentru lucru fără internet)</summary>
+            <p class="hint" data-i="ocrLocal">Lăsate goale, adresele se caută întâi lângă pagină (<code>./ocr/…</code>) și abia apoi pe internet. Pune aici o cale proprie dacă ții motorul în altă parte.</p>
+            <label class="field" style="margin-top:.6rem">
+              <span data-i="ocrUrl">Adresa motorului OCR</span>
+              <input type="text" id="ocrUrl" spellcheck="false" data-i-placeholder="ocrUrlPh">
+            </label>
+            <label class="field">
+              <span data-i="ocrCore">Adresa nucleului (wasm)</span>
+              <input type="text" id="ocrCore" spellcheck="false" data-i-placeholder="ocrAutoPh">
+            </label>
+            <label class="field">
+              <span data-i="ocrData">Adresa fișierelor de limbă</span>
+              <input type="text" id="ocrData" spellcheck="false" data-i-placeholder="ocrAutoPh">
+            </label>
+          </details>
         </details>
       </div>
 
@@ -1022,11 +1051,13 @@
      file ──► text ──► model ──► markdown ──► .md file / caiet
               │        │
               │        └─ parseRecipes(): zile ▸ mese ▸ ingrediente + pași
-              └─ PdfText (no dependency) sau OCR (opt-in) sau text lipit
+              └─ PdfText (no dependency) sau OCR (Tesseract) sau text lipit
 
-   Everything runs on the device; nothing is uploaded. The one exception
-   is the OCR engine, which is *not* bundled and is fetched only when the
-   person explicitly asks for it — see docs/RECIPES.md § OCR.
+   Everything runs on the device; nothing is uploaded — a picture is
+   recognised here, in the page. The one thing that is fetched is the OCR
+   engine itself: Tesseract is not a file in this repo, so the first photo
+   of a session brings it in from a visible, editable address (a local copy
+   works offline). See docs/RECIPES.md § OCR.
    ============================================================ */
 (function(){
 "use strict";
@@ -1040,18 +1071,24 @@ const I18N = {
     intro:"Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.",
     stepSource:"Sursa",
     dropBig:"Trage aici un PDF sau o poză",
-    dropSub:"PDF, JPG, PNG, WEBP sau text. Poți și să lipești o poză din clipboard (Ctrl+V).",
+    dropSub:"PDF (și scanat), JPG, PNG, WEBP sau text. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).",
     pickFile:"Alege fișier",
     camera:"Fotografiază",
     pasteText:"Lipesc textul",
-    srcHintPdf:"Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză au nevoie de recunoaștere optică (OCR) — vezi mai jos.",
+    srcHintPdf:"Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.",
     ocrTitle:"Text din poze (OCR)",
-    ocrIntro:"Aplicațiile astea nu au biblioteci incluse. Cea mai simplă cale rămâne cea de pe telefon: ține degetul pe text în poză, copiază, apoi „Lipesc textul”. Pentru citire automată poți încărca, doar când vrei tu, un motor OCR de pe internet.",
-    ocrLoad:"Încarcă motorul OCR",
+    ocrIntro:"Pozele și PDF-urile scanate sunt citite cu Tesseract, chiar aici în pagină. Motorul se aduce o singură dată, la prima poză, și rămâne pregătit cât ține pagina deschisă; limbile se țin minte pe dispozitiv, așa că a doua oară pornește imediat. Nimic nu pleacă de pe dispozitiv.",
+    ocrAuto:"Citește singur pozele și PDF-urile scanate",
+    ocrWarm:"Pregătește motorul la deschiderea paginii",
+    ocrLoad:"Pregătește motorul acum",
     ocrLangs:"Limbi OCR",
+    ocrAdvTitle:"Adrese (pentru lucru fără internet)",
     ocrUrl:"Adresa motorului OCR",
+    ocrCore:"Adresa nucleului (wasm)",
     ocrData:"Adresa fișierelor de limbă",
-    ocrLocal:"Poți pune aici căi locale (de exemplu <code>./ocr/tesseract.min.js</code>) dacă vrei să meargă și fără internet.",
+    ocrUrlPh:"./ocr/tesseract.min.js, apoi internet",
+    ocrAutoPh:"automat",
+    ocrLocal:"Lăsate goale, adresele se caută întâi lângă pagină (<code>./ocr/…</code>) și abia apoi pe internet. Pune aici o cale proprie dacă ții motorul în altă parte.",
     stepText:"Textul citit",
     textHint:"Corectează aici ce a citit greșit, apoi analizează din nou.",
     rawPlaceholder:"Lipește aici textul rețetei…",
@@ -1104,13 +1141,20 @@ const I18N = {
     /* status */
     stReading:f => "Citesc „" + f + "”…",
     stPdfPages:n => "PDF citit: " + n + (n === 1 ? " pagină." : " pagini."),
-    stPdfNoText:"PDF-ul nu conține text de citit (pare scanat). Fă o poză paginii sau lipește textul.",
+    stPdfNoText:"PDF-ul nu are nici text, nici poze de citit. Fă o poză paginii sau lipește textul.",
+    stPdfScanned:"PDF-ul pare scanat. Îi citesc paginile cu OCR…",
     stPdfFailed:"Nu am putut citi PDF-ul. Deschide-l și copiază textul, apoi „Lipesc textul”.",
-    stOcrNeed:"Poza are nevoie de OCR. Deschide „Text din poze” și încarcă motorul, sau lipește textul copiat de pe telefon.",
-    stOcrLoading:"Încarc motorul OCR…",
+    stOcrNeed:"Poza are nevoie de OCR. Bifează „Citește singur pozele” sau apasă „Pregătește motorul acum”.",
+    stOcrLoading:"Aduc motorul OCR…",
     stOcrReady:"Motorul OCR e pregătit.",
-    stOcrFailed:"Nu am putut încărca motorul OCR. Verifică adresa sau lipește textul.",
-    stOcrRun:p => "Recunosc textul… " + p + "%",
+    stOcrFailed:"Nu am putut porni motorul OCR. Verifică internetul sau adresele din „Text din poze”, ori lipește textul.",
+    stOcrWarm:p => "Pregătesc motorul OCR… " + p + "%",
+    stOcrLang:p => "Aduc limbile OCR… " + p + "%",
+    stOcrRun:(p, i, n) => n > 1
+      ? "Recunosc textul… pagina " + i + " din " + n + " · " + p + "%"
+      : "Recunosc textul… " + p + "%",
+    stOcrEmpty:"OCR-ul nu a găsit text în poză. Încearcă o poză mai dreaptă și mai luminoasă.",
+    stFileOf:(i, n) => "Fișierul " + i + " din " + n + "…",
     stFound:(d) => d === 1 ? "Am găsit o zi." : "Am găsit " + d + " zile.",
     stNothing:"Nu am recunoscut nicio rețetă. Verifică textul din pasul 2 — sau adaugă manual o zi.",
     stCopied:"Markdown copiat.",
@@ -1119,27 +1163,35 @@ const I18N = {
     stWbFailed:"Nu am putut scrie în caiet pe acest dispozitiv.",
     stEmpty:"Nu e nimic de salvat încă.",
     askClear:"Ștergi toate zilele extrase?",
+    askManyPages:n => "PDF-ul are " + n + " pagini scanate. OCR-ul lor poate dura câteva minute. Continui?",
     unnamed:"Fără nume",
-    ocrLoaded:"încărcat",
-    ocrNotLoaded:"neîncărcat"
+    ocrLoaded:l => "pregătit · " + l,
+    ocrLoading:"se aduce…",
+    ocrNotLoaded:"nepregătit"
   },
   en:{
     title:"Recipes",
     intro:"Read the text out of a PDF or a photo, split it into days and meals and write a clean recipe in markdown: 1. Ingredients, 2. Method. The file stays with you — nothing leaves the device.",
     stepSource:"Source",
     dropBig:"Drop a PDF or a photo here",
-    dropSub:"PDF, JPG, PNG, WEBP or text. You can also paste a picture from the clipboard (Ctrl+V).",
+    dropSub:"PDF (scanned too), JPG, PNG, WEBP or text. Several photos at once are fine. You can also paste a picture from the clipboard (Ctrl+V).",
     pickFile:"Choose file",
     camera:"Take a photo",
     pasteText:"Paste text",
-    srcHintPdf:"A PDF with real text is read directly, with no library at all. A scanned PDF or a photo needs optical recognition (OCR) — see below.",
+    srcHintPdf:"A PDF with real text is read directly, with no library at all. A scanned PDF or a photo goes through optical recognition (OCR) on its own — there is nothing to press.",
     ocrTitle:"Text from pictures (OCR)",
-    ocrIntro:"These apps bundle no libraries. The simplest route is the one your phone already has: long-press the text in the picture, copy, then “Paste text”. For automatic reading you can load an OCR engine from the internet, only when you ask for it.",
-    ocrLoad:"Load the OCR engine",
+    ocrIntro:"Photos and scanned PDFs are read with Tesseract, right here in the page. The engine is fetched once, on the first picture, and stays ready while the page is open; the languages are remembered on the device, so the second time starts instantly. Nothing leaves the device.",
+    ocrAuto:"Read photos and scanned PDFs automatically",
+    ocrWarm:"Get the engine ready when the page opens",
+    ocrLoad:"Get the engine ready now",
     ocrLangs:"OCR languages",
+    ocrAdvTitle:"Addresses (for working offline)",
     ocrUrl:"OCR engine address",
+    ocrCore:"Core address (wasm)",
     ocrData:"Language files address",
-    ocrLocal:"You can point these at local paths (e.g. <code>./ocr/tesseract.min.js</code>) to keep it working offline.",
+    ocrUrlPh:"./ocr/tesseract.min.js, then the internet",
+    ocrAutoPh:"automatic",
+    ocrLocal:"Left empty, each address is looked for next to the page first (<code>./ocr/…</code>) and only then on the internet. Put a path here if you keep the engine somewhere else.",
     stepText:"The text that was read",
     textHint:"Fix anything misread here, then analyse it again.",
     rawPlaceholder:"Paste the recipe text here…",
@@ -1188,13 +1240,20 @@ const I18N = {
 
     stReading:f => "Reading “" + f + "”…",
     stPdfPages:n => "PDF read: " + n + (n === 1 ? " page." : " pages."),
-    stPdfNoText:"This PDF holds no readable text (it looks scanned). Photograph the page or paste the text.",
+    stPdfNoText:"This PDF holds neither text nor pictures to read. Photograph the page or paste the text.",
+    stPdfScanned:"This PDF looks scanned. Reading its pages with OCR…",
     stPdfFailed:"Couldn't read the PDF. Open it, copy the text, then use “Paste text”.",
-    stOcrNeed:"A photo needs OCR. Open “Text from pictures” and load the engine, or paste the text your phone copied.",
-    stOcrLoading:"Loading the OCR engine…",
+    stOcrNeed:"A photo needs OCR. Tick “Read photos automatically”, or press “Get the engine ready now”.",
+    stOcrLoading:"Fetching the OCR engine…",
     stOcrReady:"The OCR engine is ready.",
-    stOcrFailed:"Couldn't load the OCR engine. Check the address, or paste the text.",
-    stOcrRun:p => "Recognising text… " + p + "%",
+    stOcrFailed:"Couldn't start the OCR engine. Check the connection or the addresses under “Text from pictures”, or paste the text.",
+    stOcrWarm:p => "Getting the OCR engine ready… " + p + "%",
+    stOcrLang:p => "Fetching the OCR languages… " + p + "%",
+    stOcrRun:(p, i, n) => n > 1
+      ? "Recognising text… page " + i + " of " + n + " · " + p + "%"
+      : "Recognising text… " + p + "%",
+    stOcrEmpty:"OCR found no text in the picture. Try a straighter, brighter photo.",
+    stFileOf:(i, n) => "File " + i + " of " + n + "…",
     stFound:(d) => d === 1 ? "Found one day." : "Found " + d + " days.",
     stNothing:"No recipe recognised. Check the text in step 2 — or add a day by hand.",
     stCopied:"Markdown copied.",
@@ -1203,15 +1262,17 @@ const I18N = {
     stWbFailed:"Couldn't write to the workbook on this device.",
     stEmpty:"Nothing to save yet.",
     askClear:"Delete every extracted day?",
+    askManyPages:n => "This PDF has " + n + " scanned pages. Recognising them can take a few minutes. Go on?",
     unnamed:"Untitled",
-    ocrLoaded:"loaded",
-    ocrNotLoaded:"not loaded"
+    ocrLoaded:l => "ready · " + l,
+    ocrLoading:"fetching…",
+    ocrNotLoaded:"not ready"
   }
 };
 let UI = "ro";
-function t(k, a){
+function t(k){
   const v = (I18N[UI] || I18N.ro)[k];
-  return typeof v === "function" ? v(a) : v;
+  return typeof v === "function" ? v.apply(null, Array.prototype.slice.call(arguments, 1)) : v;
 }
 const LANG_KEY = "scula:ui-lang";
 
@@ -1925,7 +1986,143 @@ const PdfText = (function(){
     return out.join("\n");
   }
 
-  async function extract(buffer){
+  /* ---- pictures: what a scanned page holds instead of text ----
+     Only as much of the image model as handing a page to an OCR engine
+     needs. JPEG bytes go straight to the browser's own decoder; anything
+     Flate-packed is unpacked to RGBA here. CCITT, JBIG2 and JPEG-2000 each
+     need a decoder of their own and this file is not growing one — those
+     come back null and the page says so. */
+  const MIN_IMAGE_PX = 40000;                  // 200×200: below that it is a logo
+
+  function xobjectsOf(resources, objs){
+    const out = new Map();
+    let dict = resources;
+    const rr = refNum(resources);
+    if(rr !== null && objs.has(rr)) dict = objs.get(rr).dict;
+    if(!dict) return out;
+    let xd = dictValue(dict, "/XObject");
+    const xr = refNum(xd);
+    if(xr !== null && objs.has(xr)) xd = objs.get(xr).dict;
+    if(!xd) return out;
+    const re = /(\/[A-Za-z0-9#.+-]+)\s+(\d+)\s+\d+\s+R/g;
+    let m;
+    while((m = re.exec(xd))) out.set(m[1], +m[2]);
+    return out;
+  }
+
+  // Painting order, not dictionary order — a scanner that cuts a page into
+  // strips draws them top to bottom with `/Im3 Do`, and the dictionary that
+  // names them is unordered.
+  function drawnOrder(content, xobjs){
+    const out = [];
+    const re = /(\/[A-Za-z0-9#.+-]+)\s+Do[^A-Za-z0-9]/g;
+    let m;
+    while((m = re.exec(content))) if(xobjs.has(m[1])) out.push(xobjs.get(m[1]));
+    return out.length ? out : Array.from(xobjs.values());
+  }
+
+  function componentsOf(dict, objs){
+    let cs = dictValue(dict, "/ColorSpace") || dictValue(dict, "/CS") || "";
+    const r = refNum(cs);
+    if(r !== null && objs.has(r)) cs = objs.get(r).dict;
+    if(/\/DeviceRGB|\/CalRGB/.test(cs)) return 3;
+    if(/\/DeviceCMYK/.test(cs)) return 4;
+    if(/\/DeviceGray|\/CalGray/.test(cs)) return 1;
+    const icc = cs.match(/\/ICCBased\s+(\d+)\s+\d+\s+R/);
+    if(icc && objs.has(+icc[1])){
+      const n = +((objs.get(+icc[1]).dict.match(/\/N\s+(\d+)/) || [])[1] || 0);
+      if(n === 1 || n === 3 || n === 4) return n;
+    }
+    return 0;                                  // indexed, separation, lab: skipped
+  }
+
+  // One sample, whatever the bit depth. 16-bit reads the high byte, which is
+  // all an OCR engine will ever look at.
+  function sampleAt(data, w, bpc, comps){
+    const rowBytes = Math.ceil(w * comps * bpc / 8);
+    const max = (1 << bpc) - 1;
+    if(bpc === 8) return (x, y, c) => data[y * rowBytes + x * comps + c] || 0;
+    if(bpc === 16) return (x, y, c) => data[y * rowBytes + (x * comps + c) * 2] || 0;
+    return (x, y, c) => {
+      const bit = (x * comps + c) * bpc;
+      const byte = data[y * rowBytes + (bit >> 3)] || 0;
+      return ((byte >> (8 - bpc - (bit & 7))) & max) * (255 / max);
+    };
+  }
+
+  async function imageOf(o, objs){
+    if(!o || !o.data) return null;
+    const w = +((o.dict.match(/\/Width\s+(\d+)/) || [])[1] || 0);
+    const h = +((o.dict.match(/\/Height\s+(\d+)/) || [])[1] || 0);
+    if(!w || !h || w * h < MIN_IMAGE_PX) return null;
+    const names = (dictValue(o.dict, "/Filter") || "").match(/\/[A-Za-z0-9]+/g) || [];
+    const last = names[names.length - 1] || "";
+    if(last === "/DCTDecode"){
+      let data = o.data;
+      for(const n of names.slice(0, -1)){
+        if(n === "/FlateDecode") data = await inflate(data);
+        else if(n === "/ASCIIHexDecode") data = hexDecode(data);
+        else if(n === "/ASCII85Decode") data = a85Decode(data);
+        else return null;
+      }
+      return { kind:"jpeg", width:w, height:h, bytes:data };
+    }
+    if(last === "/JPXDecode" || last === "/JBIG2Decode" ||
+       last === "/CCITTFaxDecode" || last === "/LZWDecode" || last === "/RunLengthDecode") return null;
+    const data = await decodeStream(o);
+    if(!data) return null;
+    const mask = /\/ImageMask\s+true/.test(o.dict);
+    const bpc = mask ? 1 : +((o.dict.match(/\/BitsPerComponent\s+(\d+)/) || [])[1] || 8);
+    const comps = mask ? 1 : componentsOf(o.dict, objs);
+    if(!comps || [1, 2, 4, 8, 16].indexOf(bpc) < 0) return null;
+    if(data.length < Math.ceil(w * comps * bpc / 8) * h) return null;   // truncated
+    // /Decode [1 0] flips a stencil, and a stencil's 0 is the ink.
+    const invert = /\/Decode\s*\[\s*1/.test(o.dict);
+    const at = sampleAt(data, w, bpc, comps);
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    for(let y = 0, i = 0; y < h; y++){
+      for(let x = 0; x < w; x++, i += 4){
+        let r, g, b;
+        if(comps === 1){ r = g = b = at(x, y, 0); }
+        else if(comps === 3){ r = at(x, y, 0); g = at(x, y, 1); b = at(x, y, 2); }
+        else{
+          const c = at(x, y, 0), m = at(x, y, 1), yl = at(x, y, 2), k = at(x, y, 3);
+          r = 255 - Math.min(255, c + k); g = 255 - Math.min(255, m + k); b = 255 - Math.min(255, yl + k);
+        }
+        if(invert){ r = 255 - r; g = 255 - g; b = 255 - b; }
+        rgba[i] = r; rgba[i+1] = g; rgba[i+2] = b; rgba[i+3] = 255;
+      }
+    }
+    return { kind:"raw", width:w, height:h, rgba };
+  }
+
+  async function collectImages(resources, content, objs, out, seen, depth){
+    const xobjs = xobjectsOf(resources, objs);
+    if(!xobjs.size) return;
+    for(const num of drawnOrder(content, xobjs)){
+      const o = objs.get(num);
+      if(!o || seen.has(num)) continue;
+      seen.add(num);
+      if(/\/Subtype\s*\/Image/.test(o.dict)){
+        let img = null;
+        try{ img = await imageOf(o, objs); }catch(e){ /* one bad picture is not the page */ }
+        if(img) out.push(img);
+      }else if(/\/Subtype\s*\/Form/.test(o.dict) && depth < 3){
+        let sub = "";
+        try{ const d = await decodeStream(o); if(d) sub = latin1(d); }catch(e){}
+        await collectImages(dictValue(o.dict, "/Resources") || resources, sub, objs, out, seen, depth + 1);
+      }
+    }
+  }
+
+  /* ---- the document, parsed once ---- */
+  // extract() and images() are two questions about the same file, and the app
+  // asks both of a scanned PDF. One slot, keyed on the very buffer handed in,
+  // is enough to keep the second question free.
+  let last = { buf:null, doc:null };
+
+  async function parseDoc(buffer){
+    if(last.buf === buffer && last.doc) return last.doc;
     const bytes = new Uint8Array(buffer);
     const raw = latin1(bytes);
     if(raw.slice(0, 1024).indexOf("%PDF-") < 0 && raw.indexOf("%PDF-") < 0) throw new Error("not a pdf");
@@ -1935,22 +2132,33 @@ const PdfText = (function(){
     }
     if(/\/Encrypt\s+\d+\s+\d+\s+R/.test(raw)) throw new Error("encrypted");
     await expandObjStreams(objs);
-    const pages = pageList(objs);
+    const doc = { objs, pages: pageList(objs) };
+    last = { buf: buffer, doc };
+    return doc;
+  }
+
+  async function contentOf(page, objs){
+    const cRaw = dictValue(page.obj.dict, "/Contents");
+    const refs = cRaw ? (cRaw.match(/\d+\s+\d+\s+R/g) || []) : [];
+    let content = "";
+    for(const r of refs){
+      const co = objs.get(+r.split(/\s+/)[0]);
+      if(!co) continue;
+      try{
+        const data = await decodeStream(co);
+        if(data) content += latin1(data) + "\n";
+      }catch(e){ /* one unreadable stream must not lose the page */ }
+    }
+    return content;
+  }
+
+  async function extract(buffer){
+    const { objs, pages } = await parseDoc(buffer);
     const chunks = [];
     for(const page of pages){
       let fonts = new Map();
       try{ fonts = await fontsOf(page.resources, objs); }catch(e){}
-      const cRaw = dictValue(page.obj.dict, "/Contents");
-      const refs = cRaw ? (cRaw.match(/\d+\s+\d+\s+R/g) || []) : [];
-      let content = "";
-      for(const r of refs){
-        const co = objs.get(+r.split(/\s+/)[0]);
-        if(!co) continue;
-        try{
-          const data = await decodeStream(co);
-          if(data) content += latin1(data) + "\n";
-        }catch(e){ /* one unreadable stream must not lose the page */ }
-      }
+      const content = await contentOf(page, objs);
       if(!content) continue;
       const text = joinLines(pageText(content, fonts));
       if(text.trim()) chunks.push(text);
@@ -1958,7 +2166,32 @@ const PdfText = (function(){
     return { pages: pages.length, text: chunks.join("\n\n") };
   }
 
-  return { extract, _latin1: latin1, _bytesOf: bytesOf, _pageText: pageText, _parseCMap: parseCMap };
+  // Page-ordered pictures, for the OCR route. Each is either the raw JPEG
+  // bytes or an RGBA buffer; the caller turns them into canvases.
+  async function images(buffer){
+    const { objs, pages } = await parseDoc(buffer);
+    const out = [];
+    const seen = new Set();
+    for(let i = 0; i < pages.length; i++){
+      const before = out.length;
+      let content = "";
+      try{ content = await contentOf(pages[i], objs); }catch(e){}
+      try{ await collectImages(pages[i].resources, content, objs, out, seen, 0); }catch(e){}
+      for(let k = before; k < out.length; k++) out[k].page = i + 1;
+    }
+    if(out.length) return out;
+    // No page tree worth walking (or a producer that hides its resources):
+    // every image object in the file, in object order, is the better guess.
+    for(const o of Array.from(objs.values())){
+      if(!/\/Subtype\s*\/Image/.test(o.dict)) continue;
+      let img = null;
+      try{ img = await imageOf(o, objs); }catch(e){}
+      if(img){ img.page = out.length + 1; out.push(img); }
+    }
+    return out;
+  }
+
+  return { extract, images, _latin1: latin1, _bytesOf: bytesOf, _pageText: pageText, _parseCMap: parseCMap };
 })();
 
 /* ============================================================
@@ -2247,8 +2480,11 @@ const els = {
   wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"),
   btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnCopy:$("btnCopy"),
   ocrBox:$("ocrBox"), btnOcrLoad:$("btnOcrLoad"), ocrState:$("ocrState"),
-  ocrLangs:$("ocrLangs"), ocrUrl:$("ocrUrl"), ocrData:$("ocrData")
+  ocrAuto:$("ocrAuto"), ocrWarm:$("ocrWarm"),
+  ocrLangs:$("ocrLangs"), ocrUrl:$("ocrUrl"), ocrCore:$("ocrCore"), ocrData:$("ocrData")
 };
+// Set once, the first time an engine starts on this device — see ocrWorker().
+let warmAsked = false;
 
 function setStatus(msg, kind){
   els.statusText.textContent = msg || "";
@@ -2506,16 +2742,19 @@ function renderMarkdown(){
 /* ============================================================
    6. Getting the text in
    ============================================================ */
-function ingest(text, sourceName){
-  const append = els.appendMode.checked && model.days.length > 0;
+function ingest(text, sourceName, forceAppend){
+  const append = !!(forceAppend || (els.appendMode.checked && model.days.length > 0));
   els.textCard.hidden = false;
   els.rawText.value = append && els.rawText.value ? els.rawText.value + "\n\n" + text : text;
   if(sourceName) model.source = sourceName;
-  analyse(append);
+  // Appending parses only the piece that was added: the days already on
+  // screen have been parsed once, and re-parsing the whole box would push
+  // every one of them in a second time.
+  analyse(append, append ? text : undefined);
 }
 
-function analyse(append){
-  const days = Recipes.parse(els.rawText.value);
+function analyse(append, only){
+  const days = Recipes.parse(only === undefined ? els.rawText.value : only);
   if(!append) model.days = [];
   days.forEach(d => model.days.push(d));
   renderDays();
@@ -2524,52 +2763,119 @@ function analyse(append){
             model.days.length ? "" : "err");
 }
 
-async function handleFile(file){
+// A "text" PDF with almost nothing in it is a scan with a header stamp on
+// it, not a document — read its pictures instead.
+const PDF_TEXT_MIN = 40;
+
+async function handleFile(file, opts){
   if(!file) return;
-  setStatus(t("stReading", file.name), "work");
+  const o = opts || {};
+  const note = o.note ? o.note + " " : "";
+  setStatus(note + t("stReading", file.name), "work");
   const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
   const isImg = /^image\//.test(file.type) || /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(file.name);
   try{
     if(isPdf){
+      const buf = await file.arrayBuffer();
       let res;
-      try{ res = await PdfText.extract(await file.arrayBuffer()); }
+      try{ res = await PdfText.extract(buf); }
       catch(e){ setStatus(t("stPdfFailed"), "err"); return; }
-      if(!res.text.trim()){ setStatus(t("stPdfNoText"), "err"); els.ocrBox.open = true; return; }
-      setStatus(t("stPdfPages", res.pages));
-      ingest(res.text, file.name);
+      if(res.text.trim().length > PDF_TEXT_MIN){
+        setStatus(t("stPdfPages", res.pages));
+        ingest(res.text, file.name, o.append);
+        return;
+      }
+      let imgs = [];
+      try{ imgs = await PdfText.images(buf); }catch(e){}
+      if(imgs.length && ocrWanted()){
+        if(imgs.length > 12 && !confirm(t("askManyPages", imgs.length))){ setStatus(""); return; }
+        setStatus(t("stPdfScanned"), "work");
+        const text = await ocrPages(imgs);
+        if(text === null) return;               // ocrPages said why
+        ingest(text, file.name, o.append);
+        return;
+      }
+      if(res.text.trim()){                      // a stamp is better than nothing
+        setStatus(t("stPdfPages", res.pages));
+        ingest(res.text, file.name, o.append);
+        return;
+      }
+      els.ocrBox.open = true;
+      setStatus(imgs.length ? t("stOcrNeed") : t("stPdfNoText"), "err");
       return;
     }
     if(isImg){
       const text = await ocrImage(file);
-      if(text === null) return;                   // ocrImage said why
-      ingest(text, file.name);
+      if(text === null) return;                 // ocrImage said why
+      ingest(text, file.name, o.append);
       return;
     }
-    ingest(await file.text(), file.name);
+    ingest(await file.text(), file.name, o.append);
   }catch(e){
     setStatus(String(e && e.message || e), "err");
   }
 }
 
-/* ---------- OCR (opt-in, never bundled) ----------
-   CLAUDE.md rule 3 keeps these apps dependency-free, and a page that
-   silently pulled a 4 MB recogniser off a CDN would break that. So the
-   engine is fetched only when the person presses the button, from an
-   address they can see and change (a local path works offline). Without
-   it the page still reads PDFs and still takes pasted text — which is
-   what a phone's own "copy text from picture" already gives you. */
+// Photographing a plan page by page is the normal case on a phone, so a
+// batch goes in one after another — first file replaces, the rest append —
+// and the queue keeps two drops from interleaving inside one OCR worker.
+let fileQueue = Promise.resolve();
+function handleFiles(list){
+  const files = Array.from(list || []).filter(Boolean);
+  if(!files.length) return fileQueue;
+  fileQueue = fileQueue.then(async () => {
+    for(let i = 0; i < files.length; i++){
+      await handleFile(files[i], {
+        append: i > 0 || undefined,
+        note: files.length > 1 ? t("stFileOf", i + 1, files.length) : ""
+      });
+    }
+  }).catch(() => {});
+  return fileQueue;
+}
+
+/* ---------- OCR — Tesseract, run in this page ----------
+   Photos and scanned PDFs are read here, on the device: the picture is
+   never uploaded and no service sees it. What cannot live in this repo is
+   the recogniser itself — Tesseract is several megabytes of wasm plus a
+   language model per language — so it is fetched on first use instead of
+   bundled, from an address that is visible and editable:
+
+     the field, if filled  ▸  ./ocr/tesseract.min.js  ▸  the CDN
+
+   Drop the files next to the page and it never touches the network again.
+   One worker is kept alive for the whole session (starting one costs more
+   than recognising a page), and Tesseract caches the language data in
+   IndexedDB, so only the first run of the first day is slow. */
 const OCR = {
-  url:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",
-  data:"",
+  cdn:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",
+  local:"./ocr/tesseract.min.js",
   langs:"ron+eng",
-  loading:false
+  loading:null,          // in-flight script load, shared by everyone waiting
+  starting:false,        // a worker is being built
+  worker:null,
+  workerLangs:"",
+  from:"",               // where the engine actually came from
+  job:{ page:1, pages:1 }
 };
-function ocrLoaded(){ return typeof window.Tesseract !== "undefined"; }
+
+function ocrHere(){ return typeof window.Tesseract !== "undefined"; }
+function ocrReady(){ return !!OCR.worker; }
+function ocrBusy(){ return !!OCR.loading || OCR.starting; }
+function wantedLangs(){ return (els.ocrLangs.value.trim() || OCR.langs).replace(/\s+/g, ""); }
+// Auto is the default; unticked, the page waits to be asked — but an engine
+// already running is always used.
+function ocrWanted(){ return els.ocrAuto.checked || ocrReady() || ocrHere(); }
+
 function paintOcrState(){
   if(!els.ocrState) return;
-  els.ocrState.textContent = ocrLoaded() ? t("ocrLoaded") : t("ocrNotLoaded");
-  els.btnOcrLoad.disabled = ocrLoaded() || OCR.loading;
+  const busy = ocrBusy();
+  els.ocrState.textContent = ocrReady() ? t("ocrLoaded", OCR.workerLangs)
+                           : busy ? t("ocrLoading") : t("ocrNotLoaded");
+  els.ocrState.className = "badge" + (ocrReady() ? " on" : busy ? " work" : "");
+  els.btnOcrLoad.disabled = busy || (ocrReady() && OCR.workerLangs === wantedLangs());
 }
+
 function loadScript(src){
   return new Promise((res, rej) => {
     const s = document.createElement("script");
@@ -2580,72 +2886,189 @@ function loadScript(src){
     document.head.appendChild(s);
   });
 }
-async function loadOcr(){
-  if(ocrLoaded()) return true;
-  OCR.loading = true;
+function engineList(){
+  const custom = els.ocrUrl.value.trim();
+  return custom ? [custom] : [OCR.local, OCR.cdn];
+}
+async function loadEngine(){
+  if(ocrHere()) return true;
+  if(!OCR.loading){
+    OCR.loading = (async () => {
+      setStatus(t("stOcrLoading"), "work");
+      for(const src of engineList()){
+        try{ await loadScript(src); }catch(e){ continue; }
+        // A 404 that answers with a page instead of a script loads fine and
+        // defines nothing — hence the check rather than a bare await.
+        if(ocrHere()){ OCR.from = src; return true; }
+      }
+      return false;
+    })();
+    paintOcrState();
+  }
+  const ok = await OCR.loading;
+  OCR.loading = null;
   paintOcrState();
-  setStatus(t("stOcrLoading"), "work");
-  try{
-    await loadScript(els.ocrUrl.value.trim() || OCR.url);
-  }catch(e){ /* onerror only tells us it failed */ }
-  OCR.loading = false;
-  paintOcrState();
-  if(!ocrLoaded()){ setStatus(t("stOcrFailed"), "err"); return false; }
-  setStatus(t("stOcrReady"));
-  savePrefs();
-  return true;
+  if(!ok) setStatus(t("stOcrFailed"), "err");
+  return ok;
 }
 
-// Phone screenshots are small and dark-on-tinted; a plain upscale to
-// grayscale with a little contrast is worth several percent of accuracy and
-// costs one canvas pass.
-async function prepImage(file){
-  const url = URL.createObjectURL(file);
+function ocrProgress(m){
+  if(!m || !m.status) return;
+  const pct = Math.round((m.progress || 0) * 100);
+  if(m.status === "recognizing text") setStatus(t("stOcrRun", pct, OCR.job.page, OCR.job.pages), "work");
+  else if(/traineddata|language/i.test(m.status)) setStatus(t("stOcrLang", pct), "work");
+  else setStatus(t("stOcrWarm", pct), "work");
+}
+
+// The one worker. Rebuilt only when the languages change.
+// Calls are chained rather than run side by side: warming up at page load and
+// dropping a photo straight away would otherwise build two workers and leak
+// the first, which on this engine means a few megabytes and a live thread.
+let ocrChain = Promise.resolve(null);
+function ocrWorker(){
+  ocrChain = ocrChain.then(buildWorker, buildWorker);
+  return ocrChain;
+}
+async function buildWorker(){
+  const langs = wantedLangs();
+  if(OCR.worker && OCR.workerLangs === langs) return OCR.worker;
+  if(OCR.worker){
+    const old = OCR.worker;
+    OCR.worker = null; OCR.workerLangs = "";
+    try{ await old.terminate(); }catch(e){}
+  }
+  if(!await loadEngine()) return null;
+  OCR.starting = true;
+  paintOcrState();
   try{
-    const img = await new Promise((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = () => rej(new Error("image"));
-      im.src = url;
-    });
-    const min = Math.min(img.naturalWidth, img.naturalHeight) || 1;
-    const scale = Math.min(3, Math.max(1, 1400 / min));
+    const opts = { logger: ocrProgress };
+    const langPath = els.ocrData.value.trim();
+    const corePath = els.ocrCore.value.trim();
+    // Tesseract loads its worker, its wasm core and one file per language
+    // separately, and left alone it fetches each from a CDN — so a local
+    // engine would still reach for the network. Everything therefore
+    // defaults to the folder the engine itself came from: drop the files in
+    // ./ocr/ and the page never leaves the device.
+    const dir = OCR.from ? OCR.from.replace(/[^/]*$/, "") : "";
+    const offline = dir && !/^https?:/i.test(dir);
+    if(dir) opts.workerPath = dir + "worker.min.js";
+    if(corePath || offline) opts.corePath = corePath || dir;
+    if(langPath || offline) opts.langPath = langPath || dir;
+    OCR.worker = await window.Tesseract.createWorker(langs, 1, opts);
+    OCR.workerLangs = langs;
+    setStatus(t("stOcrReady"));
+  }catch(e){
+    OCR.worker = null; OCR.workerLangs = "";
+    setStatus(t("stOcrFailed"), "err");
+  }
+  OCR.starting = false;
+  paintOcrState();
+  // It worked once on this device, so it will work at the next visit: from
+  // now on the engine is prepared while the file is still being chosen.
+  if(OCR.worker && !warmAsked){
+    warmAsked = true;
+    els.ocrWarm.checked = true;
+    savePrefs();
+  }
+  return OCR.worker;
+}
+
+/* Phone screenshots are small and tinted, scanned pages are huge; both read
+   better after one canvas pass. Upscale a small picture towards 1600px on
+   the short side, downscale anything a phone's canvas would refuse, then
+   grey it and stretch the contrast. */
+const OCR_SHORT = 1600;
+const OCR_MAX_PX = 12e6;                 // iOS Safari refuses a canvas much past this
+async function prepImage(src){
+  let url = null, bitmap = null;
+  try{
+    let img;
+    if(src && src.kind === "raw"){
+      const c0 = document.createElement("canvas");
+      c0.width = src.width; c0.height = src.height;
+      c0.getContext("2d").putImageData(new ImageData(src.rgba, src.width, src.height), 0, 0);
+      img = c0;
+    }else{
+      const blob = (src && src.kind === "jpeg") ? new Blob([src.bytes], { type:"image/jpeg" }) : src;
+      if(typeof createImageBitmap === "function"){
+        try{ img = bitmap = await createImageBitmap(blob); }catch(e){ /* older Safari */ }
+      }
+      if(!img){
+        url = URL.createObjectURL(blob);
+        img = await new Promise((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = () => rej(new Error("image"));
+          im.src = url;
+        });
+      }
+    }
+    const w0 = img.naturalWidth || img.width || 1;
+    const h0 = img.naturalHeight || img.height || 1;
+    let scale = Math.min(3, Math.max(1, OCR_SHORT / Math.min(w0, h0)));
+    if(w0 * h0 * scale * scale > OCR_MAX_PX) scale = Math.sqrt(OCR_MAX_PX / (w0 * h0));
     const c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth * scale);
-    c.height = Math.round(img.naturalHeight * scale);
+    c.width = Math.max(1, Math.round(w0 * scale));
+    c.height = Math.max(1, Math.round(h0 * scale));
     const ctx = c.getContext("2d", { willReadFrequently:true });
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, 0, 0, c.width, c.height);
     try{
       const d = ctx.getImageData(0, 0, c.width, c.height);
-      const p = d.data;
-      for(let i = 0; i < p.length; i += 4){
-        const g = 0.299 * p[i] + 0.587 * p[i+1] + 0.114 * p[i+2];
+      const px = d.data;
+      for(let i = 0; i < px.length; i += 4){
+        const g = 0.299 * px[i] + 0.587 * px[i+1] + 0.114 * px[i+2];
         const v = Math.max(0, Math.min(255, (g - 128) * 1.25 + 128));
-        p[i] = p[i+1] = p[i+2] = v;
+        px[i] = px[i+1] = px[i+2] = v;
       }
       ctx.putImageData(d, 0, 0);
     }catch(e){ /* tainted or huge: the plain redraw is still fine */ }
     return c;
-  }finally{ URL.revokeObjectURL(url); }
+  }finally{
+    if(url) URL.revokeObjectURL(url);
+    if(bitmap && bitmap.close) bitmap.close();
+  }
+}
+
+async function recognise(src){
+  const w = await ocrWorker();
+  if(!w) return null;
+  const canvas = await prepImage(src);
+  const res = await w.recognize(canvas);
+  return (res && res.data && res.data.text) || "";
 }
 
 async function ocrImage(file){
-  if(!ocrLoaded()){
+  if(!ocrWanted()){
     els.ocrBox.open = true;
     setStatus(t("stOcrNeed"), "err");
     return null;
   }
-  const opts = { logger: m => {
-    if(m && m.status === "recognizing text") setStatus(t("stOcrRun", Math.round((m.progress || 0) * 100)), "work");
-  } };
-  const langPath = els.ocrData.value.trim();
-  if(langPath) opts.langPath = langPath;
-  const img = await prepImage(file);
-  const langs = els.ocrLangs.value.trim() || OCR.langs;
-  const res = await window.Tesseract.recognize(img, langs, opts);
+  OCR.job = { page:1, pages:1 };
+  let text;
+  try{ text = await recognise(file); }
+  catch(e){ setStatus(t("stOcrFailed"), "err"); return null; }
+  if(text === null) return null;                // no engine: loadEngine said so
   savePrefs();
-  return (res && res.data && res.data.text) || "";
+  if(!text.trim()){ setStatus(t("stOcrEmpty"), "err"); return null; }
+  return text;
+}
+
+// The pages of a scanned PDF, in order. One unreadable page must not lose
+// the rest of the file.
+async function ocrPages(imgs){
+  const parts = [];
+  for(let i = 0; i < imgs.length; i++){
+    OCR.job = { page: i + 1, pages: imgs.length };
+    let text;
+    try{ text = await recognise(imgs[i]); }
+    catch(e){ text = ""; }
+    if(text === null) return null;
+    if(text.trim()) parts.push(text.trim());
+  }
+  savePrefs();
+  if(!parts.length){ setStatus(t("stOcrEmpty"), "err"); return null; }
+  return parts.join("\n\n");
 }
 
 /* ============================================================
@@ -2759,7 +3182,11 @@ async function savePrefs(){
       wb: els.wbName.value,
       langs: els.ocrLangs.value,
       url: els.ocrUrl.value,
+      core: els.ocrCore.value,
       data: els.ocrData.value,
+      auto: els.ocrAuto.checked,
+      warm: els.ocrWarm.checked,
+      warmAsked: warmAsked,
       source: els.optSource.checked,
       totals: els.optTotals.checked
     }));
@@ -2768,9 +3195,15 @@ async function savePrefs(){
 async function loadPrefs(){
   let p = null;
   try{ p = JSON.parse((await store.get(PREF_KEY)) || "null"); }catch(e){}
-  els.ocrUrl.value = (p && p.url) || OCR.url;
+  // Empty is not "unset" here, it is "look next to the page, then the CDN" —
+  // so a stored empty string must survive a reload.
+  els.ocrUrl.value = (p && typeof p.url === "string") ? p.url : "";
+  els.ocrCore.value = (p && p.core) || "";
   els.ocrData.value = (p && p.data) || "";
   els.ocrLangs.value = (p && p.langs) || OCR.langs;
+  els.ocrAuto.checked = !(p && p.auto === false);
+  els.ocrWarm.checked = !!(p && p.warm);
+  warmAsked = !!(p && p.warmAsked);
   if(p && p.wb) els.wbName.value = p.wb;
   if(p && typeof p.source === "boolean") els.optSource.checked = p.source;
   if(p && typeof p.totals === "boolean") els.optTotals.checked = p.totals;
@@ -2778,8 +3211,8 @@ async function loadPrefs(){
 
 els.btnPick.addEventListener("click", () => els.file.click());
 els.btnCam.addEventListener("click", () => els.cam.click());
-els.file.addEventListener("change", () => { handleFile(els.file.files[0]); els.file.value = ""; });
-els.cam.addEventListener("change", () => { handleFile(els.cam.files[0]); els.cam.value = ""; });
+els.file.addEventListener("change", () => { handleFiles(els.file.files); els.file.value = ""; });
+els.cam.addEventListener("change", () => { handleFiles(els.cam.files); els.cam.value = ""; });
 els.btnPaste.addEventListener("click", () => {
   els.textCard.hidden = false;
   els.rawText.focus();
@@ -2806,20 +3239,22 @@ els.btnClear.addEventListener("click", () => {
   e.preventDefault(); els.drop.classList.remove("over");
 }));
 els.drop.addEventListener("drop", e => {
-  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if(f) handleFile(f);
+  const fs = e.dataTransfer && e.dataTransfer.files;
+  if(fs && fs.length) handleFiles(fs);
 });
 // A screenshot straight from the clipboard, or the text a phone copied out
 // of one — both are the fastest route in, so both are accepted.
 document.addEventListener("paste", e => {
   if(document.activeElement === els.rawText) return;      // they are editing the text
   const items = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
   for(const it of items){
     if(it.kind === "file"){
       const f = it.getAsFile();
-      if(f){ e.preventDefault(); handleFile(f); return; }
+      if(f) files.push(f);
     }
   }
+  if(files.length){ e.preventDefault(); handleFiles(files); return; }
   const txt = e.clipboardData && e.clipboardData.getData("text");
   if(txt && txt.trim().length > 20){ e.preventDefault(); ingest(txt, model.source); }
 });
@@ -2835,7 +3270,7 @@ els.tabSource.addEventListener("click", () => {
   els.mdPreview.hidden = true; els.mdText.hidden = false;
 });
 
-els.btnOcrLoad.addEventListener("click", loadOcr);
+els.btnOcrLoad.addEventListener("click", () => { ocrWorker(); });
 els.btnSaveMd.addEventListener("click", () => {
   if(!model.days.length){ setStatus(t("stEmpty"), "err"); return; }
   if(model.days.length === 1) return saveDay(model.days[0], 0);
@@ -2855,7 +3290,11 @@ els.btnCopy.addEventListener("click", async () => {
     setStatus(t("stCopyFailed"), "err");
   }
 });
-[els.wbName, els.ocrLangs, els.ocrUrl, els.ocrData].forEach(el => el.addEventListener("change", savePrefs));
+[els.wbName, els.ocrUrl, els.ocrCore, els.ocrData, els.ocrAuto, els.ocrWarm]
+  .forEach(el => el.addEventListener("change", savePrefs));
+// Changing the languages leaves the running worker stale: the badge says so,
+// and the next picture rebuilds it.
+els.ocrLangs.addEventListener("change", () => { savePrefs(); paintOcrState(); });
 [els.optSource, els.optTotals].forEach(el => el.addEventListener("change", () => { savePrefs(); renderMarkdown(); }));
 
 window.addEventListener("scula-ui-lang", ev => {
@@ -2872,11 +3311,17 @@ window.addEventListener("scula-ui-lang", ev => {
   paintOcrState();
   renderDays();
   setStatus("");
+  // Prepared up front, the first photo of the day starts recognising the
+  // moment it lands instead of waiting on a download. Failing at this point
+  // is not worth a red line on an empty page — the badge already says the
+  // engine is not ready, and the first photo will say the rest.
+  if(els.ocrWarm.checked) ocrWorker().then(w => { if(!w) setStatus(""); });
 })();
 
 // The parser and the PDF reader are the two pieces worth testing on their
 // own — tests/recipes.js drives them through this handle.
-window.ScuLaRecipes = { Recipes, PdfText, model, analyse, allMarkdown, buildDayMarkdown, renderDays, renderMarkdown };
+window.ScuLaRecipes = { Recipes, PdfText, model, analyse, allMarkdown, buildDayMarkdown,
+                        renderDays, renderMarkdown, prepImage, OCR };
 
 })();
 </script>

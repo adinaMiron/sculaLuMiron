@@ -9,7 +9,7 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 3547 | 31k | Markdown editor + live preview + workbooks | dark (earth) |
-| `recipes.html` | 2884 | 29k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
+| `recipes.html` | 3321 | 33k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
@@ -41,7 +41,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-875`, `editor.html:418-1072`,
-`markdown-editor.html:843-1497`, `recipes.html:246-900`). It carries the nav
+`markdown-editor.html:843-1497`, `recipes.html:260-914`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -50,7 +50,7 @@ must be applied to **all four** or they drift. Verify with:
 sed -n '221,875p' index.html            > /tmp/n1
 sed -n '418,1072p' editor.html          > /tmp/n2
 sed -n '843,1497p' markdown-editor.html > /tmp/n3
-sed -n '246,900p' recipes.html          > /tmp/n4
+sed -n '260,914p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -63,9 +63,12 @@ block's `SUBDIR` map, so the new page gets its own folder.
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
   CDN in `markdown-editor.html:838` (docx import). Don't add more. The OCR
-  engine in `recipes.html` is not a dependency: nothing loads it unless the
-  person presses the button, the page works without it, and the address is
-  a field they can point at a local copy — `docs/RECIPES.md` § OCR.
+  engine in `recipes.html` is the one deliberate exception, and it is still
+  not a file in this repo: Tesseract is fetched on first use from an address
+  that is a visible, editable field, the page reads PDFs and takes pasted
+  text without it, and pointing the field at a local `./ocr/` makes it work
+  offline. It loads on arrival of a photo now rather than on a button press
+  — `docs/RECIPES.md` § A.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -106,15 +109,15 @@ browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
 pan, gestures, undo/redo, every tool) and for `recipes.html`
-(`recipes.js` — the PDF reader, the parser, the markdown, both save
-routes). It is dev-only tooling with its own `package.json` — `cd tests &&
-npm install && npm test` — and none of the four apps reference it; it
-doesn't count against Rule 3.
+(`recipes.js` — the PDF reader including scanned pages, the parser, the
+markdown, the whole OCR path against a stub engine, both save routes). It is
+dev-only tooling with its own `package.json` — `cd tests && npm install &&
+npm test` — and none of the four apps reference it; it doesn't count against
+Rule 3.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
-1. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
-   with zero Node.
+1. `README.md` is a stub.
 
 ## Planned direction (design toward these)
 

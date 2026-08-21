@@ -112,6 +112,58 @@ function buildPdf(lines, { compress, objstm, type0 }) {
   return Buffer.concat(parts);
 }
 
+/* ---------- a scanned PDF: pages that hold pictures, not text ----------
+   One page per entry, each entry a list of image XObjects drawn in order.
+   This is what a scanner or a phone "scan to PDF" writes, and the only route
+   into it is recipes.html's PdfText.images() + OCR. */
+function buildScanPdf(pages) {
+  const objs = [];                                   // [num, dict, data]
+  let next = 3;
+  const pageNums = pages.map(() => next++);
+  const built = pages.map(imgs => {
+    const entries = imgs.map((im, k) => {
+      const num = next++;
+      objs.push([num,
+        `<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} ` +
+        `/ColorSpace ${im.cs} /BitsPerComponent ${im.bpc} /Filter ${im.filter} ` +
+        `/Length ${im.data.length} >>`, im.data]);
+      return { name: `/X${k}`, num };
+    });
+    const content = Buffer.from(
+      entries.map(e => `q 595 0 0 842 0 0 cm ${e.name} Do Q\n`).join(''), 'latin1');
+    const cnum = next++;
+    objs.push([cnum, `<< /Length ${content.length} >>`, content]);
+    return { entries, cnum };
+  });
+
+  const parts = [];
+  const push = x => parts.push(Buffer.isBuffer(x) ? x : Buffer.from(x, 'latin1'));
+  push('%PDF-1.5\n');
+  push('1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n');
+  push(`2 0 obj << /Type /Pages /Kids [${pageNums.map(n => n + ' 0 R').join(' ')}] ` +
+       `/Count ${pageNums.length} >> endobj\n`);
+  built.forEach((b, i) => {
+    const xo = b.entries.map(e => `${e.name} ${e.num} 0 R`).join(' ');
+    push(`${pageNums[i]} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] ` +
+         `/Resources << /XObject << ${xo} >> >> /Contents ${b.cnum} 0 R >> endobj\n`);
+  });
+  for (const [num, dict, data] of objs) {
+    push(`${num} 0 obj ${dict}\nstream\n`);
+    push(data);
+    push('\nendstream endobj\n');
+  }
+  push(`trailer << /Size ${next} /Root 1 0 R >>\n%%EOF\n`);
+  return Buffer.concat(parts);
+}
+
+// Left half ink, right half paper: survives JPEG, Flate and the greyscale
+// pass, so one pixel from each half proves the picture arrived intact.
+function greyBar(w, h) {
+  const b = Buffer.alloc(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) b[y * w + x] = x < w / 2 ? 0 : 255;
+  return b;
+}
+
 /* ---------- a static server, so IndexedDB has a real origin ---------- */
 function serve() {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf' };
@@ -289,28 +341,154 @@ function serve() {
         wb.chapters[0].workbookId === wb.books[0].id && /^# Ziua 3/.test(wb.chapters[0].content),
         JSON.stringify(wb.chapters[0] && { t: wb.chapters[0].title, f: wb.chapters[0].file }));
 
-  /* ---- 6. the two routes that need OCR say so instead of failing ---- */
-  const scanned = path.join(tmp, 'scanned.pdf');
-  fs.writeFileSync(scanned, buildPdf([], { compress: false }));
-  await page.setInputFiles('#file', scanned);
+  /* ---- 6. OCR: scanned PDFs, several photos, the engine itself ----
+     recipes.html loads the engine from whatever address its field holds, so
+     these checks point it at tests/fixtures/fake-tesseract.js and drive the
+     whole path — pictures out of the PDF, the canvas prep, the worker, the
+     parser — offline and deterministically. */
+  const emptyPdf = path.join(tmp, 'empty.pdf');
+  fs.writeFileSync(emptyPdf, buildPdf([], { compress: false }));
+  await page.setInputFiles('#file', emptyPdf);
   await page.waitForTimeout(300);
-  check('scanned pdf: told to use OCR',
-        /OCR|scanat|scanned/i.test(await page.textContent('#statusText')) &&
-        await page.evaluate(() => document.getElementById('ocrBox').open),
+  check('pdf with neither text nor pictures: says so',
+        /scanat|scanned|poz|pictur/i.test(await page.textContent('#statusText')) &&
+        await page.evaluate(() => document.getElementById('status').className === 'err'),
         await page.textContent('#statusText'));
 
-  // A 1x1 PNG: enough to take the image branch without an engine loaded.
+  // A JPEG made by this browser, so no binary fixture is needed for the
+  // /DCTDecode branch — the one a real scanner writes.
+  const jpeg = Buffer.from(await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 300; c.height = 200;
+    const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 200);
+    x.fillStyle = '#000'; x.fillRect(0, 0, 150, 200);
+    return c.toDataURL('image/jpeg', 0.92).split(',')[1];
+  }), 'base64');
+
+  const scanned = path.join(tmp, 'scanned.pdf');
+  fs.writeFileSync(scanned, buildScanPdf([
+    [{ w: 300, h: 200, cs: '/DeviceGray', bpc: 8, filter: '/DCTDecode', data: jpeg }],
+    // page 2 draws a logo first: too small to be a page, and skipped
+    [{ w: 64, h: 64, cs: '/DeviceGray', bpc: 8, filter: '/FlateDecode',
+       data: zlib.deflateSync(greyBar(64, 64)) },
+     { w: 400, h: 240, cs: '/DeviceGray', bpc: 8, filter: '/FlateDecode',
+       data: zlib.deflateSync(greyBar(400, 240)) }]
+  ]));
+
+  // The temp dir is outside the served root, so the bytes go in as base64.
+  const imgs = await page.evaluate(async b64 => {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const list = await window.ScuLaRecipes.PdfText.images(bytes.buffer);
+    return list.map(i => ({ kind: i.kind, page: i.page, w: i.width, h: i.height,
+                            left: i.rgba ? i.rgba[(120 * i.width + 40) * 4] : null,
+                            right: i.rgba ? i.rgba[(120 * i.width + 360) * 4] : null }));
+  }, fs.readFileSync(scanned).toString('base64'));
+
+  check('scanned pdf: one picture per page, in page order',
+        imgs.length === 2 && imgs[0].page === 1 && imgs[1].page === 2, JSON.stringify(imgs));
+  check('scanned pdf: the JPEG page is handed over as JPEG',
+        imgs[0] && imgs[0].kind === 'jpeg' && imgs[0].w === 300 && imgs[0].h === 200,
+        JSON.stringify(imgs[0]));
+  check('scanned pdf: the Flate page is unpacked to pixels, ink on the left',
+        imgs[1] && imgs[1].kind === 'raw' && imgs[1].left === 0 && imgs[1].right === 255,
+        JSON.stringify(imgs[1]));
+  check('scanned pdf: a logo-sized picture is not treated as a page',
+        imgs.length === 2 && !imgs.some(i => i.w === 64), JSON.stringify(imgs.map(i => i.w)));
+
+  /* auto off: the page says what it needs instead of fetching anything */
+  await page.uncheck('#ocrAuto');
+  await page.setInputFiles('#file', scanned);
+  await page.waitForTimeout(300);
+  check('auto off: a scanned pdf asks for OCR rather than failing silently',
+        /OCR/i.test(await page.textContent('#statusText')) &&
+        await page.evaluate(() => document.getElementById('ocrBox').open &&
+                                  document.getElementById('status').className === 'err'),
+        await page.textContent('#statusText'));
+  check('the days survived the refusal',
+        await page.evaluate(() => window.ScuLaRecipes.model.days.length) === 1);
+
+  /* auto on, engine pointed at the stub */
+  await page.check('#ocrAuto');
+  // the addresses live behind their own fold, as they should
+  await page.evaluate(() => { document.getElementById('ocrAdv').open = true; });
+  await page.fill('#ocrUrl', '/tests/fixtures/fake-tesseract.js');
+  await page.dispatchEvent('#ocrUrl', 'change');
+  await page.click('#btnOcrLoad');
+  await page.waitForFunction(() => window.ScuLaRecipes.OCR.worker, null, { timeout: 8000 })
+    .catch(() => {});
+  check('engine: one worker, built for the languages in the field',
+        await page.evaluate(() => window.ScuLaRecipes.OCR.workerLangs) === 'ron+eng',
+        await page.evaluate(() => window.ScuLaRecipes.OCR.workerLangs));
+  check('engine: the badge says it is ready',
+        await page.evaluate(() => document.getElementById('ocrState').className.includes('on')),
+        await page.textContent('#ocrState'));
+  check('engine: it worked once, so it is prepared at the next visit',
+        await page.evaluate(() => document.getElementById('ocrWarm').checked));
+
+  await page.evaluate(() => {
+    window.__ocrSeen = [];
+    window.__ocrText = ['ZIUA 9\nMic dejun: Omletă\n• 3 ouă\n• Bate ouăle și prăjește-le.',
+                        'ZIUA 10\nCina: Supă de legume\n• 200g legume\n• Fierbe legumele.'];
+  });
+  await page.setInputFiles('#file', scanned);
+  await page.waitForFunction(() => window.ScuLaRecipes.model.days.length === 2, null, { timeout: 15000 })
+    .catch(() => {});
+  const ocrDays = await page.evaluate(() => window.ScuLaRecipes.model.days.map(d => d.n));
+  check('scanned pdf: both pages recognised, in order', JSON.stringify(ocrDays) === '[9,10]',
+        JSON.stringify(ocrDays));
+  check('scanned pdf: the recognised text reached the parser',
+        /Omlet/.test(await page.inputValue('#rawText')) &&
+        /Sup[ăa] de legume/.test(await page.inputValue('#rawText')),
+        (await page.inputValue('#rawText')).slice(0, 120));
+
+  const seen = await page.evaluate(() => window.__ocrSeen);
+  check('prep: each page reached the engine upscaled towards 1600px',
+        seen.length === 2 && seen[0].w === 900 && seen[0].h === 600 &&
+        seen[1].w === 1200 && seen[1].h === 720, JSON.stringify(seen));
+  check('prep: the picture survived the greyscale pass, ink still on the left',
+        seen.every(x => x.left < 40 && x.right > 215), JSON.stringify(seen));
+
+  /* several photos at once: the normal phone case */
   const png = path.join(tmp, 'shot.png');
   fs.writeFileSync(png, Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64'));
+  const png2 = path.join(tmp, 'shot-2.png');
+  fs.copyFileSync(png, png2);
+  await page.evaluate(() => {
+    window.__ocrText = ['ZIUA 4\nMic dejun: Clătite\n• 2 ouă',
+                        'ZIUA 5\nCina: Orez cu pui\n• 80g orez'];
+  });
+  await page.setInputFiles('#file', [png, png2]);
+  // the days from the PDF above are still on screen, so wait for the new ones
+  await page.waitForFunction(() => window.ScuLaRecipes.model.days.length === 2 &&
+                                   window.ScuLaRecipes.model.days[0].n === 4,
+                             null, { timeout: 15000 }).catch(() => {});
+  const many = await page.evaluate(() => window.ScuLaRecipes.model.days.map(d => d.n));
+  check('several photos at once: the first replaces, the rest append',
+        JSON.stringify(many) === '[4,5]', JSON.stringify(many));
+
+  /* changing the languages rebuilds the worker rather than reusing a stale one */
+  await page.fill('#ocrLangs', 'eng');
+  await page.dispatchEvent('#ocrLangs', 'change');
+  await page.evaluate(() => { window.__ocrText = ['ZIUA 6\nBreakfast: Toast\n• 2 slices bread']; });
   await page.setInputFiles('#file', png);
-  await page.waitForTimeout(300);
-  check('image without an engine: asks for OCR rather than failing silently',
-        /OCR/i.test(await page.textContent('#statusText')) &&
-        await page.evaluate(() => document.getElementById('status').className === 'err'),
-        await page.textContent('#statusText'));
-  check('the days survived both refusals', await page.evaluate(() => window.ScuLaRecipes.model.days.length) === 1);
+  await page.waitForFunction(() => window.ScuLaRecipes.OCR.workerLangs === 'eng', null, { timeout: 15000 })
+    .catch(() => {});
+  check('changing the languages terminates the old worker and builds a new one',
+        await page.evaluate(() => window.ScuLaRecipes.OCR.workerLangs === 'eng' &&
+                                  window.__ocrTerminated >= 1),
+        await page.evaluate(() => window.ScuLaRecipes.OCR.workerLangs + ' / terminated ' +
+                                  window.__ocrTerminated));
+  await page.fill('#ocrLangs', 'ron+eng');
+  await page.dispatchEvent('#ocrLangs', 'change');
+
+  /* back to the sample day, so the checks below run on known markdown */
+  await page.setInputFiles('#file', plainPdf);
+  await page.waitForFunction(() => window.ScuLaRecipes.model.days.length === 1 &&
+                                   window.ScuLaRecipes.model.days[0].n === 3,
+                             null, { timeout: 8000 }).catch(() => {});
 
   /* ---- 7. the share route (every phone) ---- */
   const shared = await page.evaluate(async () => {

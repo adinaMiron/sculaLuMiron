@@ -59,11 +59,23 @@ viewport without editing it:
 | `spline.js` | The spline curve, mouse side: click-to-place and the four ways to finish, that the curve interpolates its vertices without cusping on bunched-up ones, the curviness slider, dragging/adding/removing/cornering a vertex, closing the path, and vertex editing on a **rotated** curve (the rotation-pivot correction in `setSplinePoints`) |
 | `polyline.js` | The polyline: the `g` shortcut, click-to-place, that every span really is straight (no ink may stray off the chain through the vertices), the property rows it does and doesn't get, dragging / inserting / removing a vertex, closing the shape by clicking the first vertex again, and filling the closed one |
 | `spline-touch.js` | The spline curve, touch side: tap-to-place, double-tap to finish without a duplicate vertex, a pinch mid-placement taking its stray point back, one-finger vertex drag, and the Points row — the only route to corner/remove without modifier keys |
-| `recipes.js` | `recipes.html`, end to end: the recipe parser on a full three-meal day, the dependency-free PDF reader on three PDFs it builds itself (uncompressed, `FlateDecode`, object streams + Identity-H) including diacritics through a `/ToUnicode` CMap, the markdown contract in `docs/RECIPES.md` § C, saving (`ScuLaFolder.save` stubbed) and the share route (phone-shaped stub), the workbook chapter records, both languages, and the two "this needs OCR" refusals |
+| `recipes.js` | `recipes.html`, end to end: the recipe parser on a full three-meal day, the dependency-free PDF reader on three PDFs it builds itself (uncompressed, `FlateDecode`, object streams + Identity-H) including diacritics through a `/ToUnicode` CMap, the markdown contract in `docs/RECIPES.md` § C, saving (`ScuLaFolder.save` stubbed) and the share route (phone-shaped stub), the workbook chapter records, both languages, and the **OCR path** — pictures out of a scanned PDF (`/DCTDecode` and `/FlateDecode`, a logo-sized one ignored), the canvas prep asserted on pixels, two pages recognised in order, several photos in one go, and a language change rebuilding the worker |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
-used only by `withimage.js`. `recipes.js` needs no fixture: it writes its
-PDFs at run time and deletes them afterwards.
+used only by `withimage.js`, and `fake-tesseract.js`. `recipes.js` needs no
+binary fixture: it writes its PDFs at run time (including the JPEG inside
+the scanned one, which the browser makes on the spot) and deletes them
+afterwards.
+
+`fixtures/fake-tesseract.js` is a stand-in for tesseract.js. `recipes.html`
+loads its engine from whatever address its own field holds, so pointing that
+field at this file drives the whole OCR path — pictures ▸ canvas prep ▸
+worker ▸ parser — offline and deterministically, with no 45 MB of wasm
+anywhere near the repo. It records the canvas it was handed (size, one pixel
+per half) in `window.__ocrSeen` and returns whatever the check queued in
+`window.__ocrText`. It proves the page's half of the contract, not
+Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
+describes.
 
 `recipes.js` is the one script that does **not** use `lib.js` or a `file://`
 URL. It serves the repo from a throwaway `http://127.0.0.1` server, because

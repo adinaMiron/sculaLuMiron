@@ -17,7 +17,7 @@ Shared shape of all four files:
 ## The shared block (byte-identical in all four files)
 
 `index.html:221-875` · `editor.html:418-1072` ·
-`markdown-editor.html:843-1497` · `recipes.html:246-900`
+`markdown-editor.html:843-1497` · `recipes.html:260-914`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -269,7 +269,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 2884 lines · "Rețete" (PDF / photo → recipe markdown)
+## recipes.html — 3321 lines · "Rețete" (PDF / photo → recipe markdown)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -277,27 +277,30 @@ Map only below.
 
 | Lines | Contents |
 |---|---|
-| 11–243 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, markdown preview 189–222, narrow 223–235, touch 236–242 |
-| 246–900 | **Shared nav + `ScuLaFolder`** |
-| 904–1014 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown |
-| 1016–2882 | App script, numbered sections below |
+| 11–257 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, markdown preview 189–210, folds + checkboxes + `.badge` 212–233, narrow 235–247, touch 249–256 |
+| 260–914 | **Shared nav + `ScuLaFolder`** |
+| 918–1043 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown. The OCR fold is `#ocrBox` (943–978), with the addresses behind `#ocrAdv` (962–977) |
+| 1045–3319 | App script, numbered sections below |
 
 | Line | Section |
 |---|---|
-| 1035 | **1. i18n** — `I18N` (`ro:` 1036 / `en:` 1155), `t()`, `applyUILang()` |
-| 1237 | 2. Settings store (`scula:recipes`) |
-| **1263** | **3. `PdfText`** — the dependency-free PDF reader |
-| **1965** | **4. `Recipes`** — the parser |
-| 2234 | 5. The app — state, review cards, markdown |
-| 2507 | 6. Getting the text in — `ingest`/`analyse`/`handleFile`, then OCR |
-| 2652 | 7. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
-| 2754 | 8. Wiring + init |
+| 1066 | **1. i18n** — `I18N` (`ro:` 1068 / `en:` 1197), `t()` (variadic), `applyUILang()` |
+| 1298 | 2. Settings store (`scula:recipes`) |
+| **1324** | **3. `PdfText`** — the dependency-free PDF reader |
+| **2198** | **4. `Recipes`** — the parser |
+| 2467 | 5. The app — state, review cards, markdown |
+| 2743 | 6. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
+| 3069 | 7. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
+| 3171 | 8. Wiring + init |
 
-### `PdfText` (1263–1962)
+### `PdfText` (1339–2196)
 
-`extract(buffer)` is the only entry point; everything else is one stage of
-it. Order matters — object streams must be expanded before the page tree is
-walked, or a modern PDF looks empty.
+`extract(buffer)` (text) and `images(buffer)` (a scan's pictures) are the
+only entry points; everything else is one stage of one of them. Order
+matters — object streams must be expanded before the page tree is walked, or
+a modern PDF looks empty. Both go through `parseDoc`, which caches the last
+document against the very `ArrayBuffer` it was handed, so asking both
+questions about one scan costs a single parse.
 
 | Function | What |
 |---|---|
@@ -311,8 +314,20 @@ walked, or a modern PDF looks empty.
 | `pageList` | `/Root → /Pages → /Kids`, falling back to every `/Type /Page` |
 | `parseCMap` / `fontsOf` / `decodeShown` | `/ToUnicode` → the map that keeps ă â î ș ț; WinAnsi when a font has none |
 | **`widthsOf`** | `/Widths` (simple) and `/W` + `/DW` (CID) → real glyph advances. Guessing them instead is what puts spaces inside words |
-| **`pageText`** (1692) | the tiny interpreter: text operators plus `q`/`Q`/`cm`, with the full text matrix — see the two traps below |
-| `joinLines` (1913) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
+| **`pageText`** (1753) | the tiny interpreter: text operators plus `q`/`Q`/`cm`, with the full text matrix — see the two traps below |
+| `joinLines` (1974) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
+| `parseDoc` / `contentOf` (2124, 2140) | the shared front half: scan ▸ refuse encrypted ▸ expand object streams ▸ page list; then one page's content stream |
+
+The picture half — everything a scanned page needs (`docs/RECIPES.md` § A):
+
+| Function | What |
+|---|---|
+| `xobjectsOf` (1997) | a page's `/XObject` dict → name → object number |
+| `drawnOrder` (2016) | the `/Im3 Do` operators, **in painting order**. The dictionary is unordered, and a scanner that cuts a page into strips relies on the order |
+| `componentsOf` / `sampleAt` (2024, 2041) | colour space → components; one sample at 1/2/4/8/16 bits |
+| **`imageOf`** (2053) | one `/Subtype /Image` → `{kind:"jpeg", bytes}` (the browser decodes it) or `{kind:"raw", rgba}`. CCITT, JBIG2, JPX, LZW and indexed palettes → `null` |
+| `collectImages` (2099) | walks a page's XObjects, three levels into `/Form`s, skipping anything logo-sized (`MIN_IMAGE_PX`, 1995) |
+| **`images`** (2171) | page-ordered pictures; falls back to every image object in the file when the page tree yields none |
 
 Two traps this reader was written around, both found by feeding it a PDF
 printed by Chromium rather than one hand-built in a test:
@@ -325,7 +340,7 @@ printed by Chromium rather than one hand-built in a test:
   the *real* advance width — hence `widthsOf`. With a guessed width the
   output reads "m in", "arom ă", "10m l".
 
-### `Recipes` (1965–2231)
+### `Recipes` (2214–2464)
 
 `parse(text)` → `[{ n, title, meals:[{ kind, label, name, ingredients:[{ qty,
 unit, item, fdc }], steps:[] }] }]`. `toLines` cleans and re-joins wrapped
