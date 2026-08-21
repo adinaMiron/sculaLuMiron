@@ -402,6 +402,10 @@
       -webkit-user-select:none; user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
+    /* Screenshot/Record use getDisplayMedia, which no mobile or tablet
+       browser implements (see docs/MAP.md "Screen recording") - keep the
+       icons desktop-only rather than show controls that can't work. */
+    #snapshotBtn, #recordBtn{ display:none; }
   }
 </style>
 </head>
