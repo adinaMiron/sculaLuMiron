@@ -330,7 +330,8 @@
      bumped to its own line under a full-width palette. */
   #palette, #fillPalette{ display:contents; }
   #selectionPanel #fontSelect{ width:100%; }
-  #selectionPanel .roughRow button{ flex:1; justify-content:center; padding:0.357rem 0.286rem; font-size:0.786rem; }
+  #selectionPanel .roughRow button,
+  #selectionPanel .splineRow button{ flex:1; justify-content:center; padding:0.357rem 0.286rem; font-size:0.786rem; }
   #selectionPanel #deleteBtn{ width:100%; justify-content:center; }
   #selEmpty{ font-size:0.714rem; color:var(--text-3); line-height:1.5; }
 
@@ -396,7 +397,8 @@
     input[type=range]{ height:34px; }
     #toolbar label{ font-size:12px; }
     .panelHead .pbtn{ min-width:34px; min-height:34px; font-size:15px; }
-    #selectionPanel .roughRow button{ padding:8px 4px; font-size:13px; }
+    #selectionPanel .roughRow button,
+    #selectionPanel .splineRow button{ padding:8px 4px; font-size:13px; }
     /* don't let a long-press on chrome start a text selection */
     #toolbar, #sidebar, #site-nav, .panel{
       -webkit-user-select:none; user-select:none;
@@ -1111,6 +1113,7 @@
         <div class="panelCap" data-i="capShapes">Shapes</div>
         <div class="toolGrid">
           <button class="tool" data-tool="line" data-i-title="toolLineTip" data-i-aria="toolLine" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)" aria-label="Line"><span class="ticon">╱</span><span class="tlabel" data-i="toolLine">Line</span></button>
+          <button class="tool" data-tool="spline" data-i-title="toolSplineTip" data-i-aria="toolSpline" title="Spline curve - click to place points, double-click to finish; drag its points afterwards to reshape it (C)" aria-label="Spline curve"><span class="ticon">∿</span><span class="tlabel" data-i="toolSpline">Spline</span></button>
           <button class="tool" data-tool="rect" data-i-title="toolRectTip" data-i-aria="toolRect" title="Rectangle - hold Ctrl for a perfect square (R)" aria-label="Rect"><span class="ticon">▭</span><span class="tlabel" data-i="toolRect">Rect</span></button>
           <button class="tool" data-tool="ellipse" data-i-title="toolEllipseTip" data-i-aria="toolEllipse" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)" aria-label="Ellipse"><span class="ticon">◯</span><span class="tlabel" data-i="toolEllipse">Ellipse</span></button>
           <button class="tool" data-tool="rhombus" data-i-title="toolRhombusTip" data-i-aria="toolRhombus" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)" aria-label="Rhombus"><span class="ticon">◇</span><span class="tlabel" data-i="toolRhombus">Rhombus</span></button>
@@ -1120,7 +1123,7 @@
         <div class="panelCap" data-i="capArrows">Arrows</div>
         <div class="toolGrid">
           <button class="tool" data-tool="arrow" data-i-title="toolArrowTip" data-i-aria="toolArrow" title="Arrow - hold Ctrl to snap horizontal/vertical (A)" aria-label="Arrow"><span class="ticon">↗</span><span class="tlabel" data-i="toolArrow">Arrow</span></button>
-          <button class="tool" data-tool="splineArrow" data-i-title="toolSplineArrowTip" data-i-aria="toolSplineArrow" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)" aria-label="Spline arrow"><span class="ticon">↝</span><span class="tlabel" data-i="toolSplineArrow">Spline</span></button>
+          <button class="tool" data-tool="splineArrow" data-i-title="toolSplineArrowTip" data-i-aria="toolSplineArrow" title="Spline arrow - click where the head goes, then draw the shaft freehand (S)" aria-label="Spline arrow"><span class="ticon">↝</span><span class="tlabel" data-i="toolSplineArrow">Curved</span></button>
         </div>
       </div>
     </div>
@@ -1198,6 +1201,25 @@
         <span class="rlab" data-i="lblHeadSize">Head size</span>
         <input type="range" id="arrowHead" min="6" max="60" value="18">
         <span id="arrowHeadLabel" style="font-size:0.786rem; color:var(--text-2); width:1.6rem; text-align:right;">18</span>
+      </div>
+
+      <!-- Spline curve. The tension slider is the shape's own "how curved";
+           the Points row edits the one vertex picked on the canvas, and exists
+           because touch has no modifier keys to do it with. -->
+      <div class="selRow inline" id="rowSplineTension">
+        <span class="rlab" data-i="lblCurve">Curve</span>
+        <input type="range" id="splineTension" min="0" max="100" value="100">
+        <span id="splineTensionLabel" style="font-size:0.786rem; color:var(--text-2); width:2.4rem; text-align:right;">100</span>
+      </div>
+
+      <div class="selRow" id="rowSplineEdit">
+        <span class="rlab" data-i="lblPoints">Points</span>
+        <div class="rctl splineRow" style="flex-wrap:nowrap;">
+          <button class="action" id="splineClosedBtn" data-i-title="splineClosedTip" title="Join the last point back to the first"><span class="tlabel" data-i="splineClosed">Closed</span></button>
+          <button class="action" id="splineCornerBtn" data-i-title="splineCornerTip" title="Make the picked point a sharp corner instead of a smooth bend (or double-click the point)"><span class="tlabel" data-i="splineCorner">Corner</span></button>
+          <button class="action danger" id="splinePointDelBtn" data-i-title="splinePointDelTip" title="Remove the picked point (Ctrl+click a point, or Delete)"><span class="tlabel" data-i="splinePointDel">Remove</span></button>
+        </div>
+        <span id="splineEditHint" data-i="splineEditHint" style="font-size:0.786rem; color:var(--text-2);">Drag a point to move it, double-click the curve to add one.</span>
       </div>
 
       <div class="selRow" id="rowRough">
@@ -1366,7 +1388,8 @@ const I18N = {
     toolPencil:"Desenează", toolPencilTip:"Liber, cu mâna (P)",
     toolHighlight:"Evidențiază", toolHighlightTip:"Evidențiere (H)",
     toolArrow:"Săgeată", toolArrowTip:"Săgeată - ține Ctrl pentru aliniere orizontală/verticală (A)",
-    toolSplineArrow:"Curbă", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
+    toolSplineArrow:"Curbată", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
+    toolSpline:"Spline", toolSplineTip:"Curbă spline - dă clic pentru fiecare punct, dublu-clic pentru a termina; trage punctele oricând după aceea ca să o remodelezi (C)",
     toolLine:"Linie", toolLineTip:"Linie dreaptă - ține Shift pentru unghiuri de 45°, Ctrl pentru orizontal/vertical (L)",
     panelTools:"Instrumente", panelSelection:"Selecție",
     capBasic:"De bază", capShapes:"Forme", capArrows:"Săgeți",
@@ -1380,6 +1403,11 @@ const I18N = {
     lblColor:"Culoare", customColorTip:"Culoare personalizată",
     lblFill:"Umplere", fillCustomColorTip:"Culoare de umplere personalizată", noFillTip:"Fără umplere",
     lblStroke:"Contur", lblCornerRadius:"Rază colț", lblHeadSize:"Dimensiune vârf",
+    lblCurve:"Curbură", lblPoints:"Puncte",
+    splineClosed:"Închisă", splineClosedTip:"Unește ultimul punct cu primul",
+    splineCorner:"Colț", splineCornerTip:"Fă punctul ales colț ascuțit în loc de curbă lină (sau dublu-clic pe punct)",
+    splinePointDel:"Șterge", splinePointDelTip:"Șterge punctul ales (Ctrl+clic pe un punct sau tasta Delete)",
+    splineEditHint:"Trage un punct ca să-l muți, dublu-clic pe curbă ca să adaugi unul.",
     lblSloppiness:"Stil schiță",
     roughArchitect:"Arhitect", roughArchitectTip:"Arhitect — linii precise",
     roughArtist:"Artist", roughArtistTip:"Artist — puțin schițat",
@@ -1404,7 +1432,7 @@ const I18N = {
     layerText:p=>`Text: ${p}`, layerRect:"Dreptunghi", layerRectText:"Dreptunghi + text",
     layerFreehand:"Desen liber", layerArrowLabel:"Săgeată", layerHighlightLabel:"Evidențiere",
     layerCircle:"Cerc", layerEllipseLabel:"Elipsă", layerRhombusLabel:"Romb", layerLineLabel:"Linie",
-    layerSplineArrowLabel:"Săgeată curbă",
+    layerSplineArrowLabel:"Săgeată curbă", layerSplineLabel:"Curbă spline",
     bgTransparent:"fundal transparent", bgColor:hex=>`fundal ${hex}`,
     tooSmallForExport:([w,h])=>`Canvasul tău (${w}×${h}) e mai mic decât cea mai mică presetare (320×240), deci nu mai e nimic mai mic de exportat.`,
     willSaveSizes:list=>`Se va salva: ${list}`,
@@ -1433,7 +1461,8 @@ const I18N = {
     toolPencil:"Draw", toolPencilTip:"Freehand (P)",
     toolHighlight:"Highlight", toolHighlightTip:"Highlight (H)",
     toolArrow:"Arrow", toolArrowTip:"Arrow - hold Ctrl to snap horizontal/vertical (A)",
-    toolSplineArrow:"Spline", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
+    toolSplineArrow:"Curved", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
+    toolSpline:"Spline", toolSplineTip:"Spline curve - click to place each point, double-click to finish; drag its points any time afterwards to reshape it (C)",
     toolLine:"Line", toolLineTip:"Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)",
     panelTools:"Tools", panelSelection:"Selection",
     capBasic:"Basic", capShapes:"Shapes", capArrows:"Arrows",
@@ -1447,6 +1476,11 @@ const I18N = {
     lblColor:"Color", customColorTip:"Custom color",
     lblFill:"Fill", fillCustomColorTip:"Custom fill color", noFillTip:"No fill",
     lblStroke:"Stroke", lblCornerRadius:"Corner radius", lblHeadSize:"Head size",
+    lblCurve:"Curve", lblPoints:"Points",
+    splineClosed:"Closed", splineClosedTip:"Join the last point back to the first",
+    splineCorner:"Corner", splineCornerTip:"Make the picked point a sharp corner instead of a smooth bend (or double-click the point)",
+    splinePointDel:"Remove", splinePointDelTip:"Remove the picked point (Ctrl+click a point, or the Delete key)",
+    splineEditHint:"Drag a point to move it, double-click the curve to add one.",
     lblSloppiness:"Sloppiness",
     roughArchitect:"Architect", roughArchitectTip:"Architect — precise lines",
     roughArtist:"Artist", roughArtistTip:"Artist — a bit sketchy",
@@ -1471,7 +1505,7 @@ const I18N = {
     layerText:p=>`Text: ${p}`, layerRect:"Rectangle", layerRectText:"Rectangle + text",
     layerFreehand:"Freehand drawing", layerArrowLabel:"Arrow", layerHighlightLabel:"Highlight",
     layerCircle:"Circle", layerEllipseLabel:"Ellipse", layerRhombusLabel:"Rhombus", layerLineLabel:"Line",
-    layerSplineArrowLabel:"Spline arrow",
+    layerSplineArrowLabel:"Spline arrow", layerSplineLabel:"Spline curve",
     bgTransparent:"transparent background", bgColor:hex=>`${hex} background`,
     tooSmallForExport:([w,h])=>`Your canvas (${w}×${h}) is smaller than the smallest preset (320×240), so there's nothing smaller to export.`,
     willSaveSizes:list=>`Will save: ${list}`,
@@ -1554,6 +1588,7 @@ const state = {
   strokeWidth: 4,
   arrowHead: 18,
   cornerRadius: 6,
+  splineTension: 1, // 0..1 curviness of a spline; 0 collapses it to a plain polyline
   roughness: 1, // 0 Architect (precise), 1 Artist, 2 Cartoonist
   opacity: 1, // 0..1, applies to new layers; also live-updates the current selection
   fill: null, // null = no fill (default); otherwise a hex color, for rect/ellipse/rhombus
@@ -1568,6 +1603,8 @@ const state = {
   panX: 0, panY: 0, // view offset in CSS px, applied as a transform on #stage (see Viewport)
   panning: false,
   drag: null,            // active drag/interaction descriptor
+  pendingSpline: null,   // a spline being placed click-by-click (see "Spline curve")
+  vertexSel: null,       // {layerId, index} - the spline vertex the point controls act on
   editingLayerId: null,
   undoStack: [],
   redoStack: []
@@ -1671,6 +1708,9 @@ function pushHistory(){
   commit(json);
 }
 function applyHistory(s){
+  // a half-placed curve isn't in the history, so it can't survive a step
+  // through it either
+  state.pendingSpline = null;
   state.layers = s.layers; state.selection = s.selection;
   commit(); // re-clone: the entry just popped is now live state, not a record
   renderAll();
@@ -1712,6 +1752,8 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 function beginEditing(){
   state.layers = [];
   state.selection = [];
+  state.pendingSpline = null;
+  state.vertexSel = null;
   resetHistory();
   state.canvasReady = true;
   state.zoom = 1;
@@ -2627,6 +2669,305 @@ function drawSplineArrow(ctx, l){
   ctx.restore();
 }
 
+/* ---------- Spline curve ----------
+   An editable curve through a list of vertices. The vertices are the whole
+   truth: the curve is re-derived from them on every repaint, so dragging one
+   point never disturbs the others and nothing accumulates drift.
+
+   The curve is a Catmull-Rom spline converted to cubic Beziers, so the canvas
+   draws the real curve rather than a chain of sampled line segments. Two
+   choices are what make it smooth and jitter-free rather than merely curved:
+
+   - **Centripetal parametrisation** (alpha 0.5). With the plain uniform
+     version, vertices that bunch up - which hand-placed and hand-dragged
+     points always eventually do - make the curve overshoot into a cusp or a
+     little self-intersecting loop. Centripetal Catmull-Rom provably cannot do
+     either, at any spacing.
+   - **No smoothing pass and no roughness.** Unlike `freehand` / `splineArrow`,
+     nothing here runs through smoothPoints() or the hand-drawn wobble: this
+     shape is meant to be exact, repeatable and re-editable. That is also why
+     `spline` is absent from the sloppiness list in Toolbar wiring. */
+const SPLINE_ALPHA = 0.5;      // 0 uniform - 0.5 centripetal - 1 chordal
+const SPLINE_VERTEX_R = 5;     // drawn radius of a vertex handle, canvas px
+
+// Vertex handles are drawn in canvas space, so they shrink on screen as the
+// view zooms out. Grabbing one takes the larger of the drawn size and a
+// comfortable on-screen distance, which keeps them reachable at any zoom.
+function splineGrab(){ return Math.max(SPLINE_VERTEX_R * 2.2, 14 / viewScale()); }
+
+// The layer's vertices in its own local (unrotated) canvas space.
+function splineAbs(l){
+  return (l.points || []).map(p => ({ x: l.x + p.nx*l.w, y: l.y + p.ny*l.h, corner: !!p.corner }));
+}
+
+// Phantom neighbour for an open end: the reflection of b through a, which
+// makes the end tangent follow the chord, so the curve leaves its last
+// vertex as naturally as it passes through the middle ones.
+function splineMirror(a, b){ return { x: 2*a.x - b.x, y: 2*a.y - b.y }; }
+
+// |b-a| ^ alpha, floored so two vertices dropped on the same spot can never
+// divide by zero.
+function splineKnot(a, b){
+  const d = Math.pow(Math.hypot(b.x-a.x, b.y-a.y), SPLINE_ALPHA);
+  return d > 1e-6 ? d : 1e-6;
+}
+
+// Every span of the curve as a cubic Bezier, ready to hand to bezierCurveTo.
+function splineSegments(l){
+  const pts = splineAbs(l);
+  const n = pts.length;
+  const segs = [];
+  if (n < 2) return segs;
+  const closed = !!l.closed && n > 2;
+  const tension = (l.tension === undefined ? 1 : l.tension);
+  const lastSeg = closed ? n - 1 : n - 2;
+  for (let i = 0; i <= lastSeg; i++){
+    const p1 = pts[i], p2 = pts[(i+1) % n];
+    const p0 = closed ? pts[(i-1+n) % n] : (i > 0    ? pts[i-1] : splineMirror(p1, p2));
+    const p3 = closed ? pts[(i+2) % n]   : (i+2 < n  ? pts[i+2] : splineMirror(p2, p1));
+    const d1 = splineKnot(p0,p1), d2 = splineKnot(p1,p2), d3 = splineKnot(p2,p3);
+    // Non-uniform Catmull-Rom tangents (the uniform (p2-p0)/2 form is only
+    // correct when the knots are evenly spaced, which is exactly what
+    // centripetal spacing gives up). A vertex flagged `corner` simply has no
+    // tangent on that side: its control point collapses onto the vertex and
+    // the curve meets it as a crisp angle, leaving its neighbours smooth.
+    let m1x = 0, m1y = 0, m2x = 0, m2y = 0;
+    if (!p1.corner){
+      m1x = (p1.x-p0.x)/d1 - (p2.x-p0.x)/(d1+d2) + (p2.x-p1.x)/d2;
+      m1y = (p1.y-p0.y)/d1 - (p2.y-p0.y)/(d1+d2) + (p2.y-p1.y)/d2;
+    }
+    if (!p2.corner){
+      m2x = (p2.x-p1.x)/d2 - (p3.x-p1.x)/(d2+d3) + (p3.x-p2.x)/d3;
+      m2y = (p2.y-p1.y)/d2 - (p3.y-p1.y)/(d2+d3) + (p3.y-p2.y)/d3;
+    }
+    // Hermite -> Bezier on a span of parameter length d2. tension scales both
+    // tangents together, so 0 leaves the control points on the vertices and
+    // the whole thing degrades to the straight polyline through them.
+    const k = tension * d2 / 3;
+    segs.push({
+      x1: p1.x, y1: p1.y,
+      c1x: p1.x + m1x*k, c1y: p1.y + m1y*k,
+      c2x: p2.x - m2x*k, c2y: p2.y - m2y*k,
+      x2: p2.x, y2: p2.y
+    });
+  }
+  return segs;
+}
+
+function splinePointAt(s, t){
+  const u = 1 - t;
+  return {
+    x: u*u*u*s.x1 + 3*u*u*t*s.c1x + 3*u*t*t*s.c2x + t*t*t*s.x2,
+    y: u*u*u*s.y1 + 3*u*u*t*s.c1y + 3*u*t*t*s.c2y + t*t*t*s.y2
+  };
+}
+
+// Closest point of the drawn curve to a local-space point - used both to
+// hit-test the curve and to decide where an inserted vertex goes. Sampled
+// rather than solved: 24 steps per span is sub-pixel at any usable zoom and
+// keeps this to plain arithmetic.
+function nearestOnSpline(l, q){
+  const segs = splineSegments(l);
+  let best = null;
+  segs.forEach((s, si) => {
+    for (let j = 0; j <= 24; j++){
+      const t = j/24;
+      const c = splinePointAt(s, t);
+      const d = Math.hypot(c.x - q.x, c.y - q.y);
+      if (!best || d < best.dist) best = { dist:d, seg:si, t, x:c.x, y:c.y };
+    }
+  });
+  return best;
+}
+
+// Traces the curve into ctx's current path, in the layer's local space.
+function traceSpline(ctx, l){
+  const segs = splineSegments(l);
+  if (!segs.length) return false;
+  ctx.moveTo(segs[0].x1, segs[0].y1);
+  segs.forEach(s => ctx.bezierCurveTo(s.c1x, s.c1y, s.c2x, s.c2y, s.x2, s.y2));
+  if (l.closed && segs.length > 2) ctx.closePath();
+  return true;
+}
+
+// Is a local-space point inside a filled curve? Borrows baseCtx purely as a
+// geometry engine - identity transform, own path, restored afterwards.
+function pointInSpline(l, q){
+  baseCtx.save();
+  baseCtx.setTransform(1,0,0,1,0,0);
+  baseCtx.beginPath();
+  const inside = traceSpline(baseCtx, l) && baseCtx.isPointInPath(q.x, q.y);
+  baseCtx.restore();
+  return inside;
+}
+
+function drawSpline(ctx, l){
+  if (!l.points || l.points.length < 2) return;
+  ctx.save();
+  const c = layerCenter(l);
+  ctx.translate(c.x, c.y);
+  ctx.rotate(toRad(l.rotation||0));
+  ctx.translate(-c.x, -c.y);
+  ctx.beginPath();
+  traceSpline(ctx, l);
+  if (l.fill){ ctx.fillStyle = l.fill; ctx.fill(); }
+  ctx.strokeStyle = l.color;
+  ctx.lineWidth = l.strokeWidth;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* Re-fits the layer's box around a fresh set of local-space vertices and
+   stores them back as the usual 0..1 offsets inside it - the one way the
+   vertex list is ever written, so the box and the points can't fall out of
+   step.
+
+   The correction at the end is the subtle part. The box's centre is also the
+   rotation pivot, so moving one vertex changes the pivot and every *other*
+   vertex would swing on screen. Since rotate(q, c) - rotate(q, c') works out
+   to (I - R)(c - c') for any q, that shift is the same for all of them and
+   can be applied once, to the box itself. */
+function setSplinePoints(l, pts){
+  if (!pts.length){ l.points = []; return; }
+  const oldC = layerCenter(l);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  pts.forEach(q => {
+    minX = Math.min(minX, q.x); minY = Math.min(minY, q.y);
+    maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y);
+  });
+  // a straight horizontal or vertical run has no extent on one axis; the
+  // floor keeps the normalisation (and later resizes) out of a divide by zero
+  const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
+  l.x = minX; l.y = minY; l.w = w; l.h = h;
+  const th = toRad(l.rotation || 0);
+  if (th){
+    const newC = layerCenter(l);
+    const dx = oldC.x - newC.x, dy = oldC.y - newC.y;
+    l.x += dx - (dx*Math.cos(th) - dy*Math.sin(th));
+    l.y += dy - (dx*Math.sin(th) + dy*Math.cos(th));
+  }
+  l.points = pts.map(q => ({ nx: (q.x - minX)/w, ny: (q.y - minY)/h, corner: !!q.corner }));
+}
+
+// Index of the vertex under a canvas-space point, or -1.
+function splineVertexAt(l, p){
+  const q = toLocal(l, p);
+  const pts = splineAbs(l);
+  let best = -1, bestD = splineGrab();
+  pts.forEach((v, i) => {
+    const d = Math.hypot(v.x - q.x, v.y - q.y);
+    if (d <= bestD){ bestD = d; best = i; }
+  });
+  return best;
+}
+
+function removeSplineVertex(l, idx){
+  const pts = splineAbs(l);
+  if (pts.length <= 2) return false;   // two points is the least that is still a curve
+  pts.splice(idx, 1);
+  setSplinePoints(l, pts);
+  state.vertexSel = null;
+  pushHistory(); renderAll();
+  return true;
+}
+
+// Adds a vertex where the curve was clicked. `near` comes from
+// nearestOnSpline, so the new vertex sits exactly on the existing curve and
+// the shape barely moves as it gains a control point.
+function insertSplineVertex(l, near){
+  const pts = splineAbs(l);
+  const at = near.seg + 1;   // also correct for a closed path's last span: pushes onto the end
+  pts.splice(at, 0, { x: near.x, y: near.y, corner: false });
+  setSplinePoints(l, pts);
+  state.vertexSel = { layerId: l.id, index: at };
+  pushHistory(); renderAll();
+}
+
+function toggleSplineCorner(l, idx){
+  const pts = splineAbs(l);
+  pts[idx].corner = !pts[idx].corner;
+  setSplinePoints(l, pts);
+  state.vertexSel = { layerId: l.id, index: idx };
+  pushHistory(); renderAll();
+}
+
+/* Placing one. Points are clicked, not dragged out, so this cannot live in
+   state.drag the way every other create-* tool does - a click-to-click tool
+   has no single pointer gesture to hang off. state.pendingSpline is that
+   whole mode: it holds the layer-to-be plus its vertices in canvas space,
+   and only reaches state.layers once the curve is finished. */
+function startPendingSpline(p, e){
+  const l = newBaseLayer('spline', p);
+  Object.assign(l, {
+    color: state.color, strokeWidth: state.strokeWidth, fill: state.fill,
+    tension: state.splineTension, closed: false, points: [],
+    roughness: 0   // deliberately exact - see the section comment above
+  });
+  state.pendingSpline = { layer: l, abs: [], cursor: null, lastAdd: 0 };
+  addPendingSplinePoint(p, e);
+}
+
+function addPendingSplinePoint(p, e){
+  const ps = state.pendingSpline;
+  const prev = ps.abs[ps.abs.length - 1];
+  // The second tap of a double-click lands on top of the first. Refusing a
+  // point that close - using the very slack maybeDoubleTap() uses to call it
+  // a double-click, converted to canvas space - is what lets "double-click to
+  // finish" work without leaving a duplicate vertex behind.
+  const slack = ((e && e.pointerType === 'touch') ? 30 : 10) / viewScale();
+  if (prev && Math.hypot(p.x - prev.x, p.y - prev.y) < slack) return;
+  ps.abs.push({ x: p.x, y: p.y, corner: false });
+  ps.lastAdd = Date.now();
+  setSplinePoints(ps.layer, ps.abs);
+}
+
+// The curve as it would look with the cursor as one more vertex. A copy, so
+// the rubber-band span can never end up in the real layer.
+function pendingSplinePreview(){
+  const ps = state.pendingSpline;
+  const pts = ps.abs.map(q => ({ x:q.x, y:q.y, corner:q.corner }));
+  if (ps.cursor) pts.push({ x: ps.cursor.x, y: ps.cursor.y, corner: false });
+  const l = Object.assign({}, ps.layer);
+  setSplinePoints(l, pts);
+  return l;
+}
+
+function finishSpline(){
+  const ps = state.pendingSpline;
+  if (!ps) return;
+  state.pendingSpline = null;
+  if (ps.abs.length >= 2){
+    setSplinePoints(ps.layer, ps.abs);
+    state.layers.push(ps.layer);
+    state.selection = [ps.layer.id];
+    pushHistory();
+  }
+  renderAll();
+}
+
+function cancelSpline(){
+  if (!state.pendingSpline) return;
+  state.pendingSpline = null;
+  renderAll();
+}
+
+function drawSplineVertices(l){
+  const pts = splineAbs(l);
+  const picked = state.vertexSel && state.vertexSel.layerId === l.id ? state.vertexSel.index : -1;
+  pts.forEach((q, i) => {
+    octx.beginPath();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = CHROME.accent;
+    octx.fillStyle = i === picked ? CHROME.accent : CHROME.text;
+    // square = a corner vertex, circle = a smooth one; the shape of the
+    // handle is the only place that distinction is visible
+    if (q.corner) octx.rect(q.x - SPLINE_VERTEX_R, q.y - SPLINE_VERTEX_R, SPLINE_VERTEX_R*2, SPLINE_VERTEX_R*2);
+    else octx.arc(q.x, q.y, SPLINE_VERTEX_R, 0, Math.PI*2);
+    octx.fill(); octx.stroke();
+  });
+}
+
 function drawLine(ctx, l){
   ctx.save();
   const c = layerCenter(l);
@@ -2680,6 +3021,7 @@ function drawLayer(ctx, l){
   else if (l.type === 'rhombus') drawRhombus(ctx, l);
   else if (l.type === 'line') drawLine(ctx, l);
   else if (l.type === 'splineArrow') drawSplineArrow(ctx, l);
+  else if (l.type === 'spline') drawSpline(ctx, l);
   ctx.restore();
 }
 
@@ -2729,6 +3071,8 @@ function renderOverlay(){
       octx.translate(c.x, c.y); octx.rotate(toRad(single.rotation||0)); octx.translate(-c.x,-c.y);
       strokeSelBox(single.x, single.y, single.w, single.h);
       drawHandles(single);
+      // inside the layer's own rotation, which is the space the vertices live in
+      if (single.type === 'spline') drawSplineVertices(single);
     } else {
       strokeSelBox(box.x, box.y, box.w, box.h);
     }
@@ -2736,6 +3080,12 @@ function renderOverlay(){
   }
   // in-progress draw preview
   if (state.drag && state.drag.previewLayer) drawLayer(octx, state.drag.previewLayer);
+  // a curve being placed: the committed vertices, plus the span trailing the
+  // cursor, so the shape is visible before it is finished
+  if (state.pendingSpline){
+    drawLayer(octx, pendingSplinePreview());
+    drawSplineVertices(state.pendingSpline.layer);
+  }
 }
 
 function strokeSelBox(x,y,w,h){
@@ -2777,6 +3127,7 @@ function labelFor(l){
   if (l.type==='rhombus') return t('layerRhombusLabel');
   if (l.type==='line') return t('layerLineLabel');
   if (l.type==='splineArrow') return t('layerSplineArrowLabel');
+  if (l.type==='spline') return t('layerSplineLabel');
   return l.type;
 }
 
@@ -2817,6 +3168,9 @@ function groupMembers(l){
 /* ===================== Toolbar wiring ===================== */
 document.querySelectorAll('button.tool').forEach(btn => {
   btn.addEventListener('click', () => {
+    // don't strand a curve that is still being placed - reaching for another
+    // tool means it is done, not that it should be thrown away
+    if (state.pendingSpline) finishSpline();
     state.tool = btn.dataset.tool;
     document.querySelectorAll('button.tool').forEach(b => b.classList.toggle('active', b===btn));
     if (state.tool !== 'select'){ state.selection = []; renderAll(); }
@@ -2876,7 +3230,7 @@ document.getElementById('fillCustomColor').addEventListener('input', (e) => {
 });
 
 function applyFillToSelection(c){
-  const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='ellipse' || l.type==='rhombus');
+  const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='ellipse' || l.type==='rhombus' || l.type==='spline');
   if (!sel.length) return;
   sel.forEach(l => { l.fill = c; });
   pushHistory(); renderAll();
@@ -2888,7 +3242,7 @@ function applyColorToSelection(c){
   sel.forEach(l => {
     if (l.type==='text') l.color = c;
     else if (l.type==='rect' || l.type==='ellipse' || l.type==='rhombus') l.stroke = c;
-    else if (l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='line' || l.type==='splineArrow') l.color = c;
+    else if (l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='line' || l.type==='splineArrow' || l.type==='spline') l.color = c;
   });
   pushHistory(); renderAll();
 }
@@ -2938,7 +3292,7 @@ document.getElementById('strokeWidth').addEventListener('input', (e) => {
   if (sel.length){
     sel.forEach(l => {
       if (l.type==='rect'||l.type==='ellipse'||l.type==='rhombus') l.strokeWidth = state.strokeWidth;
-      if (l.type==='freehand'||l.type==='arrow'||l.type==='line'||l.type==='splineArrow') l.strokeWidth = state.strokeWidth;
+      if (l.type==='freehand'||l.type==='arrow'||l.type==='line'||l.type==='splineArrow'||l.type==='spline') l.strokeWidth = state.strokeWidth;
       if (l.type==='text'){ l.strokeWidth = state.strokeWidth; fitTextBox(l); }
     });
     pushHistory(); renderAll();
@@ -2955,6 +3309,34 @@ document.getElementById('arrowHead').addEventListener('input', (e) => {
   document.getElementById('arrowHeadLabel').textContent = state.arrowHead;
   const sel = selectedLayers().filter(l => l.type==='arrow' || l.type==='splineArrow');
   if (sel.length){ sel.forEach(l => l.headSize = state.arrowHead); pushHistory(); renderAll(); }
+});
+
+// How curved the spline is: 1 is a full Catmull-Rom curve through the
+// vertices, 0 pulls every control point onto its vertex and leaves the plain
+// straight polyline. Everything between is the same curve, just flatter.
+document.getElementById('splineTension').addEventListener('input', (e) => {
+  state.splineTension = parseInt(e.target.value,10) / 100;
+  document.getElementById('splineTensionLabel').textContent = Math.round(state.splineTension*100);
+  const sel = selectedLayers().filter(l => l.type === 'spline');
+  if (sel.length){ sel.forEach(l => l.tension = state.splineTension); pushHistory(); renderAll(); }
+  else if (state.pendingSpline){ state.pendingSpline.layer.tension = state.splineTension; renderCanvasFrame(); }
+});
+document.getElementById('splineClosedBtn').addEventListener('click', () => {
+  const sel = selectedLayers().filter(l => l.type === 'spline');
+  if (!sel.length) return;
+  const on = !sel[0].closed;
+  sel.forEach(l => { l.closed = on; });
+  pushHistory(); renderAll();
+});
+// The two buttons below are what makes vertex editing work on a phone, where
+// there is no Ctrl to click with: they act on the vertex last touched.
+document.getElementById('splineCornerBtn').addEventListener('click', () => {
+  const v = pickedVertex();
+  if (v) toggleSplineCorner(v.layer, v.index);
+});
+document.getElementById('splinePointDelBtn').addEventListener('click', () => {
+  const v = pickedVertex();
+  if (v) removeSplineVertex(v.layer, v.index);
 });
 
 document.querySelectorAll('.rough-btn').forEach(btn => {
@@ -3230,18 +3612,24 @@ window.addEventListener('resize', () => {
 const TOOL_TYPE = {
   text:'text', rect:'rect', ellipse:'ellipse', rhombus:'rhombus',
   pencil:'freehand', highlight:'highlight', arrow:'arrow',
-  splineArrow:'splineArrow', line:'line'
+  splineArrow:'splineArrow', line:'line', spline:'spline'
   // 'select' deliberately absent - it has no type of its own
 };
-const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow'];
+const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow','spline'];
 const ROW_TYPES = {
   rowText:    ['text'],       // font/size/bold - text layers and nothing else
   rowHiSize:  ['highlight'],  // the highlighter's own thickness control
   rowColor:   ALL_TYPES,
-  rowFill:    ['rect','ellipse','rhombus'],
-  rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow'],
+  rowFill:    ['rect','ellipse','rhombus','spline'],
+  rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow','spline'],
   rowCorner:  ['rect'],
   rowHead:    ['arrow','splineArrow'],
+  rowSplineTension: ['spline'],
+  // rowSplineEdit is spline-only too, but needs a real layer to act on, so
+  // syncSplineControls() below hides it again when nothing is selected
+  rowSplineEdit: ['spline'],
+  // 'spline' is deliberately absent from rowRough: the hand-drawn wobble is
+  // the one thing this shape is defined by not having
   rowRough:   ['rect','freehand','arrow','highlight','ellipse','rhombus','line','splineArrow'],
   rowOpacity: ALL_TYPES
 };
@@ -3264,11 +3652,41 @@ function syncSelectionPanel(){
   });
   document.getElementById('rowDelete').hidden = !sel.length;
   document.getElementById('selEmpty').hidden = haveContext;
+  syncSplineControls();
   // the row changes just resized the panel - keep it inside the viewport
   const sp = document.getElementById('selectionPanel');
   if (!sp.hidden && sp.style.top){
     placePanel(sp, parseFloat(sp.style.left) || 0, parseFloat(sp.style.top) || 0);
   }
+}
+
+/* The vertex the point controls act on. It only means anything while its own
+   curve is the single selected layer and still has that many points, so this
+   re-checks rather than trusting state.vertexSel, and is the only thing that
+   ever reads it for an action. */
+function pickedVertex(){
+  const vs = state.vertexSel;
+  if (!vs) return null;
+  const l = getLayer(vs.layerId);
+  if (!l || l.type !== 'spline' || !l.points || vs.index >= l.points.length) return null;
+  if (state.selection.length !== 1 || state.selection[0] !== l.id) return null;
+  return { layer: l, index: vs.index };
+}
+
+function syncSplineControls(){
+  const sel = selectedLayers().filter(l => l.type === 'spline');
+  const one = sel.length === 1 ? sel[0] : null;
+  const v = pickedVertex();
+  if (!v) state.vertexSel = null;   // stale pick, e.g. its curve was deselected
+  document.getElementById('rowSplineEdit').hidden = !one;
+  const closedBtn = document.getElementById('splineClosedBtn');
+  const cornerBtn = document.getElementById('splineCornerBtn');
+  const delBtn    = document.getElementById('splinePointDelBtn');
+  closedBtn.disabled = !one;
+  closedBtn.classList.toggle('active', !!(one && one.closed));
+  cornerBtn.disabled = !v;
+  cornerBtn.classList.toggle('active', !!(v && v.layer.points[v.index].corner));
+  delBtn.disabled = !v || v.layer.points.length <= 2;
 }
 
 // Initial pass: nothing is on the canvas yet, so renderAll() hasn't run.
@@ -3306,6 +3724,14 @@ function hitLayer(p){
     const l = state.layers[i];
     if (l.visible === false) continue;
     const local = toLocal(l, p);
+    if (l.type === 'spline'){
+      // the curve itself, not its box: an open curve's bounding box is mostly
+      // empty air, and a click on that air belongs to whatever is behind it
+      const near = nearestOnSpline(l, local);
+      if (near && near.dist <= (l.strokeWidth || 4)/2 + 8) return l;
+      if (l.fill && pointInSpline(l, local)) return l;
+      continue;
+    }
     if (l.type === 'freehand' || l.type === 'arrow' || l.type === 'highlight' || l.type === 'line' || l.type === 'splineArrow'){
       const pad = (l.strokeWidth || l.h || 4) + 6;
       if (local.x >= l.x-pad && local.x <= l.x+l.w+pad && local.y >= l.y-pad && local.y <= l.y+l.h+pad) return l;
@@ -3354,6 +3780,7 @@ function overImage(clientX, clientY){
 // Give up whatever single-pointer interaction was running, without committing
 // it - used when a second finger turns the interaction into a gesture.
 function cancelActiveDraw(){
+  undoPendingSplineTap();
   if (state.drag){ state.drag = null; renderAll(); }
   if (state.panning) endPan();
   // with the text tool selected, the first finger of this same pinch already
@@ -3367,6 +3794,17 @@ function cancelActiveDraw(){
 
 // Forget every pointer and gesture. Cheap insurance called whenever the app
 // cannot know what the input devices are doing any more.
+// A curve in progress survives this on purpose - it is work, not a gesture -
+// but the tap that placed its newest point was really the first finger of the
+// pinch now starting, so that point goes back.
+function undoPendingSplineTap(){
+  const ps = state.pendingSpline;
+  if (!ps || Date.now() - ps.lastAdd > 400) return;
+  ps.abs.pop();
+  if (!ps.abs.length) state.pendingSpline = null;
+  else setSplinePoints(ps.layer, ps.abs);
+}
+
 function resetGesture(){
   pointers.clear();
   gesture = null;
@@ -3445,6 +3883,22 @@ window.addEventListener('pointermove', (e) => {
   if (gesture.mode === 'pan'){ e.preventDefault(); updatePan(e); return; }
   onMove(e);
 }, { passive: false });
+
+/* The span that follows the cursor while a curve is being placed. It needs
+   its own listener: the gesture layer's pointermove only tracks pointers that
+   are currently down, and this is a hover. renderCanvasFrame() rather than
+   renderAll(), so the layers sidebar isn't rebuilt on every mouse move. */
+canvasWrap.addEventListener('pointermove', (e) => {
+  if (!state.pendingSpline || pointers.size) return;
+  state.pendingSpline.cursor = canvasPoint(e);
+  renderCanvasFrame();
+});
+canvasWrap.addEventListener('pointerleave', () => {
+  if (state.pendingSpline && state.pendingSpline.cursor){
+    state.pendingSpline.cursor = null;
+    renderCanvasFrame();
+  }
+});
 
 function releasePointer(e){
   if (!pointers.has(e.pointerId)) return;
@@ -3527,6 +3981,20 @@ function onDown(e){
     // check handles on current single selection first
     if (state.selection.length === 1){
       const l = getLayer(state.selection[0]);
+      // A curve's own vertices come before the bounding box's handles: at a
+      // corner the two sit on top of each other, and the vertex is the more
+      // specific target. Ctrl/Cmd+click deletes one (Alt can't be used - the
+      // gesture layer claims Alt+drag for panning before onDown ever runs).
+      if (l && l.type === 'spline'){
+        const vi = splineVertexAt(l, p);
+        if (vi !== -1){
+          if (e.ctrlKey || e.metaKey){ removeSplineVertex(l, vi); return; }
+          state.vertexSel = { layerId: l.id, index: vi };
+          state.drag = { mode:'move-vertex', layerId: l.id, index: vi, start: p, orig: deepClone(l) };
+          renderAll();
+          return;
+        }
+      }
       const h = hitHandle(l, p);
       if (h){
         state.drag = { mode: h==='rotate' ? 'rotate' : 'resize', handle: h, layerId: l.id, start: p, orig: deepClone(l) };
@@ -3607,6 +4075,23 @@ function onDown(e){
     return;
   }
 
+  if (state.tool === 'spline'){
+    const ps = state.pendingSpline;
+    if (!ps){ startPendingSpline(p, e); }
+    else {
+      const first = ps.abs[0];
+      // back on the first vertex: close the loop and finish in one go
+      if (ps.abs.length > 2 && Math.hypot(p.x - first.x, p.y - first.y) <= splineGrab()){
+        ps.layer.closed = true;
+        finishSpline();
+        return;
+      }
+      addPendingSplinePoint(p, e);
+    }
+    renderAll();
+    return;
+  }
+
   if (state.tool === 'splineArrow'){
     const l = newBaseLayer('splineArrow', p);
     l.color = state.color; l.strokeWidth = state.strokeWidth; l.headSize = state.arrowHead;
@@ -3634,6 +4119,20 @@ function onMove(e){
   }
   else if (d.mode === 'resize'){
     resizeByHandle(getLayer(d.layerId), d.orig, d.handle, p);
+  }
+  else if (d.mode === 'move-vertex'){
+    const l = getLayer(d.layerId);
+    if (l){
+      // Everything is recomputed from the untouched original each move rather
+      // than from the last frame, so a long drag can't accumulate rounding
+      // through repeated re-boxing. toLocal() against d.orig for the same
+      // reason resizeByHandle does: that is the space the points were in.
+      const local = toLocal(d.orig, p);
+      const pts = splineAbs(d.orig);
+      pts[d.index] = { x: local.x, y: local.y, corner: pts[d.index].corner };
+      l.x = d.orig.x; l.y = d.orig.y; l.w = d.orig.w; l.h = d.orig.h;
+      setSplinePoints(l, pts);
+    }
   }
   else if (d.mode === 'rotate'){
     const l = getLayer(d.layerId);
@@ -3736,6 +4235,20 @@ function onUp(){
 
 function onDblClick(e){
   const p = canvasPoint(e);
+  // A curve being placed ends here. Both taps of the pair already went
+  // through onDown, and addPendingSplinePoint() dropped the second as a
+  // duplicate, so the vertex list is exactly what the person clicked.
+  if (state.pendingSpline){ finishSpline(); return; }
+  // Editing the selected curve wins over whatever else is under the pointer:
+  // on a vertex, flip it between a corner and a smooth bend; on the curve
+  // itself, add a vertex there.
+  const single = state.selection.length === 1 ? getLayer(state.selection[0]) : null;
+  if (single && single.type === 'spline'){
+    const vi = splineVertexAt(single, p);
+    if (vi !== -1){ toggleSplineCorner(single, vi); return; }
+    const near = nearestOnSpline(single, toLocal(single, p));
+    if (near && near.dist <= (single.strokeWidth || 4)/2 + 10){ insertSplineVertex(single, near); return; }
+  }
   const hit = hitLayer(p);
   if (!hit) return;
   if (hit.type === 'text') openTextEditor(hit);
@@ -3829,6 +4342,13 @@ function openRectTextEditor(l){
 window.addEventListener('keydown', (e) => {
   if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  // Enter finishes the curve being placed, Escape throws it away. Checked
+  // before the shortcuts below so neither key means anything else meanwhile.
+  if (state.pendingSpline && (e.key === 'Enter' || e.key === 'Escape')){
+    e.preventDefault();
+    if (e.key === 'Enter') finishSpline(); else cancelSpline();
+    return;
+  }
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z' && e.shiftKey){ e.preventDefault(); redo(); return; }
   if (meta && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
@@ -3839,7 +4359,14 @@ window.addEventListener('keydown', (e) => {
   if (meta && (e.key === '=' || e.key === '+')){ e.preventDefault(); zoomIn(); return; }
   if (meta && e.key === '-'){ e.preventDefault(); zoomOut(); return; }
   if (meta && e.key === '0'){ e.preventDefault(); zoomReset(); return; }
-  if (e.key === 'Delete' || e.key === 'Backspace'){ if (state.selection.length){ e.preventDefault(); deleteLayers(state.selection); } return; }
+  if (e.key === 'Delete' || e.key === 'Backspace'){
+    // a picked curve vertex goes first; with none picked this is the usual
+    // "delete the selected layers"
+    const v = pickedVertex();
+    if (v && v.layer.points.length > 2){ e.preventDefault(); removeSplineVertex(v.layer, v.index); return; }
+    if (state.selection.length){ e.preventDefault(); deleteLayers(state.selection); }
+    return;
+  }
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && state.canvasReady){
     e.preventDefault();
     const step = e.shiftKey ? 120 : 40;
@@ -3851,7 +4378,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') panBy(-step, 0);
     return;
   }
-  const map = { v:'select', t:'text', r:'rect', o:'ellipse', d:'rhombus', p:'pencil', a:'arrow', h:'highlight', l:'line', s:'splineArrow' };
+  const map = { v:'select', t:'text', r:'rect', o:'ellipse', d:'rhombus', p:'pencil', a:'arrow', h:'highlight', l:'line', s:'splineArrow', c:'spline' };
   if (map[e.key.toLowerCase()]){ document.querySelector(`button[data-tool="${map[e.key.toLowerCase()]}"]`).click(); }
 });
 

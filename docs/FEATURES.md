@@ -82,6 +82,28 @@ Non-obvious requirements:
 Also update: keyboard-shortcut hint text, the RO+EN `I18N` keys for the
 button label and tooltip, and the touch-toolbar overflow check.
 
+### If the shape is editable after it is drawn
+
+`spline` is the template — read HANDOFF.md § "Spline curve" before starting.
+Beyond the list above it needed:
+
+- **One writer for the point list.** `setSplinePoints()` re-fits the bounding
+  box and re-normalises in one place. A shape whose points can move needs
+  this, and needs the rotation-pivot correction inside it — re-fitting the box
+  moves its centre, and the centre is what the layer rotates around.
+- **A drag mode that is not `create-…`.** `move-vertex` recomputes from
+  `d.orig` on every move rather than from the previous frame, so a long drag
+  can't accumulate rounding.
+- **Handles drawn by `renderOverlay`**, inside the layer's own rotation
+  transform, and hit-tested *before* the bounding box's resize handles — at a
+  corner the two overlap and the more specific one has to win.
+- **A touch route for every modifier-key shortcut.** Alt is unavailable at all
+  (the gesture layer takes Alt+drag for panning), and a phone has none of the
+  others, so anything reachable only by Ctrl+click needs a button in the
+  selection panel too. That is what the Points row is.
+- **A `ROW_TYPES` entry that also needs a real selection** must be hidden
+  again after the generic pass — see `syncSplineControls()`.
+
 ---
 
 ## C. New markdown syntax in `markdown-editor.html`

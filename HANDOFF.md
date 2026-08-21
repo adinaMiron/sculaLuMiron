@@ -81,8 +81,9 @@ once, everything downstream is zoom/scroll-agnostic).
 | `arrow` | same as `line` + `headSize` | |
 | `splineArrow` | `color, strokeWidth, headSize, points[]` | `points[0]` = arrowhead TIP (first click), `points[last]`= tail. See "spline arrow" below. |
 | `freehand` | `color, strokeWidth, points[]` | `points[]` = `{nx,ny}` normalized 0..1 within bbox. |
+| `spline` | `color, strokeWidth, fill, points[], closed, tension` | Editable curve. `points[]` = `{nx,ny,corner}` normalized 0..1 within bbox; the curve is re-derived from them on every repaint. No `roughness`. See "Spline curve" below. |
 | `highlight` | `color, points[]` (thickness = `l.h`) | Horizontal-only band (drag locks to start Y). Thickness comes from `state.highlightSize` / the `#rowHiSize` slider — **not** the text "Size" field, which it used to borrow. Rendered with `globalAlpha=0.4*layerOpacity` + `multiply` blend. |
-| all shapes except text | `roughness, seed` | Sloppiness (see below). |
+| all shapes except text and spline | `roughness, seed` | Sloppiness (see below). |
 
 Group = shared `groupId` string; no nested groups. Selecting one member
 selects all (`groupMembers()`, ~L1513).
@@ -90,7 +91,7 @@ selects all (`groupMembers()`, ~L1513).
 ## Tools (`state.tool` values, toolbar buttons `data-tool="…"`)
 
 `select, text, rect, ellipse, rhombus, pencil, arrow, splineArrow, line,
-highlight`. Keyboard: `v,t,r,o,d,p,a,s,l,h`. Adding a new shape tool
+highlight, spline`. Keyboard: `v,t,r,o,d,p,a,s,l,h,c`. Adding a new shape tool
 touches ~10 places — grep any existing type (e.g. `'rhombus'`) across the
 file to find them all: toolbar button, `drawX()` fn, `drawLayer()`
 dispatch, `labelFor()`, `applyColorToSelection()`, stroke-width handler,
@@ -130,6 +131,76 @@ pull the curve's start back by `headSize` along that tangent so the shaft
 doesn't poke through the triangle, draw the triangle separately at the
 literal tip. `onDown`/`onMove` reuse the pencil point-capture branch
 (`create-splinearrow` mode aliases into the same code as `create-pencil`).
+
+## Spline curve
+
+The `spline` type, and the one shape that is **editable after it is drawn**.
+Everything for it lives in one block of the script (§ "Spline curve", after
+Rendering); `docs/MAP.md` has a function-by-function table.
+
+**What it is.** A Catmull-Rom spline through the layer's vertices, converted
+to cubic Beziers so the canvas draws the real curve rather than a chain of
+sampled segments. Two decisions carry the "smooth, jitter-free" requirement:
+
+- **Centripetal parametrisation** (`SPLINE_ALPHA = 0.5`) rather than the
+  textbook uniform one. Uniform Catmull-Rom overshoots into a cusp or a small
+  self-intersecting loop whenever vertices bunch up — which hand-placed and
+  hand-dragged points reliably do. Centripetal provably cannot, at any
+  spacing. Measured on the cluster case in `tests/spline.js`: worst stray from
+  the polyline 20.3px uniform vs 4.8px centripetal. The tangents are therefore
+  the **non-uniform** Catmull-Rom form; the familiar `(p2-p0)/2` is only
+  correct for evenly spaced knots, which is exactly what this gives up. (It
+  does reduce to `(p2-p0)/2` when spacing happens to be even.)
+- **No smoothing pass and no roughness.** Unlike `freehand` / `splineArrow`,
+  nothing here runs through `smoothPoints()` or the hand-drawn wobble, and
+  `spline` is deliberately absent from `rowRough` and from the sloppiness
+  handler's type filter. The shape is meant to be exact and re-editable. Don't
+  "complete" the sloppiness list by adding it.
+
+It does still carry its incoming slope a little past a shoulder — an arch
+through four evenly spaced points rises ~9% of its climb above the two top
+vertices. That is what an interpolating spline does and what makes it look
+drawn rather than folded; it is not jitter. `l.tension` (the "Curve" slider)
+scales both tangents, so 0 collapses the whole thing to the straight polyline.
+
+**Two invariants.**
+
+1. **`setSplinePoints(l, pts)` is the only writer of `l.points`.** It re-fits
+   the bounding box around the new vertices and re-normalises them. The
+   correction at its end is the subtle part: the box's centre is also the
+   rotation pivot, so moving one vertex moves the pivot and every *other*
+   vertex would swing across the canvas. Since `rotate(q, c) - rotate(q, c')`
+   works out to `(I - R)(c - c')` for any `q`, that shift is the same for all
+   of them and is applied once, to the box. `tests/spline.js` checks it on a
+   30°-rotated curve. Never assign `l.points` directly.
+2. **Placing one lives in `state.pendingSpline`, not `state.drag`.** Every
+   other create-* tool is one drag; this is a run of clicks, so it needs state
+   that survives between them. It only reaches `state.layers` in
+   `finishSpline()`. Consequences worth knowing: `renderOverlay` draws it via
+   `pendingSplinePreview()` (a copy, so the span trailing the cursor never
+   becomes a real vertex); the rubber band needs its **own** `pointermove`
+   listener because the gesture layer only tracks pointers that are down; and
+   `cancelActiveDraw()` calls `undoPendingSplineTap()` so the first finger of
+   a pinch doesn't leave a stray vertex behind — the curve itself survives the
+   pinch, because it is work, not a gesture.
+
+**Finishing** is double-click/tap, Enter, clicking the first vertex (which
+also closes the path), or reaching for another tool. Escape throws it away.
+The double-click case works because `addPendingSplinePoint()` refuses a point
+within the same slack `maybeDoubleTap()` uses to call it a double-click, so
+the second tap of the pair is dropped rather than left as a duplicate vertex.
+
+**Editing** (select tool, curve selected): drag a vertex; double-click one to
+flip it between smooth (circle handle) and corner (square handle); double-click
+the curve to insert a vertex where it was clicked; Ctrl/Cmd+click or Delete to
+remove one. **Alt is not available** — the gesture layer claims Alt+drag for
+panning before `onDown` ever runs. Touch has none of these modifiers, which is
+why the selection panel's **Points** row exists: it acts on `state.vertexSel`,
+the vertex last touched, read only through `pickedVertex()`.
+
+`hitLayer()` tests the curve itself (`nearestOnSpline`) rather than the padded
+bounding box every other stroke shape uses — an open curve's box is mostly
+empty air, and a click on that air should reach whatever is behind it.
 
 ## Canvas sources (what can be "under" the layers)
 
@@ -445,7 +516,8 @@ on a selected rect).
 
 ## Testing approach used throughout
 
-No test framework — ad hoc Playwright (Python) scripts per feature,
+No test framework — ad hoc Playwright scripts per feature (the accumulated
+ones live in `tests/`, Node; earlier ones were Python),
 plus pixel-level assertions (read canvas via
 `canvas.getContext('2d').getImageData()` or `toDataURL()` → PIL) rather
 than trusting visual screenshots alone. For anything touching

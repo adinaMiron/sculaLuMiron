@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:220-863` · `editor.html:409-1052` · `markdown-editor.html:842-1485`
+`index.html:221-864` · `editor.html:416-1059` · `markdown-editor.html:843-1486`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -80,7 +80,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 4055 lines · "Image Marker" (canvas annotation)
+## editor.html — 4589 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -97,50 +97,72 @@ touch" for why and how.
 | Lines | Contents |
 |---|---|
 | 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
-| 15–406 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 15–412 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
 | 72–117 | Top toolbar |
 | 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
-| 247–338 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
-| 339–406 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 409–1052 | **Shared nav + `ScuLaFolder`** |
-| 1058–1086 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1087–1123 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1124–1216 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1217–1334 | Markup: modals, stage, sidebar |
-| 1335–4053 | App script |
+| 247–340 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
+| 341–412 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 416–1059 | **Shared nav + `ScuLaFolder`** |
+| 1065–1093 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1095–1131 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1132–1258 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1259–1362 | Markup: modals, stage, sidebar |
+| 1364–4587 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1335 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1537 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
-| 1585 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1627 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
-| 1682 | Loading an image |
-| 1716 | Screen snapshot |
-| 1756 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1902 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2004** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2133 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2185 | New canvas modal |
-| **2267** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| 2762 | Layer list (sidebar) — `renderLayerList` |
-| **2810** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3032** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3216** | **Selection panel contents** — `ROW_TYPES` (3230), `syncSelectionPanel` |
-| 3270 | Text box auto-fit |
-| 3281 | Pointer/canvas coords — `canvasPoint()` |
-| **3312** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 3738 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 3821 | Keyboard shortcuts |
-| 3851 | Save — `renderComposite`, **`saveOut()`** 3882 (one line onto `ScuLaFolder.save`) |
-| 3890 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4039 | Fonts ready — `document.fonts.load()` startup pass |
+| 1364 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1578 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
+| 1629 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1671 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1729 | Loading an image |
+| 1765 | Screen snapshot |
+| 1805 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1951 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2053** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2182 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2234 | New canvas modal |
+| **2316** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2672** | **Spline curve** — the whole `spline` layer type in one block: `splineSegments` (the maths), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3119 | Layer list (sidebar) — `renderLayerList` |
+| **3168** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3421** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3605** | **Selection panel contents** — `ROW_TYPES` (3620), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 3695 | Text box auto-fit |
+| 3706 | Pointer/canvas coords — `canvasPoint()` |
+| **3745** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4258 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4341 | Keyboard shortcuts |
+| 4385 | Save — `renderComposite`, **`saveOut()`** 4419 (one line onto `ScuLaFolder.save`) |
+| 4424 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4573 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2267–2762); go straight to the
+Largest region by far is Rendering (2316–3119); go straight to the
 specific `drawX()` you need.
+
+### The `spline` layer (2672–2971)
+
+The one shape whose geometry is worth reading before touching. Unlike every
+other type it is **re-derived from its vertices on every repaint** and is
+editable after the fact, so nothing may cache a sampled path or edit
+`l.points` directly.
+
+| Function | What |
+|---|---|
+| `splineSegments(l)` | vertices → cubic Beziers. Centripetal Catmull-Rom (`SPLINE_ALPHA` 0.5) with non-uniform tangents; `l.tension` scales them, `p.corner` zeroes one side |
+| `drawSpline` / `traceSpline` / `pointInSpline` | render, path-trace, and inside-test (the last borrows `baseCtx` as a geometry engine) |
+| `nearestOnSpline(l, q)` | closest point on the drawn curve — hit-testing *and* where an inserted vertex goes |
+| **`setSplinePoints(l, pts)`** | **the only writer of `l.points`.** Re-fits the box and re-normalises; the correction at its end is what stops the other vertices swinging when the box's centre (= the rotation pivot) moves |
+| `splineVertexAt` / `insertSplineVertex` / `removeSplineVertex` / `toggleSplineCorner` | the vertex edits, each ending in `pushHistory(); renderAll()` |
+| `startPendingSpline` / `addPendingSplinePoint` / `finishSpline` / `cancelSpline` | the click-to-place mode. It lives in `state.pendingSpline`, **not** `state.drag`, because it spans many clicks rather than one drag |
+| `drawSplineVertices(l)` | the handles — circle = smooth vertex, square = corner |
+
+`state.vertexSel` names the vertex the panel's Points row acts on; read it
+only through `pickedVertex()` (Selection panel contents), which re-checks
+that it still refers to the single selected curve.
 
 **Zoom is the app's, never the browser's.** Three places cooperate and must
 stay together — the viewport meta (5–11), `html,body{touch-action}` (57–68)
@@ -154,10 +176,11 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3230) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (2810)
+**Two lists must stay in step:** `ROW_TYPES` (3620) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (3168)
 say which types each control actually writes to. Add a control → add it to
-both.
+both. `rowSplineEdit` is the one row that also needs a real layer, not just
+a matching tool, so `syncSplineControls()` hides it again afterwards.
 
 ---
 
