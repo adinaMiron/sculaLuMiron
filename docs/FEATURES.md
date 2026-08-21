@@ -1,7 +1,7 @@
 # FEATURES.md — adding tools and features
 
-Three scopes: a whole new app page, a new drawing tool in `editor.html`,
-or new markdown syntax. Pick the section you need.
+Four scopes: a whole new app page, a new drawing tool in `editor.html`,
+new markdown syntax, or the recipe pipeline. Pick the section you need.
 
 ---
 
@@ -10,14 +10,14 @@ or new markdown syntax. Pick the section you need.
 1. **Copy the closest existing app** as the skeleton. Keep it single-file:
    `<style>` → markup → `<script>`. No build step, no framework, no npm.
 2. **Paste the shared nav** verbatim from `index.html:221-873`.
-3. **Add the new link to all four navs** — the three existing files plus
+3. **Add the new link to every nav copy** — the existing app files plus
    the new one. They must stay byte-identical:
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
    Verify with the diff snippet in `CLAUDE.md`.
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
-   get a folder — again in all four copies.
+   get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
    and an `I18N` object with `data-i` attributes (`docs/I18N.md`) from the
    first commit. Retrofitting is what makes the other two apps expensive.
@@ -115,28 +115,28 @@ a layer has editable vertices.
 
 ## C. New markdown syntax in `markdown-editor.html`
 
-The parser is unified: `parseMarkdown(md, opts)` (L3186) and
-`applyInline(text, opts)` (L3170) serve **both** the live preview
+The parser is unified: `parseMarkdown(md, opts)` (L3188) and
+`applyInline(text, opts)` (L3172) serve **both** the live preview
 (`updatePreview()`, opts omitted) and the HTML export
 (`exportHtml()`, `{forExport: true}`). Add new syntax once, in these two
 functions — no twin to keep in sync.
 
 Syntax that creates a *link* between notes is a third thing again: it also
 has to appear in the graph, which reads the text through `scanNote()`
-rather than through the parser. See § F.
+rather than through the parser. See § G.
 
 The only place behaviour forks on `forExport` is `resolveImageSrc()`
-(L3164): export rewrites relative image paths to `public/images/…` and
+(L3166): export rewrites relative image paths to `public/images/…` and
 turns a bare image-path line into a standalone `<img>`, because exported
 HTML ships without the app's working-folder image tree. If your new
 syntax needs export-only handling (e.g. it also touches paths that only
 make sense relative to the app's file picker), branch on `opts &&
 opts.forExport` the same way rather than forking the function.
 
-Also update `updateNav()` (L3317) if the syntax creates headings, and the
+Also update `updateNav()` (L3319) if the syntax creates headings, and the
 toolbar button + its `I18N` keys.
 
-**The exported-HTML template (L5388-5422) stays literal hex** — it ships
+**The exported-HTML template (L5390-5424) stays literal hex** — it ships
 to people without the app, so it can't reference theme tokens.
 
 ---
@@ -156,8 +156,8 @@ if (r.message) say(r.message);      // or drop { quiet:true } and the
                                     // shared toast says it for you
 ```
 
-`ScuLaFolder` lives in the triplicated `#site-nav` block, so it is defined
-before any app script runs. `save()` picks a route with `currentMode()`:
+`ScuLaFolder` lives in the shared `#site-nav` block copied into every app
+file, so it is defined before any app script runs. `save()` picks a route with `currentMode()`:
 
 | Mode | When | What happens |
 |---|---|---|
@@ -182,7 +182,7 @@ Full surface:
 ### The folder route (desktop)
 
 - One root folder from the `📁` nav button (`showDirectoryPicker`,
-  `mode:'readwrite'`). All three subfolders are created immediately, so
+  `mode:'readwrite'`). Every page's subfolder is created immediately, so
   the layout is visible before anything is saved. The button is
   **desktop-only** — see the share route below.
 - The `FileSystemDirectoryHandle` is stored in **IndexedDB** (`scula-fs` →
@@ -195,6 +195,7 @@ Full surface:
   | `index.html` | `transcript` |
   | `editor.html` | `desen` |
   | `markdown-editor.html` | `markdown` |
+  | `recipes.html` | `retete` |
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
@@ -256,7 +257,7 @@ also needs an entry in `SUBDIR` — in all copies of the block.
 
 A **workbook** holds **chapters**; one chapter is one markdown file, the
 way OneNote holds pages in a notebook. Code: `markdown-editor.html`
-3394–3980, mapped function-by-function in `docs/MAP.md`.
+3396–3982, mapped function-by-function in `docs/MAP.md`.
 
 ### Two layers, and which one is the truth
 
@@ -335,12 +336,32 @@ workbook subfolder.
 
 ---
 
-## F. The knowledge graph (`markdown-editor.html`)
+## F. Recipes from a PDF or a photo (`recipes.html`)
+
+A fourth page, and the one place in the repo that reads a *file format*
+rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
+— because two things there are contracts rather than code:
+
+- **the markdown it writes** (§ C there): `#` day, `##` meal, `### 1.
+  Ingrediente` as a four-column table ending in an empty USDA FDC id,
+  `### 2. Metoda de preparare` as an ordered list. Anything that reads those
+  files later — the planned nutrition pass — depends on that shape;
+- **the OCR policy** (§ A there): no recogniser is bundled or auto-loaded.
+  Pasted text and the dependency-free PDF reader are the routes that always
+  work; an engine is fetched only when the person presses the button, from
+  an address they can repoint at a local copy.
+
+It writes chapters into the same workbook store as § E, one per day, so a
+day extracted here shows up in `markdown-editor.html` on its next load.
+
+---
+
+## G. The knowledge graph (`markdown-editor.html`)
 
 Obsidian's graph view, on this app's own notion of a note. Circles are
 notes, lines are the links between them; hover to light up what something
 is connected to, click to open it. Code: `markdown-editor.html`
-2876–3162 (the link syntax) and 3982–4972 (the graph), mapped
+2878–3164 (the link syntax) and 3984–4974 (the graph), mapped
 function-by-function in `docs/MAP.md`.
 
 ### What is a note here

@@ -1,6 +1,6 @@
 # webPages
 
-Three standalone browser tools. No build step, no dependencies to install —
+Four standalone browser tools. No build step, no dependencies to install —
 open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
@@ -8,8 +8,9 @@ open any `.html` file in a browser and it runs.
 | **Caiet vocal** | `index.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `markdown-editor.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, and an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`. |
+| **Rețete** | `recipes.html` | Reads a meal plan out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. |
 
-All three share a common nav bar and link to each other.
+All four share a common nav bar and link to each other.
 
 ## Running
 
@@ -29,6 +30,12 @@ Chromium-based browsers get the full feature set. Screen capture and
 recording (`getDisplayMedia`) are unavailable on iOS Safari and most
 mobile browsers — a platform limitation. The apps warn rather than
 failing silently.
+
+`recipes.html` reads PDFs on its own, with no library: text extraction is
+built in. Reading text out of a *picture* needs an OCR engine, which is not
+bundled — the page asks before loading one, and pasted text (what a phone's
+own "copy text from picture" gives you) always works without it. See
+[`docs/RECIPES.md`](docs/RECIPES.md).
 
 ## Setup note
 

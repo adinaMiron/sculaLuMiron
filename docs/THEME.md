@@ -1,19 +1,25 @@
 # THEME.md — unified colour theme
 
-Goal: one shared visual identity across all three apps, switchable
+Goal: one shared visual identity across all four apps, switchable
 light/dark, with no build step.
 
-## Current state — all three migrated
+## Current state — all four migrated
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `markdown-editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
+| `recipes.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 
-None of the three files share one `:root` block yet — each still defines
+None of the four files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
+
+`recipes.html` was written after the migrations, so it carries the full
+target set below from its first commit — including the `--text-3`,
+`--accent-2`, `--accent-soft` and `--ok` roles the older files only partly
+have. Copy its `:root` when starting a new page.
 
 | Role | `index.html` | `editor.html` | `markdown-editor.html` |
 |---|---|---|---|
@@ -34,7 +40,7 @@ unified is the *values*: every file now sits on the same earth palette.
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
 | `--graph-*` | — | — | 8 node-role tokens, see below |
 
-`markdown-editor.html` alone carries a `--graph-*` block (`:root` 26-35):
+`markdown-editor.html` alone carries a `--graph-*` block (`:root` 25-35):
 one token per kind of node in the knowledge graph — `--graph-note`,
 `--graph-active`, `--graph-heading`, `--graph-block`, `--graph-tag`,
 `--graph-unresolved`, `--graph-attachment`, `--graph-edge`. Every value is
@@ -194,7 +200,7 @@ object in any of them.
 and `markdown-editor.html` (the knowledge graph). `ctx.strokeStyle` needs a
 real colour string, not `var(--accent)`, so both resolve their tokens once
 at script init into a cache: `CHROME` in `editor.html`, `GRAPH_COLORS` in
-`markdown-editor.html` (~L4020). Neither may call `getComputedStyle` from a
+`markdown-editor.html` (~L4022). Neither may call `getComputedStyle` from a
 draw call — `editor.html` has a 60fps recording loop on that path, and the
 graph repaints on every hover and every simulation tick. If a live theme
 toggle is ever added, **both caches have to be refreshed when it fires**.
@@ -253,7 +259,7 @@ colour** — those come from an `<input type="color">` and are the reader's
 own choice about their own notes, the same carve-out `PALETTE` gets.
 
 Same principle for the **exported-HTML template** in
-`markdown-editor.html:5388-5422`: it ships standalone to people without
+`markdown-editor.html:5390-5424`: it ships standalone to people without
 the app, so it must keep literal hex — including the `.wikilink` and
 `.md-tag` rules added for the graph's link syntax. Do not tokenise it.
 

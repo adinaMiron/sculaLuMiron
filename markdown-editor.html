@@ -850,7 +850,7 @@
   /* ═══════════ KNOWLEDGE GRAPH (Obsidian's model) ═══════════
      Three parts: how a [[wikilink]] and a #tag look in the preview, the
      suggester that appears when you type "[[", and the graph overlay.
-     Behaviour and vocabulary: docs/FEATURES.md § F. */
+     Behaviour and vocabulary: docs/FEATURES.md § G. */
 
   #preview a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
   #preview a:hover { border-bottom-color: var(--accent); }
@@ -1195,6 +1195,7 @@
   <a href="index.html" data-page="index.html">Caiet vocal</a>
   <a href="editor.html" data-page="editor.html">Editor</a>
   <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
@@ -1405,7 +1406,8 @@
   var SUBDIR = {
     "index.html": "transcript",
     "editor.html": "desen",
-    "markdown-editor.html": "markdown"
+    "markdown-editor.html": "markdown",
+    "recipes.html": "retete"
   };
   var T = {
     ro:{
@@ -2111,7 +2113,7 @@ Use the toolbar above to insert formatting.
 <!-- ═══════════ Knowledge graph ═══════════
      Circles are notes, lines are the [[links]] between them - Obsidian's
      model. Three scopes: inside one note, one workbook, or every workbook.
-     See docs/FEATURES.md § F. -->
+     See docs/FEATURES.md § G. -->
 <div id="graph-view" role="dialog" aria-modal="true" data-i-aria="graphTitle" aria-label="Knowledge graph">
   <div class="gv-bar">
     <span class="gv-title" data-i="graphTitle">Knowledge graph</span>
@@ -2314,7 +2316,7 @@ const I18N = {
     needWorkbookName:"Dă un nume caietului.", needChapterTitle:"Dă un titlu capitolului.",
     saveBtn:"Salvează", wbPathHint:p=>`Fișier: ${p}`,
 
-    /* ── Graful cunoștințelor (docs/FEATURES.md § F) ── */
+    /* ── Graful cunoștințelor (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Notiță", wikilinkTip:"Leagă o notiță sau o secțiune (Ctrl+Shift+L)",
     graphBtn:"🕸 Graf", graphTip:"Graful cunoștințelor (Ctrl+3)", graphTitle:"Graful cunoștințelor",
     scopeNote:"Notiță", scopeNoteTip:"Noțiunile din notița deschisă",
@@ -2420,7 +2422,7 @@ const I18N = {
     needWorkbookName:"Give the workbook a name.", needChapterTitle:"Give the chapter a title.",
     saveBtn:"Save", wbPathHint:p=>`File: ${p}`,
 
-    /* ── Knowledge graph (docs/FEATURES.md § F) ── */
+    /* ── Knowledge graph (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Note link", wikilinkTip:"Link to a note or a section (Ctrl+Shift+L)",
     graphBtn:"🕸 Graph", graphTip:"Knowledge graph (Ctrl+3)", graphTitle:"Knowledge graph",
     scopeNote:"Note", scopeNoteTip:"Notions inside the open note",
@@ -2893,7 +2895,7 @@ function handleTab(e) {
    draws unresolved notes too, unless "Existing notes only" is on.
 
    Everything here serves both the preview and the graph, and is
-   the whole reason the graph has any edges. docs/FEATURES.md § F.
+   the whole reason the graph has any edges. docs/FEATURES.md § G.
    ============================================================ */
 
 // [[Name#sub|alias]] — the leading "!" is what makes it an embed.
@@ -4010,7 +4012,7 @@ window.addEventListener('beforeunload', () => { flushChapter(); });
    about eighty lines. There is no graph library, per the
    repo's no-dependency rule (CLAUDE.md rule 3).
 
-   docs/FEATURES.md § F.
+   docs/FEATURES.md § G.
    ============================================================ */
 
 /* Canvas needs real colour strings, so the graph tokens are resolved once

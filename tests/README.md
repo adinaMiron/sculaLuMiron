@@ -1,7 +1,8 @@
 # tests/
 
-Ad-hoc Playwright checks for `editor.html` — and, in `graph.js`, for
-`markdown-editor.html`'s knowledge graph — written the way `HANDOFF.md` §
+Ad-hoc Playwright checks for `editor.html` and `recipes.html`, and — in
+`graph.js` — for `markdown-editor.html`'s knowledge graph, written the
+way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
@@ -63,6 +64,30 @@ viewport without editing it:
 | `spline.js` | The spline curve, mouse side: click-to-place and the four ways to finish, that the curve interpolates its vertices without cusping on bunched-up ones, the curviness slider, dragging/adding/removing/cornering a vertex, closing the path, and vertex editing on a **rotated** curve (the rotation-pivot correction in `setSplinePoints`) |
 | `polyline.js` | The polyline: the `g` shortcut, click-to-place, that every span really is straight (no ink may stray off the chain through the vertices), the property rows it does and doesn't get, dragging / inserting / removing a vertex, closing the shape by clicking the first vertex again, and filling the closed one |
 | `spline-touch.js` | The spline curve, touch side: tap-to-place, double-tap to finish without a duplicate vertex, a pinch mid-placement taking its stray point back, one-finger vertex drag, and the Points row — the only route to corner/remove without modifier keys |
+| `recipes.js` | `recipes.html`, end to end: the recipe parser on a full three-meal day, the dependency-free PDF reader on three PDFs it builds itself (uncompressed, `FlateDecode`, object streams + Identity-H) including diacritics through a `/ToUnicode` CMap, the markdown contract in `docs/RECIPES.md` § C, saving (`ScuLaFolder.save` stubbed) and the share route (phone-shaped stub), the workbook chapter records, both languages, and the **OCR path** — pictures out of a scanned PDF (`/DCTDecode` and `/FlateDecode`, a logo-sized one ignored), the canvas prep asserted on pixels, two pages recognised in order, several photos in one go, and a language change rebuilding the worker |
+| `graph.js` | `markdown-editor.html`'s knowledge graph and the `[[wikilink]]` syntax under it: the parser (links, tags, `^block` anchors, heading ids, and a fenced block minting neither), jumping to an anchor, all three scopes, every filter, the simulation actually settling, resolution across chapters, the `[[` suggester and the note-link modal, both languages, the export fallback, and the same graph on a phone with a real touch drag. The canvas is asserted on pixels |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
-used only by `withimage.js`.
+used only by `withimage.js`, and `fake-tesseract.js`. `recipes.js` needs no
+binary fixture: it writes its PDFs at run time (including the JPEG inside
+the scanned one, which the browser makes on the spot) and deletes them
+afterwards.
+
+`fixtures/fake-tesseract.js` is a stand-in for tesseract.js. `recipes.html`
+loads its engine from whatever address its own field holds, so pointing that
+field at this file drives the whole OCR path — pictures ▸ canvas prep ▸
+worker ▸ parser — offline and deterministically, with no 45 MB of wasm
+anywhere near the repo. It records the canvas it was handed (size, one pixel
+per half) in `window.__ocrSeen` and returns whatever the check queued in
+`window.__ocrText`. It proves the page's half of the contract, not
+Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
+describes.
+
+`recipes.js` and `graph.js` are the two scripts that do **not** use
+`lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
+own browser context. `recipes.js` goes one further and does not use a
+`file://` URL either: it serves the repo from a throwaway
+`http://127.0.0.1` server, because the workbook check reads IndexedDB and a
+`file://` origin is opaque. `graph.js` stays on `file://` — it drives the
+graph off the in-memory chapter list, so it never depends on a write
+landing. Set `PW_CHROME_PATH` for both the same way.

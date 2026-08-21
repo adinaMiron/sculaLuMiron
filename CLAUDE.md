@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Three standalone browser tools. **No build step, no framework, no package
+Four standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
@@ -8,11 +8,12 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 5630 | 50k | Markdown editor + preview + workbooks + knowledge graph | dark (earth) |
+| `markdown-editor.html` | 5633 | 50k | Markdown editor + preview + workbooks + knowledge graph | dark (earth) |
+| `recipes.html` | 3330 | 33k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~110k tokens; `markdown-editor.html` alone is 50k
+Reading all four costs ~145k tokens; `markdown-editor.html` alone is 50k
 and `editor.html` 46k. **Never `view` an entire app file.** Locate first,
 then read a narrow range.
 
@@ -21,7 +22,7 @@ grep -n "functionName\|#elementId" editor.html   # locate
 sed -n '1080,1140p' editor.html                  # read just that
 ```
 
-`docs/MAP.md` has line anchors for every section of all three files. Read
+`docs/MAP.md` has line anchors for every section of all four files. Read
 it instead of exploring. It is far cheaper than one file scan.
 
 ## Routing — read only what the task needs
@@ -33,26 +34,29 @@ it instead of exploring. It is far cheaper than one file scan.
 | English/Romanian UI, strings | `docs/I18N.md` |
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
+| PDF/OCR reading, recipe markdown, USDA plans | `docs/RECIPES.md` |
+| `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 
 Do not read a doc the task doesn't touch.
 
-## Rule 2: the nav block is triplicated
+## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all three files (`index.html:221-873`, `editor.html:418-1070`,
-`markdown-editor.html:1194-1846`). It carries the nav links, the UI-language
-toggle, **and `window.ScuLaFolder`** — which decides where every saved file
-goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
-**all three** or they drift. Verify with:
+in all four files (`index.html:221-876`, `editor.html:418-1073`,
+`markdown-editor.html:1194-1849`, `recipes.html:260-915`). It carries the nav
+links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
+where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
+must be applied to **all four** or they drift. Verify with:
 
 ```bash
-sed -n '221,873p' index.html > /tmp/n1
-sed -n '418,1070p' editor.html > /tmp/n2
-sed -n '1194,1846p' markdown-editor.html > /tmp/n3
-diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
+sed -n '221,876p' index.html             > /tmp/n1
+sed -n '418,1073p' editor.html           > /tmp/n2
+sed -n '1194,1849p' markdown-editor.html > /tmp/n3
+sed -n '260,915p' recipes.html           > /tmp/n4
+diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
-Adding a page means adding a link to all three navs **and** an entry in the
+Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
 
 ## Rule 3: respect the constraints
@@ -60,9 +64,15 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:1189` (docx import). Don't add more. The
-  knowledge graph is deliberately hand-rolled for this reason — no d3, no
-  force-graph library.
+  CDN in `markdown-editor.html:1189` (docx import). Don't add more. The OCR
+  engine in `recipes.html` is the one deliberate exception, and it is still
+  not a file in this repo: Tesseract is fetched on first use from an address
+  that is a visible, editable field, the page reads PDFs and takes pasted
+  text without it, and pointing the field at a local `./ocr/` makes it work
+  offline. It loads on arrival of a photo now rather than on a button press
+  — `docs/RECIPES.md` § A. The knowledge graph in `markdown-editor.html` is
+  what the rule looks like when it holds: it is hand-rolled rather than
+  reaching for d3 or a force-graph library.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -84,8 +94,8 @@ block's `SUBDIR` map, so the new page gets its own folder.
 ## Verification (no test framework exists)
 
 ```bash
-# JS in every <script> block still parses (verified working on all 3 files)
-for f in index.html editor.html markdown-editor.html; do
+# JS in every <script> block still parses (verified working on all 4 files)
+for f in index.html editor.html markdown-editor.html recipes.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
@@ -102,15 +112,16 @@ needs pixel assertions (`getImageData`), not screenshots. Anything using
 browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
-pan, gestures, undo/redo, every tool) and for `markdown-editor.html`'s
-knowledge graph (`graph.js`). It is dev-only tooling with its own
-`package.json` — `cd tests && npm install && npm test` — and none of the
-three apps reference it; it doesn't count against Rule 3.
+pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
+the PDF reader including scanned pages, the parser, the markdown, the whole
+OCR path against a stub engine, both save routes), and for
+`markdown-editor.html`'s knowledge graph (`graph.js`). It is dev-only
+tooling with its own `package.json` — `cd tests && npm install && npm test`
+— and none of the four apps reference it; it doesn't count against Rule 3.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
-1. `README.md` is a stub; `.gitignore` is a generic Node template for a repo
-   with zero Node.
+1. `README.md` is a stub.
 
 ## Planned direction (design toward these)
 
