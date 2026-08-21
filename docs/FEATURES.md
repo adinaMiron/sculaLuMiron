@@ -115,24 +115,28 @@ a layer has editable vertices.
 
 ## C. New markdown syntax in `markdown-editor.html`
 
-The parser is unified: `parseMarkdown(md, opts)` (L1831) and
-`applyInline(text, opts)` (L1820) serve **both** the live preview
+The parser is unified: `parseMarkdown(md, opts)` (L3186) and
+`applyInline(text, opts)` (L3170) serve **both** the live preview
 (`updatePreview()`, opts omitted) and the HTML export
 (`exportHtml()`, `{forExport: true}`). Add new syntax once, in these two
 functions — no twin to keep in sync.
 
+Syntax that creates a *link* between notes is a third thing again: it also
+has to appear in the graph, which reads the text through `scanNote()`
+rather than through the parser. See § F.
+
 The only place behaviour forks on `forExport` is `resolveImageSrc()`
-(L1814): export rewrites relative image paths to `public/images/…` and
+(L3164): export rewrites relative image paths to `public/images/…` and
 turns a bare image-path line into a standalone `<img>`, because exported
 HTML ships without the app's working-folder image tree. If your new
 syntax needs export-only handling (e.g. it also touches paths that only
 make sense relative to the app's file picker), branch on `opts &&
 opts.forExport` the same way rather than forking the function.
 
-Also update `updateNav()` (L1939) if the syntax creates headings, and the
+Also update `updateNav()` (L3317) if the syntax creates headings, and the
 toolbar button + its `I18N` keys.
 
-**The exported-HTML template (L2209-2233) stays literal hex** — it ships
+**The exported-HTML template (L5388-5422) stays literal hex** — it ships
 to people without the app, so it can't reference theme tokens.
 
 ---
@@ -252,7 +256,7 @@ also needs an entry in `SUBDIR` — in all copies of the block.
 
 A **workbook** holds **chapters**; one chapter is one markdown file, the
 way OneNote holds pages in a notebook. Code: `markdown-editor.html`
-2533–3117, mapped function-by-function in `docs/MAP.md`.
+3394–3980, mapped function-by-function in `docs/MAP.md`.
 
 ### Two layers, and which one is the truth
 
@@ -328,6 +332,170 @@ workbook subfolder.
   you need a new object store or index.
 - Anything that changes `title` or `name` must go through the rename path
   so the mirror moves with it.
+
+---
+
+## F. The knowledge graph (`markdown-editor.html`)
+
+Obsidian's graph view, on this app's own notion of a note. Circles are
+notes, lines are the links between them; hover to light up what something
+is connected to, click to open it. Code: `markdown-editor.html`
+2876–3162 (the link syntax) and 3982–4972 (the graph), mapped
+function-by-function in `docs/MAP.md`.
+
+### What is a note here
+
+Obsidian has a vault of loose files. This app has workbooks holding
+chapters (§ E), so:
+
+| Obsidian | Here |
+|---|---|
+| vault | every workbook |
+| note | a chapter — or the loose file in the editor, if it is not a chapter |
+| attachment | an image a note references |
+| unresolved link | a `[[name]]` no chapter answers to |
+
+That gives one scope Obsidian does not have. The **note** scope graphs the
+*inside* of the open note: its headings are nodes, its `^block` anchors are
+nodes, its `#tags` are nodes, and a `[[#Section]]` link is an edge between
+two of them. That is what "connecting notions in a single note" means —
+the outline gives you the tree, the `[[#…]]` links give you everything the
+tree cannot say.
+
+| Scope | Nodes | Edges |
+|---|---|---|
+| **note** | the note, its headings, its `^blocks`, its `#tags`, whatever it links out to | the outline, plus every `[[…]]` from the section that wrote it |
+| **workbook** | the chapters of the open workbook, plus anything they link out to | `[[…]]` between chapters, chapter→tag |
+| **vault** | every chapter of every workbook | the same, across all of them |
+
+### The link syntax
+
+Obsidian's, unchanged, because half the point is that notes written here
+open in Obsidian and vice versa:
+
+```
+[[Note]]              a link to another note
+[[Note|shown as]]     …with its own display text
+[[Note#Section]]      …straight to one of its headings
+[[Note#^anchor]]      …straight to one ^block inside it
+[[#Section]]          a link inside the note being written
+[[#^anchor]]          …to a ^block inside it
+![[image.png]]        embeds the image
+![[Note]]             an embed card that opens the note
+#tag                  a tag
+text… ^anchor         names the block that line is
+```
+
+Two ways to write one: type `[[` and the suggester opens at the caret
+(↑↓ to move, Enter or Tab to take one, Esc to dismiss), or use the
+**⟦⟧ Note link** toolbar button / Ctrl+Shift+L, which opens the same
+candidates in a modal — the route that works with a thumb.
+
+**A link to a note that does not exist is still a link.** Obsidian calls it
+unresolved, draws it dimmed and creates the note when you follow it; so
+does this, as a new chapter in the current workbook. The graph draws
+unresolved names as hollow rings, and the *Existing notes only* filter
+hides them.
+
+### Resolving a name
+
+`resolveWiki(name, fromChapterId)` tries, in order: the full path
+(`Workbook/chapter.md`), the path without `.md`, `Workbook/Title`, the
+chapter title, the file's base name, the file name. **The nearest match
+wins** — a chapter in the same workbook beats one in another, which is
+Obsidian's rule and the reason `[[Intro]]` means the local Intro.
+
+The index behind it (`wikiNotes()`) is cached, and
+`invalidateWikiIndex()` is called from `renderWorkbooks()`. Every create,
+rename, delete and open path already ends there, so nothing else has to
+remember to invalidate it — but a new path that changes a title or a file
+name without re-rendering the tree does.
+
+### The settings palette
+
+The same four sections Obsidian has, with the same meanings:
+
+| Section | Controls |
+|---|---|
+| **Filters** | search · Tags · Attachments · Existing notes only · Orphans · *only what connects to this note* + Depth (Obsidian's local graph) |
+| **Groups** | a word and a colour; every node whose name, tag or path contains it takes that colour, first match wins |
+| **Display** | Arrows · Text fade threshold · Node size · Link thickness |
+| **Forces** | Center force · Repel force · Link force · Link distance |
+
+Filters apply in that order, and **orphans go last on purpose** — filtering
+is exactly what turns a note into one.
+
+The whole of `gvSettings` persists under `scula:graph` through the same
+`store` wrapper as the UI language (§ `docs/I18N.md`), so it survives a
+reload on any device.
+
+### Adding a setting
+
+Two edits, and only two:
+
+1. a control in the `#graph-view` markup carrying `data-gv="<key>"` (plus
+   `data-gv-val="<key>"` on the little number beside a slider, and a
+   `data-i` label like every other string);
+2. a default in `GV_DEFAULTS`.
+
+`gvBindControls()` and `gvPaintControls()` are generic over `[data-gv]` and
+need no edit at all. **Add the key to `GV_STRUCTURAL` as well if changing
+it changes which nodes exist** — that set is what decides between a rebuild
+and a repaint, and getting it wrong shows up as a slider that quietly does
+nothing.
+
+### Things worth knowing before changing it
+
+- **No graph library.** The simulation is ~50 lines (`gvStep`): repel every
+  pair, spring every link toward `linkDistance`, pull everything to the
+  centre, integrate with a velocity decay, and let `alpha` decay to zero so
+  it settles instead of twitching forever. Anything that changes the graph
+  calls `gvKick()`. This is deliberate, per CLAUDE.md rule 3 — do not
+  reach for d3.
+- **Canvas colours are resolved once.** `GRAPH_COLORS` reads the
+  `--graph-*` tokens at script init, because `ctx.fillStyle` cannot take a
+  `var()`. Same rule and the same reason as `editor.html`'s `CHROME` cache
+  — see `docs/THEME.md`. Do not call `getComputedStyle` in `gvDraw`.
+- **Everything is drawn in screen space.** `node.x/y` are graph
+  coordinates; `gvSX`/`gvSY` project them. That keeps line widths and label
+  sizes honest at any zoom without fighting a canvas transform.
+- **Positions survive a rebuild** (`gv.pos`), so toggling a filter moves the
+  graph instead of re-scattering it. Changing *scope* clears them, because
+  a different scope is a different picture.
+- **The open note reads from the editor, not from storage** (`noteText`),
+  so the graph follows what you are typing. `gvRefresh()` debounces that by
+  450 ms — a keystroke must not rescan every chapter.
+- **`headingSlug()` is the single slug function.** `parseMarkdown` writes
+  it as a heading `id`, and the nav panel, every `[[Note#Section]]` link and
+  every heading node in the graph jump to that id. A second copy would
+  silently break the two it did not update.
+- **The tag pattern runs last in `applyInline`.** By then every `#` the pass
+  produced sits after `>` or a quote, and the lead class excludes both, so
+  `href="#force"` and `<code>#tag</code>` survive. `scanNote` has no such
+  pass to hide behind and blanks the `[[links]]` itself first — without
+  that, `[[#Inertia]]` mints a tag called `Inertia`.
+- **Export does not carry the graph.** An exported HTML file is one
+  document with nowhere to send a link to another chapter, so
+  `[[#Section]]` becomes a real `#slug` anchor and everything else degrades
+  to styled text. Its `<style>` stays literal hex, like the rest of that
+  template.
+- **`![[Note]]` is a card, not a transclusion.** It renders as an embed
+  link that opens the note, and counts as an edge in the graph. Inlining
+  another chapter's text would change what `parseMarkdown` means for the
+  export path; if that is ever wanted, do it in the preview only.
+
+### Testing
+
+`tests/graph.js` — the one script in that folder that drives
+`markdown-editor.html`. It covers the parser, jumping to an anchor, all
+three scopes, every filter, the simulation actually settling, cross-chapter
+resolution, the `[[` suggester, both languages, the export fallback, and the
+same graph on a phone with a real touch drag. Canvas is asserted on pixels
+(`getImageData`), never a screenshot.
+
+```bash
+cd tests && npm install && node graph.js
+```
 
 ---
 

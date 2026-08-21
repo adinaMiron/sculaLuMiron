@@ -8,12 +8,13 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 3545 | 31k | Markdown editor + live preview + workbooks | dark (earth) |
+| `markdown-editor.html` | 5630 | 50k | Markdown editor + preview + workbooks + knowledge graph | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all three costs ~87k tokens; `editor.html` alone is 40k. **Never
-`view` an entire app file.** Locate first, then read a narrow range.
+Reading all three costs ~110k tokens; `markdown-editor.html` alone is 50k
+and `editor.html` 46k. **Never `view` an entire app file.** Locate first,
+then read a narrow range.
 
 ```bash
 grep -n "functionName\|#elementId" editor.html   # locate
@@ -39,7 +40,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all three files (`index.html:221-873`, `editor.html:418-1070`,
-`markdown-editor.html:843-1495`). It carries the nav links, the UI-language
+`markdown-editor.html:1194-1846`). It carries the nav links, the UI-language
 toggle, **and `window.ScuLaFolder`** — which decides where every saved file
 goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 **all three** or they drift. Verify with:
@@ -47,7 +48,7 @@ goes (see `docs/FEATURES.md` § D). Any change to it must be applied to
 ```bash
 sed -n '221,873p' index.html > /tmp/n1
 sed -n '418,1070p' editor.html > /tmp/n2
-sed -n '843,1495p' markdown-editor.html > /tmp/n3
+sed -n '1194,1846p' markdown-editor.html > /tmp/n3
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && echo "nav in sync"
 ```
 
@@ -59,7 +60,9 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:838` (docx import). Don't add more.
+  CDN in `markdown-editor.html:1189` (docx import). Don't add more. The
+  knowledge graph is deliberately hand-rolled for this reason — no d3, no
+  force-graph library.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -89,7 +92,7 @@ done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `markdown-editor.html:838` has attributes and is correctly skipped. If
+in `markdown-editor.html:1189` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach —
@@ -99,7 +102,8 @@ needs pixel assertions (`getImageData`), not screenshots. Anything using
 browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
-pan, gestures, undo/redo, every tool). It is dev-only tooling with its own
+pan, gestures, undo/redo, every tool) and for `markdown-editor.html`'s
+knowledge graph (`graph.js`). It is dev-only tooling with its own
 `package.json` — `cd tests && npm install && npm test` — and none of the
 three apps reference it; it doesn't count against Rule 3.
 

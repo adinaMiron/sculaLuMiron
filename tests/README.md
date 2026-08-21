@@ -1,6 +1,7 @@
 # tests/
 
-Ad-hoc Playwright checks for `editor.html`, written the way `HANDOFF.md` §
+Ad-hoc Playwright checks for `editor.html` — and, in `graph.js`, for
+`markdown-editor.html`'s knowledge graph — written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
@@ -33,6 +34,10 @@ for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
 - `EDITOR_URL` — override the `file://` URL under test, e.g. to point at a
   build of `editor.html` living somewhere other than the repo root, or at a
   copy on a different commit for a before/after comparison.
+- `MD_URL` — the same, for `graph.js`, which drives `markdown-editor.html`
+  instead. That script opens its own browser context rather than using
+  `lib.js`'s `open()` (which is hard-wired to `editor.html`), and runs a
+  desktop pass followed by a phone pass with a real touch drag.
 
 Two more, read by `lib.js`'s `open()`, let a script be re-run at a different
 viewport without editing it:

@@ -32,6 +32,17 @@ unified is the *values*: every file now sits on the same earth palette.
 | `--danger` | `#C4643C` | `#C4643C` | — |
 | `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
+| `--graph-*` | — | — | 8 node-role tokens, see below |
+
+`markdown-editor.html` alone carries a `--graph-*` block (`:root` 26-35):
+one token per kind of node in the knowledge graph — `--graph-note`,
+`--graph-active`, `--graph-heading`, `--graph-block`, `--graph-tag`,
+`--graph-unresolved`, `--graph-attachment`, `--graph-edge`. Every value is
+drawn from the same earth palette (olive, paper, mist, terracotta, and a
+mossy teal for tags), so the graph reads as part of the app rather than as
+a chart pasted into it. They are tokens rather than literals for one
+reason: the canvas resolves them **once**, and the day a light theme lands
+they are the only eight values that need a `[data-theme="light"]` entry.
 
 Where a cell is blank, that file has no equivalent — not a gap to fill,
 just a role it doesn't need (`index.html` has no secondary accent tint or
@@ -179,8 +190,16 @@ object in any of them.
 
 ## Canvas colours can't use `var()`
 
-`editor.html` draws to `<canvas>`; `ctx.strokeStyle` needs a real colour
-string, not `var(--accent)`. Current state (line numbers from `docs/MAP.md`):
+**Two files draw to `<canvas>` now** — `editor.html` (the drawing surface)
+and `markdown-editor.html` (the knowledge graph). `ctx.strokeStyle` needs a
+real colour string, not `var(--accent)`, so both resolve their tokens once
+at script init into a cache: `CHROME` in `editor.html`, `GRAPH_COLORS` in
+`markdown-editor.html` (~L4020). Neither may call `getComputedStyle` from a
+draw call — `editor.html` has a 60fps recording loop on that path, and the
+graph repaints on every hover and every simulation tick. If a live theme
+toggle is ever added, **both caches have to be refreshed when it fires**.
+
+`editor.html`'s current state (line numbers from `docs/MAP.md`):
 
 | Line | What | Resolution |
 |---|---|---|
@@ -227,9 +246,16 @@ it's an export-file convention (JPEG has no transparency channel), not
 UI chrome, so it should stay a predictable white regardless of what
 theme the app happens to be in when you hit export.
 
+The graph has no such exception: every colour it draws is app chrome, not
+document content, so all eight `--graph-*` tokens are read through
+`GRAPH_COLORS`. The one thing that is *not* a token there is a **group
+colour** — those come from an `<input type="color">` and are the reader's
+own choice about their own notes, the same carve-out `PALETTE` gets.
+
 Same principle for the **exported-HTML template** in
-`markdown-editor.html:3304-3324`: it ships standalone to people without
-the app, so it must keep literal hex. Do not tokenise it.
+`markdown-editor.html:5388-5422`: it ships standalone to people without
+the app, so it must keep literal hex — including the `.wikilink` and
+`.md-tag` rules added for the graph's link syntax. Do not tokenise it.
 
 ## Theme switching + persistence
 

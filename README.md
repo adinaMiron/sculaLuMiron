@@ -7,7 +7,7 @@ open any `.html` file in a browser and it runs.
 |---|---|---|
 | **Caiet vocal** | `index.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
-| **Markdown Editor** | `markdown-editor.html` | Markdown editing with live preview, docx import, HTML export. |
+| **Markdown Editor** | `markdown-editor.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, and an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`. |
 
 All three share a common nav bar and link to each other.
 

@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:221-873` · `editor.html:418-1070` · `markdown-editor.html:843-1495`
+`index.html:221-873` · `editor.html:418-1070` · `markdown-editor.html:1194-1846`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -193,44 +193,49 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## markdown-editor.html — 3545 lines · Markdown editor
+## markdown-editor.html — 5630 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
-| 8–837 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). Workbooks panel **181–271**. `@media` 722, 751 |
-| 838 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 842–1494 | **Shared nav + `ScuLaFolder`** |
-| 1496–~1756 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
-| 1757–3537 | App script |
+| 8–1188 | App CSS. `:root` **9–36** (earth-palette tokens + the `--graph-*` node roles). Workbooks panel **193–283**. **Knowledge graph 850–1187**. `@media` 728, 758, 837, 844, **1163** (the graph on a phone) |
+| 1189 | **mammoth.js CDN** (docx import) — only external dep in the repo |
+| 1194–1846 | **Shared nav + `ScuLaFolder`** |
+| 1848–~2110 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
+| **2111–2240** | Markup: **`#graph-view`** overlay + `#wiki-modal` + `#wiki-suggest` |
+| 2242–5630 | App script |
 
 | Line | Function / region |
 |---|---|
-| 1764 | `I18N` (`ro:` 1765 / `en:` 1832), `t()`, `store`, `applyUILang` |
-| 1948–1950 | `editor`, `preview` refs, `savedRange` |
-| 1953–1975 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 1977–2050 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 2052–2087 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| 2089–2091 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
-| 2099–2139 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2110) + `togglePanelById` — one map drives all three side panels |
-| 2243–2299 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| 2314 | `resolveImageSrc` — image-path rewrite, export-only |
-| 2320 | `applyInline(text, opts)` |
-| **2331** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 2433–2439 | `updatePreview`, `updateNav` |
-| 2521 | `updateStatus` |
-| **2542–3126** | **Workbooks** — see the sub-table below |
-| 3128–3148 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
-| 3150 | `importDocx` |
-| 3193 | `htmlToMarkdown` (docx → md) |
-| 3295–3302 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
-| ~3307–3337 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 3351–3456 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 3458–3479 | Link modal: `openLinkModal`, `insertLink` |
-| 3508–3537 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
+| 2249 | `I18N` (`ro:` 2250 / `en:` 2356), `t()`, `store`, `applyUILang` |
+| 2513–2515 | `editor`, `preview` refs, `savedRange` |
+| 2518–2540 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 2542–2615 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
+| 2617–2652 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| 2654–2656 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
+| 2664–2704 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2675) + `togglePanelById` — one map drives all three side panels |
+| 2808–2864 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| **2876–3162** | **Wikilinks, tags and block anchors** — see the sub-table below |
+| 3164 | `resolveImageSrc` — image-path rewrite, export-only |
+| 3170 | `applyInline(text, opts)` |
+| **3186** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 3292–3315 | `updatePreview` (+ the graph refresh), the `#preview` click delegation, `updateNav` |
+| 3373 | `updateStatus` |
+| **3394–3980** | **Workbooks** — see the sub-table below |
+| **3982–4972** | **Knowledge graph** — see the sub-table below |
+| **4974–5206** | **Writing a `[[link]]`**: `wikiCandidates` 4988, the modal 5015–5082, the `[[` suggester 5084–5206 |
+| 5209–5229 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
+| 5231 | `importDocx` |
+| 5274 | `htmlToMarkdown` (docx → md) |
+| 5376–5383 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
+| ~5388–5422 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 5435–5540 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 5542–5560 | Link modal: `openLinkModal`, `insertLink` |
+| 5562–5597 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**, Ctrl+Shift+**L**) |
+| 5599–5630 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
-### Workbooks (2542–3126) — `docs/FEATURES.md` § E
+### Workbooks (3394–3980) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -239,20 +244,82 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 2542–2552 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
-| 2554–2598 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
-| 2600–2629 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 2641–2673 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 2675–2781 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 2786–2935 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| 2937–2969 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
-| 2971–3100 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| 3103–3126 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
+| 3394–3404 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
+| 3406–3450 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
+| 3452–3481 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 3493–3525 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 3525–3635 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 3638–3788 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| 3789–3821 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
+| 3823–3953 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| 3955–3980 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture); the disk mirror happens on
 explicit saves — `saveToWorkbook`, `confirmSaveToWorkbook`, rename, delete,
 `syncAllToFolder` — all of which run inside a click.
+
+### Wikilinks, tags and block anchors (2876–3162) — `docs/FEATURES.md` § F
+
+Obsidian's link syntax, and the only reason the graph has any edges. Both
+the preview and the export go through it, and so does the graph scanner.
+
+| Line | Function |
+|---|---|
+| 2900–2907 | **`WIKI_RE`**, `TAG_RE`, `BLOCK_RE`, `IMG_RE` — the four patterns. `WIKI_RE`/`TAG_RE` are **global**; anything that `exec`s them in a loop must use a private copy (`scanNote` does) |
+| 2911–2916 | `mdUnescape` / `attrEsc` — `applyInline` is handed already-escaped text, so a name is `A &amp; B` until it goes through these |
+| 2920 | `mdPlain(raw)` — heading text with its inline markdown stripped |
+| **2933** | **`headingSlug(raw, seen)`** — the one slug function. `parseMarkdown` writes it as a heading `id`, the nav panel and every `[[Note#Section]]` jump to that id. Three callers, one implementation: keep it that way |
+| 2948 | `parseWikiTarget(raw)` → `{name, sub, heading, block}` |
+| 2960–2996 | `wikiNotes()` — every note a link may point at (every chapter, plus the loose document), cached; `invalidateWikiIndex()` is called from `renderWorkbooks()` |
+| **2999** | **`resolveWiki(name, fromChapterId)`** — path, then `Workbook/Title`, then title, then file name; the nearest match (same workbook) wins, as in Obsidian |
+| 3035 | `renderWikiLink(...)` — the live `<a>` for the preview, a real anchor or plain text for the export |
+| 3068–3075 | `takeBlockId` / `liWithBlockId` — `…text ^anchor` becomes `id="block-anchor"` |
+| **3082** | **`gotoPreviewAnchor(id)`** — the single jump-to-anchor path: nav panel, wikilinks and the graph all land here |
+| 3101 | `followWikiLink(name, heading, block)` — switch chapter, then jump |
+| 3119 | `offerToCreateNote(name)` — an unresolved link becomes a real chapter |
+| 3141 | `createChapterNamed(...)` — `newChapter()` without the prompt |
+
+**The tag pattern runs last in `applyInline`, on purpose.** By then every
+`#` the pass produced sits after `>` or a quote, and the lead class
+(`(^|[\s(\[{])`) excludes both — which is what keeps `href="#force"` and
+`<code>#tag</code>` from being turned into tags. `scanNote` has no such
+pass to hide behind, so it blanks the `[[links]]` itself before scanning
+tags; without that, `[[#Inertia]]` mints a tag called `Inertia`.
+
+### Knowledge graph (3982–4972) — `docs/FEATURES.md` § F
+
+One `<canvas>`, one force simulation, no library. Obsidian's palette
+(Filters · Groups · Display · Forces) drives `gvSettings`, which persists
+under `scula:graph`.
+
+| Line | Region |
+|---|---|
+| 4020–4038 | **`GRAPH_COLORS`** — the `--graph-*` tokens resolved **once**; canvas cannot use `var()`. Same rule as `editor.html`'s `CHROME`, see `docs/THEME.md` |
+| 4040–4046 | `GV_BASE_R`, **`GV_STRUCTURAL`** — the settings that change *which* nodes exist (those rebuild; everything else only repaints) |
+| 4048–4067 | `GV_DEFAULTS`, `gvSettings`, `gvLangReady` (a **`var`** — `applyUILang` reads it early) |
+| 4065–4079 | `gv` — the whole live state: nodes, links, `pos` (survives a rebuild), transform, pointers |
+| **4083** | **`scanNote(md)`** — one pass over a note: headings, `^blocks`, `#tags`, `[[links]]`, images, each tagged with the section it sat in |
+| 4135–4150 | `scanNoteCached`, `noteText` (the open note reads from the **editor**, saved or not), `gvCurrentBookId` |
+| **4155** | **`buildGraph()`** — dispatches on scope |
+| **4185** | **`buildNoteScope`** — the note, its headings as an outline, its blocks, its tags, and `[[#Section]]` links as section-to-section edges |
+| 4258 | `buildNotesScope` — chapters as nodes (`workbook` and `vault`) |
+| 4296–4357 | `gvMatches`, **`applyGraphFilters`** (search → kinds → local-graph depth → orphans, in that order), `gvNodeColor` (groups first) |
+| 4369–4421 | **`gvKick`/`gvStep`** — the four forces and the alpha decay |
+| 4424–4524 | `gvSX`/`gvSY`, `gvRadius`, **`gvDraw`** (hover dims the unconnected), `gvArrow` |
+| **4527** | **`gvRebuild()`** — filter, recompute degrees, keep old positions, re-link |
+| 4577–4615 | `gvFit`, `gvZoomAt`/`gvZoomBy`, `gvResize` (dpr-aware) |
+| **4617–4736** | **`gvHit` + `gvBindStage`** — the one pointer route: drag a node, drag the background to pan, two fingers to pinch, wheel to zoom |
+| 4738 | `gvOpenNode` — note opens, heading/block jumps, tag becomes the search, unresolved offers to be created |
+| 4755–4830 | Settings: save/load, `gvPaintControls`, `gvBindControls` (generic over `[data-gv]`), `setGraphScope` |
+| 4832–4892 | `renderGvGroups`, `renderGvLegend` |
+| 4894–4962 | `gvLoop`, **`openGraph`/`closeGraph`/`toggleGraph`**, `openGraphForTag`, `gvRefresh` (debounced; the graph follows the editor) |
+| 4964 | `gvRepaintLang` — what `applyUILang` calls for the generated legend/groups/counts |
+
+**Two lists must stay in step:** a new setting needs a control in the
+`#graph-view` markup carrying `data-gv="<key>"` **and** an entry in
+`GV_DEFAULTS`; add it to `GV_STRUCTURAL` too if changing it changes which
+nodes exist. `gvBindControls`/`gvPaintControls` then need no edit at all.
 
 **Parser is unified (2026-08).** `parseMarkdown(md, {forExport})` and
 `applyInline(text, {forExport})` serve both preview (`forExport` falsy) and
@@ -263,7 +330,7 @@ when exporting). New markdown syntax now needs exactly one edit, in
 `parseMarkdown`/`applyInline`, not two.
 
 **One trap remains:** exported HTML must stay self-contained (its `<style>`
-runs 3313–3333). It ships to people who don't have the app, so it uses
+runs 5394–5421). It ships to people who don't have the app, so it uses
 literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
