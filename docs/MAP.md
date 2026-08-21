@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:221-864` · `editor.html:416-1059` · `markdown-editor.html:843-1486`
+`index.html:221-864` · `editor.html:418-1061` · `markdown-editor.html:843-1486`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -80,7 +80,7 @@ Script sections (comment banners `/* === N. Title === */`):
 
 ---
 
-## editor.html — 4589 lines · "Image Marker" (canvas annotation)
+## editor.html — 4637 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -97,68 +97,75 @@ touch" for why and how.
 | Lines | Contents |
 |---|---|
 | 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
-| 15–412 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 15–414 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
 | 72–117 | Top toolbar |
 | 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
-| 247–340 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
-| 341–412 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 416–1059 | **Shared nav + `ScuLaFolder`** |
-| 1065–1093 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1095–1131 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1132–1258 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1259–1362 | Markup: modals, stage, sidebar |
-| 1364–4587 | App script |
+| 247–342 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
+| 343–414 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 418–1061 | **Shared nav + `ScuLaFolder`** |
+| 1069–1096 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1098–1135 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1137–1263 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1264–1365 | Markup: modals, stage, sidebar |
+| 1367–4635 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1364 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1578 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
-| 1629 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1671 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
-| 1729 | Loading an image |
-| 1765 | Screen snapshot |
-| 1805 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1951 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2053** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2182 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2234 | New canvas modal |
-| **2316** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| **2672** | **Spline curve** — the whole `spline` layer type in one block: `splineSegments` (the maths), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
-| 3119 | Layer list (sidebar) — `renderLayerList` |
-| **3168** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3421** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3605** | **Selection panel contents** — `ROW_TYPES` (3620), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
-| 3695 | Text box auto-fit |
-| 3706 | Pointer/canvas coords — `canvasPoint()` |
-| **3745** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 4258 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 4341 | Keyboard shortcuts |
-| 4385 | Save — `renderComposite`, **`saveOut()`** 4419 (one line onto `ScuLaFolder.save`) |
-| 4424 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4573 | Fonts ready — `document.fonts.load()` startup pass |
+| 1371 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1585 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
+| 1636 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1678 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1736 | Loading an image |
+| 1772 | Screen snapshot |
+| 1812 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1958 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2060** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2189 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2241 | New canvas modal |
+| **2323** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2679** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3156 | Layer list (sidebar) — `renderLayerList` |
+| **3206** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3459** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3643** | **Selection panel contents** — `ROW_TYPES` (3657), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 3741 | Text box auto-fit |
+| 3752 | Pointer/canvas coords — `canvasPoint()` |
+| **3791** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4306 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4389 | Keyboard shortcuts |
+| 4433 | Save — `renderComposite`, **`saveOut()`** 4464 (one line onto `ScuLaFolder.save`) |
+| 4472 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4621 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2316–3119); go straight to the
+Largest region by far is Rendering (2323–3156); go straight to the
 specific `drawX()` you need.
 
-### The `spline` layer (2672–2971)
+### The `spline` and `polyline` layers (2679–3007)
 
-The one shape whose geometry is worth reading before touching. Unlike every
-other type it is **re-derived from its vertices on every repaint** and is
-editable after the fact, so nothing may cache a sampled path or edit
+The two shapes whose geometry is worth reading before touching. Unlike every
+other type they are **re-derived from their vertices on every repaint** and
+are editable after the fact, so nothing may cache a sampled path or edit
 `l.points` directly.
+
+`polyline` is `spline` with straight spans: same vertex list, same box
+re-fitting, same dragging / inserting / removing / closing, same hit-testing.
+**`splineSegments()` is the only function that branches on the type** — keep
+it that way, and ask `isVertexShape(l)` rather than `l.type === 'spline'`
+anywhere the question is "does this layer have editable vertices".
 
 | Function | What |
 |---|---|
-| `splineSegments(l)` | vertices → cubic Beziers. Centripetal Catmull-Rom (`SPLINE_ALPHA` 0.5) with non-uniform tangents; `l.tension` scales them, `p.corner` zeroes one side |
+| `isVertexShape(l)` | `spline` or `polyline` — the test every other part of the app should use |
+| `splineSegments(l)` | vertices → cubic Beziers. Centripetal Catmull-Rom (`SPLINE_ALPHA` 0.5) with non-uniform tangents; `l.tension` scales them, `p.corner` zeroes one side. For a `polyline`, control points sit on the chord at its thirds instead — the exact straight segment, uniformly parametrised |
 | `drawSpline` / `traceSpline` / `pointInSpline` | render, path-trace, and inside-test (the last borrows `baseCtx` as a geometry engine) |
 | `nearestOnSpline(l, q)` | closest point on the drawn curve — hit-testing *and* where an inserted vertex goes |
 | **`setSplinePoints(l, pts)`** | **the only writer of `l.points`.** Re-fits the box and re-normalises; the correction at its end is what stops the other vertices swinging when the box's centre (= the rotation pivot) moves |
 | `splineVertexAt` / `insertSplineVertex` / `removeSplineVertex` / `toggleSplineCorner` | the vertex edits, each ending in `pushHistory(); renderAll()` |
-| `startPendingSpline` / `addPendingSplinePoint` / `finishSpline` / `cancelSpline` | the click-to-place mode. It lives in `state.pendingSpline`, **not** `state.drag`, because it spans many clicks rather than one drag |
-| `drawSplineVertices(l)` | the handles — circle = smooth vertex, square = corner |
+| `startPendingSpline(p, e, type)` / `addPendingSplinePoint` / `finishSpline` / `cancelSpline` | the click-to-place mode, shared by both tools (`type` is the tool name). It lives in `state.pendingSpline`, **not** `state.drag`, because it spans many clicks rather than one drag. Clicking back on the first vertex sets `closed` and finishes |
+| `drawSplineVertices(l)` | the handles — circle = smooth vertex, square = corner (so every handle of a polyline is square) |
 
 `state.vertexSel` names the vertex the panel's Points row acts on; read it
 only through `pickedVertex()` (Selection panel contents), which re-checks
@@ -176,11 +183,13 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3620) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (3168)
+**Two lists must stay in step:** `ROW_TYPES` (3657) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (3206)
 say which types each control actually writes to. Add a control → add it to
 both. `rowSplineEdit` is the one row that also needs a real layer, not just
-a matching tool, so `syncSplineControls()` hides it again afterwards.
+a matching tool, so `syncSplineControls()` hides it again afterwards — that
+function also hides the Corner button and swaps the hint's `data-i` key for
+a `polyline`, whose vertices are all corners already.
 
 ---
 

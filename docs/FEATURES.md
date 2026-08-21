@@ -104,6 +104,13 @@ Beyond the list above it needed:
 - **A `ROW_TYPES` entry that also needs a real selection** must be hidden
   again after the generic pass — see `syncSplineControls()`.
 
+`polyline` is the second shape of this kind, and it added none of the above:
+it is `spline` with straight spans, so it reuses the whole block and only
+`splineSegments()` branches on the type. If the next editable shape is also a
+list of vertices, do the same rather than copying the block — and ask
+`isVertexShape(l)`, never `l.type === 'spline'`, when the question is whether
+a layer has editable vertices.
+
 ---
 
 ## C. New markdown syntax in `markdown-editor.html`

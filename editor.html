@@ -318,6 +318,8 @@
   #selectionPanel{ width:15.5rem; }
   .selRow{ display:flex; flex-direction:column; gap:0.286rem; }
   .selRow[hidden]{ display:none; }
+  /* button.tool/.action set display:flex, which outranks the UA [hidden] rule */
+  button.action[hidden], button.tool[hidden]{ display:none; }
   .selRow.inline{ flex-direction:row; align-items:center; gap:0.429rem; }
   .selRow .rlab{
     font-size:0.714rem; color:var(--text-2); letter-spacing:.02em; white-space:nowrap;
@@ -1114,6 +1116,7 @@
         <div class="toolGrid">
           <button class="tool" data-tool="line" data-i-title="toolLineTip" data-i-aria="toolLine" title="Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)" aria-label="Line"><span class="ticon">╱</span><span class="tlabel" data-i="toolLine">Line</span></button>
           <button class="tool" data-tool="spline" data-i-title="toolSplineTip" data-i-aria="toolSpline" title="Spline curve - click to place points, double-click to finish; drag its points afterwards to reshape it (C)" aria-label="Spline curve"><span class="ticon">∿</span><span class="tlabel" data-i="toolSpline">Spline</span></button>
+          <button class="tool" data-tool="polyline" data-i-title="toolPolylineTip" data-i-aria="toolPolyline" title="Polyline - click each vertex, double-click to finish; clicking the first vertex again closes the shape. Drag its vertices any time afterwards (G)" aria-label="Polyline"><span class="ticon">⋀</span><span class="tlabel" data-i="toolPolyline">Polyline</span></button>
           <button class="tool" data-tool="rect" data-i-title="toolRectTip" data-i-aria="toolRect" title="Rectangle - hold Ctrl for a perfect square (R)" aria-label="Rect"><span class="ticon">▭</span><span class="tlabel" data-i="toolRect">Rect</span></button>
           <button class="tool" data-tool="ellipse" data-i-title="toolEllipseTip" data-i-aria="toolEllipse" title="Ellipse / circle - hold Shift or Ctrl for a perfect circle (O)" aria-label="Ellipse"><span class="ticon">◯</span><span class="tlabel" data-i="toolEllipse">Ellipse</span></button>
           <button class="tool" data-tool="rhombus" data-i-title="toolRhombusTip" data-i-aria="toolRhombus" title="Rhombus / diamond - hold Shift or Ctrl for equal sides (D)" aria-label="Rhombus"><span class="ticon">◇</span><span class="tlabel" data-i="toolRhombus">Rhombus</span></button>
@@ -1390,6 +1393,7 @@ const I18N = {
     toolArrow:"Săgeată", toolArrowTip:"Săgeată - ține Ctrl pentru aliniere orizontală/verticală (A)",
     toolSplineArrow:"Curbată", toolSplineArrowTip:"Săgeată curbă - dă clic unde ajunge vârful, apoi desenează coada liber (S)",
     toolSpline:"Spline", toolSplineTip:"Curbă spline - dă clic pentru fiecare punct, dublu-clic pentru a termina; trage punctele oricând după aceea ca să o remodelezi (C)",
+    toolPolyline:"Polilinie", toolPolylineTip:"Polilinie - dă clic pentru fiecare vârf, dublu-clic pentru a termina; clic pe primul vârf închide forma. Trage vârfurile oricând după aceea (G)",
     toolLine:"Linie", toolLineTip:"Linie dreaptă - ține Shift pentru unghiuri de 45°, Ctrl pentru orizontal/vertical (L)",
     panelTools:"Instrumente", panelSelection:"Selecție",
     capBasic:"De bază", capShapes:"Forme", capArrows:"Săgeți",
@@ -1408,6 +1412,7 @@ const I18N = {
     splineCorner:"Colț", splineCornerTip:"Fă punctul ales colț ascuțit în loc de curbă lină (sau dublu-clic pe punct)",
     splinePointDel:"Șterge", splinePointDelTip:"Șterge punctul ales (Ctrl+clic pe un punct sau tasta Delete)",
     splineEditHint:"Trage un punct ca să-l muți, dublu-clic pe curbă ca să adaugi unul.",
+    polylineEditHint:"Trage un vârf ca să-l muți, dublu-clic pe o latură ca să adaugi unul.",
     lblSloppiness:"Stil schiță",
     roughArchitect:"Arhitect", roughArchitectTip:"Arhitect — linii precise",
     roughArtist:"Artist", roughArtistTip:"Artist — puțin schițat",
@@ -1432,7 +1437,7 @@ const I18N = {
     layerText:p=>`Text: ${p}`, layerRect:"Dreptunghi", layerRectText:"Dreptunghi + text",
     layerFreehand:"Desen liber", layerArrowLabel:"Săgeată", layerHighlightLabel:"Evidențiere",
     layerCircle:"Cerc", layerEllipseLabel:"Elipsă", layerRhombusLabel:"Romb", layerLineLabel:"Linie",
-    layerSplineArrowLabel:"Săgeată curbă", layerSplineLabel:"Curbă spline",
+    layerSplineArrowLabel:"Săgeată curbă", layerSplineLabel:"Curbă spline", layerPolylineLabel:"Polilinie",
     bgTransparent:"fundal transparent", bgColor:hex=>`fundal ${hex}`,
     tooSmallForExport:([w,h])=>`Canvasul tău (${w}×${h}) e mai mic decât cea mai mică presetare (320×240), deci nu mai e nimic mai mic de exportat.`,
     willSaveSizes:list=>`Se va salva: ${list}`,
@@ -1463,6 +1468,7 @@ const I18N = {
     toolArrow:"Arrow", toolArrowTip:"Arrow - hold Ctrl to snap horizontal/vertical (A)",
     toolSplineArrow:"Curved", toolSplineArrowTip:"Spline arrow - click where the head goes, then draw the shaft freehand (S)",
     toolSpline:"Spline", toolSplineTip:"Spline curve - click to place each point, double-click to finish; drag its points any time afterwards to reshape it (C)",
+    toolPolyline:"Polyline", toolPolylineTip:"Polyline - click each vertex, double-click to finish; clicking the first vertex again closes the shape. Drag its vertices any time afterwards (G)",
     toolLine:"Line", toolLineTip:"Straight line - hold Shift for 45° angles, Ctrl for horizontal/vertical (L)",
     panelTools:"Tools", panelSelection:"Selection",
     capBasic:"Basic", capShapes:"Shapes", capArrows:"Arrows",
@@ -1481,6 +1487,7 @@ const I18N = {
     splineCorner:"Corner", splineCornerTip:"Make the picked point a sharp corner instead of a smooth bend (or double-click the point)",
     splinePointDel:"Remove", splinePointDelTip:"Remove the picked point (Ctrl+click a point, or the Delete key)",
     splineEditHint:"Drag a point to move it, double-click the curve to add one.",
+    polylineEditHint:"Drag a vertex to move it, double-click a side to add one.",
     lblSloppiness:"Sloppiness",
     roughArchitect:"Architect", roughArchitectTip:"Architect — precise lines",
     roughArtist:"Artist", roughArtistTip:"Artist — a bit sketchy",
@@ -1505,7 +1512,7 @@ const I18N = {
     layerText:p=>`Text: ${p}`, layerRect:"Rectangle", layerRectText:"Rectangle + text",
     layerFreehand:"Freehand drawing", layerArrowLabel:"Arrow", layerHighlightLabel:"Highlight",
     layerCircle:"Circle", layerEllipseLabel:"Ellipse", layerRhombusLabel:"Rhombus", layerLineLabel:"Line",
-    layerSplineArrowLabel:"Spline arrow", layerSplineLabel:"Spline curve",
+    layerSplineArrowLabel:"Spline arrow", layerSplineLabel:"Spline curve", layerPolylineLabel:"Polyline",
     bgTransparent:"transparent background", bgColor:hex=>`${hex} background`,
     tooSmallForExport:([w,h])=>`Your canvas (${w}×${h}) is smaller than the smallest preset (320×240), so there's nothing smaller to export.`,
     willSaveSizes:list=>`Will save: ${list}`,
@@ -2669,7 +2676,7 @@ function drawSplineArrow(ctx, l){
   ctx.restore();
 }
 
-/* ---------- Spline curve ----------
+/* ---------- Spline curve + polyline ----------
    An editable curve through a list of vertices. The vertices are the whole
    truth: the curve is re-derived from them on every repaint, so dragging one
    point never disturbs the others and nothing accumulates drift.
@@ -2686,7 +2693,14 @@ function drawSplineArrow(ctx, l){
    - **No smoothing pass and no roughness.** Unlike `freehand` / `splineArrow`,
      nothing here runs through smoothPoints() or the hand-drawn wobble: this
      shape is meant to be exact, repeatable and re-editable. That is also why
-     `spline` is absent from the sloppiness list in Toolbar wiring. */
+     `spline` is absent from the sloppiness list in Toolbar wiring.
+
+   The `polyline` type is this same machinery with straight spans instead of
+   curved ones: the same vertex list, the same dragging, inserting, removing
+   and closing, the same hit-testing. Only splineSegments() branches on it, so
+   there is one implementation of "an editable shape made of vertices" rather
+   than two that drift apart. Use isVertexShape(l) - never `type === 'spline'`
+   - wherever the question is "does this layer have editable vertices". */
 const SPLINE_ALPHA = 0.5;      // 0 uniform - 0.5 centripetal - 1 chordal
 const SPLINE_VERTEX_R = 5;     // drawn radius of a vertex handle, canvas px
 
@@ -2694,6 +2708,9 @@ const SPLINE_VERTEX_R = 5;     // drawn radius of a vertex handle, canvas px
 // view zooms out. Grabbing one takes the larger of the drawn size and a
 // comfortable on-screen distance, which keeps them reachable at any zoom.
 function splineGrab(){ return Math.max(SPLINE_VERTEX_R * 2.2, 14 / viewScale()); }
+
+// Every layer type whose geometry *is* its vertex list.
+function isVertexShape(l){ return !!l && (l.type === 'spline' || l.type === 'polyline'); }
 
 // The layer's vertices in its own local (unrotated) canvas space.
 function splineAbs(l){
@@ -2721,6 +2738,25 @@ function splineSegments(l){
   const closed = !!l.closed && n > 2;
   const tension = (l.tension === undefined ? 1 : l.tension);
   const lastSeg = closed ? n - 1 : n - 2;
+  // A polyline is the same list of spans, with each control point laid on the
+  // chord at a third of its length. That is exactly the straight segment, and
+  // uniformly parametrised, so sampling (nearestOnSpline) stays honest and
+  // every consumer below - tracing, filling, hit-testing, inserting a vertex -
+  // needs no idea that this shape is not curved. Neither `tension` nor a
+  // vertex's `corner` flag means anything here: every joint is already sharp.
+  if (l.type === 'polyline'){
+    for (let i = 0; i <= lastSeg; i++){
+      const p1 = pts[i], p2 = pts[(i+1) % n];
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      segs.push({
+        x1: p1.x, y1: p1.y,
+        c1x: p1.x + dx/3,   c1y: p1.y + dy/3,
+        c2x: p1.x + dx*2/3, c2y: p1.y + dy*2/3,
+        x2: p2.x, y2: p2.y
+      });
+    }
+    return segs;
+  }
   for (let i = 0; i <= lastSeg; i++){
     const p1 = pts[i], p2 = pts[(i+1) % n];
     const p0 = closed ? pts[(i-1+n) % n] : (i > 0    ? pts[i-1] : splineMirror(p1, p2));
@@ -2897,8 +2933,8 @@ function toggleSplineCorner(l, idx){
    has no single pointer gesture to hang off. state.pendingSpline is that
    whole mode: it holds the layer-to-be plus its vertices in canvas space,
    and only reaches state.layers once the curve is finished. */
-function startPendingSpline(p, e){
-  const l = newBaseLayer('spline', p);
+function startPendingSpline(p, e, type){
+  const l = newBaseLayer(type || 'spline', p);
   Object.assign(l, {
     color: state.color, strokeWidth: state.strokeWidth, fill: state.fill,
     tension: state.splineTension, closed: false, points: [],
@@ -2961,8 +2997,9 @@ function drawSplineVertices(l){
     octx.strokeStyle = CHROME.accent;
     octx.fillStyle = i === picked ? CHROME.accent : CHROME.text;
     // square = a corner vertex, circle = a smooth one; the shape of the
-    // handle is the only place that distinction is visible
-    if (q.corner) octx.rect(q.x - SPLINE_VERTEX_R, q.y - SPLINE_VERTEX_R, SPLINE_VERTEX_R*2, SPLINE_VERTEX_R*2);
+    // handle is the only place that distinction is visible. Every vertex of a
+    // polyline is a corner, so they are all drawn square.
+    if (q.corner || l.type === 'polyline') octx.rect(q.x - SPLINE_VERTEX_R, q.y - SPLINE_VERTEX_R, SPLINE_VERTEX_R*2, SPLINE_VERTEX_R*2);
     else octx.arc(q.x, q.y, SPLINE_VERTEX_R, 0, Math.PI*2);
     octx.fill(); octx.stroke();
   });
@@ -3021,7 +3058,7 @@ function drawLayer(ctx, l){
   else if (l.type === 'rhombus') drawRhombus(ctx, l);
   else if (l.type === 'line') drawLine(ctx, l);
   else if (l.type === 'splineArrow') drawSplineArrow(ctx, l);
-  else if (l.type === 'spline') drawSpline(ctx, l);
+  else if (isVertexShape(l)) drawSpline(ctx, l);
   ctx.restore();
 }
 
@@ -3072,7 +3109,7 @@ function renderOverlay(){
       strokeSelBox(single.x, single.y, single.w, single.h);
       drawHandles(single);
       // inside the layer's own rotation, which is the space the vertices live in
-      if (single.type === 'spline') drawSplineVertices(single);
+      if (isVertexShape(single)) drawSplineVertices(single);
     } else {
       strokeSelBox(box.x, box.y, box.w, box.h);
     }
@@ -3128,6 +3165,7 @@ function labelFor(l){
   if (l.type==='line') return t('layerLineLabel');
   if (l.type==='splineArrow') return t('layerSplineArrowLabel');
   if (l.type==='spline') return t('layerSplineLabel');
+  if (l.type==='polyline') return t('layerPolylineLabel');
   return l.type;
 }
 
@@ -3230,7 +3268,7 @@ document.getElementById('fillCustomColor').addEventListener('input', (e) => {
 });
 
 function applyFillToSelection(c){
-  const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='ellipse' || l.type==='rhombus' || l.type==='spline');
+  const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='ellipse' || l.type==='rhombus' || isVertexShape(l));
   if (!sel.length) return;
   sel.forEach(l => { l.fill = c; });
   pushHistory(); renderAll();
@@ -3242,7 +3280,7 @@ function applyColorToSelection(c){
   sel.forEach(l => {
     if (l.type==='text') l.color = c;
     else if (l.type==='rect' || l.type==='ellipse' || l.type==='rhombus') l.stroke = c;
-    else if (l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='line' || l.type==='splineArrow' || l.type==='spline') l.color = c;
+    else if (l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='line' || l.type==='splineArrow' || isVertexShape(l)) l.color = c;
   });
   pushHistory(); renderAll();
 }
@@ -3292,7 +3330,7 @@ document.getElementById('strokeWidth').addEventListener('input', (e) => {
   if (sel.length){
     sel.forEach(l => {
       if (l.type==='rect'||l.type==='ellipse'||l.type==='rhombus') l.strokeWidth = state.strokeWidth;
-      if (l.type==='freehand'||l.type==='arrow'||l.type==='line'||l.type==='splineArrow'||l.type==='spline') l.strokeWidth = state.strokeWidth;
+      if (l.type==='freehand'||l.type==='arrow'||l.type==='line'||l.type==='splineArrow'||isVertexShape(l)) l.strokeWidth = state.strokeWidth;
       if (l.type==='text'){ l.strokeWidth = state.strokeWidth; fitTextBox(l); }
     });
     pushHistory(); renderAll();
@@ -3322,7 +3360,7 @@ document.getElementById('splineTension').addEventListener('input', (e) => {
   else if (state.pendingSpline){ state.pendingSpline.layer.tension = state.splineTension; renderCanvasFrame(); }
 });
 document.getElementById('splineClosedBtn').addEventListener('click', () => {
-  const sel = selectedLayers().filter(l => l.type === 'spline');
+  const sel = selectedLayers().filter(isVertexShape);
   if (!sel.length) return;
   const on = !sel[0].closed;
   sel.forEach(l => { l.closed = on; });
@@ -3612,24 +3650,25 @@ window.addEventListener('resize', () => {
 const TOOL_TYPE = {
   text:'text', rect:'rect', ellipse:'ellipse', rhombus:'rhombus',
   pencil:'freehand', highlight:'highlight', arrow:'arrow',
-  splineArrow:'splineArrow', line:'line', spline:'spline'
+  splineArrow:'splineArrow', line:'line', spline:'spline', polyline:'polyline'
   // 'select' deliberately absent - it has no type of its own
 };
-const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow','spline'];
+const ALL_TYPES = ['text','rect','ellipse','rhombus','freehand','arrow','highlight','line','splineArrow','spline','polyline'];
 const ROW_TYPES = {
   rowText:    ['text'],       // font/size/bold - text layers and nothing else
   rowHiSize:  ['highlight'],  // the highlighter's own thickness control
   rowColor:   ALL_TYPES,
-  rowFill:    ['rect','ellipse','rhombus','spline'],
-  rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow','spline'],
+  rowFill:    ['rect','ellipse','rhombus','spline','polyline'],
+  rowStrokeW: ['text','rect','ellipse','rhombus','freehand','arrow','line','splineArrow','spline','polyline'],
   rowCorner:  ['rect'],
   rowHead:    ['arrow','splineArrow'],
+  // the curviness slider is the spline's own: a polyline has no tension
   rowSplineTension: ['spline'],
-  // rowSplineEdit is spline-only too, but needs a real layer to act on, so
-  // syncSplineControls() below hides it again when nothing is selected
-  rowSplineEdit: ['spline'],
-  // 'spline' is deliberately absent from rowRough: the hand-drawn wobble is
-  // the one thing this shape is defined by not having
+  // rowSplineEdit serves both vertex shapes, but needs a real layer to act on,
+  // so syncSplineControls() below hides it again when nothing is selected
+  rowSplineEdit: ['spline','polyline'],
+  // both vertex shapes are deliberately absent from rowRough: the hand-drawn
+  // wobble is the one thing they are defined by not having
   rowRough:   ['rect','freehand','arrow','highlight','ellipse','rhombus','line','splineArrow'],
   rowOpacity: ALL_TYPES
 };
@@ -3668,25 +3707,32 @@ function pickedVertex(){
   const vs = state.vertexSel;
   if (!vs) return null;
   const l = getLayer(vs.layerId);
-  if (!l || l.type !== 'spline' || !l.points || vs.index >= l.points.length) return null;
+  if (!isVertexShape(l) || !l.points || vs.index >= l.points.length) return null;
   if (state.selection.length !== 1 || state.selection[0] !== l.id) return null;
   return { layer: l, index: vs.index };
 }
 
 function syncSplineControls(){
-  const sel = selectedLayers().filter(l => l.type === 'spline');
+  const sel = selectedLayers().filter(isVertexShape);
   const one = sel.length === 1 ? sel[0] : null;
+  const poly = !!one && one.type === 'polyline';
   const v = pickedVertex();
-  if (!v) state.vertexSel = null;   // stale pick, e.g. its curve was deselected
+  if (!v) state.vertexSel = null;   // stale pick, e.g. its shape was deselected
   document.getElementById('rowSplineEdit').hidden = !one;
   const closedBtn = document.getElementById('splineClosedBtn');
   const cornerBtn = document.getElementById('splineCornerBtn');
   const delBtn    = document.getElementById('splinePointDelBtn');
   closedBtn.disabled = !one;
   closedBtn.classList.toggle('active', !!(one && one.closed));
+  // a polyline is all corners: the button would be a no-op, so it is not shown
+  cornerBtn.hidden = poly;
   cornerBtn.disabled = !v;
   cornerBtn.classList.toggle('active', !!(v && v.layer.points[v.index].corner));
   delBtn.disabled = !v || v.layer.points.length <= 2;
+  // the hint stays a data-i key, so a language switch still re-translates it
+  const hint = document.getElementById('splineEditHint');
+  const key = poly ? 'polylineEditHint' : 'splineEditHint';
+  if (hint.getAttribute('data-i') !== key){ hint.setAttribute('data-i', key); hint.textContent = t(key); }
 }
 
 // Initial pass: nothing is on the canvas yet, so renderAll() hasn't run.
@@ -3724,8 +3770,8 @@ function hitLayer(p){
     const l = state.layers[i];
     if (l.visible === false) continue;
     const local = toLocal(l, p);
-    if (l.type === 'spline'){
-      // the curve itself, not its box: an open curve's bounding box is mostly
+    if (isVertexShape(l)){
+      // the shape itself, not its box: an open curve's bounding box is mostly
       // empty air, and a click on that air belongs to whatever is behind it
       const near = nearestOnSpline(l, local);
       if (near && near.dist <= (l.strokeWidth || 4)/2 + 8) return l;
@@ -3985,7 +4031,7 @@ function onDown(e){
       // corner the two sit on top of each other, and the vertex is the more
       // specific target. Ctrl/Cmd+click deletes one (Alt can't be used - the
       // gesture layer claims Alt+drag for panning before onDown ever runs).
-      if (l && l.type === 'spline'){
+      if (isVertexShape(l)){
         const vi = splineVertexAt(l, p);
         if (vi !== -1){
           if (e.ctrlKey || e.metaKey){ removeSplineVertex(l, vi); return; }
@@ -4075,9 +4121,10 @@ function onDown(e){
     return;
   }
 
-  if (state.tool === 'spline'){
+  // Both vertex tools are placed the same way; the tool name is the type.
+  if (state.tool === 'spline' || state.tool === 'polyline'){
     const ps = state.pendingSpline;
-    if (!ps){ startPendingSpline(p, e); }
+    if (!ps){ startPendingSpline(p, e, state.tool); }
     else {
       const first = ps.abs[0];
       // back on the first vertex: close the loop and finish in one go
@@ -4243,9 +4290,10 @@ function onDblClick(e){
   // on a vertex, flip it between a corner and a smooth bend; on the curve
   // itself, add a vertex there.
   const single = state.selection.length === 1 ? getLayer(state.selection[0]) : null;
-  if (single && single.type === 'spline'){
+  if (isVertexShape(single)){
     const vi = splineVertexAt(single, p);
-    if (vi !== -1){ toggleSplineCorner(single, vi); return; }
+    // a polyline's vertices are all corners already, so there is nothing to flip
+    if (vi !== -1){ if (single.type === 'spline') toggleSplineCorner(single, vi); return; }
     const near = nearestOnSpline(single, toLocal(single, p));
     if (near && near.dist <= (single.strokeWidth || 4)/2 + 10){ insertSplineVertex(single, near); return; }
   }
@@ -4378,7 +4426,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') panBy(-step, 0);
     return;
   }
-  const map = { v:'select', t:'text', r:'rect', o:'ellipse', d:'rhombus', p:'pencil', a:'arrow', h:'highlight', l:'line', s:'splineArrow', c:'spline' };
+  const map = { v:'select', t:'text', r:'rect', o:'ellipse', d:'rhombus', p:'pencil', a:'arrow', h:'highlight', l:'line', s:'splineArrow', c:'spline', g:'polyline' };
   if (map[e.key.toLowerCase()]){ document.querySelector(`button[data-tool="${map[e.key.toLowerCase()]}"]`).click(); }
 });
 

@@ -82,8 +82,9 @@ once, everything downstream is zoom/scroll-agnostic).
 | `splineArrow` | `color, strokeWidth, headSize, points[]` | `points[0]` = arrowhead TIP (first click), `points[last]`= tail. See "spline arrow" below. |
 | `freehand` | `color, strokeWidth, points[]` | `points[]` = `{nx,ny}` normalized 0..1 within bbox. |
 | `spline` | `color, strokeWidth, fill, points[], closed, tension` | Editable curve. `points[]` = `{nx,ny,corner}` normalized 0..1 within bbox; the curve is re-derived from them on every repaint. No `roughness`. See "Spline curve" below. |
+| `polyline` | same as `spline` (`tension`/`corner` unused) | The same shape with straight spans. Shares every function with `spline`; only `splineSegments()` branches on the type. See "Spline curve" below. |
 | `highlight` | `color, points[]` (thickness = `l.h`) | Horizontal-only band (drag locks to start Y). Thickness comes from `state.highlightSize` / the `#rowHiSize` slider — **not** the text "Size" field, which it used to borrow. Rendered with `globalAlpha=0.4*layerOpacity` + `multiply` blend. |
-| all shapes except text and spline | `roughness, seed` | Sloppiness (see below). |
+| all shapes except text, spline and polyline | `roughness, seed` | Sloppiness (see below). |
 
 Group = shared `groupId` string; no nested groups. Selecting one member
 selects all (`groupMembers()`, ~L1513).
@@ -91,7 +92,7 @@ selects all (`groupMembers()`, ~L1513).
 ## Tools (`state.tool` values, toolbar buttons `data-tool="…"`)
 
 `select, text, rect, ellipse, rhombus, pencil, arrow, splineArrow, line,
-highlight, spline`. Keyboard: `v,t,r,o,d,p,a,s,l,h,c`. Adding a new shape tool
+highlight, spline, polyline`. Keyboard: `v,t,r,o,d,p,a,s,l,h,c,g`. Adding a new shape tool
 touches ~10 places — grep any existing type (e.g. `'rhombus'`) across the
 file to find them all: toolbar button, `drawX()` fn, `drawLayer()`
 dispatch, `labelFor()`, `applyColorToSelection()`, stroke-width handler,
@@ -134,9 +135,21 @@ literal tip. `onDown`/`onMove` reuse the pencil point-capture branch
 
 ## Spline curve
 
-The `spline` type, and the one shape that is **editable after it is drawn**.
-Everything for it lives in one block of the script (§ "Spline curve", after
-Rendering); `docs/MAP.md` has a function-by-function table.
+The `spline` and `polyline` types — the shapes that are **editable after they
+are drawn**. Everything for both lives in one block of the script
+(§ "Spline curve + polyline", after Rendering); `docs/MAP.md` has a
+function-by-function table.
+
+**`polyline` is `spline` with straight spans.** Same vertex list, same box
+re-fitting, same dragging / inserting / removing / closing, same hit-testing,
+same placing mode; `splineSegments()` is the only function that asks which
+type it has, and lays each span's control points on the chord at its thirds
+instead of on the Catmull-Rom tangents. Everything else in the app asks
+`isVertexShape(l)`. Two consequences: `tension` and a vertex's `corner` flag
+mean nothing for a polyline (every joint is already sharp, so the Curve slider
+and the Corner button are hidden for it, and double-clicking one of its
+vertices does nothing), and any fix to vertex behaviour lands on both shapes
+at once. Keep it that way — do not fork the block.
 
 **What it is.** A Catmull-Rom spline through the layer's vertices, converted
 to cubic Beziers so the canvas draws the real curve rather than a chain of
@@ -185,20 +198,22 @@ scales both tangents, so 0 collapses the whole thing to the straight polyline.
    pinch, because it is work, not a gesture.
 
 **Finishing** is double-click/tap, Enter, clicking the first vertex (which
-also closes the path), or reaching for another tool. Escape throws it away.
+also closes the path — the way a closed polygon is drawn), or reaching for
+another tool. Escape throws it away.
 The double-click case works because `addPendingSplinePoint()` refuses a point
 within the same slack `maybeDoubleTap()` uses to call it a double-click, so
 the second tap of the pair is dropped rather than left as a duplicate vertex.
 
-**Editing** (select tool, curve selected): drag a vertex; double-click one to
-flip it between smooth (circle handle) and corner (square handle); double-click
-the curve to insert a vertex where it was clicked; Ctrl/Cmd+click or Delete to
+**Editing** (select tool, shape selected): drag a vertex; double-click one to
+flip it between smooth (circle handle) and corner (square handle — a
+polyline's are always square); double-click the curve to insert a vertex
+where it was clicked; Ctrl/Cmd+click or Delete to
 remove one. **Alt is not available** — the gesture layer claims Alt+drag for
 panning before `onDown` ever runs. Touch has none of these modifiers, which is
 why the selection panel's **Points** row exists: it acts on `state.vertexSel`,
 the vertex last touched, read only through `pickedVertex()`.
 
-`hitLayer()` tests the curve itself (`nearestOnSpline`) rather than the padded
+`hitLayer()` tests the shape itself (`nearestOnSpline`) rather than the padded
 bounding box every other stroke shape uses — an open curve's box is mostly
 empty air, and a click on that air should reach whatever is behind it.
 
@@ -398,8 +413,8 @@ Works on phones and tablets. Key pieces, all easy to break accidentally:
     (~107px). `@media (max-width:900px)` hides `.tlabel` so it's icon-only.
   - `#toolsPanel` — the drawing tools, in three captioned 4-up grids:
     **Basic** (Select/Text/Draw/Highlight), **Shapes**
-    (Line/Rect/Ellipse/Rhombus), **Arrows** (Arrow/Spline). All ten are on
-    screen at every viewport, no scrolling.
+    (Line/Spline/Polyline/Rect/Ellipse/Rhombus), **Arrows** (Arrow/Curved).
+    All eleven are on screen at every viewport, no scrolling.
   - `#selectionPanel` — every per-element property (font/size/bold, stroke
     colour + width, fill, corner radius, head size, sloppiness, opacity,
     delete).
