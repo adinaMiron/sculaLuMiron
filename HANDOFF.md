@@ -22,8 +22,8 @@ Patrick-Hand-as-Ink-Free all verified to cover Romanian diacritics
 (ă,â,î,ș,ț); Lilita One doesn't (upstream limitation, not ours) — `fontCss()`
 appends a `sans-serif` fallback so a missing glyph degrades instead of tofu.
 
-Structure: `<style>` (L15-406) → the shared nav block (L409-1052) → HTML
-markup (L1058-1334) → `<script>` IIFE (L1335-4053). Everything is one
+Structure: `<style>` (L15-414) → the shared nav block (L418-1070) → HTML
+markup (L1078-1374) → `<script>` IIFE (L1376-4644). Everything is one
 closure; no modules, no framework. Line numbers below are approximate
 (current file ≈4055 lines) and several predate later edits — search by
 function name, and see `docs/MAP.md` for anchors that are kept current.

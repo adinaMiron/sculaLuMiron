@@ -16,7 +16,7 @@ Shared shape of all three files:
 
 ## The triplicated block (byte-identical in all three files)
 
-`index.html:221-864` · `editor.html:418-1061` · `markdown-editor.html:843-1486`
+`index.html:221-873` · `editor.html:418-1070` · `markdown-editor.html:843-1495`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -44,50 +44,50 @@ Any edit here goes into **all three** files — see the diff snippet in
 
 ---
 
-## index.html — 1647 lines · "Caiet vocal" (voice dictation)
+## index.html — 1659 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
 | 11–217 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated) |
-| 220–863 | **Shared nav + `ScuLaFolder`** (identical in all 3 files) |
-| 864–997 | Markup: header, controls, textarea, settings sheet |
-| 998–1645 | App script, numbered sections below |
+| 220–872 | **Shared nav + `ScuLaFolder`** (identical in all 3 files) |
+| 873–1006 | Markup: header, controls, textarea, settings sheet |
+| 1007–1654 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1003 | **1. i18n** — `I18N` object (`ro:` 1006 / `en:` 1047), `t()` at 1090, `UI` at 1089 |
-| 1093 | 2. Providers |
-| 1118 | 3. Settings store — `KEY` 1120, `store` 1121 w/ memory fallback, `save()` 1252, `load()` 1253 |
-| 1150 | 4. DOM refs |
-| 1181 | 5. Language / engine chips |
-| 1196 | **6. UI language** — `applyUILang()` **1200** |
-| 1218 | 7. Settings sheet |
-| 1290 | 8. Secure-context check |
-| 1295 | 9. Recording (MediaRecorder) + segment rotation |
-| 1442 | 10. Transcription queue |
-| 1536 | 11. Browser dictation (Web Speech API) |
-| 1595 | 12. File import |
-| 1609 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| 1641 | 14. Init |
+| 1012 | **1. i18n** — `I18N` object (`ro:` 1015 / `en:` 1056), `t()` at 1099, `UI` at 1098 |
+| 1102 | 2. Providers |
+| 1127 | 3. Settings store — `KEY` 1129, `store` 1130 w/ memory fallback, `save()` 1261, `load()` 1262 |
+| 1159 | 4. DOM refs |
+| 1190 | 5. Language / engine chips |
+| 1205 | **6. UI language** — `applyUILang()` **1209** |
+| 1227 | 7. Settings sheet |
+| 1299 | 8. Secure-context check |
+| 1304 | 9. Recording (MediaRecorder) + segment rotation |
+| 1451 | 10. Transcription queue |
+| 1545 | 11. Browser dictation (Web Speech API) |
+| 1604 | 12. File import |
+| 1618 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| 1650 | 14. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
-- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1542.
+- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1551.
 
 ---
 
-## editor.html — 4637 lines · "Image Marker" (canvas annotation)
+## editor.html — 4646 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
 
 Theme: ✅ migrated to the earth palette (dark), step 3 of `docs/THEME.md`.
 `:root` uses the shared semantic token names (`--surface`, `--text`, …) —
-see that doc for the canvas-colour resolution (`CHROME` cache, ~L940).
+see that doc for the canvas-colour resolution (`CHROME` cache, ~L949).
 
 **Chrome layout (2026-08):** the top bar holds document-level actions only.
 Drawing tools and per-element properties live in two **floating, draggable
@@ -103,47 +103,47 @@ touch" for why and how.
 | 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
 | 247–342 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
 | 343–414 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 418–1061 | **Shared nav + `ScuLaFolder`** |
-| 1069–1096 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1098–1135 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1137–1263 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1264–1365 | Markup: modals, stage, sidebar |
-| 1367–4635 | App script |
+| 418–1070 | **Shared nav + `ScuLaFolder`** |
+| 1078–1105 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1107–1144 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1146–1272 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1273–1374 | Markup: modals, stage, sidebar |
+| 1376–4644 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1371 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1585 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
-| 1636 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1678 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
-| 1736 | Loading an image |
-| 1772 | Screen snapshot |
-| 1812 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1958 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2060** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2189 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2241 | New canvas modal |
-| **2323** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| **2679** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
-| 3156 | Layer list (sidebar) — `renderLayerList` |
-| **3206** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3459** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3643** | **Selection panel contents** — `ROW_TYPES` (3657), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
-| 3741 | Text box auto-fit |
-| 3752 | Pointer/canvas coords — `canvasPoint()` |
-| **3791** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 4306 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 4389 | Keyboard shortcuts |
-| 4433 | Save — `renderComposite`, **`saveOut()`** 4464 (one line onto `ScuLaFolder.save`) |
-| 4472 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4621 | Fonts ready — `document.fonts.load()` startup pass |
+| 1380 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1594 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
+| 1645 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1687 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1745 | Loading an image |
+| 1781 | Screen snapshot |
+| 1821 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1967 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2069** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| 2198 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2250 | New canvas modal |
+| **2332** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2688** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3165 | Layer list (sidebar) — `renderLayerList` |
+| **3215** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3468** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3652** | **Selection panel contents** — `ROW_TYPES` (3666), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 3750 | Text box auto-fit |
+| 3761 | Pointer/canvas coords — `canvasPoint()` |
+| **3800** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4315 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4398 | Keyboard shortcuts |
+| 4442 | Save — `renderComposite`, **`saveOut()`** 4473 (one line onto `ScuLaFolder.save`) |
+| 4481 | Save all sizes (zip) — `makeZip`, `crc32` |
+| 4630 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2323–3156); go straight to the
+Largest region by far is Rendering (2332–3165); go straight to the
 specific `drawX()` you need.
 
-### The `spline` and `polyline` layers (2679–3007)
+### The `spline` and `polyline` layers (2688–3016)
 
 The two shapes whose geometry is worth reading before touching. Unlike every
 other type they are **re-derived from their vertices on every repaint** and
@@ -183,8 +183,8 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3657) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (3206)
+**Two lists must stay in step:** `ROW_TYPES` (3666) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (3215)
 say which types each control actually writes to. Add a control → add it to
 both. `rowSplineEdit` is the one row that also needs a real layer, not just
 a matching tool, so `syncSplineControls()` hides it again afterwards — that
@@ -193,7 +193,7 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## markdown-editor.html — 3530 lines · Markdown editor
+## markdown-editor.html — 3545 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
@@ -201,36 +201,36 @@ a `polyline`, whose vertices are all corners already.
 |---|---|
 | 8–837 | App CSS. `:root` **9–24** (earth-palette tokens, migrated). Workbooks panel **181–271**. `@media` 722, 751 |
 | 838 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 842–1485 | **Shared nav + `ScuLaFolder`** |
-| 1487–~1747 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
-| 1748–3528 | App script |
+| 842–1494 | **Shared nav + `ScuLaFolder`** |
+| 1496–~1756 | Markup: header, toolbar, workspace, panels (incl. `#wb-panel`), modals |
+| 1757–3537 | App script |
 
 | Line | Function / region |
 |---|---|
-| 1755 | `I18N` (`ro:` 1756 / `en:` 1823), `t()`, `store`, `applyUILang` |
-| 1939–1941 | `editor`, `preview` refs, `savedRange` |
-| 1944–1966 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 1968–2041 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 2043–2078 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| 2080–2082 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
-| 2090–2130 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2101) + `togglePanelById` — one map drives all three side panels |
-| 2234–2290 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| 2305 | `resolveImageSrc` — image-path rewrite, export-only |
-| 2311 | `applyInline(text, opts)` |
-| **2322** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 2424–2430 | `updatePreview`, `updateNav` |
-| 2512 | `updateStatus` |
-| **2533–3117** | **Workbooks** — see the sub-table below |
-| 3119–3139 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
-| 3141 | `importDocx` |
-| 3184 | `htmlToMarkdown` (docx → md) |
-| 3286–3293 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
-| ~3298–3328 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 3342–3447 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 3449–3470 | Link modal: `openLinkModal`, `insertLink` |
-| 3499–3528 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
+| 1764 | `I18N` (`ro:` 1765 / `en:` 1832), `t()`, `store`, `applyUILang` |
+| 1948–1950 | `editor`, `preview` refs, `savedRange` |
+| 1953–1975 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 1977–2050 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
+| 2052–2087 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| 2089–2091 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
+| 2099–2139 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (2110) + `togglePanelById` — one map drives all three side panels |
+| 2243–2299 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| 2314 | `resolveImageSrc` — image-path rewrite, export-only |
+| 2320 | `applyInline(text, opts)` |
+| **2331** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 2433–2439 | `updatePreview`, `updateNav` |
+| 2521 | `updateStatus` |
+| **2542–3126** | **Workbooks** — see the sub-table below |
+| 3128–3148 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
+| 3150 | `importDocx` |
+| 3193 | `htmlToMarkdown` (docx → md) |
+| 3295–3302 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
+| ~3307–3337 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
+| 3351–3456 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 3458–3479 | Link modal: `openLinkModal`, `insertLink` |
+| 3508–3537 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
-### Workbooks (2533–3117) — `docs/FEATURES.md` § E
+### Workbooks (2542–3126) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -239,15 +239,15 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 2533–2543 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
-| 2545–2589 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
-| 2591–2620 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 2632–2664 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 2666–2772 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 2777–2926 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| 2928–2960 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
-| 2962–3091 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| 3094–3117 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
+| 2542–2552 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
+| 2554–2598 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
+| 2600–2629 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 2641–2673 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 2675–2781 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 2786–2935 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| 2937–2969 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
+| 2971–3100 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| 3103–3126 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture); the disk mirror happens on
@@ -263,7 +263,7 @@ when exporting). New markdown syntax now needs exactly one edit, in
 `parseMarkdown`/`applyInline`, not two.
 
 **One trap remains:** exported HTML must stay self-contained (its `<style>`
-runs 3304–3324). It ships to people who don't have the app, so it uses
+runs 3313–3333). It ships to people who don't have the app, so it uses
 literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---

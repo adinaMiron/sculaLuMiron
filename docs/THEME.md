@@ -241,7 +241,7 @@ const THEME_KEY = 'scula:theme';        // shared by all three apps
 const LANG_KEY  = 'scula:ui-lang';      // see docs/I18N.md
 ```
 
-Reuse the storage wrapper from `index.html:847-867` — it already falls
+Reuse the storage wrapper from `index.html:1133-1153` — it already falls
 back to in-memory when `localStorage` throws (private mode, `file://`
 in some browsers). Don't call `localStorage` directly; these apps are
 meant to run from `file://` where it can fail.

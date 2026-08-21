@@ -906,6 +906,15 @@
        phone - the nav scrolls, but the toggle should still be visible. */
     #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
   }
+  /* No phone or tablet browser has showDirectoryPicker, so there the button
+     could only ever name the fallback route - not worth a slot in the nav.
+     Saves still take the share route on their own, and ScuLaFolder.chooser()
+     still opens the sheet. The language toggle inherits the auto margin that
+     used to push it to the right. */
+  @media (hover: none) and (pointer: coarse){
+    #site-nav #navFolderBtn{ display:none; }
+    #site-nav #navLangBtn{ margin-left:auto; }
+  }
   #scula-toast{
     position:fixed;
     left:50%;

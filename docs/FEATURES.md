@@ -9,7 +9,7 @@ or new markdown syntax. Pick the section you need.
 
 1. **Copy the closest existing app** as the skeleton. Keep it single-file:
    `<style>` → markup → `<script>`. No build step, no framework, no npm.
-2. **Paste the shared nav** verbatim from `index.html:220-585`.
+2. **Paste the shared nav** verbatim from `index.html:221-873`.
 3. **Add the new link to all four navs** — the three existing files plus
    the new one. They must stay byte-identical:
    ```html
@@ -21,7 +21,7 @@ or new markdown syntax. Pick the section you need.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
    and an `I18N` object with `data-i` attributes (`docs/I18N.md`) from the
    first commit. Retrofitting is what makes the other two apps expensive.
-5. Reuse the storage wrapper from `index.html:847-867` — never call
+5. Reuse the storage wrapper from `index.html:1133-1153` — never call
    `localStorage` directly (these run from `file://`, where it can throw).
 6. Add a row to the table in `CLAUDE.md` and a section in `docs/MAP.md`.
 
@@ -179,7 +179,8 @@ Full surface:
 
 - One root folder from the `📁` nav button (`showDirectoryPicker`,
   `mode:'readwrite'`). All three subfolders are created immediately, so
-  the layout is visible before anything is saved.
+  the layout is visible before anything is saved. The button is
+  **desktop-only** — see the share route below.
 - The `FileSystemDirectoryHandle` is stored in **IndexedDB** (`scula-fs` →
   `handles` → `root`). It has to be IndexedDB — `localStorage` is strings
   only and cannot hold a handle.
@@ -225,9 +226,20 @@ Three traps, all handled in `shareOut()` — keep them handled:
   finishes the job instead of losing the file.
 
 Because the mode is a real preference, it lives in IndexedDB next to the
-handle (`scula-fs` → `handles` → `mode`) and is shared by all pages. The
-`📁` button opens the chooser sheet (`#scula-sheet`) wherever there is no
-directory picker; on desktop it goes straight to the picker.
+handle (`scula-fs` → `handles` → `mode`) and is shared by all pages. On
+desktop the `📁` button goes straight to the picker; everywhere else it
+opens the chooser sheet (`#scula-sheet`) instead.
+
+**The `📁` button is hidden on phones and tablets.** With no
+`showDirectoryPicker` it could only ever name the fallback route, so the
+shared nav CSS drops it under `@media (hover: none) and (pointer: coarse)`
+and `#navLangBtn` inherits the `margin-left:auto` that used to push it
+right. Nothing else changes: `currentMode()` already prefers `share` when
+there is no picker, so saves go to the OS share sheet on their own, and
+`ScuLaFolder.chooser()` still opens `#scula-sheet` for any page that wants
+to offer the choice (`markdown-editor.html` does, from its workbook sync).
+A page that needs the destination chooser on a phone must call
+`chooser()` — do not count on the nav button being there.
 
 ### Adding a save, or a page
 
