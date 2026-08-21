@@ -207,6 +207,89 @@ also needs an entry in `SUBDIR` — in all copies of the block.
 
 ---
 
+## E. Workbooks and chapters (`markdown-editor.html`)
+
+A **workbook** holds **chapters**; one chapter is one markdown file, the
+way OneNote holds pages in a notebook. Code: `markdown-editor.html`
+2533–3117, mapped function-by-function in `docs/MAP.md`.
+
+### Two layers, and which one is the truth
+
+| Layer | Where | Holds | Works on |
+|---|---|---|---|
+| **Store** | IndexedDB `scula-md` | every workbook, every chapter, its full text | **every device** |
+| **Mirror** | `<default folder>/markdown/<workbook>/<chapter>.md` | the same text, as real files | desktop only, when a folder is set (§ D) |
+
+**IndexedDB is the source of truth.** No mobile browser can remember a
+folder (§ D), so a design where the folder holds the only copy loses the
+notes on every phone. The store always has them; the folder is a mirror
+that exists when the platform allows one.
+
+Each chapter record carries the names it owns:
+
+```js
+{ id, workbookId, title, file, content, created, updated, order }
+//                 ^^^^^  ^^^^
+//                 UI      folder
+```
+
+and each workbook carries `{ id, name, folder, … }` the same way. Those
+four fields **are** the correspondence between the UI and the folder —
+`title`/`name` is what the person reads, `file`/`folder` is what the file
+system gets. Never derive one from the other at save time: `wbSlug()`
+computes the file name **once**, when the chapter is created or renamed,
+and `wbUniqueFile`/`wbUniqueFolder` keep it collision-free. Recomputing it
+per save would silently orphan the file the moment a title is edited.
+
+Diacritics survive slugging (`Fizică` → `Fizică.md`). They're legal file
+names everywhere these apps run, and stripping them would make the folder
+unreadable next to the UI it mirrors. Only the characters a file system
+actually rejects (`\ / : * ? " < > |`, controls) are replaced.
+
+### Two writes, two moments
+
+- **Autosave → store only.** Typing schedules `flushChapter()` 800 ms
+  later, which writes the chapter back to IndexedDB. It must not touch
+  the disk: `requestPermission()` is only legal inside a user gesture, and
+  a keystroke isn't one.
+- **Explicit save → store + mirror.** `saveToWorkbook()` (the primary
+  header button, Ctrl+S), the save modal, rename, delete and *Sync to
+  folder* all run inside a click, so they can call
+  `ScuLaFolder.dir(true)` and write the file.
+
+`wbMirrorRemove()` is deliberately **never recursive**: it removes files
+this app knows it wrote, and drops a workbook folder only if the file
+system agrees it's empty. Nothing a person put in that folder by hand is
+ever deleted.
+
+### The three routes, for a chapter
+
+Same three routes as § D, because the same rules apply:
+
+| Route | What "save to workbook" does | Getting a file out |
+|---|---|---|
+| `folder` | store + writes `markdown/<workbook>/<chapter>.md` | already there |
+| `share` (phones) | store only | ⇪ per chapter → `ScuLaFolder.save()` → OS share sheet |
+| `download` | store only | ⇪ per chapter → download |
+
+Export names the file `<workbook folder>-<chapter file>.md`, because
+neither the share sheet nor the Downloads folder has anywhere to put a
+workbook subfolder.
+
+### Adding to it
+
+- New per-chapter action → add a `wbActBtn(...)` in `renderWorkbooks()`
+  plus its RO+EN `I18N` keys. The tree is generated, so `data-i` can't
+  reach it: `applyUILang()` re-calls `renderWorkbooks()` (guarded by
+  `wbBooted`, a `var`, because it runs before the rest of the script).
+- New field on a chapter → extend the record and bump nothing; the store
+  is schemaless past `keyPath: 'id'`. Add a real `WB_VER` upgrade only if
+  you need a new object store or index.
+- Anything that changes `title` or `name` must go through the rename path
+  so the mirror moves with it.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
