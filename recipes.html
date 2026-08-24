@@ -186,6 +186,51 @@
   .meal textarea.steps{min-height:4.5rem;background:var(--surface-2);font-family:var(--font-ui);font-size:.85rem}
   .empty{color:var(--text-3);font-size:.85rem;padding:1.5rem 0;text-align:center}
 
+  /* ---------- finding one recipe among a hundred days ----------
+     A book of 100 menus is 300 meals; laid out in full it is a page
+     140,000 pixels tall. The search box and these chips are how it stays
+     usable, and a day that is not being edited costs one row. */
+  .filters{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0 0 .55rem}
+  /* The search box gets a row of its own: sharing one with the chips left
+     it about ten characters wide, which is not a search box. */
+  .filters .search{flex:1 1 100%;position:relative;display:block}
+  .filters .search input{background:var(--surface-2);padding-left:1.85rem}
+  .filters .search::before{
+    content:"⌕";position:absolute;left:.55rem;top:50%;transform:translateY(-50%);
+    color:var(--text-3);font-size:1.05rem;line-height:1;pointer-events:none;
+  }
+  .chips{display:flex;gap:.3rem;flex-wrap:wrap;flex:1 1 auto}
+  .chip{
+    background:transparent;border:1px solid var(--border);color:var(--text-2);
+    border-radius:999px;padding:.28rem .7rem;font-size:.76rem;cursor:pointer;
+    white-space:nowrap;font-family:inherit;
+  }
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+  .chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+  .found{font-size:.78rem;color:var(--text-3);margin:0 0 .7rem;display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}
+  .found button{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:0;text-decoration:underline}
+  #days mark{background:var(--accent-2);color:var(--on-accent);border-radius:.2rem;padding:0 .12rem}
+
+  /* a day nobody is editing: one line, with its dishes named on it */
+  .daysum{
+    display:flex;gap:.45rem;align-items:baseline;flex-wrap:wrap;width:100%;
+    padding:.55rem .8rem;background:transparent;border:0;color:var(--text-2);
+    font:inherit;font-size:.85rem;text-align:left;cursor:pointer;
+  }
+  .daysum:hover{background:var(--surface-2)}
+  .daysum .twist{color:var(--accent);flex:0 0 auto}
+  .daysum .dname{font-weight:600;color:var(--text);flex:0 0 auto}
+  .daysum .dmeal{color:var(--text-2);font-size:.8rem}
+  .dayhead .twist{
+    background:transparent;border:0;color:var(--accent);cursor:pointer;
+    font:inherit;padding:0 .2rem;flex:0 0 auto;
+  }
+  /* an ingredient that belongs to a named part of the dish ("Sos", "Topping") */
+  .ing .grp{
+    font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+    grid-column:1/-1;margin:.25rem 0 -.1rem;
+  }
+
   /* ---------- markdown preview ---------- */
   #mdPreview{
     background:var(--bg);border:1px solid var(--border);border-radius:.7rem;
@@ -937,7 +982,7 @@
         </div>
         <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf" multiple>
         <input type="file" id="cam" accept="image/*" capture="environment" multiple>
-        <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span></div>
+        <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span><button type="button" class="btn mini ghost" id="btnStop" hidden data-i="stopOcr">Oprește</button></div>
         <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.</p>
 
         <details class="more" id="ocrBox">
@@ -998,10 +1043,19 @@
       <!-- ===== 3. review ===== -->
       <div class="card">
         <h2><span class="step">3</span><span data-i="stepCheck">Verifică rețetele</span></h2>
+        <div class="filters" id="filters" hidden>
+          <label class="search">
+            <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
+          </label>
+          <div class="chips" id="kindChips"></div>
+          <button type="button" class="btn mini ghost" id="btnExpand" data-i="expandAll">Desfă tot</button>
+        </div>
+        <p class="found" id="found" hidden></p>
         <div id="days"></div>
         <p class="empty" id="daysEmpty" data-i="noDays">Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.</p>
         <div class="row" style="margin-top:.7rem">
           <button type="button" class="btn mini" id="btnAddDay" data-i="addDay">+ zi</button>
+          <button type="button" class="btn mini ghost" id="btnArrange" data-i="arrange" data-i-title="arrangeHint" hidden>Așază pe zile</button>
           <span class="spacer"></span>
           <button type="button" class="btn mini danger ghost" id="btnClear" data-i="clearAll">Șterge tot</button>
         </div>
@@ -1029,6 +1083,10 @@
           <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)">
             <input type="checkbox" id="optTotals" checked>
             <span data-i="optTotals">Tabel de totaluri (pentru USDA)</span>
+          </label>
+          <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)" id="onlyShownBox" hidden>
+            <input type="checkbox" id="optOnlyShown">
+            <span data-i="onlyShown">Doar rețetele afișate</span>
           </label>
         </div>
         <div class="row">
@@ -1128,6 +1186,25 @@ const I18N = {
     stepsPlaceholder:"Un pas pe linie…",
     mealsCount:n => n === 1 ? "1 masă" : n + " mese",
 
+    /* căutare, filtre, așezare pe zile */
+    searchPh:"Caută un preparat sau un ingredient…",
+    fAll:"Toate",
+    expandAll:"Desfă tot",
+    collapseAll:"Strânge tot",
+    foundDays:(s, tot) => s === tot
+      ? (tot === 1 ? "O zi." : tot + " zile.")
+      : s + " din " + tot + " zile",
+    foundMeals:n => n === 1 ? "o masă" : n + " mese",
+    noMatch:"Nicio rețetă nu se potrivește. Șterge căutarea sau filtrele.",
+    clearFilters:"Șterge filtrele",
+    arrange:"Așază pe zile",
+    arrangeHint:"Regrupează toate mesele pe zile: una din fiecare fel pe zi. Folosește-l când sursa e o listă de rețete fără zile.",
+    onlyShown:"Doar rețetele afișate",
+    moveTo:"Mută în altă zi",
+    openDay:"Deschide ziua",
+    shutDay:"Strânge ziua",
+    stArranged:(d) => d === 1 ? "O zi." : "Așezate pe " + d + " zile.",
+
     /* markdown */
     mdIngredients:"1. Ingrediente",
     mdMethod:"2. Metoda de preparare",
@@ -1164,6 +1241,8 @@ const I18N = {
     stEmpty:"Nu e nimic de salvat încă.",
     askClear:"Ștergi toate zilele extrase?",
     askManyPages:n => "PDF-ul are " + n + " pagini scanate. OCR-ul lor poate dura câteva minute. Continui?",
+    stopOcr:"Oprește",
+    stOcrStopped:n => n === 1 ? "Oprit după o pagină." : "Oprit după " + n + " pagini.",
     unnamed:"Fără nume",
     ocrLoaded:l => "pregătit · " + l,
     ocrLoading:"se aduce…",
@@ -1229,6 +1308,24 @@ const I18N = {
     stepsPlaceholder:"One step per line…",
     mealsCount:n => n === 1 ? "1 meal" : n + " meals",
 
+    searchPh:"Search a dish or an ingredient…",
+    fAll:"All",
+    expandAll:"Open all",
+    collapseAll:"Close all",
+    foundDays:(s, tot) => s === tot
+      ? (tot === 1 ? "One day." : tot + " days.")
+      : s + " of " + tot + " days",
+    foundMeals:n => n === 1 ? "one meal" : n + " meals",
+    noMatch:"No recipe matches. Clear the search or the filters.",
+    clearFilters:"Clear the filters",
+    arrange:"Arrange into days",
+    arrangeHint:"Regroups every meal into days, one of each kind per day. Use it when the source is a list of recipes with no days in it.",
+    onlyShown:"Only the recipes shown",
+    moveTo:"Move to another day",
+    openDay:"Open the day",
+    shutDay:"Close the day",
+    stArranged:(d) => d === 1 ? "One day." : "Arranged into " + d + " days.",
+
     mdIngredients:"1. Ingredients",
     mdMethod:"2. Method",
     mdColQty:"Amount", mdColUnit:"Unit", mdColItem:"Ingredient", mdColFdc:"USDA FDC",
@@ -1263,6 +1360,8 @@ const I18N = {
     stEmpty:"Nothing to save yet.",
     askClear:"Delete every extracted day?",
     askManyPages:n => "This PDF has " + n + " scanned pages. Recognising them can take a few minutes. Go on?",
+    stopOcr:"Stop",
+    stOcrStopped:n => n === 1 ? "Stopped after one page." : "Stopped after " + n + " pages.",
     unnamed:"Untitled",
     ocrLoaded:l => "ready · " + l,
     ocrLoading:"fetching…",
@@ -3417,7 +3516,13 @@ const Recipes = (function(){
   const REFLEXIVE = /^se\s+[a-z\u0103\u00e2\u00ee\u0219\u021b]{3,}/i;
 
   function clean(text){
+    // Cedilla s/t are the wrong characters for Romanian, but a great many
+    // PDFs are set in them — this book prints "sos de rosii" that way.
+    // Repair them here, once, so everything downstream (the markdown, the
+    // file names, the search) only ever sees comma-below.
     return String(text || "")
+      .replace(/\u015F/g, "\u0219").replace(/\u0163/g, "\u021B")
+      .replace(/\u015E/g, "\u0218").replace(/\u0162/g, "\u021A")
       .replace(/\r\n?/g, "\n")
       .replace(/ /g, " ")
       .replace(/[‘’]/g, "'")
@@ -3702,9 +3807,11 @@ const $ = id => document.getElementById(id);
 const els = {
   drop:$("drop"), file:$("file"), cam:$("cam"),
   btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"),
-  status:$("status"), statusText:$("statusText"),
+  status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
   textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
   days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
+  filters:$("filters"), qBox:$("qBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
+  found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
   tabPreview:$("tabPreview"), tabSource:$("tabSource"),
   wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"),
@@ -3752,18 +3859,296 @@ function textInput(value, placeholder, onInput, cls){
   return el;
 }
 
+/* ---------- searching, filtering, and laying the days out ----------
+   A book of 100 menus parses to 300 meals. Rendered in full that is a
+   page 140,000 pixels tall, which is not something anyone can check. So
+   the list is a *view*: a day nobody is editing costs one line, the
+   search box and the meal chips decide which days are on screen, and the
+   model underneath is never touched by any of it. */
+
+// Nobody types diacritics into a search box, and this app exists to keep
+// them: "sunca" has to find "șuncă".
+//
+// The cedilla forms are written as escapes on purpose. They are the wrong
+// way to spell Romanian and must not appear as literal characters in this
+// file — tests/recipes.js checks exactly that — but real documents are
+// full of them, this book prints "sos de ro<cedilla>ii", so a search still
+// has to fold them. Recipes.clean() repairs them on the way in.
+const CEDILLA_S = "\u015F", CEDILLA_T = "\u0163";
+const FOLD = { "ă":"a","â":"a","î":"i","ș":"s","ț":"t",
+               "á":"a","à":"a","é":"e","è":"e","í":"i","ó":"o","ú":"u","ü":"u","ö":"o" };
+FOLD[CEDILLA_S] = "s";
+FOLD[CEDILLA_T] = "t";
+const FOLD_RE = new RegExp("[ăâîșț" + CEDILLA_S + CEDILLA_T + "áàéèíóúüö]", "g");
+function fold(s){ return String(s == null ? "" : s).toLowerCase().replace(FOLD_RE, c => FOLD[c] || c); }
+
+// `open` holds day objects, not indices: an index drifts the moment a day
+// above it is deleted, and the object does not.
+const view = { q:"", kinds:new Set(), open:new Set(), allOpen:false };
+
+const MEAL_KINDS = [["breakfast","mBreakfast"],["snack","mSnack"],["lunch","mLunch"],
+                    ["dinner","mDinner"],["dessert","mDessert"],["other","mOther"]];
+
+function mealHaystack(meal){
+  const ing = meal.ingredients.map(i => [i.qty, i.unit, i.item, i.group].join(" ")).join(" ");
+  return fold([meal.name, meal.label, mealLabel(meal), ing, meal.steps.join(" ")].join(" "));
+}
+function filterActive(){ return !!view.q.trim() || view.kinds.size > 0; }
+
+// The indices of the meals of one day that survive the search and chips.
+// A day whose *title* matches keeps all of its meals — that is what makes
+// searching "Ziua 42" work.
+function dayMatches(day, di){
+  const terms = fold(view.q).split(/\s+/).filter(Boolean);
+  const titleHay = fold(dayTitle(day, di));
+  const titleHit = terms.length > 0 && terms.every(term => titleHay.indexOf(term) >= 0);
+  const out = [];
+  day.meals.forEach((meal, mi) => {
+    if(view.kinds.size && !view.kinds.has(meal.kind)) return;
+    if(terms.length && !titleHit){
+      const hay = mealHaystack(meal);
+      if(!terms.every(term => hay.indexOf(term) >= 0)) return;
+    }
+    out.push(mi);
+  });
+  return out;
+}
+
+// Every day currently on screen, with the meals of it that are. The save
+// buttons read this when "only the recipes shown" is ticked, so a search
+// is not just a way to look — it is a way to take a subset away with you.
+function shownDays(){
+  const active = filterActive();
+  const out = [];
+  model.days.forEach((day, di) => {
+    const meals = dayMatches(day, di);
+    if(active && !meals.length) return;
+    out.push({ day, di, meals });
+  });
+  return out;
+}
+
+// The days the markdown is built from. Filtering is a view by default; the
+// checkbox is what makes it a selection.
+function outputDays(){
+  if(!els.optOnlyShown || !els.optOnlyShown.checked || !filterActive())
+    return model.days.map((day, di) => ({ day, di, meals: day.meals.map((m, i) => i) }));
+  return shownDays();
+}
+
+function renderFilters(){
+  const many = model.days.length > 0;
+  els.filters.hidden = !many;
+  els.btnArrange.hidden = !many;
+  if(!many){ els.found.hidden = true; return; }
+  if(els.qBox.value !== view.q) els.qBox.value = view.q;
+
+  // Only the kinds actually present: a plan with no desserts should not
+  // offer to filter by dessert.
+  const present = new Set();
+  model.days.forEach(d => d.meals.forEach(m => present.add(m.kind || "other")));
+  els.kindChips.textContent = "";
+  MEAL_KINDS.filter(([kind]) => present.has(kind)).forEach(([kind, key]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = t(key);
+    b.setAttribute("aria-pressed", view.kinds.has(kind) ? "true" : "false");
+    b.addEventListener("click", () => {
+      if(view.kinds.has(kind)) view.kinds.delete(kind); else view.kinds.add(kind);
+      filtersChanged();
+    });
+    els.kindChips.appendChild(b);
+  });
+  els.btnExpand.textContent = t(view.allOpen ? "collapseAll" : "expandAll");
+}
+
+function paintFound(shown, mealCount){
+  const total = model.days.length;
+  els.found.hidden = total === 0;
+  els.found.textContent = "";
+  const s = document.createElement("span");
+  s.textContent = t("foundDays", shown, total) +
+                  (filterActive() ? " · " + t("foundMeals", mealCount) : "");
+  els.found.appendChild(s);
+  if(filterActive()){
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.textContent = t("clearFilters");
+    clear.addEventListener("click", () => {
+      view.q = ""; view.kinds.clear(); els.qBox.value = ""; filtersChanged();
+    });
+    els.found.appendChild(clear);
+  }
+}
+
+// Puts the search terms in <mark> without letting the text itself become
+// HTML. Matching happens on the folded string but the marks are placed on
+// the original, so "sunca" highlights the "șunc" the reader can see.
+function markInto(el, text, terms){
+  if(!terms.length){ el.textContent = text; return; }
+  const hay = fold(text);
+  const hits = [];
+  for(const term of terms){
+    let from = 0, at;
+    while(term && (at = hay.indexOf(term, from)) >= 0){ hits.push([at, at + term.length]); from = at + term.length; }
+  }
+  if(!hits.length){ el.textContent = text; return; }
+  hits.sort((a, b) => a[0] - b[0]);
+  let pos = 0;
+  for(const [s, e] of hits){
+    if(e <= pos) continue;
+    const start = Math.max(s, pos);
+    if(start > pos) el.appendChild(document.createTextNode(text.slice(pos, start)));
+    const m = document.createElement("mark");
+    m.textContent = text.slice(start, e);
+    el.appendChild(m);
+    pos = e;
+  }
+  if(pos < text.length) el.appendChild(document.createTextNode(text.slice(pos)));
+}
+
+// One line for a day nobody is editing.
+function daySummary(day, di, meals){
+  const card = document.createElement("div");
+  card.className = "day";
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "daysum";
+  row.title = t("openDay");
+  const tw = document.createElement("span");
+  tw.className = "twist";
+  tw.textContent = "▸";
+  row.appendChild(tw);
+  const terms = fold(view.q).split(/\s+/).filter(Boolean);
+  const nm = document.createElement("span");
+  nm.className = "dname";
+  markInto(nm, dayTitle(day, di), terms);
+  row.appendChild(nm);
+  meals.forEach(mi => {
+    const m = day.meals[mi];
+    const s = document.createElement("span");
+    s.className = "dmeal";
+    markInto(s, mealLabel(m) + (m.name ? ": " + m.name : ""), terms);
+    row.appendChild(s);
+  });
+  row.addEventListener("click", () => { view.open.add(day); renderDays(); });
+  card.appendChild(row);
+  return card;
+}
+
+// A day's meals may go to any other day. The options are filled on first
+// use: with a hundred days, building every list up front is a thousand
+// nodes nobody looks at.
+function daySelect(fromDay, meal){
+  const sel = document.createElement("select");
+  sel.className = "moveto";
+  sel.title = t("moveTo");
+  const here = document.createElement("option");
+  here.value = "";
+  here.textContent = "→ …";
+  sel.appendChild(here);
+  let filled = false;
+  const fill = () => {
+    if(filled) return;
+    filled = true;
+    model.days.forEach((d, i) => {
+      if(d === fromDay) return;
+      const o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = dayTitle(d, i);
+      sel.appendChild(o);
+    });
+  };
+  sel.addEventListener("mousedown", fill);
+  sel.addEventListener("focus", fill);
+  sel.addEventListener("change", () => {
+    const to = model.days[+sel.value];
+    if(!to) return;
+    const at = fromDay.meals.indexOf(meal);
+    if(at >= 0) fromDay.meals.splice(at, 1);
+    to.meals.push(meal);
+    view.open.add(to);
+    renderDays(); renderMarkdown();
+  });
+  return sel;
+}
+
+// Regroups every meal into days. When the source already says which meal
+// each recipe is, a day ends where a kind repeats; when it is a flat list
+// of recipes with no kinds at all, they go `perDay` to a day and are named
+// in eating order. That is the difference between a recipe book and a plan.
+function arrangeIntoDays(perDay){
+  const meals = [];
+  model.days.forEach(d => d.meals.forEach(m => meals.push(m)));
+  if(!meals.length) return 0;
+  const KINDS = ["breakfast","lunch","dinner","snack","dessert"];
+  const known = new Set(meals.map(m => m.kind).filter(k => k && k !== "other"));
+  const days = [];
+  if(known.size >= 2){
+    let cur = null, used = null;
+    for(const m of meals){
+      const k = m.kind || "other";
+      if(!cur || used.has(k)){ cur = Recipes.newDay(days.length + 1, ""); days.push(cur); used = new Set(); }
+      cur.meals.push(m);
+      used.add(k);
+    }
+    const order = k => { const i = KINDS.indexOf(k); return i < 0 ? KINDS.length : i; };
+    days.forEach(d => d.meals.sort((a, b) => order(a.kind) - order(b.kind)));
+  }else{
+    const n = Math.max(1, perDay || 3);
+    for(let i = 0; i < meals.length; i += n){
+      const d = Recipes.newDay(days.length + 1, "");
+      meals.slice(i, i + n).forEach((m, j) => { m.kind = KINDS[j] || "other"; d.meals.push(m); });
+      days.push(d);
+    }
+  }
+  model.days = days;
+  view.open.clear();
+  return days.length;
+}
+
 function renderDays(){
   const host = els.days;
   host.textContent = "";
   els.daysEmpty.hidden = model.days.length > 0;
   els.mdCard.hidden = model.days.length === 0;
+  renderFilters();
 
-  model.days.forEach((day, di) => {
+  const shown = shownDays();
+  paintFound(shown.length, shown.reduce((a, s) => a + s.meals.length, 0));
+  // A handful of days is small enough to simply show; a hundred is not.
+  const autoOpen = view.allOpen || shown.length <= 8;
+  const active = filterActive();
+
+  if(!shown.length && model.days.length){
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = t("noMatch");
+    host.appendChild(p);
+    return;
+  }
+
+  shown.forEach(({ day, di, meals }) => {
+    if(!(autoOpen || view.open.has(day))){
+      host.appendChild(daySummary(day, di, meals));
+      return;
+    }
     const card = document.createElement("div");
     card.className = "day";
 
     const head = document.createElement("div");
     head.className = "dayhead";
+    if(!autoOpen){
+      const tw = document.createElement("button");
+      tw.type = "button";
+      tw.className = "twist";
+      tw.textContent = "▾";
+      tw.title = t("shutDay");
+      tw.setAttribute("aria-label", tw.title);
+      tw.addEventListener("click", () => { view.open.delete(day); renderDays(); });
+      head.appendChild(tw);
+    }
     head.appendChild(textInput(dayTitle(day, di), t("dayName"), v => { day.title = v; }));
     const count = document.createElement("span");
     count.className = "hint";
@@ -3771,30 +4156,36 @@ function renderDays(){
     count.textContent = t("mealsCount", day.meals.length);
     head.appendChild(count);
     head.appendChild(iconBtn("⤓", "saveMd", () => saveDay(day, di)));
-    head.appendChild(iconBtn("✕", "delDay", () => { model.days.splice(di, 1); renderDays(); renderMarkdown(); }, true));
+    head.appendChild(iconBtn("✕", "delDay", () => {
+      view.open.delete(day);
+      model.days.splice(model.days.indexOf(day), 1);
+      renderDays(); renderMarkdown();
+    }, true));
     card.appendChild(head);
 
     const body = document.createElement("div");
     body.className = "daybody";
 
-    day.meals.forEach((meal, mi) => {
+    // With a filter on, a day shows the meals that matched and no others.
+    (active ? meals.map(i => day.meals[i]) : day.meals).forEach((meal) => {
+      const mi = day.meals.indexOf(meal);
       const box = document.createElement("div");
       box.className = "meal";
 
       const mh = document.createElement("div");
       mh.className = "mealhead";
       const sel = document.createElement("select");
-      [["breakfast","mBreakfast"],["snack","mSnack"],["lunch","mLunch"],
-       ["dinner","mDinner"],["dessert","mDessert"],["other","mOther"]].forEach(([kind, key]) => {
+      MEAL_KINDS.forEach(([kind, key]) => {
         const o = document.createElement("option");
         o.value = kind;
         o.textContent = kind === "other" && meal.label ? meal.label : t(key);
         if(meal.kind === kind) o.selected = true;
         sel.appendChild(o);
       });
-      sel.addEventListener("change", () => { meal.kind = sel.value; renderMarkdown(); });
+      sel.addEventListener("change", () => { meal.kind = sel.value; renderDays(); renderMarkdown(); });
       mh.appendChild(sel);
       mh.appendChild(textInput(meal.name, t("mealName"), v => { meal.name = v; }, "mname"));
+      mh.appendChild(daySelect(day, meal));
       mh.appendChild(iconBtn("✕", "delMeal", () => { day.meals.splice(mi, 1); renderDays(); renderMarkdown(); }, true));
       box.appendChild(mh);
 
@@ -3803,7 +4194,19 @@ function renderDays(){
       iLab.textContent = t("ingredients");
       box.appendChild(iLab);
 
+      let lastGroup = "";
       meal.ingredients.forEach((ing, ii) => {
+        // "Sos", "Topping": the part of the dish this ingredient belongs to,
+        // shown once above its run rather than repeated on every row.
+        if((ing.group || "") !== lastGroup){
+          lastGroup = ing.group || "";
+          if(lastGroup){
+            const g = document.createElement("p");
+            g.className = "grp";
+            g.textContent = lastGroup;
+            box.appendChild(g);
+          }
+        }
         const row = document.createElement("div");
         row.className = "ing";
         row.appendChild(textInput(ing.qty, t("colQty"), v => { ing.qty = v; }));
@@ -3829,7 +4232,7 @@ function renderDays(){
       add.className = "btn mini ghost";
       add.textContent = t("addIng");
       add.addEventListener("click", () => {
-        meal.ingredients.push({ qty:"", unit:"", item:"", fdc:"" });
+        meal.ingredients.push({ qty:"", unit:"", item:"", group:"", fdc:"" });
         renderDays(); renderMarkdown();
       });
       box.appendChild(add);
@@ -3872,7 +4275,10 @@ function renderDays(){
    docs/RECIPES.md § "The markdown contract". Keep both in step. */
 function cell(v){ return String(v == null ? "" : v).replace(/\|/g, "\\|").replace(/\n/g, " ").trim(); }
 
-function buildDayMarkdown(day, di){
+// `only`, when given, is the list of meal indices to write — that is how
+// "only the recipes shown" narrows a day to what the search matched.
+function buildDayMarkdown(day, di, only){
+  const meals = only ? only.map(i => day.meals[i]).filter(Boolean) : day.meals;
   const L = [];
   L.push("# " + dayTitle(day, di));
   L.push("");
@@ -3880,7 +4286,7 @@ function buildDayMarkdown(day, di){
     L.push("*" + t("mdSource", model.source) + "*");
     L.push("");
   }
-  day.meals.forEach(meal => {
+  meals.forEach(meal => {
     const name = (meal.name || "").trim();
     L.push("## " + mealLabel(meal) + (name ? ": " + name : ""));
     L.push("");
@@ -3904,7 +4310,7 @@ function buildDayMarkdown(day, di){
     L.push("");
     L.push("| " + [t("mdColMeal"), t("mdColKcal"), t("mdColProt"), t("mdColCarb"), t("mdColFat")].join(" | ") + " |");
     L.push("| --- | --- | --- | --- | --- |");
-    day.meals.forEach(meal => {
+    meals.forEach(meal => {
       const name = (meal.name || "").trim();
       L.push("| " + cell(mealLabel(meal) + (name ? ": " + name : "")) + " |  |  |  |  |");
     });
@@ -3915,7 +4321,7 @@ function buildDayMarkdown(day, di){
 }
 
 function allMarkdown(){
-  return model.days.map((d, i) => buildDayMarkdown(d, i)).join("\n---\n\n");
+  return outputDays().map(s => buildDayMarkdown(s.day, s.di, s.meals)).join("\n---\n\n");
 }
 
 /* A deliberately small renderer: exactly the subset this page emits
@@ -3962,7 +4368,23 @@ function renderPreview(md){
   return out.join("\n");
 }
 
+// The "only the recipes shown" choice means nothing while nothing is
+// filtered out, so it only appears when it does.
+function paintOnlyShown(){
+  const box = document.getElementById("onlyShownBox");
+  if(box) box.hidden = !filterActive();
+}
+// Re-rendering the markdown of a hundred days on every keystroke in the
+// search box would be felt, and it is only ever needed when the output is
+// actually the filtered set.
+function filtersChanged(){
+  renderDays();
+  paintOnlyShown();
+  if(els.optOnlyShown.checked) renderMarkdown();
+}
+
 function renderMarkdown(){
+  paintOnlyShown();
   const md = allMarkdown();
   els.mdText.value = md;
   els.mdPreview.innerHTML = renderPreview(md);
@@ -4142,6 +4564,12 @@ async function loadEngine(){
   return ok;
 }
 
+// The stop button lives in the status line and only exists while a batch
+// that is worth interrupting is running.
+function showStop(on){
+  if(els.btnStop) els.btnStop.hidden = !on;
+}
+
 function ocrProgress(m){
   if(!m || !m.status) return;
   const pct = Math.round((m.progress || 0) * 100);
@@ -4288,16 +4716,30 @@ async function ocrImage(file){
 // the rest of the file.
 async function ocrPages(imgs){
   const parts = [];
-  for(let i = 0; i < imgs.length; i++){
-    OCR.job = { page: i + 1, pages: imgs.length };
-    let text;
-    try{ text = await recognise(imgs[i]); }
-    catch(e){ text = ""; }
-    if(text === null) return null;
-    if(text.trim()) parts.push(text.trim());
-  }
+  let done = 0;
+  OCR.stop = false;
+  showStop(imgs.length > 1);
+  try{
+    for(let i = 0; i < imgs.length; i++){
+      // Stopping keeps the pages already read. A hundred-page book is
+      // minutes of work, and throwing away eighty finished pages because
+      // someone changed their mind about the last twenty would be rude.
+      if(OCR.stop) break;
+      OCR.job = { page: i + 1, pages: imgs.length };
+      let text;
+      try{ text = await recognise(imgs[i]); }
+      catch(e){ text = ""; }
+      if(text === null) return null;
+      done++;
+      if(text.trim()) parts.push(text.trim());
+    }
+  } finally { showStop(false); }
   savePrefs();
-  if(!parts.length){ setStatus(t("stOcrEmpty"), "err"); return null; }
+  if(!parts.length){
+    setStatus(OCR.stop ? t("stOcrStopped", done) : t("stOcrEmpty"), "err");
+    return null;
+  }
+  if(OCR.stop) setStatus(t("stOcrStopped", done));
   return parts.join("\n\n");
 }
 
@@ -4324,8 +4766,8 @@ async function saveBlob(name, text){
   if(r.message) setStatus(r.message);
   return r;
 }
-function saveDay(day, di){
-  return saveBlob(slug(dayTitle(day, di), "reteta") + ".md", buildDayMarkdown(day, di));
+function saveDay(day, di, only){
+  return saveBlob(slug(dayTitle(day, di), "reteta") + ".md", buildDayMarkdown(day, di, only));
 }
 
 /* ---- the Markdown editor's workbook store (docs/FEATURES.md § E) ----
@@ -4364,7 +4806,8 @@ const wbPut = (name, v) => wbTx(name, "readwrite", s => s.put(v));
 function wbNewId(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
 async function toWorkbook(){
-  if(!model.days.length){ setStatus(t("stEmpty"), "err"); return; }
+  const out = outputDays();
+  if(!out.length){ setStatus(t("stEmpty"), "err"); return; }
   const name = (els.wbName.value || "").trim() || t("title");
   try{
     const books = await wbAll(WB_BOOKS);
@@ -4381,22 +4824,22 @@ async function toWorkbook(){
     const mine = chapters.filter(c => c.workbookId === book.id);
     const taken = new Set(mine.map(c => (c.file || "").toLowerCase()));
     let order = mine.length;
-    for(let di = 0; di < model.days.length; di++){
-      const title = dayTitle(model.days[di], di);
+    for(const s of out){
+      const title = dayTitle(s.day, s.di);
       const base = slug(title, "reteta");
       let file = base + ".md", i = 1;
       while(taken.has(file.toLowerCase())) file = base + "-" + (++i) + ".md";
       taken.add(file.toLowerCase());
       await wbPut(WB_CHAPTERS, {
         id: wbNewId("ch_"), workbookId: book.id, title, file,
-        content: buildDayMarkdown(model.days[di], di),
+        content: buildDayMarkdown(s.day, s.di, s.meals),
         created: Date.now(), updated: Date.now(), order: order++
       });
     }
     book.updated = Date.now();
     await wbPut(WB_BOOKS, book);
-    setStatus(t("stWbSaved", model.days.length));
-    if(typeof ScuLaFolder !== "undefined") ScuLaFolder.toast(t("stWbSaved", model.days.length));
+    setStatus(t("stWbSaved", out.length));
+    if(typeof ScuLaFolder !== "undefined") ScuLaFolder.toast(t("stWbSaved", out.length));
     savePrefs();
   }catch(e){
     setStatus(t("stWbFailed"), "err");
@@ -4453,14 +4896,34 @@ els.btnAddDay.addEventListener("click", () => {
   const day = Recipes.newDay(model.days.length + 1, "");
   day.meals.push(Recipes.newMeal("breakfast", "", ""));
   model.days.push(day);
+  view.open.add(day);
   renderDays(); renderMarkdown();
 });
 els.btnClear.addEventListener("click", () => {
   if(!model.days.length || !confirm(t("askClear"))) return;
   model.days = [];
+  view.q = ""; view.kinds.clear(); view.open.clear(); view.allOpen = false;
   renderDays(); renderMarkdown();
   setStatus("");
 });
+
+/* ---- searching and filtering ----
+   Typing filters as you go: everything happens in memory over a model
+   that is already parsed, so there is nothing to debounce. */
+els.qBox.addEventListener("input", () => { view.q = els.qBox.value; filtersChanged(); });
+els.qBox.addEventListener("search", () => { view.q = els.qBox.value; filtersChanged(); });
+els.btnExpand.addEventListener("click", () => {
+  view.allOpen = !view.allOpen;
+  if(!view.allOpen) view.open.clear();
+  renderDays();
+});
+els.btnArrange.addEventListener("click", () => {
+  const n = arrangeIntoDays(3);
+  if(!n) return;
+  renderDays(); renderMarkdown();
+  setStatus(t("stArranged", n));
+});
+els.optOnlyShown.addEventListener("change", renderMarkdown);
 
 ["dragenter","dragover"].forEach(ev => els.drop.addEventListener(ev, e => {
   e.preventDefault(); els.drop.classList.add("over");
@@ -4501,9 +4964,11 @@ els.tabSource.addEventListener("click", () => {
 });
 
 els.btnOcrLoad.addEventListener("click", () => { ocrWorker(); });
+els.btnStop.addEventListener("click", () => { OCR.stop = true; showStop(false); });
 els.btnSaveMd.addEventListener("click", () => {
-  if(!model.days.length){ setStatus(t("stEmpty"), "err"); return; }
-  if(model.days.length === 1) return saveDay(model.days[0], 0);
+  const out = outputDays();
+  if(!out.length){ setStatus(t("stEmpty"), "err"); return; }
+  if(out.length === 1) return saveDay(out[0].day, out[0].di, out[0].meals);
   const base = model.source ? slug(model.source.replace(/\.[a-z0-9]+$/i, ""), "retete") : slug(t("title"), "retete");
   return saveBlob(base + ".md", allMarkdown());
 });
