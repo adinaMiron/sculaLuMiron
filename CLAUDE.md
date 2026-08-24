@@ -8,12 +8,12 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 5633 | 50k | Markdown editor + preview + workbooks + knowledge graph | dark (earth) |
+| `markdown-editor.html` | 6354 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 5024 | 50k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all four costs ~145k tokens; `markdown-editor.html` alone is 50k
+Reading all four costs ~152k tokens; `markdown-editor.html` alone is 57k
 and `editor.html` 46k. **Never `view` an entire app file.** Locate first,
 then read a narrow range.
 
@@ -36,6 +36,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | Deep work inside `editor.html` | `HANDOFF.md` |
 | PDF/OCR reading, JPEG 2000, recipe markdown, searching a big plan, USDA plans | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
+| Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 
 Do not read a doc the task doesn't touch.
 
@@ -43,7 +44,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1194-1849`, `recipes.html:305-960`). It carries the nav
+`markdown-editor.html:1385-2040`, `recipes.html:310-965`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -51,8 +52,8 @@ must be applied to **all four** or they drift. Verify with:
 ```bash
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
-sed -n '1194,1849p' markdown-editor.html > /tmp/n3
-sed -n '305,960p' recipes.html           > /tmp/n4
+sed -n '1385,2040p' markdown-editor.html > /tmp/n3
+sed -n '310,965p' recipes.html           > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -64,7 +65,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:1189` (docx import). Don't add more. The OCR
+  CDN in `markdown-editor.html:1380` (docx import). Don't add more. The OCR
   engine in `recipes.html` is the one deliberate exception, and it is still
   not a file in this repo: Tesseract is fetched on first use from an address
   that is a visible, editable field, the page reads PDFs and takes pasted
@@ -105,7 +106,7 @@ done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `markdown-editor.html:1189` has attributes and is correctly skipped. If
+in `markdown-editor.html:1380` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach —
@@ -118,7 +119,8 @@ browser under Xvfb; headless Chromium cannot decode media streams at all.
 pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown, the whole
 OCR path against a stub engine, both save routes), and for
-`markdown-editor.html`'s knowledge graph (`graph.js`). It is dev-only
+`markdown-editor.html`'s knowledge graph (`graph.js`) and its search &
+filter panel (`find.js`). It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
 

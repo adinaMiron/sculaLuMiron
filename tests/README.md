@@ -1,8 +1,8 @@
 # tests/
 
 Ad-hoc Playwright checks for `editor.html` and `recipes.html`, and — in
-`graph.js` — for `markdown-editor.html`'s knowledge graph, written the
-way `HANDOFF.md` §
+`graph.js` and `find.js` — for `markdown-editor.html`'s knowledge graph and
+its search panel, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
@@ -35,10 +35,11 @@ for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
 - `EDITOR_URL` — override the `file://` URL under test, e.g. to point at a
   build of `editor.html` living somewhere other than the repo root, or at a
   copy on a different commit for a before/after comparison.
-- `MD_URL` — the same, for `graph.js`, which drives `markdown-editor.html`
-  instead. That script opens its own browser context rather than using
-  `lib.js`'s `open()` (which is hard-wired to `editor.html`), and runs a
-  desktop pass followed by a phone pass with a real touch drag.
+- `MD_URL` — the same, for `graph.js` and `find.js`, which drive
+  `markdown-editor.html` instead. Both open their own browser context rather
+  than using `lib.js`'s `open()` (which is hard-wired to `editor.html`);
+  `graph.js` runs a desktop pass followed by a phone pass with a real touch
+  drag.
 
 Two more, read by `lib.js`'s `open()`, let a script be re-run at a different
 viewport without editing it:
@@ -66,6 +67,7 @@ viewport without editing it:
 | `spline-touch.js` | The spline curve, touch side: tap-to-place, double-tap to finish without a duplicate vertex, a pinch mid-placement taking its stray point back, one-finger vertex drag, and the Points row — the only route to corner/remove without modifier keys |
 | `recipes.js` | `recipes.html`, end to end: the recipe parser on a full three-meal day, the dependency-free PDF reader on four PDFs it builds itself (uncompressed, `FlateDecode`, object streams + Identity-H, and **one whose text is inside a `/Form` XObject with a `BT…ET` per glyph** — the shape that made `100-de-rete-pentru-slabit.pdf` unreadable) including diacritics through a `/ToUnicode` CMap, **JPEG 2000** (a hand-built all-empty-packet `.jp2`, plus a real page out of that book when it is in the tree), the parser rules that book needed (`Sos:` staying inside its meal, word quantities, `Ingrediente:` headings, front matter, cedilla repair), the **day view** (forty days collapsed, search, diacritic folding, *only the recipes shown*, meal chips, *Așază pe zile*), the markdown contract in `docs/RECIPES.md` § C, saving (`ScuLaFolder.save` stubbed) and the share route (phone-shaped stub), the workbook chapter records, both languages, and the **OCR path** — pictures out of a scanned PDF (`/DCTDecode` and `/FlateDecode`, a logo-sized one ignored), the canvas prep asserted on pixels, two pages recognised in order, several photos in one go, and a language change rebuilding the worker |
 | `graph.js` | `markdown-editor.html`'s knowledge graph and the `[[wikilink]]` syntax under it: the parser (links, tags, `^block` anchors, heading ids, and a fenced block minting neither), jumping to an anchor, all three scopes, every filter, the simulation actually settling, resolution across chapters, the `[[` suggester and the note-link modal, both languages, the export fallback, and the same graph on a phone with a real touch drag. The canvas is asserted on pixels |
+| `find.js` | `markdown-editor.html`'s search & filter panel: all three scopes (open chapter, one workbook, every workbook), the four toggles (match case, whole word, regex — including a broken one — and diacritic folding, which has to find "măsură" from "masura" and stop when turned off), the kind of every line counted and filtered on, the tag chips narrowing to the chapters carrying a `#tag`, a hit opening another chapter and landing selected in the textarea, a hit below the fold scrolling to itself through wrapped lines, a line of literal HTML shown rather than run, both languages, and `Ctrl+4` |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
 used only by `withimage.js`, and `fake-tesseract.js`. `recipes.js` needs no
@@ -83,11 +85,11 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js` and `graph.js` are the two scripts that do **not** use
+`recipes.js`, `graph.js` and `find.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
 `http://127.0.0.1` server, because the workbook check reads IndexedDB and a
-`file://` origin is opaque. `graph.js` stays on `file://` — it drives the
-graph off the in-memory chapter list, so it never depends on a write
-landing. Set `PW_CHROME_PATH` for both the same way.
+`file://` origin is opaque. `graph.js` and `find.js` stay on `file://` —
+both drive the in-memory chapter list, so neither depends on a write
+landing. Set `PW_CHROME_PATH` for all of them the same way.

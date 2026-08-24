@@ -18,6 +18,9 @@
     --text: #F3EEE1;
     --text-2: #9FB3A5;
     --text-3: #5A6A60;
+    /* the shared terracotta status colour, same hex as index.html and
+       editor.html — see docs/THEME.md */
+    --danger: #C4643C;
     --panel-w: 260px;
     --font-mono: 'Courier New', monospace;
     --font-ui: 'Trebuchet MS', sans-serif;
@@ -714,6 +717,180 @@
   }
   #view-tabs button.active { color: var(--accent-2); border-bottom-color: var(--accent); }
 
+  /* ── Search & filter panel (one query, three scopes — docs/FEATURES.md § H) ── */
+  #find-panel {
+    width: 300px;
+    min-width: 300px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+    order: 98;                      /* just left of the nav panel */
+  }
+  #find-panel.collapsed { width: 0; min-width: 0; }
+
+  .find-controls {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .find-row { position: relative; display: flex; }
+  .find-row input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    padding: 7px 28px 7px 9px;
+  }
+  .find-row input:focus { outline: none; border-color: var(--accent); }
+  .find-row input.bad { border-color: var(--danger); }
+  .find-clear {
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    padding: 5px 6px;
+    transition: color 0.12s;
+  }
+  .find-clear:hover { color: var(--text); }
+
+  /* Same shape as the graph's scope switch, on purpose: note / workbook / all */
+  .find-scope { display: flex; gap: 2px; padding: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; }
+  .find-scope button {
+    flex: 1;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--text-3);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 4px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .find-scope button:hover { color: var(--text); }
+  .find-scope button.active { background: var(--accent); color: var(--on-accent); }
+
+  .find-opts { display: flex; gap: 4px; flex-wrap: wrap; }
+  .find-opt {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-3);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1;
+    padding: 6px 8px;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .find-opt:hover { color: var(--text); }
+  .find-opt.on { background: var(--surface-2); border-color: var(--accent); color: var(--accent-2); }
+
+  .find-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .find-filter[hidden] { display: none; }
+  .find-lab {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-right: 2px;
+  }
+  .find-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    line-height: 1;
+    padding: 5px 8px;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .find-chip:hover { color: var(--text); }
+  .find-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .find-chip .find-n { font-family: var(--font-mono); opacity: 0.65; margin-left: 4px; }
+
+  #find-results { flex: 1; overflow-y: auto; padding: 2px 0; }
+  #find-results::-webkit-scrollbar { width: 4px; }
+  #find-results::-webkit-scrollbar-track { background: transparent; }
+  #find-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .find-note { border-bottom: 1px solid var(--border); }
+  .find-note-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .find-note-row:hover { background: var(--surface-2); color: var(--text); }
+  .find-note-row.current { color: var(--accent-2); }
+  .find-note-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .find-note-book { font-size: 9.5px; color: var(--text-3); font-family: var(--font-mono); }
+  .find-note-n { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); }
+
+  .find-hit {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-left: 2px solid transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 11.5px;
+    line-height: 1.5;
+    padding: 5px 10px 5px 14px;
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+  }
+  .find-hit:hover { background: var(--surface-2); border-left-color: var(--accent); color: var(--text); }
+  .find-hit mark { background: var(--accent); color: var(--on-accent); border-radius: 2px; padding: 0 1px; }
+  .find-where {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-3);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .find-snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .find-empty { padding: 18px 12px; font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.6; }
+  .find-note-hint { padding: 0 10px 8px; font-size: 10px; color: var(--text-3); line-height: 1.5; }
+  .find-foot {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    padding: 6px 10px;
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+  }
+
   /* Backdrop behind overlay panels on small screens */
   #panel-backdrop {
     display: none;
@@ -723,6 +900,13 @@
     z-index: 40;
   }
   #panel-backdrop.show { display: block; }
+
+  /* The toolbar is one panel toggle wider since the search panel landed
+     (docs/FEATURES.md § H). Tighten the separators before it wraps rather
+     than after — a wrapped bar costs every laptop a row of height. */
+  @media (max-width: 1600px) {
+    .toolbar-sep { margin: 0 2px; }
+  }
 
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
   @media (max-width: 1024px) {
@@ -739,7 +923,7 @@
     .toolbar-sep { margin: 0 4px; }
 
     /* Panels float over the content instead of squeezing it */
-    #wb-panel, #img-panel, #nav-panel {
+    #wb-panel, #img-panel, #nav-panel, #find-panel {
       position: absolute;
       top: 0; bottom: 0;
       z-index: 50;
@@ -748,7 +932,8 @@
     #wb-panel { left: 0; }
     #img-panel { left: 0; }
     #nav-panel { right: 0; }
-    #wb-panel.collapsed, #img-panel.collapsed, #nav-panel.collapsed {
+    #find-panel { right: 0; width: var(--panel-w); min-width: var(--panel-w); }
+    #wb-panel.collapsed, #img-panel.collapsed, #nav-panel.collapsed, #find-panel.collapsed {
       width: 0; min-width: 0; box-shadow: none;
     }
     .workspace { position: relative; }
@@ -828,6 +1013,12 @@
     .wb-ch-row { padding: 11px 8px 11px 24px; }
     .wb-act { padding: 9px 8px; font-size: 14px; }
     .wb-crumb { max-width: 100%; width: 100%; }
+    .find-row input { font-size: 14px; padding: 10px 30px 10px 10px; }
+    .find-scope button { padding: 9px 4px; font-size: 11px; }
+    .find-opt { padding: 9px 10px; font-size: 12px; }
+    .find-chip { padding: 8px 10px; font-size: 11px; }
+    .find-note-row { padding: 12px 10px; font-size: 12px; }
+    .find-hit { padding: 10px 10px 10px 14px; font-size: 12.5px; }
 
     /* Status bar: keep it slim */
     #status-bar { gap: 12px; font-size: 10px; padding: 4px 12px; }
@@ -1919,6 +2110,7 @@
   <button class="tb-btn" onclick="toggleGraph()" data-i="graphBtn" data-i-title="graphTip" title="Knowledge graph (Ctrl+3)">🕸 Graph</button>
 
   <div class="toolbar-sep"></div>
+  <button class="tb-btn" id="btn-find" onclick="toggleFind()" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
   <button class="tb-btn" id="btn-workbooks" onclick="toggleWorkbooks()" data-i="workbooksBtn" data-i-title="workbooksTip" title="Workbooks (Ctrl+2)">📓 Workbooks</button>
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
@@ -1987,6 +2179,41 @@ Use the toolbar above to insert formatting.
       <div class="pane-header" data-i="panePreviewHeader">Preview</div>
       <div id="preview"></div>
     </div>
+  </div>
+
+  <!-- ═══════════ Search & filter ═══════════
+       One query over the open chapter, every chapter of this workbook, or
+       every workbook — the same three scopes the graph has. The chips below
+       narrow what is already found: by the kind of line, and by #tag.
+       See docs/FEATURES.md § H. -->
+  <div id="find-panel" class="collapsed">
+    <div class="panel-header">
+      <span class="panel-title" data-i="findTitle">Search &amp; filter</span>
+      <button class="panel-close" onclick="toggleFind()" data-i-title="closeFindTip" title="Close (Ctrl+4)">✕</button>
+    </div>
+    <div class="find-controls">
+      <div class="find-row">
+        <input type="text" id="find-q" autocomplete="off" spellcheck="false"
+               data-i-placeholder="findPlaceholder" placeholder="Search the text…"
+               oninput="fdQueryChanged()" onkeydown="fdQueryKey(event)">
+        <button class="find-clear" id="find-clear" onclick="fdClearQuery()" data-i-title="findClearTip" data-i-aria="findClearTip" title="Clear the search" aria-label="Clear the search">✕</button>
+      </div>
+      <div class="find-scope" id="find-scope">
+        <button type="button" data-fd-scope="note" data-i="findScopeChapter" data-i-title="findScopeChapterTip" title="Only the chapter open in the editor">Chapter</button>
+        <button type="button" data-fd-scope="workbook" data-i="findScopeWorkbook" data-i-title="findScopeWorkbookTip" title="Every chapter of this workbook">Workbook</button>
+        <button type="button" data-fd-scope="vault" data-i="findScopeAll" data-i-title="findScopeAllTip" title="Every chapter of every workbook">All</button>
+      </div>
+      <div class="find-opts" id="find-opts">
+        <button type="button" class="find-opt" data-fd-opt="matchCase" data-i-title="findCaseTip" title="Match case">Aa</button>
+        <button type="button" class="find-opt" data-fd-opt="wholeWord" data-i-title="findWordTip" title="Whole words only">⌈ab⌉</button>
+        <button type="button" class="find-opt" data-fd-opt="regex" data-i-title="findRegexTip" title="Regular expression">.*</button>
+        <button type="button" class="find-opt" data-fd-opt="fold" data-i-title="findFoldTip" title="Ignore diacritics (a finds ă, â)">ăâ</button>
+      </div>
+      <div class="find-filter" id="find-kinds" hidden></div>
+      <div class="find-filter" id="find-tags" hidden></div>
+    </div>
+    <div id="find-results"></div>
+    <div class="find-foot" id="find-foot"></div>
   </div>
 
   <!-- Navigation Panel -->
@@ -2353,7 +2580,27 @@ const I18N = {
     wlAnchorMissing:a=>`Nu am găsit „${a}” în notiță.`,
     wlNoteCreated:n=>`Notița „${n}” a fost creată.`,
     confirmCreateNote:n=>`„${n}” nu există. O creezi ca un capitol nou?`,
-    promptPickWorkbook:l=>`În ce caiet?\n\n${l}\n\nScrie numărul:`
+    promptPickWorkbook:l=>`În ce caiet?\n\n${l}\n\nScrie numărul:`,
+    findBtn:"🔍 Caută", findTip:"Caută și filtrează (Ctrl+4)",
+    findTitle:"Căutare și filtre", closeFindTip:"Închide (Ctrl+4)",
+    findPlaceholder:"Caută în text…", findClearTip:"Golește căutarea",
+    findScopeChapter:"Capitol", findScopeChapterTip:"Doar capitolul deschis în editor",
+    findScopeWorkbook:"Caiet", findScopeWorkbookTip:"Toate capitolele acestui caiet",
+    findScopeAll:"Tot", findScopeAllTip:"Toate capitolele din toate caietele",
+    findCaseTip:"Ține cont de majuscule", findWordTip:"Doar cuvinte întregi",
+    findRegexTip:"Expresie regulată", findFoldTip:"Ignoră diacriticele (a găsește ă, â)",
+    findKindsLabel:"Doar", findTagsLabel:"Etichete",
+    findKind_heading:"titluri", findKind_text:"text", findKind_list:"liste",
+    findKind_code:"cod", findKind_quote:"citate", findKind_table:"tabele",
+    findIdle:"Scrie ceva ca să cauți, sau alege o etichetă.",
+    findNothing:"Nimic găsit.",
+    findBadRegex:"Expresie regulată invalidă.",
+    findLooseHint:"Documentul deschis nu e într-un caiet — se caută doar în el.",
+    findEmptyScope:"Nu există capitole de căutat.",
+    findLineNo:n=>`linia ${n}`,
+    findOpenNoteTip:"Deschide capitolul",
+    findFoot:o=>`${o.m===1?'o potrivire':o.m+' potriviri'} în ${o.n===1?'un capitol':o.n+' capitole'}`,
+    findFootNotes:o=>`${o.n===1?'un capitol':o.n+' capitole'}`
   },
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
@@ -2459,7 +2706,27 @@ const I18N = {
     wlAnchorMissing:a=>`Could not find “${a}” in the note.`,
     wlNoteCreated:n=>`Created the note “${n}”.`,
     confirmCreateNote:n=>`“${n}” does not exist. Create it as a new chapter?`,
-    promptPickWorkbook:l=>`Which workbook?\n\n${l}\n\nType the number:`
+    promptPickWorkbook:l=>`Which workbook?\n\n${l}\n\nType the number:`,
+    findBtn:"🔍 Find", findTip:"Search and filter (Ctrl+4)",
+    findTitle:"Search & filter", closeFindTip:"Close (Ctrl+4)",
+    findPlaceholder:"Search the text…", findClearTip:"Clear the search",
+    findScopeChapter:"Chapter", findScopeChapterTip:"Only the chapter open in the editor",
+    findScopeWorkbook:"Workbook", findScopeWorkbookTip:"Every chapter of this workbook",
+    findScopeAll:"All", findScopeAllTip:"Every chapter of every workbook",
+    findCaseTip:"Match case", findWordTip:"Whole words only",
+    findRegexTip:"Regular expression", findFoldTip:"Ignore diacritics (a finds ă, â)",
+    findKindsLabel:"Only", findTagsLabel:"Tags",
+    findKind_heading:"headings", findKind_text:"text", findKind_list:"lists",
+    findKind_code:"code", findKind_quote:"quotes", findKind_table:"tables",
+    findIdle:"Type to search, or pick a tag.",
+    findNothing:"Nothing found.",
+    findBadRegex:"That regular expression is not valid.",
+    findLooseHint:"The open document is not in a workbook — searching it alone.",
+    findEmptyScope:"There are no chapters to search.",
+    findLineNo:n=>`line ${n}`,
+    findOpenNoteTip:"Open this chapter",
+    findFoot:o=>`${o.m} match${o.m!==1?'es':''} in ${o.n} chapter${o.n!==1?'s':''}`,
+    findFootNotes:o=>`${o.n} chapter${o.n!==1?'s':''}`
   }
 };
 let UI = "ro";
@@ -2503,6 +2770,8 @@ function applyUILang(){
   if(typeof renderWorkbooks === "function" && wbBooted) renderWorkbooks();
   // Same for the graph's legend, groups and counts, while it is open.
   if(typeof gvRepaintLang === "function" && gvLangReady) gvRepaintLang();
+  // And for the search panel's generated chips, results and counts.
+  if(typeof fdRepaintLang === "function" && fdReady) fdRepaintLang();
 }
 window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
 (async function initUILang(){
@@ -2677,6 +2946,7 @@ function setView(view) {
 const PANELS = {
   'wb-panel': 'btn-workbooks',
   'img-panel': 'btn-explorer',
+  'find-panel': 'btn-find',
   'nav-panel': 'btn-nav'
 };
 
@@ -2713,6 +2983,23 @@ function togglePanelById(id) {
 function toggleWorkbooks() { togglePanelById('wb-panel'); }
 function togglePanel() { togglePanelById('img-panel'); }
 function toggleNav() { togglePanelById('nav-panel'); }
+// Opening the search panel is always a request to search: refresh what is in
+// it and put the cursor in the query box. Asking for it while it is open but
+// not focused means the same thing, so that focuses rather than closes.
+function toggleFind() {
+  const q = document.getElementById('find-q');
+  if (findIsOpen() && document.activeElement !== q) { q.focus(); q.select(); return; }
+  togglePanelById('find-panel');
+  if (findIsOpen()) {
+    fdRefresh();
+    q.focus();
+    q.select();
+  }
+}
+function findIsOpen() {
+  const p = document.getElementById('find-panel');
+  return !!p && !p.classList.contains('collapsed');
+}
 
 async function setWorkingFolder() {
   if (!window.showDirectoryPicker) {
@@ -3295,6 +3582,7 @@ function updatePreview() {
   preview.innerHTML = parseMarkdown(editor.value);
   updateNav();
   gvRefresh();          // the graph reads the open note; keep it honest
+  fdLive();             // and so does the search panel
 }
 
 /* Following a [[wikilink]] or a #tag from the preview. Delegated, because
@@ -4975,6 +5263,422 @@ gvLoadSettings().then(() => { if (gv.open) gvPaintControls(); });
 gvLangReady = true;
 
 /* ============================================================
+   Search & filter — one query, three scopes.
+
+   The same three scopes the graph has: the open chapter, every chapter of
+   its workbook, or every chapter of every workbook. IndexedDB already holds
+   every chapter's text (workbooks are the source of truth, docs/FEATURES.md
+   § E), so a workbook-wide search needs no folder permission and no reading
+   of files — the open chapter is read from the editor, saved or not, exactly
+   as the graph reads it.
+
+   Then two filters narrow what the query found: the kind of line a hit sits
+   on, and the #tags its chapter carries. Behaviour: docs/FEATURES.md § H.
+   ============================================================ */
+
+const FD_KEY = 'scula:find';
+const FD_KINDS = ['heading', 'text', 'list', 'code', 'quote', 'table'];
+const FD_SNIPPET = 170;        // characters of a line kept around its hits
+const FD_MAX_HITS = 400;       // per chapter — one file cannot flood the list
+const FD_MAX_TAGS = 30;        // chips, most-used first
+
+var fdReady = false;           // var: applyUILang() reads it before this runs
+const fdState = {
+  q: '',
+  scope: 'note',               // note | workbook | vault
+  matchCase: false,
+  wholeWord: false,
+  regex: false,
+  fold: true,                  // ignore diacritics: "sapun" finds "săpun"
+  kinds: new Set(),            // empty = every kind of line
+  tags: new Set()              // a chapter must carry every selected tag
+};
+let fdLast = { groups: [], matches: 0, notes: 0, kinds: new Map(), tags: new Map(), error: false, scoped: 0 };
+let fdTimer = 0, fdLiveTimer = 0;
+
+/* ── Folding ──
+   "săpun" and "sapun" are the same word to whoever is looking for it. NFD
+   splits a letter from its mark and the mark is what gets dropped — which
+   also makes the cedilla ş and the comma-below ș fold to the same s, the
+   difference docs/RECIPES.md warns half of all PDFs get wrong. The map keeps
+   every folded character pointing back at its source index, so a hit still
+   marks the right characters of the original line. */
+// \u-escaped on purpose: the class is a range of combining marks, which as
+// literal characters would be invisible in the source.
+function fdFold(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function fdFoldMap(s) {
+  let out = '';
+  const map = [];
+  for (let i = 0; i < s.length; i++) {
+    const f = fdFold(s[i]);
+    for (let k = 0; k < f.length; k++) { out += f[k]; map.push(i); }
+  }
+  map.push(s.length);
+  return { text: out, map };
+}
+
+// NOT a \b: after "ă" a word boundary cannot match in a non-unicode regex —
+// the trap docs/RECIPES.md names — so whole-word looks at the characters on
+// either side of the hit instead of at a boundary escape.
+const FD_WORD = /[\p{L}\p{N}_]/u;
+function fdIsWord(ch) { return !!ch && FD_WORD.test(ch); }
+
+function fdMatcher() {
+  if (!fdState.q) return null;
+  const q = fdState.fold ? fdFold(fdState.q) : fdState.q;
+  const src = fdState.regex ? q : q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let re;
+  try { re = new RegExp(src, fdState.matchCase ? 'g' : 'gi'); }
+  catch (e) { return { error: true }; }
+  return { re, fold: fdState.fold, word: fdState.wholeWord, error: false };
+}
+
+// Every hit on one line, as [start, end] pairs into the *original* line.
+function fdLineHits(line, m) {
+  const folded = m.fold ? fdFoldMap(line) : null;
+  const hay = folded ? folded.text : line;
+  const out = [];
+  m.re.lastIndex = 0;
+  let hit, guard = 0;
+  while ((hit = m.re.exec(hay)) !== null && guard++ < 200) {
+    if (hit[0] === '') { m.re.lastIndex++; continue; }   // a regex may match nothing
+    const a = hit.index, b = a + hit[0].length;
+    if (m.word && (fdIsWord(hay[a - 1]) || fdIsWord(hay[b]))) continue;
+    out.push(folded ? [folded.map[a], folded.map[b]] : [a, b]);
+  }
+  return out;
+}
+
+// What kind of line this is — the axis the "Only" chips filter on.
+function fdKindOf(line, inFence) {
+  if (inFence || /^\s*(?:```|~~~)/.test(line)) return 'code';
+  if (/^#{1,6}\s/.test(line)) return 'heading';
+  if (/^\s*>/.test(line)) return 'quote';
+  if (/^\s*(?:[-*+]|\d+[.)])\s/.test(line)) return 'list';
+  if (/^\s*\|/.test(line)) return 'table';
+  return 'text';
+}
+
+// One chapter, line by line. `section` is the heading a hit sits under, with
+// the slug parseMarkdown() gave it — counted the same way, fenced code
+// skipped the same way, so the anchor the preview jumps to really exists.
+function fdNoteHits(text, m) {
+  const lines = String(text || '').split('\n');
+  const slugSeen = {};
+  const hits = [];
+  let inFence = false, section = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const fence = /^\s*(?:```|~~~)/.test(line);
+    const kind = fdKindOf(line, inFence);
+    if (fence) inFence = !inFence;
+    if (kind === 'heading') {
+      const h = line.match(/^(#{1,6})\s+(.*)$/);
+      if (h) section = { text: mdPlain(h[2]), slug: headingSlug(h[2], slugSeen) };
+    }
+    if (!line.trim()) continue;
+    const ranges = fdLineHits(line, m);
+    if (ranges.length) hits.push({ line: i, kind, section, text: line, ranges });
+    if (hits.length >= FD_MAX_HITS) break;
+  }
+  return hits;
+}
+
+/* ── What is being searched ──
+   wikiNotes() already lists every chapter of every workbook plus the loose
+   document, and noteText() reads the open one from the editor. Both are the
+   graph's, and reusing them is what keeps "a note" meaning one thing. */
+function fdScopeNotes() {
+  const notes = wikiNotes();
+  const mine = n => (n.loose ? !wbCurrentId : n.chapterId === wbCurrentId);
+  if (fdState.scope === 'note') return notes.filter(mine);
+  if (fdState.scope === 'workbook') {
+    const book = gvCurrentBookId();
+    return book ? notes.filter(n => n.bookId === book) : notes.filter(mine);
+  }
+  const all = notes.slice();
+  all.sort((a, b) =>
+    (a.bookName || '').localeCompare(b.bookName || '') ||
+    fdNoteOrder(a) - fdNoteOrder(b) ||
+    a.title.localeCompare(b.title));
+  return all;
+}
+function fdNoteOrder(n) {
+  const ch = n.chapterId ? wbChapter(n.chapterId) : null;
+  return ch ? (ch.order || 0) : 0;
+}
+
+/* ── The search itself ──
+   Scope ▸ query ▸ tags ▸ kinds, in that order. The chip counts come from
+   one step earlier than the chips themselves filter, so a chip can always
+   be swapped for another without the list going empty first. */
+function fdCompute() {
+  const res = { groups: [], matches: 0, notes: 0, kinds: new Map(), tags: new Map(),
+                error: false, scoped: 0 };
+  const m = fdMatcher();
+  if (m && m.error) { res.error = true; return res; }
+
+  const notes = fdScopeNotes();
+  res.scoped = notes.length;
+  const wanted = Array.from(fdState.tags);
+
+  notes.forEach(n => {
+    const text = noteText(n);
+    const hits = m ? fdNoteHits(text, m) : [];
+    if (m && !hits.length) return;
+
+    // Tag chips describe the chapters the query already found.
+    const tags = Array.from(new Set(scanNoteCached(n.id, text).tags.map(x => x.tag)));
+    tags.forEach(tg => res.tags.set(tg, (res.tags.get(tg) || 0) + 1));
+    if (!wanted.every(tg => tags.indexOf(tg) !== -1)) return;
+
+    hits.forEach(h => res.kinds.set(h.kind, (res.kinds.get(h.kind) || 0) + 1));
+    const shown = fdState.kinds.size ? hits.filter(h => fdState.kinds.has(h.kind)) : hits;
+    if (m && !shown.length) return;
+
+    res.groups.push({ note: n, hits: shown });
+    res.matches += shown.length;
+    res.notes++;
+  });
+  return res;
+}
+
+/* ── Rendering ── */
+// The hits marked, without ever letting the line become HTML: the text is
+// escaped in the gaps between the ranges, never as one string afterwards.
+function fdSnippet(line, ranges) {
+  let from = 0;
+  if (line.length > FD_SNIPPET && ranges[0][0] > 30) from = ranges[0][0] - 30;
+  const to = Math.min(line.length, from + FD_SNIPPET);
+  let html = from ? '…' : '';
+  let at = from;
+  ranges.forEach(r => {
+    const a = Math.max(r[0], from), b = Math.min(r[1], to);
+    if (b <= a || r[0] >= to) return;
+    if (a > at) html += attrEsc(line.slice(at, a));
+    html += '<mark>' + attrEsc(line.slice(a, b)) + '</mark>';
+    at = b;
+  });
+  if (at < to) html += attrEsc(line.slice(at, to));
+  if (to < line.length) html += '…';
+  return html;
+}
+
+function fdPaintScope() {
+  document.querySelectorAll('#find-scope button').forEach(b =>
+    b.classList.toggle('active', b.dataset.fdScope === fdState.scope));
+}
+function fdPaintOpts() {
+  document.querySelectorAll('#find-opts .find-opt').forEach(b =>
+    b.classList.toggle('on', !!fdState[b.dataset.fdOpt]));
+}
+function fdChip(attr, value, label, count, on) {
+  return '<button type="button" class="find-chip' + (on ? ' on' : '') + '" ' + attr + '="' + attrEsc(value) + '">' +
+         attrEsc(label) + (count ? '<span class="find-n">' + count + '</span>' : '') + '</button>';
+}
+function fdPaintKinds(counts) {
+  const box = document.getElementById('find-kinds');
+  const kinds = FD_KINDS.filter(k => counts.get(k) || fdState.kinds.has(k));
+  // Nothing to choose between when every hit is the same kind of line.
+  box.hidden = kinds.length < 2;
+  if (box.hidden) { box.innerHTML = ''; return; }
+  box.innerHTML = '<span class="find-lab">' + attrEsc(t('findKindsLabel')) + '</span>' +
+    kinds.map(k => fdChip('data-fd-kind', k, t('findKind_' + k), counts.get(k) || 0, fdState.kinds.has(k))).join('');
+}
+function fdPaintTags(counts) {
+  const box = document.getElementById('find-tags');
+  const tags = Array.from(counts.keys())
+    .sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b))
+    .slice(0, FD_MAX_TAGS);
+  fdState.tags.forEach(tg => { if (tags.indexOf(tg) === -1) tags.push(tg); });
+  box.hidden = !tags.length;
+  if (box.hidden) { box.innerHTML = ''; return; }
+  box.innerHTML = '<span class="find-lab">' + attrEsc(t('findTagsLabel')) + '</span>' +
+    tags.map(tg => fdChip('data-fd-tag', tg, '#' + tg, counts.get(tg) || 0, fdState.tags.has(tg))).join('');
+}
+
+function fdRender() {
+  const res = fdLast;
+  const box = document.getElementById('find-results');
+  const foot = document.getElementById('find-foot');
+  document.getElementById('find-q').classList.toggle('bad', res.error);
+  fdPaintScope();
+  fdPaintOpts();
+  fdPaintKinds(res.kinds);
+  fdPaintTags(res.tags);
+
+  const empty = msg => { box.innerHTML = '<div class="find-empty"></div>'; box.firstChild.textContent = msg; foot.textContent = ''; };
+  if (res.error) return empty(t('findBadRegex'));
+  if (!res.scoped) return empty(t('findEmptyScope'));
+  if (!fdState.q && !fdState.tags.size) return empty(t('findIdle'));
+  if (!res.groups.length) return empty(t('findNothing'));
+
+  const parts = [];
+  // A loose document has no workbook to widen to; say so rather than
+  // silently searching one file under a "Workbook" chip.
+  if (fdState.scope === 'workbook' && !gvCurrentBookId())
+    parts.push('<div class="find-note-hint">' + attrEsc(t('findLooseHint')) + '</div>');
+
+  res.groups.forEach((g, gi) => {
+    const n = g.note;
+    const where = n.loose ? t('wikiLooseFile') : (n.bookName || '');
+    parts.push('<div class="find-note">');
+    parts.push('<div class="find-note-row' + (n.chapterId && n.chapterId === wbCurrentId ? ' current' : '') +
+      '" data-fd-note="' + gi + '" title="' + attrEsc(t('findOpenNoteTip')) + '">' +
+      '<span class="find-note-title">' + attrEsc(n.title) + '</span>' +
+      (where ? '<span class="find-note-book">' + attrEsc(where) + '</span>' : '') +
+      (g.hits.length ? '<span class="find-note-n">' + g.hits.length + '</span>' : '') +
+      '</div>');
+    g.hits.forEach((h, hi) => {
+      const sec = h.section ? h.section.text : '';
+      parts.push('<button type="button" class="find-hit" data-fd-note="' + gi + '" data-fd-hit="' + hi + '">' +
+        '<span class="find-where">' + attrEsc(t('findLineNo', h.line + 1)) + (sec ? ' · ' + attrEsc(sec) : '') + '</span>' +
+        '<span class="find-snip">' + fdSnippet(h.text, h.ranges) + '</span>' +
+        '</button>');
+    });
+    parts.push('</div>');
+  });
+  box.innerHTML = parts.join('');
+  foot.textContent = fdState.q ? t('findFoot', { m: res.matches, n: res.notes })
+                               : t('findFootNotes', { n: res.notes });
+}
+
+/* ── Going to a hit ──
+   Open the chapter if the hit is in another one, select the match in the
+   editor, and take the preview to the same section on a screen wide enough
+   to be showing both. */
+function fdOffsetOfLine(text, line) {
+  let at = 0;
+  for (let i = 0; i < line; i++) {
+    const nl = text.indexOf('\n', at);
+    if (nl === -1) return at;
+    at = nl + 1;
+  }
+  return at;
+}
+async function fdGoto(note, hit) {
+  if (note.chapterId && note.chapterId !== wbCurrentId) {
+    await openChapter(note.chapterId);
+    if (wbCurrentId !== note.chapterId) return;   // the switch was refused
+  }
+  if (isSmallScreen()) closeAllPanels();
+  if (!hit) { if (isMobile()) setView('source'); editor.focus(); return; }
+
+  const base = fdOffsetOfLine(editor.value, hit.line);
+  const start = base + hit.ranges[0][0], end = base + hit.ranges[0][1];
+  if (isMobile()) setView('source');
+  editor.focus();
+  editor.setSelectionRange(start, end);
+  editor.scrollTop = Math.max(0, editorMirrorAt(start).top - editor.clientHeight / 2);
+  if (!isMobile() && hit.section) {
+    // openChapter() rebuilds the preview; give it the frame it needs.
+    requestAnimationFrame(() => gotoPreviewAnchor(hit.section.slug));
+  }
+}
+
+/* ── Wiring ── */
+function fdRun() {
+  if (!findIsOpen()) return;
+  fdLast = fdCompute();
+  fdRender();
+}
+function fdRefresh() { clearTimeout(fdTimer); fdSaveSettings(); fdRun(); }
+function fdQueryChanged() {
+  fdState.q = document.getElementById('find-q').value;
+  clearTimeout(fdTimer);
+  fdTimer = setTimeout(fdRun, 130);
+}
+function fdClearQuery() {
+  const q = document.getElementById('find-q');
+  q.value = '';
+  fdState.q = '';
+  fdRefresh();
+  q.focus();
+}
+function fdQueryKey(e) {
+  if (e.key === 'Escape') {
+    e.stopPropagation();
+    if (fdState.q) fdClearQuery(); else toggleFind();
+    return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(fdTimer);
+    fdRun();
+    const g = fdLast.groups[0];
+    if (g) fdGoto(g.note, g.hits[0] || null);
+  }
+}
+// The open chapter is read from the editor, so the results follow the typing
+// — debounced, and only while the panel is open.
+function fdLive() {
+  if (!findIsOpen()) return;
+  clearTimeout(fdLiveTimer);
+  fdLiveTimer = setTimeout(fdRun, 300);
+}
+function fdRepaintLang() { if (findIsOpen()) fdRender(); }
+
+function fdSaveSettings() {
+  try {
+    store.set(FD_KEY, JSON.stringify({
+      scope: fdState.scope, matchCase: fdState.matchCase,
+      wholeWord: fdState.wholeWord, regex: fdState.regex, fold: fdState.fold
+    }));
+  } catch (e) {}
+}
+async function fdLoadSettings() {
+  let raw = null;
+  try { raw = await store.get(FD_KEY); } catch (e) {}
+  let v = null;
+  try { v = raw ? JSON.parse(raw) : null; } catch (e) { v = null; }
+  if (v && typeof v === 'object') {
+    if (['note', 'workbook', 'vault'].indexOf(v.scope) !== -1) fdState.scope = v.scope;
+    ['matchCase', 'wholeWord', 'regex', 'fold'].forEach(k => {
+      if (typeof v[k] === 'boolean') fdState[k] = v[k];
+    });
+  }
+  fdPaintScope();
+  fdPaintOpts();
+  if (findIsOpen()) fdRun();
+}
+
+document.querySelectorAll('#find-scope button').forEach(b =>
+  b.addEventListener('click', () => { fdState.scope = b.dataset.fdScope; fdRefresh(); }));
+document.querySelectorAll('#find-opts .find-opt').forEach(b =>
+  b.addEventListener('click', () => { fdState[b.dataset.fdOpt] = !fdState[b.dataset.fdOpt]; fdRefresh(); }));
+
+// The chips and the results are generated, so both are delegated.
+function fdToggleIn(set, value) { set.has(value) ? set.delete(value) : set.add(value); }
+document.getElementById('find-kinds').addEventListener('click', e => {
+  const chip = e.target.closest('[data-fd-kind]');
+  if (!chip) return;
+  fdToggleIn(fdState.kinds, chip.dataset.fdKind);
+  fdRefresh();
+});
+document.getElementById('find-tags').addEventListener('click', e => {
+  const chip = e.target.closest('[data-fd-tag]');
+  if (!chip) return;
+  fdToggleIn(fdState.tags, chip.dataset.fdTag);
+  fdRefresh();
+});
+document.getElementById('find-results').addEventListener('click', e => {
+  const hitEl = e.target.closest('.find-hit');
+  if (hitEl) {
+    const g = fdLast.groups[+hitEl.dataset.fdNote];
+    if (g) fdGoto(g.note, g.hits[+hitEl.dataset.fdHit] || null);
+    return;
+  }
+  const noteEl = e.target.closest('.find-note-row');
+  if (noteEl) {
+    const g = fdLast.groups[+noteEl.dataset.fdNote];
+    if (g) fdGoto(g.note, null);
+  }
+});
+
+fdLoadSettings();
+fdReady = true;
+
+/* ============================================================
    Writing a [[link]] — two routes to the same list.
 
    Typing "[[" opens the suggester right at the caret, the way
@@ -5084,31 +5788,43 @@ function insertWikiLink() {
    textarea's own metrics, put the text up to the caret in it, and measure
    where a marker span lands. */
 const wikiSuggest = {
-  open: false, start: -1, items: [], sel: 0, mirror: null
+  open: false, start: -1, items: [], sel: 0
 };
 
-function wikiCaretPoint() {
-  let m = wikiSuggest.mirror;
+/* The one mirror. Two callers: the suggester wants where the caret is on
+   screen, the search panel wants how far down a hit sits so it can scroll
+   there. Both need the same measurement, and neither may count "\n" and
+   multiply — lines wrap, which is exactly what makes that wrong. */
+const editorMirror = { el: null };
+function editorMirrorAt(index) {
+  let m = editorMirror.el;
   if (!m) {
     m = document.createElement('div');
     m.setAttribute('aria-hidden', 'true');
     m.style.cssText = 'position:fixed;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;top:0;left:0;pointer-events:none;';
     document.body.appendChild(m);
-    wikiSuggest.mirror = m;
+    editorMirror.el = m;
   }
   const cs = getComputedStyle(editor);
   ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'textTransform',
-    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderWidth', 'tabSize']
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'tabSize']
     .forEach(k => { m.style[k] = cs[k]; });
   m.style.width = editor.clientWidth + 'px';
-  m.textContent = editor.value.slice(0, editor.selectionStart);
+  m.textContent = editor.value.slice(0, index);
   const mark = document.createElement('span');
-  mark.textContent = '​';
+  mark.textContent = '\u200b';
   m.appendChild(mark);
+  const at = { top: mark.offsetTop, left: mark.offsetLeft, lineHeight: parseFloat(cs.lineHeight || '18') };
+  m.textContent = '';                    // the text may be a whole chapter
+  return at;
+}
+
+function wikiCaretPoint() {
+  const at = editorMirrorAt(editor.selectionStart);
   const r = editor.getBoundingClientRect();
   return {
-    x: r.left + mark.offsetLeft - editor.scrollLeft,
-    y: r.top + mark.offsetTop - editor.scrollTop + parseFloat(cs.lineHeight || '18')
+    x: r.left + at.left - editor.scrollLeft,
+    y: r.top + at.top - editor.scrollTop + at.lineHeight
   };
 }
 
@@ -5585,6 +6301,10 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'L') { e.preventDefault(); openWikiModal(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '2') { e.preventDefault(); toggleWorkbooks(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === '4') { e.preventDefault(); toggleFind(); }
+  // Ctrl+Shift+F as well, the way every editor spells "search everything".
+  // Plain Ctrl+F is left alone: the browser's own find still has a job here.
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'F') { e.preventDefault(); toggleFind(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); saveFile(); }
   else if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveToWorkbook(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }
@@ -5608,8 +6328,10 @@ function applyResponsiveDefaults() {
       document.getElementById(id).classList.remove('collapsed');
       document.getElementById(PANELS[id]).classList.add('active');
     });
-    document.getElementById('img-panel').classList.add('collapsed');
-    document.getElementById('btn-explorer').classList.remove('active');
+    ['img-panel', 'find-panel'].forEach(id => {
+      document.getElementById(id).classList.add('collapsed');
+      document.getElementById(PANELS[id]).classList.remove('active');
+    });
     document.getElementById('panel-backdrop').classList.remove('show');
   }
 }

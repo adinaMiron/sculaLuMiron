@@ -35,7 +35,7 @@ have. Copy its `:root` when starting a new page.
 | `--accent-2` | — | `#D3CD7C` | `#D3CD7C` |
 | `--accent-soft` | — | `color-mix(in srgb, var(--accent) 16%, var(--surface))` | — |
 | `--on-accent` | `#1A2117` | `#1A2117` | `#1A2117` |
-| `--danger` | `#C4643C` | `#C4643C` | — |
+| `--danger` | `#C4643C` | `#C4643C` | `#C4643C` |
 | `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
 | `--graph-*` | — | — | 8 node-role tokens, see below |
@@ -52,8 +52,8 @@ they are the only eight values that need a `[data-theme="light"]` entry.
 
 Where a cell is blank, that file has no equivalent — not a gap to fill,
 just a role it doesn't need (`index.html` has no secondary accent tint or
-tinted-hover state; `markdown-editor.html` has no danger/status colour;
-only `index.html` has an inverted-light surface, hence `--on-text`).
+tinted-hover state; only `index.html` has an inverted-light surface, hence
+`--on-text`).
 
 `index.html` (12–37) and `editor.html` (20–36) landed on the closest
 naming to each other since they were migrated back-to-back — both use
@@ -63,8 +63,9 @@ and calls the same *shape of* role (a light secondary-accent tint used
 for headings/emphasis, not a status colour) `--accent-2` instead —
 `editor.html` reused `--accent-2` for its own "gold" secondary accent
 (save button, group tag) to match `markdown-editor.html`, so `--accent-2`
-and `--danger` both now appear in two of three files, just not the *same*
-two. Unifying into one shared token file (dropping `--on-text` into
+now appears in two of three files. `--danger` is in all three: the search
+panel's invalid-regex flag (`docs/FEATURES.md` § H) took the same hex
+rather than borrowing a `--graph-*` node role for a status colour. Unifying into one shared token file (dropping `--on-text` into
 `markdown-editor.html`-style tiers, or vice versa) is still open —
 revisit if these three ever get pulled into one `<style>` include.
 
@@ -130,7 +131,7 @@ override flips everything:
 ```
 
 This is still aspirational — no file defines `--warn`/`--ok` (only
-`--danger` exists, in `index.html`/`editor.html`), and no file has a
+`--danger` exists, now in all three dark apps), and no file has a
 `[data-theme="light"]` override block yet (see "Theme switching" below).
 
 **Decision: the earth palette originally from `index.html` is the chosen

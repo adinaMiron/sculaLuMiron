@@ -520,6 +520,108 @@ cd tests && npm install && node graph.js
 
 ---
 
+## H. Search and filter (`markdown-editor.html`)
+
+`🔍 Find` in the toolbar, `Ctrl+4` or `Ctrl+Shift+F`, opens a fourth side
+panel. Plain `Ctrl+F` is deliberately left to the browser: the preview is a
+real page and its own find still has a job there.
+
+### The three scopes
+
+The same three the graph has, and for the same reason — a person thinking
+about "this chapter / this caiet / everything" should not have to learn a
+second vocabulary:
+
+| Chip | Searches |
+|---|---|
+| **Capitol** / Chapter | only the chapter open in the editor |
+| **Caiet** / Workbook | every chapter of the workbook that chapter belongs to |
+| **Tot** / All | every chapter of every workbook |
+
+Nothing is read off disk. Workbooks are the source of truth (§ E) and
+IndexedDB already holds every chapter's text, so a workbook-wide search
+needs no folder permission and works on a phone. The open chapter is read
+from the `<textarea>`, saved or not — `noteText()` and `wikiNotes()`, both
+the graph's, are what make "a note" mean one thing across the two features.
+A loose file that is not a chapter has no workbook to widen to; the panel
+says so instead of silently searching one file under a "Workbook" chip.
+
+### Query, then two filters
+
+`fdCompute()` runs **scope ▸ query ▸ tags ▸ kinds**, in that order. The four
+toggles beside the query box:
+
+| | |
+|---|---|
+| `Aa` | match case |
+| `⌈ab⌉` | whole words only |
+| `.*` | the query is a regular expression — a broken one flags the box red rather than throwing |
+| `ăâ` | ignore diacritics (**on by default**) |
+
+Folding is the one that matters here. `fdFold()` runs NFD and drops the
+combining marks, so `masura` finds `măsură` — and the cedilla `ş` and the
+comma-below `ș` fold to the same `s`, which is the difference half of all
+scanned PDFs get wrong (`docs/RECIPES.md`). `fdFoldMap()` keeps every folded
+character pointing back at its source index, so a hit still marks the right
+characters of the original line.
+
+Whole-word is **not** `\b`. After `ă` a word boundary cannot match in a
+non-unicode regex; the characters either side of the hit are tested against
+`/[\p{L}\p{N}_]/u` instead.
+
+Below the toggles, two rows of chips narrow what the query already found:
+
+- **Doar / Only** — the kind of line a hit sits on: `heading`, `text`,
+  `list`, `code`, `quote`, `table`. `fdKindOf()` decides it, tracking fenced
+  code the way `parseMarkdown()` does. The row hides itself when every hit
+  is the same kind — there would be nothing to choose between.
+- **Etichete / Tags** — the `#tags` of the chapters found, most-used first.
+  Selecting several narrows (a chapter must carry **all** of them), because
+  a filter that widened as you added to it would be a strange thing to call
+  a filter.
+
+Each chip's count comes from one step *earlier* than the chip itself
+filters, so a chip can always be swapped for another without the list going
+empty first.
+
+### Going to a hit
+
+Click a result row: the chapter opens if the hit is in another one, the
+match is selected in the `<textarea>`, and on a screen wide enough to be
+showing both panes the preview jumps to the same section and flashes it.
+The heading a hit sits under is slugged with `headingSlug()` and the same
+per-note counter `parseMarkdown()` uses, so the anchor really exists.
+
+Scrolling the textarea to the hit goes through `editorMirrorAt()` — one
+off-screen twin of the `<textarea>`, shared with the `[[` suggester. Lines
+wrap, so counting `\n` and multiplying by the line height is wrong in
+exactly the long chapters this is for.
+
+### Adding to it
+
+- A new toggle: a `<button class="find-opt" data-fd-opt="…">` in
+  `#find-opts`, a matching boolean on `fdState`, and its use inside
+  `fdMatcher()` or `fdLineHits()`. `fdPaintOpts()` and the persisted
+  settings pick it up with no further wiring.
+- A new kind of line: add it to `FD_KINDS`, teach `fdKindOf()` the test,
+  and add a `findKind_<name>` key to both languages.
+- The panel's chips and rows are generated, so they carry no `data-i`.
+  `fdRepaintLang()` re-renders them on a language switch — the same
+  arrangement `renderWorkbooks()` and the graph's legend have.
+
+### Testing
+
+`tests/find.js`. All three scopes, all four toggles, both chip rows, a hit
+opening another chapter and landing selected, a hit below the fold scrolling
+to itself through wrapped lines, a line of literal HTML shown rather than
+run, both languages, `Ctrl+4`.
+
+```bash
+cd tests && npm install && node find.js
+```
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
