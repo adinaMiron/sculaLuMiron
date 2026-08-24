@@ -316,6 +316,17 @@ function serve() {
   await page.goto(`http://127.0.0.1:${port}/recipes.html`);
   await page.waitForFunction(() => !!window.ScuLaRecipes);
 
+  /* ---- 0. nothing conditional is on screen before a file is ----
+     `hidden` is only a UA rule of display:none, and any class that sets its
+     own display outranks it. Every one of these carries such a class. */
+  const leaked = await page.evaluate(() =>
+    ['filters', 'found', 'onlyShownBox', 'btnStop', 'textCard', 'mdCard']
+      .filter(id => {
+        const el = document.getElementById(id);
+        return el && el.hidden && getComputedStyle(el).display !== 'none';
+      }));
+  check('nothing marked hidden is actually visible', leaked.length === 0, leaked.join(', '));
+
   /* ---- 1. the parser ---- */
   const parsed = await page.evaluate(s => {
     const days = window.ScuLaRecipes.Recipes.parse(s);

@@ -109,6 +109,11 @@
   .btn.ghost{background:transparent}
   .btn.mini{padding:.3rem .6rem;font-size:.78rem;min-height:1.9rem;border-radius:.6rem}
   .btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+  /* `hidden` is only a UA rule of display:none, so any class that sets its
+     own display outranks it — .row, .btn and .filters all do, and an
+     element carrying both stayed on screen. editor.html hit this too; see
+     its `.panel[hidden]` and `button.action[hidden]`. */
+  [hidden]{display:none !important}
   .row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
   .row.end{justify-content:flex-end}
   .spacer{flex:1 1 auto}
