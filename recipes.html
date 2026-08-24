@@ -1750,14 +1750,24 @@ const PdfText = (function(){
   }
   const IDENTITY = [1,0,0,1,0,0];
 
-  function pageText(content, fonts){
-    const s = content;
+  function pageText(content, fonts, forms){
     const out = [];
+    runContent(content, fonts, forms || new Map(), IDENTITY.slice(), out, 0);
+    return out;
+  }
+
+  // One content stream, read in the graphics state its caller was in. The
+  // page itself is depth 0; every /Form XObject it draws is one level down.
+  // Following them is not optional: a producer that lays a page out in a
+  // design tool routinely puts *all* of the page's text inside one form, and
+  // a reader that stops at the page sees an empty page and calls it a scan.
+  function runContent(content, fonts, forms, ctm0, out, depth){
+    const s = content;
     let line = null;                 // { y, size, parts:[{x, text}] }
     let stack = [];
     let font = null, size = 12, leading = 0, charSp = 0, wordSp = 0, hscale = 1;
     let tm = IDENTITY.slice(), tlm = IDENTITY.slice();
-    let ctm = IDENTITY.slice();
+    let ctm = ctm0.slice();
     const gs = [];
     let prevEnd = null;              // device x where the last run stopped
 
@@ -1926,8 +1936,12 @@ const PdfText = (function(){
           if(m6.length === 6 && m6.every(v => typeof v === "number")) ctm = mul(m6, ctm);
           break;
         }
-        case "BT": tm = IDENTITY.slice(); tlm = IDENTITY.slice(); flush(); break;
-        case "ET": flush(); break;
+        // BT/ET must not break a line. Plenty of producers — anything that
+        // positions glyph by glyph — wrap *every character* in its own text
+        // object, and flushing here put each of them on a line of its own.
+        // Geometry already decides line breaks; let it.
+        case "BT": tm = IDENTITY.slice(); tlm = IDENTITY.slice(); break;
+        case "ET": break;
         case "Tf":
           size = typeof a[a.length-1] === "number" ? a[a.length-1] : size;
           font = fonts.get(a[a.length-2]) || null;
@@ -1942,8 +1956,13 @@ const PdfText = (function(){
           break;
         case "Tm": {
           const m6 = a.slice(-6);
+          // `prevEnd` deliberately survives a Tm: a glyph-by-glyph producer
+          // re-positions before every character, and the gap from where the
+          // last one stopped to where this one starts is the *only* evidence
+          // that a space belongs between them. A Tm that moves to another
+          // line is caught by the y test in show(), which flushes anyway.
           if(m6.length === 6 && m6.every(v => typeof v === "number")){
-            tlm = m6.slice(); tm = m6.slice(); prevEnd = null;
+            tlm = m6.slice(); tm = m6.slice();
           }
           break;
         }
@@ -1960,12 +1979,20 @@ const PdfText = (function(){
           nextLine(0, -leading);
           show(String(a[a.length-1] || ""));
           break;
+        case "Do": {
+          const f = forms.get(a[a.length-1]);
+          if(f && depth < 8){
+            flush();                       // the form's lines are its own
+            runContent(f.content, f.fonts, f.forms,
+                       f.matrix ? mul(f.matrix, ctm) : ctm, out, depth + 1);
+          }
+          break;
+        }
         default: break;
       }
       stack = [];
     }
     flush();
-    return out;
   }
 
   // Lines come out in drawing order; a two-column or out-of-order page is
@@ -2007,6 +2034,42 @@ const PdfText = (function(){
     const re = /(\/[A-Za-z0-9#.+-]+)\s+(\d+)\s+\d+\s+R/g;
     let m;
     while((m = re.exec(xd))) out.set(m[1], +m[2]);
+    return out;
+  }
+
+  // Every /Form XObject a resource dictionary offers, decoded and ready for
+  // `runContent` to walk. Forms nest, so this does too; `memo` keeps a form
+  // drawn on all 108 pages from being inflated 108 times, and `building` is
+  // the guard against a form that (directly or not) draws itself.
+  async function formsOf(resources, objs, depth, memo, building){
+    const out = new Map();
+    if(depth > 6) return out;
+    memo = memo || new Map();
+    building = building || new Set();
+    for(const [name, num] of xobjectsOf(resources, objs)){
+      if(building.has(num)) continue;
+      if(memo.has(num)){ out.set(name, memo.get(num)); continue; }
+      const o = objs.get(num);
+      if(!o || !/\/Subtype\s*\/Form/.test(o.dict)) continue;
+      let data = null;
+      try{ data = await decodeStream(o); }catch(e){ /* one bad form, not the page */ }
+      if(!data) continue;
+      const form = { content: latin1(data), matrix: null, fonts: new Map(), forms: new Map() };
+      const mm = dictValue(o.dict, "/Matrix");
+      if(mm){
+        const nums = (mm.match(/-?\d*\.?\d+/g) || []).map(Number);
+        if(nums.length === 6) form.matrix = nums;
+      }
+      const res = dictValue(o.dict, "/Resources");
+      if(res){
+        building.add(num);
+        try{ form.fonts = await fontsOf(res, objs); }catch(e){}
+        try{ form.forms = await formsOf(res, objs, depth + 1, memo, building); }catch(e){}
+        building.delete(num);
+      }
+      memo.set(num, form);
+      out.set(name, form);
+    }
     return out;
   }
 
@@ -2155,15 +2218,20 @@ const PdfText = (function(){
   async function extract(buffer){
     const { objs, pages } = await parseDoc(buffer);
     const chunks = [];
+    const memo = new Map();                  // forms shared between pages
+    const perPage = [];
     for(const page of pages){
       let fonts = new Map();
       try{ fonts = await fontsOf(page.resources, objs); }catch(e){}
+      let forms = new Map();
+      try{ forms = await formsOf(page.resources, objs, 0, memo); }catch(e){}
       const content = await contentOf(page, objs);
-      if(!content) continue;
-      const text = joinLines(pageText(content, fonts));
+      if(!content){ perPage.push(""); continue; }
+      const text = joinLines(pageText(content, fonts, forms));
+      perPage.push(text);
       if(text.trim()) chunks.push(text);
     }
-    return { pages: pages.length, text: chunks.join("\n\n") };
+    return { pages: pages.length, text: chunks.join("\n\n"), perPage };
   }
 
   // Page-ordered pictures, for the OCR route. Each is either the raw JPEG
@@ -2236,6 +2304,36 @@ const Recipes = (function(){
   const UNIT_RE = new RegExp("^(" + UNITS + ")\\.?" + NOT_LETTER, "i");
   const FRACTIONS = { "½":"1/2", "¼":"1/4", "¾":"3/4", "⅓":"1/3", "⅔":"2/3", "⅛":"1/8" };
   const QTY_RE = /^([½¼¾⅓⅔⅛]|\d+\s*[½¼¾⅓⅔⅛]|\d+\/\d+|\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?)\s*/;
+
+  // "o conservă ton", "un ou mare", "two eggs". A quantity written as a word
+  // is still a quantity, and a line that opens with one is an ingredient, not
+  // a sentence — without this, a whole ingredient list written that way was
+  // read as prose and ended up in the method.
+  const NUM_WORD = {
+    un:"1", o:"1", a:"1", an:"1", one:"1", doi:"2", "două":"2", doua:"2", two:"2",
+    trei:"3", three:"3", patru:"4", four:"4", cinci:"5", five:"5", "șase":"6", sase:"6",
+    six:"6", "șapte":"7", sapte:"7", seven:"7", opt:"8", eight:"8", "nouă":"9", noua:"9",
+    nine:"9", zece:"10", ten:"10", "jumătate":"1/2", jumatate:"1/2", half:"1/2"
+  };
+  const WORD_QTY = new RegExp("^(" + Object.keys(NUM_WORD).join("|") + ")" + NOT_LETTER + "\\s+", "i");
+
+  // Books that label the two halves outright are as common as books that
+  // leave them to be guessed. When the text says which half it is in,
+  // believe it instead of judging line by line.
+  const SEC_ING = new RegExp("^(ingrediente|ingredient|ingredients|necesar(e)?|" +
+    "ai nevoie de|you will need|what you need)" + NOT_LETTER, "i");
+  const SEC_STEP = new RegExp("^(mod de preparare|mod de pregătire|mod de preparat|preparare(a)?|" +
+    "metod[ăa]|metoda de preparare|instruc[țt]iuni|preg[ăa]tire|realizare|" +
+    "method|preparation|instructions|directions|steps|how to)" + NOT_LETTER, "i");
+
+  // Parts of a dish, not meals of a day. A book writes them exactly like a
+  // meal header — "Sos: 100g iaurt grecesc" — so the word itself is the only
+  // thing that tells them apart.
+  const COMPONENT_RE = new RegExp("^(sos(ul)?|dressing|topping|garnitur[ăa]|crem[ăa]|umplutur[ăa]|" +
+    "piure|mujdei|glazur[ăa]|marinat[ăa]|dres[ăa]tur[ăa]|condimente|legume|salat[ăa]|sirop|" +
+    "blat|aluat|decor|servire|op[țt]ional|extra|adaos|deasupra|" +
+    "sauce|filling|glaze|marinade|dough|base|frosting|seasoning|garnish|dip|optional)" +
+    NOT_LETTER, "i");
 
   // Imperatives that start a cooking step. First word only — that is what
   // separates "Taie cartofii…" from "2 cartofi tăiați".
@@ -2316,13 +2414,17 @@ const Recipes = (function(){
   }
 
   function looksLikeQty(text){
-    return QTY_RE.test(text.trim());
+    const s = text.trim();
+    return QTY_RE.test(s) || WORD_QTY.test(s);
   }
 
   function isStep(text){
     const s = text.trim();
-    if(looksLikeQty(s)) return false;
+    // The imperative is tested first now that a word can be a quantity:
+    // "Taie două cepe" is a step, "două cepe" is an ingredient. A numeric
+    // line never starts with a verb, so nothing that used to work moves.
     if(VERBS.test(s) || REFLEXIVE.test(s)) return true;
+    if(looksLikeQty(s)) return false;
     // Two sentences, or one long one with a verb-ish tail: prose, not a
     // shopping-list line.
     const sentences = (s.match(/[.!?](\s|$)/g) || []).length;
@@ -2340,7 +2442,7 @@ const Recipes = (function(){
     const chunks = text.split(/,\s*/);
     chunks.forEach((c, i) => {
       if(i === 0){ buf = c; return; }
-      if(/^\d/.test(c)){ parts.push(buf); buf = c; }
+      if(/^\d/.test(c) || WORD_QTY.test(c)){ parts.push(buf); buf = c; }
       else buf += ", " + c;
     });
     if(buf) parts.push(buf);
@@ -2351,16 +2453,24 @@ const Recipes = (function(){
     let s = text.trim().replace(/^[-–—•]\s*/, "");
     let qty = "", unit = "";
     const q = s.match(QTY_RE);
-    if(q){
-      qty = q[1].trim().replace(/\s+/g, " ");
-      Object.keys(FRACTIONS).forEach(f => { qty = qty.replace(f, (qty.length > 1 ? " " : "") + FRACTIONS[f]).trim(); });
-      s = s.slice(q[0].length);
+    const wq = q ? null : s.match(WORD_QTY);
+    if(q || wq){
+      if(q){
+        qty = q[1].trim().replace(/\s+/g, " ");
+        Object.keys(FRACTIONS).forEach(f => { qty = qty.replace(f, (qty.length > 1 ? " " : "") + FRACTIONS[f]).trim(); });
+        s = s.slice(q[0].length);
+      }else{
+        // A word becomes the digit it means: the fourth column of the
+        // markdown is meant to be multiplied by, not read.
+        qty = NUM_WORD[wq[1].toLowerCase()] || wq[1];
+        s = s.slice(wq[0].length);
+      }
       const u = s.match(UNIT_RE);
       if(u){ unit = u[1]; s = s.slice(u[0].length).trim(); }
     }
     s = s.replace(/^[-–—:•]\s*/, "").trim();
     if(!s && (qty || unit)){ s = (qty + " " + unit).trim(); qty = ""; unit = ""; }
-    return { qty, unit, item: s, fdc: "" };
+    return { qty, unit, item: s, group: "", fdc: "" };
   }
 
   // "Toarnă apa peste ovăz, lasă 2-3 min. Adaugă proteina și banana." → 2 steps.
@@ -2402,9 +2512,19 @@ const Recipes = (function(){
   function parse(text){
     const lines = toLines(text);
     const days = [];
-    let day = null, meal = null, inSteps = false;
+    let day = null, meal = null, inSteps = false, group = "", section = "";
 
-    function ensureDay(){ if(!day){ day = newDay(days.length + 1, ""); days.push(day); } return day; }
+    function ensureDay(){
+      if(!day){ day = newDay(days.length + 1, ""); day.auto = true; days.push(day); }
+      return day;
+    }
+    function addIngredients(m, textPart){
+      splitIngredients(textPart).forEach(p => {
+        const ing = parseIngredient(p);
+        ing.group = group;
+        m.ingredients.push(ing);
+      });
+    }
     function ensureMeal(){
       if(!meal){ meal = newMeal("other", "", ""); ensureDay().meals.push(meal); inSteps = false; }
       return meal;
@@ -2418,7 +2538,7 @@ const Recipes = (function(){
         const n = /^\d+$/.test(dm[1]) ? +dm[1] : romanToInt(dm[1]);
         day = newDay(n, "");
         days.push(day);
-        meal = null; inSteps = false;
+        meal = null; inSteps = false; group = ""; section = "";
         const rest = (dm[2] || "").trim();
         if(rest && !MEAL_HEAD.test(rest)) day.title = rest;
         else if(rest){
@@ -2433,12 +2553,43 @@ const Recipes = (function(){
       const mm = text2.match(MEAL_HEAD);
       if(mm && !l.bullet){
         const kind = mealKind(mm[1]);
+        const head = mm[1].trim(), rest = mm[2].trim();
+        // "Ingrediente:" / "Mod de preparare:" say which half follows. This
+        // is tested before anything else because such a line is often long
+        // enough that the prose heuristics would call it a step.
+        if(!kind && (SEC_ING.test(head) || SEC_STEP.test(head))){
+          const m3 = ensureMeal();
+          section = SEC_ING.test(head) ? "ing" : "steps";
+          inSteps = section === "steps";
+          group = "";
+          if(rest){
+            if(section === "steps") splitSteps(rest).forEach(s => m3.steps.push(s));
+            else addIngredients(m3, rest);
+          }
+          continue;
+        }
         // A colon inside prose ("Notă: …") is not a meal header.
-        if(kind || (mm[1].split(" ").length <= 2 && mm[2].length && !isStep(text2) && !looksLikeQty(text2))){
+        if(kind || (head.split(" ").length <= 2 && rest.length && !isStep(text2) && !looksLikeQty(text2))){
+          // "Sos:", "Dressing:", "Topping:" name a *part of the dish being
+          // described*, not the next meal of the day. Reading them as meals
+          // is what used to leave the parent with no method and the part
+          // with no ingredients — one recipe torn in half. A component is
+          // either a word we know, or an unknown one arriving while the
+          // current meal has its ingredients but not yet its method.
+          const isComponent = !kind && meal &&
+            (COMPONENT_RE.test(head) || (meal.ingredients.length && !meal.steps.length));
+          if(isComponent){
+            group = head;
+            if(rest){
+              if(isStep(rest)){ inSteps = true; group = ""; splitSteps(rest).forEach(s => meal.steps.push(s)); }
+              else addIngredients(meal, rest);
+            }
+            continue;
+          }
           ensureDay();
-          meal = newMeal(kind, kind ? "" : mm[1].trim(), mm[2].trim());
+          meal = newMeal(kind, kind ? "" : head, rest);
           day.meals.push(meal);
-          inSteps = false;
+          inSteps = false; group = ""; section = "";
           continue;
         }
       }
@@ -2449,15 +2600,26 @@ const Recipes = (function(){
         m2.name = text2;                       // meal title on its own line
         continue;
       }
-      if(step || (inSteps && !looksLikeQty(text2))){
-        inSteps = true;
+      // Inside a labelled section the label wins, except over an outright
+      // imperative — a book that forgets its "Mod de preparare:" heading
+      // should not have its method filed as shopping.
+      const imperative = VERBS.test(text2) || REFLEXIVE.test(text2);
+      if(section === "ing" && !imperative){ addIngredients(m2, text2); continue; }
+      if(section === "steps" || step || (inSteps && !looksLikeQty(text2))){
+        inSteps = true; group = "";
         splitSteps(text2).forEach(s => m2.steps.push(s));
       }else{
-        splitIngredients(text2).forEach(p => m2.ingredients.push(parseIngredient(p)));
+        addIngredients(m2, text2);
       }
     }
 
-    return days.filter(d => d.meals.some(m => m.name || m.ingredients.length || m.steps.length));
+    let out = days.filter(d => d.meals.some(m => m.name || m.ingredients.length || m.steps.length));
+    // A book opens with a foreword. Once the text has real day headers, a
+    // day this parser invented for the prose above the first one is front
+    // matter, not a menu — but only if it never listed an ingredient, so a
+    // lone pasted recipe with no day header at all still comes through.
+    if(out.some(d => !d.auto)) out = out.filter(d => !d.auto || d.meals.some(m => m.ingredients.length));
+    return out;
   }
 
   return { parse, parseIngredient, splitSteps, splitIngredients, isStep, newDay, newMeal, mealKind };
