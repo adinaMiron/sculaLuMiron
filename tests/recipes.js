@@ -112,6 +112,120 @@ function buildPdf(lines, { compress, objstm, type0 }) {
   return Buffer.concat(parts);
 }
 
+/* ---------- the shape 100-de-rete-pentru-slabit.pdf is in ----------
+   Two things at once, because that file does both and either one alone made
+   it unreadable:
+
+     * the page draws nothing itself — it is one `/Fm0 Do`, and every word
+       of the book lives inside that Form XObject;
+     * every single glyph is its own `BT … Tm … Tj … ET`, so a reader that
+       breaks a line at BT/ET puts one character on each line, and one that
+       forgets where the last glyph ended cannot tell where a space goes.
+
+   Glyphs are placed on a fixed 0.6em grid and a space is a skipped slot, so
+   the only evidence of a word break is the gap — exactly as in the book. */
+function buildGlyphFormPdf(lines) {
+  const chars = Array.from(new Set(lines.join('').split(''))).filter(c => c !== ' ');
+  const code = new Map();
+  chars.forEach((c, i) => code.set(c, i + 1));
+  const cd = c => code.get(c).toString(16).padStart(2, '0');
+  const SIZE = 12, ADVANCE = 0.6;
+
+  let form = '';
+  let y = 780;
+  for (const line of lines) {
+    let x = 72;
+    for (const ch of line) {
+      if (ch !== ' ') {
+        form += `q 1 0 0 1 0 0 cm BT ${SIZE} 0 0 ${SIZE} ${x} ${y} Tm /F1 1 Tf <${cd(ch)}> Tj ET Q\n`;
+      }
+      x += ADVANCE * SIZE;
+    }
+    y -= 20;
+  }
+  const content = 'q /Fm0 Do Q\n';
+  const cmap =
+    '/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n' +
+    '1 begincodespacerange <00> <ff> endcodespacerange\n' +
+    `${chars.length} beginbfchar\n` +
+    chars.map(c => `<${cd(c)}> <${c.charCodeAt(0).toString(16).padStart(4, '0')}>`).join('\n') +
+    '\nendbfchar\nendcmap CMapName currentdict /CMap defineresource pop end end';
+  // Real widths: without them the reader has to guess the advance, and a
+  // guess is what puts spaces inside words.
+  const widths = '[' + chars.map(() => Math.round(ADVANCE * 1000)).join(' ') + ']';
+
+  const parts = [];
+  const push = s => parts.push(Buffer.isBuffer(s) ? s : Buffer.from(s, 'latin1'));
+  push('%PDF-1.5\n');
+  push('1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n');
+  push('2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n');
+  push('3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] ' +
+       '/Resources << /XObject << /Fm0 8 0 R >> >> /Contents 5 0 R >> endobj\n');
+  push('4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica ' +
+       `/FirstChar 1 /LastChar ${chars.length} /Widths ${widths} /ToUnicode 6 0 R >> endobj\n`);
+  for (const [num, body, extra] of [[5, content, ''], [6, cmap, '']]) {
+    const data = Buffer.from(body, 'latin1');
+    push(`${num} 0 obj << /Length ${data.length}${extra} >>\nstream\n`);
+    push(data);
+    push('\nendstream endobj\n');
+  }
+  const fdata = zlib.deflateSync(Buffer.from(form, 'latin1'));
+  push(`8 0 obj << /Type /XObject /Subtype /Form /FormType 1 /BBox [0 0 595 842] ` +
+       `/Resources << /Font << /F1 4 0 R >> >> /Length ${fdata.length} /Filter /FlateDecode >>\nstream\n`);
+  push(fdata);
+  push('\nendstream endobj\n');
+  push('trailer << /Size 9 /Root 1 0 R >>\n%%EOF\n');
+  return Buffer.concat(parts);
+}
+
+/* ---------- a JPEG 2000 image, hand-built ----------
+   Every packet is empty, which is legal and means "no coefficient in this
+   precinct was ever coded". That decodes to an all-zero image, and after the
+   DC level shift to a uniform mid-grey — so the check proves the box walk,
+   the marker segments, the tile and precinct geometry, the packet iteration,
+   the inverse wavelet and the level shift, all without needing an encoder to
+   produce EBCOT data. The full entropy-coded path is checked against the
+   real book below, when it is present. */
+function buildJp2(w, h) {
+  const u16 = v => Buffer.from([(v >> 8) & 255, v & 255]);
+  const u32 = v => Buffer.from([(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255]);
+  const seg = (m, payload) => Buffer.concat([Buffer.from([0xff, m]), u16(payload.length + 2), payload]);
+
+  const siz = seg(0x51, Buffer.concat([
+    u16(0), u32(w), u32(h), u32(0), u32(0), u32(w), u32(h), u32(0), u32(0),
+    u16(1), Buffer.from([7, 1, 1])            // one 8-bit unsigned component
+  ]));
+  const levels = 1;
+  const cod = seg(0x52, Buffer.from([
+    0,          // Scod: default precincts, no SOP, no EPH
+    0,          // LRCP
+    0, 1,       // one layer
+    0,          // no component transform
+    levels,
+    4, 4,       // 64x64 code-blocks
+    0,          // no code-block style
+    1           // 5/3 reversible
+  ]));
+  const qcd = seg(0x5c, Buffer.concat([
+    Buffer.from([0x40]),                       // no quantisation, 2 guard bits
+    Buffer.alloc(1 + 3 * levels, 8 << 3)       // one exponent per subband
+  ]));
+  const packets = Buffer.alloc(levels + 1, 0); // one empty packet per resolution
+  const sotLen = 12, sodLen = 2;
+  const psot = sotLen + sodLen + packets.length;
+  const sot = seg(0x90, Buffer.concat([u16(0), u32(psot), Buffer.from([0, 1])]));
+  const cs = Buffer.concat([Buffer.from([0xff, 0x4f]), siz, cod, qcd, sot,
+                            Buffer.from([0xff, 0x93]), packets, Buffer.from([0xff, 0xd9])]);
+
+  const box = (type, body) =>
+    Buffer.concat([u32(body.length + 8), Buffer.from(type, 'latin1'), body]);
+  return Buffer.concat([
+    box('jP  ', Buffer.from([0x0d, 0x0a, 0x87, 0x0a])),
+    box('ftyp', Buffer.concat([Buffer.from('jp2 ', 'latin1'), u32(0), Buffer.from('jp2 ', 'latin1')])),
+    box('jp2c', cs)
+  ]);
+}
+
 /* ---------- a scanned PDF: pages that hold pictures, not text ----------
    One page per entry, each entry a list of image XObjects drawn in order.
    This is what a scanner or a phone "scan to PDF" writes, and the only route
@@ -503,6 +617,269 @@ function serve() {
   check('share route: the .md is handed to the OS share sheet',
         shared.length === 1 && shared[0].name === 'Ziua-3.md' && shared[0].size > 100,
         JSON.stringify(shared));
+
+  /* ---- 7b. text inside a Form XObject, one glyph per BT ----
+     The shape 100-de-rete-pentru-slabit.pdf is in. Before this the file read
+     as completely empty, and the page went looking for pictures to OCR. */
+  const formPdf = path.join(tmp, 'glyph-form.pdf');
+  fs.writeFileSync(formPdf, buildGlyphFormPdf(SAMPLE.split('\n').map(l => l.replace(/^•\s*/, ''))));
+  await page.evaluate(() => { window.ScuLaRecipes.model.days.length = 0; });
+  await page.setInputFiles('#file', formPdf);
+  await page.waitForFunction(() => window.ScuLaRecipes.model.days.length > 0, null, { timeout: 15000 })
+    .catch(() => {});
+  const formRaw = await page.inputValue('#rawText');
+  check('form xobject: the text inside it was found at all',
+        /Terci de ov[ăa]z proteic/.test(formRaw), formRaw.slice(0, 120));
+  check('form xobject: one glyph per BT did not become one line per glyph',
+        /^ZIUA 3$/m.test(formRaw) && formRaw.split('\n').filter(Boolean).length < 30,
+        'lines: ' + formRaw.split('\n').filter(Boolean).length);
+  check('form xobject: word gaps became spaces',
+        /Mic dejun: Terci de ov[ăa]z proteic/.test(formRaw),
+        (formRaw.match(/.*Terci.*/) || [''])[0]);
+  check('form xobject: diacritics survived',
+        formRaw.includes('ă') && /P[eé]ste alb|Pește alb/.test(formRaw),
+        (formRaw.match(/.*alb.*/) || [''])[0]);
+  const formDays = await page.evaluate(() => JSON.parse(JSON.stringify(window.ScuLaRecipes.model.days)));
+  check('form xobject: parsed to one day of three meals',
+        formDays.length === 1 && formDays[0].meals.length === 3,
+        JSON.stringify(formDays.map(d => d.meals.length)));
+
+  /* ---- 7c. JPEG 2000 ---- */
+  const jp2 = buildJp2(64, 48);
+  const grey = await page.evaluate(bytes => {
+    const { Jpx } = window.ScuLaRecipes;
+    const img = Jpx.toRGBA(Jpx.decode(new Uint8Array(bytes)));
+    let min = 255, max = 0;
+    for (let i = 0; i < img.rgba.length; i += 4) {
+      if (img.rgba[i] < min) min = img.rgba[i];
+      if (img.rgba[i] > max) max = img.rgba[i];
+    }
+    return { w: img.width, h: img.height, min, max, alpha: img.rgba[3] };
+  }, Array.from(jp2));
+  check('jp2: the box tree and the codestream were walked', grey.w === 64 && grey.h === 48,
+        grey.w + 'x' + grey.h);
+  check('jp2: empty packets decode to a flat DC-shifted image',
+        grey.min === 128 && grey.max === 128 && grey.alpha === 255, JSON.stringify(grey));
+
+  // The entropy-coded path, against the file this work was done for. Skipped
+  // rather than failed when the book is not in the tree.
+  const book = path.join(ROOT, '100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf');
+  if (fs.existsSync(book)) {
+    const pdf = fs.readFileSync(book);
+    // Pull one page-sized /JPXDecode stream straight out of the file.
+    const re = /<<([^<>]{0,300}?)\/Filter \/JPXDecode([^<>]{0,200}?)>>stream\r\n/g;
+    let m, pick = null;
+    while ((m = re.exec(pdf.toString('latin1')))) {
+      const head = m[0];
+      const w = +(/\/Width (\d+)/.exec(head) || [])[1];
+      const h = +(/\/Height (\d+)/.exec(head) || [])[1];
+      const len = +(/\/Length (\d+)/.exec(head) || [])[1];
+      if (w > 600 && h > 600) { pick = { at: m.index + head.length, len, w, h }; break; }
+    }
+    if (pick) {
+      const raw = Array.from(pdf.subarray(pick.at, pick.at + pick.len));
+      const real = await page.evaluate(bytes => {
+        const { Jpx } = window.ScuLaRecipes;
+        const t = performance.now();
+        const img = Jpx.toRGBA(Jpx.decode(new Uint8Array(bytes), { luma: true }));
+        let sum = 0, min = 255, max = 0;
+        for (let i = 0; i < img.rgba.length; i += 4) {
+          const v = img.rgba[i];
+          sum += v; if (v < min) min = v; if (v > max) max = v;
+        }
+        return { w: img.width, h: img.height, mean: sum / (img.rgba.length / 4),
+                 min, max, ms: Math.round(performance.now() - t) };
+      }, raw);
+      check('jp2 (real book page): decoded at the size the PDF declares',
+            real.w === pick.w && real.h === pick.h,
+            `${real.w}x${real.h} vs ${pick.w}x${pick.h}`);
+      // A page of a real book is neither blank nor noise: it uses most of the
+      // range and is mostly light. A broken EBCOT or DWT fails both.
+      check('jp2 (real book page): a real picture came out, not a flat field',
+            real.max - real.min > 200 && real.mean > 60 && real.mean < 250,
+            JSON.stringify(real));
+    } else {
+      check('jp2 (real book page): a page-sized JPX stream was found', false, 'none matched');
+    }
+  } else {
+    console.log('SKIP  jp2 (real book page): ' + path.basename(book) + ' is not in the tree');
+  }
+
+  /* ---- 7d. the parser rules the book needed ---- */
+  const rules = await page.evaluate(() => {
+    const P = window.ScuLaRecipes.Recipes;
+    const out = {};
+    // "Sos:" is a part of the dish, not the next meal of the day.
+    out.component = P.parse([
+      'ZIUA 1',
+      'Prânz: Paste cremoase cu pui',
+      '100g paste integrale',
+      'Sos: 100g iaurt grecesc 2%',
+      'Fierbe pastele. Amestecă sosul.'
+    ].join('\n'));
+    // A quantity written as a word is still a quantity.
+    out.words = P.parse([
+      'Cina: Salată',
+      'o conservă ton în suc propriu',
+      'un ou mare (fiert)',
+      'Amestecă totul.'
+    ].join('\n'));
+    // A book that labels its two halves is believed.
+    out.labelled = P.parse([
+      'Budincă de couscous',
+      'Ingrediente: 50g couscous, 250ml lapte',
+      'Mod de preparare: Încălzește laptele, adaugă couscousul.'
+    ].join('\n'));
+    // Prose above the first day header is front matter, not a menu.
+    out.front = P.parse([
+      'Bine v-am regăsit, prieteni!',
+      'Această carte vă propune o sută de meniuri gândite pentru o zi întreagă.',
+      'ZIUA 1',
+      'Mic dejun: Omletă',
+      '2 ouă mărimea M',
+      'Bate ouăle.'
+    ].join('\n'));
+    // Cedilla s/t are the wrong characters for Romanian and get repaired.
+    out.cedilla = P.parse('Prânz: Paste\n250ml sos de roşii (passata)\nFierbe pastele.');
+    return JSON.parse(JSON.stringify(out));
+  });
+  const comp = rules.component[0] && rules.component[0].meals;
+  check('parser: a component heading stays inside its meal',
+        comp && comp.length === 1 && comp[0].ingredients.length === 2 && comp[0].steps.length === 2,
+        JSON.stringify(comp && comp.map(m => [m.label || m.kind, m.ingredients.length, m.steps.length])));
+  check('parser: the component names the ingredient group',
+        comp && comp[0].ingredients[1].group === 'Sos' && /iaurt grecesc/.test(comp[0].ingredients[1].item),
+        JSON.stringify(comp && comp[0].ingredients[1]));
+  const words = rules.words[0] && rules.words[0].meals[0];
+  check('parser: a word quantity is a quantity, and becomes a digit',
+        words && words.ingredients.length === 2 &&
+        words.ingredients[0].qty === '1' && words.ingredients[0].unit === 'conservă' &&
+        words.ingredients[1].qty === '1' && /ou mare/.test(words.ingredients[1].item),
+        JSON.stringify(words && words.ingredients));
+  check('parser: a word-quantity line did not land in the method',
+        words && words.steps.length === 1 && /^Amestec/.test(words.steps[0]),
+        JSON.stringify(words && words.steps));
+  const lab = rules.labelled[0] && rules.labelled[0].meals[0];
+  check('parser: Ingrediente:/Mod de preparare: headings are believed',
+        lab && lab.ingredients.length >= 2 && lab.steps.length >= 1 &&
+        /couscous/.test(lab.ingredients[0].item) && /^[ÎI]nc[ăa]lze/.test(lab.steps[0]),
+        JSON.stringify(lab && { i: lab.ingredients.map(i => i.item), s: lab.steps }));
+  check('parser: front matter is not a day',
+        rules.front.length === 1 && rules.front[0].n === 1 &&
+        rules.front[0].meals.length === 1 && rules.front[0].meals[0].kind === 'breakfast',
+        JSON.stringify(rules.front.map(d => [d.n, d.meals.map(m => m.kind)])));
+  check('parser: cedilla s/t are repaired to comma-below',
+        rules.cedilla[0] && /roșii/.test(rules.cedilla[0].meals[0].ingredients[0].item),
+        JSON.stringify(rules.cedilla[0] && rules.cedilla[0].meals[0].ingredients[0]));
+
+  /* ---- 7e. searching, filtering and arranging a hundred days ---- */
+  await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    const days = [];
+    for (let i = 1; i <= 40; i++) {
+      const d = R.Recipes.newDay(i, '');
+      const b = R.Recipes.newMeal('breakfast', '', 'Omletă cu șuncă');
+      b.ingredients.push({ qty: '2', unit: '', item: 'ouă', group: '', fdc: '' });
+      const l = R.Recipes.newMeal('lunch', '', i === 7 ? 'Paste cu ton' : 'Orez cu pui');
+      l.ingredients.push({ qty: '80', unit: 'g', item: i === 7 ? 'ton' : 'orez', group: '', fdc: '' });
+      d.meals.push(b, l);
+      days.push(d);
+    }
+    R.model.days = days;
+    R.renderDays(); R.renderMarkdown();
+  });
+  const wall = await page.evaluate(() => ({
+    cards: document.querySelectorAll('#days .day').length,
+    summaries: document.querySelectorAll('#days .daysum').length,
+    open: document.querySelectorAll('#days .dayhead').length
+  }));
+  check('view: forty days render collapsed, one row each',
+        wall.cards === 40 && wall.summaries === 40 && wall.open === 0, JSON.stringify(wall));
+
+  await page.fill('#qBox', 'ton');
+  await page.waitForTimeout(150);
+  const searched = await page.evaluate(() => ({
+    cards: document.querySelectorAll('#days .day').length,
+    open: document.querySelectorAll('#days .dayhead').length,
+    marks: document.querySelectorAll('#days mark').length
+  }));
+  check('view: a search narrows the list and opens what is left',
+        searched.cards === 1 && searched.open === 1, JSON.stringify(searched));
+
+  await page.fill('#qBox', 'sunca');
+  await page.waitForTimeout(150);
+  check('view: the search folds diacritics — "sunca" finds "șuncă"',
+        await page.evaluate(() => document.querySelectorAll('#days .day').length) === 40);
+
+  await page.fill('#qBox', 'ton');
+  await page.waitForTimeout(150);
+  const onlyShown = await page.evaluate(() => {
+    const box = document.getElementById('optOnlyShown');
+    const shownBox = document.getElementById('onlyShownBox');
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    const md = document.getElementById('mdText').value;
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    return { offered: !shownBox.hidden, days: (md.match(/^# /gm) || []).length,
+             meals: (md.match(/^## (?!Total)/gm) || []).length,
+             all: (document.getElementById('mdText').value.match(/^# /gm) || []).length };
+  });
+  check('view: "only the recipes shown" narrows the markdown to the search',
+        onlyShown.offered && onlyShown.days === 1 && onlyShown.meals === 1 && onlyShown.all === 40,
+        JSON.stringify(onlyShown));
+
+  await page.fill('#qBox', '');
+  await page.waitForTimeout(150);
+  const chip = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('#kindChips .chip')];
+    const lunch = chips.find(c => /Prânz|Lunch/.test(c.textContent));
+    lunch.click();
+    return { chips: chips.length, days: document.querySelectorAll('#days .day').length };
+  });
+  await page.waitForTimeout(150);
+  const chipMeals = await page.evaluate(() =>
+    [...document.querySelectorAll('#days .daysum .dmeal')].length);
+  check('view: a meal chip shows only that meal of each day',
+        chip.chips === 2 && chip.days === 40 && chipMeals === 40,
+        JSON.stringify({ ...chip, chipMeals }));
+  await page.evaluate(() => {
+    const lunch = [...document.querySelectorAll('#kindChips .chip')]
+      .find(c => c.getAttribute('aria-pressed') === 'true');
+    if (lunch) lunch.click();
+  });
+  await page.waitForTimeout(150);
+
+  const arranged = await page.evaluate(() => {
+    document.getElementById('btnArrange').click();
+    const R = window.ScuLaRecipes;
+    return { days: R.model.days.length,
+             meals: R.model.days.reduce((a, d) => a + d.meals.length, 0),
+             kinds: R.model.days[0].meals.map(m => m.kind).join() };
+  });
+  check('view: arranging a book that already has days changes nothing',
+        arranged.days === 40 && arranged.meals === 80 && arranged.kinds === 'breakfast,lunch',
+        JSON.stringify(arranged));
+
+  const flat = await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    const d = R.Recipes.newDay(1, '');
+    for (let i = 0; i < 7; i++) d.meals.push(R.Recipes.newMeal('other', '', 'Rețeta ' + (i + 1)));
+    R.model.days = [d];
+    R.renderDays();
+    document.getElementById('btnArrange').click();
+    return R.model.days.map(x => x.meals.map(m => m.kind));
+  });
+  check('view: a flat list of recipes is laid out three to a day, in eating order',
+        flat.length === 3 && flat[0].join() === 'breakfast,lunch,dinner' && flat[2].length === 1,
+        JSON.stringify(flat));
+
+  // Put the sample day back so the language checks below still have it.
+  await page.evaluate(s => {
+    const R = window.ScuLaRecipes;
+    R.model.days = R.Recipes.parse(s);
+    R.renderDays(); R.renderMarkdown();
+  }, SAMPLE);
 
   /* ---- 8. both languages ---- */
   await page.click('#navLangBtn');

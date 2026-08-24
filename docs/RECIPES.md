@@ -34,7 +34,8 @@ CLAUDE.md rule 3. It does only what *text* needs:
 | inflate | `/FlateDecode` through `DecompressionStream` (a web standard, so still zero dependencies), plus `/ASCIIHexDecode`, `/ASCII85Decode` and PNG predictors |
 | expand | `/Type /ObjStm` object streams — modern producers hide the page and font dictionaries in there, and without this the file looks empty |
 | pages | `/Root → /Pages → /Kids`, falling back to "every `/Type /Page`, in object order" |
-| text | the text operators (`BT/ET`, `Tf`, `Td/TD/Tm/T*/TL/Tc/Tw/Tz`, `Tj/TJ/'/"`) plus `q`/`Q`/`cm`, with the full text matrix — a producer may flip the page (Skia writes `1 0 0 -1 … Tm`) and then its lines arrive bottom-first |
+| forms | every `/Form` XObject the page can draw, inflated with its own resources. A design tool routinely puts **the whole page, text included, inside one form** and leaves the page itself as a single `/Fm0 Do` |
+| text | the text operators (`BT/ET`, `Tf`, `Td/TD/Tm/T*/TL/Tc/Tw/Tz`, `Tj/TJ/'/"`) plus `q`/`Q`/`cm`/`Do`, with the full text matrix — a producer may flip the page (Skia writes `1 0 0 -1 … Tm`) and then its lines arrive bottom-first |
 | unicode | each font's `/ToUnicode` CMap (`bfchar` + `bfrange`, 1- and 2-byte codes). **This is what makes ă â î ș ț survive** — a subset font's raw codes are meaningless without it. No CMap falls back to WinAnsi |
 | widths | `/Widths` (simple fonts) and `/W` + `/DW` (CID fonts), so the reader knows where a run actually ended |
 
@@ -57,6 +58,40 @@ second font is enough — so with an *estimated* character width the output
 reads `m in`, `arom ă`, `10m l`. `tests/recipes.js` prints a PDF with
 Chromium and asserts against exactly that.
 
+**Nothing structural may decide a line break — only geometry.** This was
+learned from `100-de-rete-pentru-slabit.pdf`, which wraps every single
+glyph in its own `BT … Tm … Tj … ET`. When `BT`/`ET` flushed the current
+line, all 121k characters of that book came out one per line; and because
+`Tm` also cleared the anchor the space heuristic measures from, there was
+never a gap to measure and not a single space survived. Both are geometry's
+job now: `BT`/`ET` only reset the text matrix, and the anchor survives a
+`Tm` (a `Tm` that moves to another line is caught by the `y` test, which
+flushes anyway).
+
+### JPEG 2000 — `Jpx.decode(bytes, opts)`
+
+Scanned books are very often stored as `/JPXDecode`, and **Safari is the
+only browser that can decode JPEG 2000**. `createImageBitmap` is no help,
+so those pages used to come back `null` and the file was declared
+unreadable. § 3 of `recipes.html` is therefore a JPEG 2000 decoder: MQ
+arithmetic coder, EBCOT tier-1, tag trees, packet headers, tiles,
+precincts, layers, all five progression orders, 5/3 and 9/7 inverse
+wavelets, RCT/ICT, subsampled components and the code-block styles.
+
+It is a lot of code for one image format. The alternative was a file the
+user simply cannot open, and the answer this repo gives to "we need X" is
+the same one it gave for the knowledge graph: write X, do not add a
+dependency.
+
+`imageOf` always asks for `{ luma: true }`, which decodes **only component
+0** when the file has a component transform. Y is the luma both RCT and ICT
+are built around, so OCR gets the grey page it wants for a third of the
+work. Packet headers are still read for every component — their lengths are
+what advance the stream — only tier-1 is skipped.
+
+Measured: ~400 ms for a 717×1076 colour page in the browser, ~200 ms for
+luma. CCITT, JBIG2 and LZW still come back `null`.
+
 ### Scanned PDF — `PdfText.images(arrayBuffer)`
 
 A scan is a picture in a PDF wrapper, so the reader also knows how to get
@@ -69,7 +104,8 @@ that, and no more:
 | filter | anything under 200×200-equivalent (`MIN_IMAGE_PX`) is a logo or a rule, not a page, and is dropped |
 | JPEG | `/DCTDecode` bytes are handed over untouched — the browser already has a JPEG decoder and it is better than any we could write |
 | pixels | everything Flate/hex/A85-packed is unpacked to RGBA here: `/DeviceGray`, `/DeviceRGB`, `/DeviceCMYK` and `/ICCBased` by its `/N`, at 1, 2, 4, 8 or 16 bits per component, plus `/ImageMask` stencils and the `/Decode [1 0]` flip |
-| refuse | `/CCITTFaxDecode`, `/JBIG2Decode`, `/JPXDecode`, `/LZWDecode` and indexed palettes come back `null`. Each needs a decoder of its own and this file is not growing one |
+| JPEG 2000 | `/JPXDecode` goes through `Jpx` (above), asked for luma. This is the format most scanned books are actually in, and no browser but Safari can decode it |
+| refuse | `/CCITTFaxDecode`, `/JBIG2Decode`, `/LZWDecode` and indexed palettes come back `null`. Each needs a decoder of its own and this file is not growing one |
 | fall back | a file whose page tree yields nothing at all: every `/Subtype /Image` object in object order |
 
 The result is `[{ page, kind:"jpeg", bytes } | { page, kind:"raw", width,
@@ -182,6 +218,16 @@ Mic dejun: Terci de ovăz proteic
 | one line, two ingredients | `250g broccoli, 150g cartofi` splits, because the piece after the comma starts with a number. `sos de iaurt cu usturoi` does not |
 | wrapped lines | a bulletless line that starts lowercase and follows an unfinished line is glued back onto it — that is what a PDF column break looks like |
 | noise | clock times, `◀ Files`, page numbers, bare URLs: dropped |
+| component | `Sos:`, `Dressing:`, `Topping:` name a *part of the dish being described*, not the next meal. They attach to the current meal as an ingredient group (`ing.group`). Either a known component word, or an unknown one arriving while the current meal has ingredients but no method yet |
+| labelled | `Ingrediente:` / `Mod de preparare:` are believed when present, so a book that labels its two halves parses as well as one that leaves them to be guessed |
+| word quantity | `o conservă ton`, `un ou mare`, `two eggs`. Stored as the digit the word means — that column exists to be multiplied by, not read |
+| cedilla | `ş`/`ţ` are repaired to `ș`/`ț` on the way in. They are the wrong characters for Romanian and a great many PDFs are set in them |
+| front matter | a day the parser invented for the prose above the first real day header is dropped — unless it listed an ingredient, which is what a single pasted recipe looks like |
+
+Reading `Sos:` as a meal was the one mistake with two symptoms: the parent
+meal ended up with no method (the steps went to the "meal" below it) and the
+component with no ingredients. On a 100-menu book that was 32 meals with no
+ingredients and 36 with no method; fixing it left 0 and 2.
 
 **Two traps worth knowing before editing those regexes.**
 
@@ -253,7 +299,31 @@ Cells escape `|`, so an ingredient can contain one safely.
 
 ---
 
-## D. The USDA step (not built yet)
+## D. A hundred days at once
+
+A book of 100 menus parses to 300 meals. Rendered the way the review list
+first rendered them that is 14,274 DOM nodes on a page 140,727 pixels tall:
+every recipe present, none of them findable. So the list is a **view** over
+`model.days` rather than a transcription of it.
+
+| Piece | What |
+|---|---|
+| collapsed days | a day nobody is editing is one row — its name and the dishes on it. Clicking opens the full editor for that day alone. The same book is then 700 nodes and 10,633 pixels. Eight days or fewer just open, since at that size collapsing is only in the way |
+| search | over dish names, ingredients, methods and day titles. **Folded**, because nobody types diacritics into a search box and this app exists to keep them: `sunca` finds `șuncă`. The match is put in `<mark>` on the original text, not the folded one |
+| meal chips | filter by kind, and only for the kinds the book actually has — a plan with no desserts should not offer to filter by dessert |
+| *Doar rețetele afișate* | filtering is a view by default; ticked, it makes the filter a **selection** — the markdown, the `.md` save and the workbook export all become the filtered set. It only appears while something is filtered out |
+| move a meal | a select in the meal header, its options filled on first use: with a hundred days, building every list up front is a thousand nodes nobody looks at |
+| *Așază pe zile* | regroups every meal. A day ends where a meal kind repeats; a flat list of recipes with no kinds at all goes three to a day, named in eating order. That is what turns a recipe book into a plan, and on a book that already has days it is a no-op |
+
+`view.open` holds **day objects, not indices** — an index drifts the moment
+a day above it is deleted. Nothing in this layer mutates `model.days` except
+the explicit edits (delete, move, arrange).
+
+Stopping a long OCR batch keeps the pages already read. A hundred-page scan
+is minutes of work, and throwing away eighty finished pages because someone
+changed their mind about the last twenty would be rude.
+
+## E. The USDA step (not built yet)
 
 The format above exists so this stays a *reading* problem, never a
 re-parsing-free-text problem. A future `nutrition.html` (or a mode inside
@@ -287,7 +357,7 @@ hundred KB of JSON and could ship in the repo without any network at all.
 
 ---
 
-## E. Where the output goes
+## F. Where the output goes
 
 Two buttons, both local:
 
@@ -307,7 +377,7 @@ rather than overwriting anything.
 
 ---
 
-## F. Testing
+## G. Testing
 
 `tests/recipes.js` — a plain Node + Playwright script like the rest of that
 folder, but it serves the repo over `http://127.0.0.1` instead of `file://`
@@ -321,6 +391,29 @@ CMap, the markdown contract above, the `.md` save (with `ScuLaFolder.save`
 stubbed) and the share route (with a phone-shaped stub), the workbook
 records, both languages, and the refusal when a PDF holds neither text nor
 pictures.
+
+It also builds **the shape this book is in**: a PDF whose page draws
+nothing but `/Fm0 Do`, with every glyph inside that form in its own
+`BT … ET`, placed on a fixed grid where a space is a skipped slot. That one
+fixture covers all three bugs that made the book unreadable — the form not
+being followed, the line breaking at `BT`, and the space anchor being lost
+at `Tm`.
+
+**JPEG 2000 is checked from both ends.** A hand-built `.jp2` whose packets
+are all empty — legal, and meaning "no coefficient here was ever coded" —
+decodes to a flat DC-shifted grey, which proves the box walk, the marker
+segments, the tile and precinct geometry, the packet iteration, the inverse
+wavelet and the level shift without needing an encoder. The entropy-coded
+path is then checked against a real page pulled out of
+`100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf` when that file is in
+the tree, and skipped with a note when it is not.
+
+The parser rules the book needed each have a check of their own
+(`Sos:` staying inside its meal, word quantities, `Ingrediente:` headings,
+front matter, cedilla repair), and so does the day view: forty days
+rendering collapsed, a search narrowing and opening what is left, the
+diacritic folding, *only the recipes shown* narrowing the markdown, a meal
+chip, and both halves of *Așază pe zile*.
 
 **The OCR path is tested end to end without an engine.** The address field
 is what makes that possible: the checks point it at

@@ -17,7 +17,7 @@ Shared shape of all four files:
 ## The shared block (byte-identical in all four files)
 
 `index.html:221-876` · `editor.html:418-1073` ·
-`markdown-editor.html:1194-1849` · `recipes.html:260-915`
+`markdown-editor.html:1194-1849` · `recipes.html:305-960`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -336,7 +336,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 3321 lines · "Rețete" (PDF / photo → recipe markdown)
+## recipes.html — 5024 lines · "Rețete" (PDF / photo → recipe markdown)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -344,23 +344,56 @@ Map only below.
 
 | Lines | Contents |
 |---|---|
-| 11–257 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, markdown preview 189–210, folds + checkboxes + `.badge` 212–233, narrow 235–247, touch 249–256 |
-| 260–914 | **Shared nav + `ScuLaFolder`** |
-| 918–1043 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown. The OCR fold is `#ocrBox` (943–978), with the addresses behind `#ocrAdv` (962–977) |
-| 1045–3319 | App script, numbered sections below |
+| 11–302 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, **search / chips / collapsed days / `.grp` 189–232**, markdown preview 234–255, folds + checkboxes + `.badge` 257–278, narrow 280–292, touch 294–301 |
+| 305–960 | **Shared nav + `ScuLaFolder`** |
+| 963–1120 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown. The OCR fold is `#ocrBox` (988–1023); the filter bar is `#filters` (1046–1052), `#found` 1053, `#onlyShownBox` 1087 |
+| 1122–5022 | App script, numbered sections below |
 
 | Line | Section |
 |---|---|
-| 1066 | **1. i18n** — `I18N` (`ro:` 1068 / `en:` 1197), `t()` (variadic), `applyUILang()` |
-| 1298 | 2. Settings store (`scula:recipes`) |
-| **1324** | **3. `PdfText`** — the dependency-free PDF reader |
-| **2198** | **4. `Recipes`** — the parser |
-| 2467 | 5. The app — state, review cards, markdown |
-| 2743 | 6. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
-| 3069 | 7. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
-| 3171 | 8. Wiring + init |
+| 1124 | **1. i18n** — `I18N` (`ro:` 1127 / `en:` 1264), `t()` (variadic), `applyUILang()` |
+| 1397 | 2. Settings store (`scula:recipes`) |
+| **1423** | **3. `Jpx`** — the JPEG 2000 decoder |
+| **2473** | **4. `PdfText`** — the dependency-free PDF reader |
+| **3433** | **5. `Recipes`** — the parser |
+| 3802 | 6. The app — state, **the day view**, review cards, markdown |
+| 4395 | 7. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
+| 4747 | 8. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
+| 4850 | 9. Wiring + init |
 
-### `PdfText` (1339–2196)
+### `Jpx` (1445–2461)
+
+`decode(bytes, opts)` → `{ width, height, comps, siz, luma }` and
+`toRGBA(res)` → 8-bit RGBA. The only two entry points. It exists because no
+browser but Safari decodes JPEG 2000, and a great many scanned books are
+stored as `/JPXDecode` — without it those pages are invisible to
+`createImageBitmap` and the file reads as empty.
+
+`decode(bytes, { luma:true })` reads **only component 0** when the file has
+a component transform. Y is the luma both RCT and ICT are built around, so
+OCR gets the grey page it wants for a third of the work; `imageOf` always
+asks for that. Packet headers are still parsed for every component — the
+lengths are what advance the stream — only tier-1 is skipped.
+
+| Function | What |
+|---|---|
+| `MQ` (1466) | the arithmetic decoder, Annex C. `QE`/`NMPS`/`NLPS`/`SW` are Table C.2 verbatim |
+| `RawBits` / `HeadBits` | the two other bit readers: bypass passes, and packet headers with their 0xFF stuffing |
+| `TagTree` (1562) | inclusion and zero-bit-planes, decoded against a rising threshold **across packets** — hence the state on the object |
+| `BitModel` (1631) | tier-1: `runSignificance`, `runRefinement`, `runCleanup`. `nbSig` keeps the neighbour counts packed in a byte and updated in `setSig`, which is what stops a naive tier-1 re-reading eight flags per coefficient per plane |
+| `synth1D` (1800) | the inverse wavelet, 5/3 and 9/7, over an **absolute** index range — the parity of `i0` decides which samples are low-pass. Whole-sample symmetric extension, filled only in the margins |
+| `buildTile` (1888) / `buildCodeblocks` (1960) | the geometry of Annex B: tiles ▸ components ▸ resolutions ▸ subbands ▸ precincts ▸ code-blocks. Precinct indices are computed on the **resolution** grid, not the subband's |
+| `numPasses` (2002) / `segmentBreaks` (2014) | how many coding passes a packet declares, and where the encoder terminated (`termall`, `bypass`) |
+| `readPacket` (2038) | one packet header: inclusion ▸ zero bit-planes ▸ passes ▸ `Lblock` ▸ segment lengths, then the bodies |
+| **`packetSequence`** (2085) | the progression order. Rather than the spec's five nested-loop machines, every (component, resolution, precinct) is listed with the position it projects to and **sorted** — same order, far less to get wrong |
+| `decodeCodeblocks` (2133) / `writeBack` (2174) | tier-1 over a tile, then coefficients into their subband. `missing` is how many low bit-planes never arrived — uniform per block, so the mid-point of what is left is the best guess for all of them |
+| `reconstruct` (2191) | `2D_INTERLEAVE` + `HOR_SR` + `VER_SR`, coarsest resolution upwards |
+| `parseSIZ`/`parseCOD`/`parseQCD` (2239, 1846, 1872) | the marker segments; `parseCOC`/`parseQCC` override them per component |
+| `findCodestream` (2258) | the `.jp2` box tree, or a bare `.j2k`, or a codestream with junk in front |
+| `decode` (2277) | markers ▸ tiles ▸ packets ▸ tier-1 ▸ wavelet ▸ MCT |
+| `toRGBA` (2436) | subsampled components stretched back up; grey, RGB, RGBA and CMYK |
+
+### `PdfText` (2488–3430)
 
 `extract(buffer)` (text) and `images(buffer)` (a scan's pictures) are the
 only entry points; everything else is one stage of one of them. Order
@@ -381,52 +414,104 @@ questions about one scan costs a single parse.
 | `pageList` | `/Root → /Pages → /Kids`, falling back to every `/Type /Page` |
 | `parseCMap` / `fontsOf` / `decodeShown` | `/ToUnicode` → the map that keeps ă â î ș ț; WinAnsi when a font has none |
 | **`widthsOf`** | `/Widths` (simple) and `/W` + `/DW` (CID) → real glyph advances. Guessing them instead is what puts spaces inside words |
-| **`pageText`** (1753) | the tiny interpreter: text operators plus `q`/`Q`/`cm`, with the full text matrix — see the two traps below |
-| `joinLines` (1974) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
-| `parseDoc` / `contentOf` (2124, 2140) | the shared front half: scan ▸ refuse encrypted ▸ expand object streams ▸ page list; then one page's content stream |
+| **`pageText`** (2902) | the entry point; hands off to `runContent` |
+| **`runContent`** (2913) | the tiny interpreter, **re-entrant**: text operators plus `q`/`Q`/`cm`/`Do`, with the full text matrix — see the traps below |
+| **`formsOf`** (3195) | every `/Form` XObject a resource dictionary offers, inflated and ready for `runContent` to walk into. Memoised, so one form drawn on 108 pages is inflated once; `building` guards a form that draws itself |
+| `joinLines` (3150) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
+| `parseDoc` / `contentOf` (3354, 3370) | the shared front half: scan ▸ refuse encrypted ▸ expand object streams ▸ page list; then one page's content stream |
 
 The picture half — everything a scanned page needs (`docs/RECIPES.md` § A):
 
 | Function | What |
 |---|---|
-| `xobjectsOf` (1997) | a page's `/XObject` dict → name → object number |
-| `drawnOrder` (2016) | the `/Im3 Do` operators, **in painting order**. The dictionary is unordered, and a scanner that cuts a page into strips relies on the order |
-| `componentsOf` / `sampleAt` (2024, 2041) | colour space → components; one sample at 1/2/4/8/16 bits |
-| **`imageOf`** (2053) | one `/Subtype /Image` → `{kind:"jpeg", bytes}` (the browser decodes it) or `{kind:"raw", rgba}`. CCITT, JBIG2, JPX, LZW and indexed palettes → `null` |
-| `collectImages` (2099) | walks a page's XObjects, three levels into `/Form`s, skipping anything logo-sized (`MIN_IMAGE_PX`, 1995) |
-| **`images`** (2171) | page-ordered pictures; falls back to every image object in the file when the page tree yields none |
+| `xobjectsOf` (3175) | a page's `/XObject` dict → name → object number |
+| `drawnOrder` | the `/Im3 Do` operators, **in painting order**. The dictionary is unordered, and a scanner that cuts a page into strips relies on the order |
+| `componentsOf` / `sampleAt` | colour space → components; one sample at 1/2/4/8/16 bits |
+| **`imageOf`** (3267) | one `/Subtype /Image` → `{kind:"jpeg", bytes}` (the browser decodes it), or `{kind:"raw", rgba}` — including **`/JPXDecode`, through `Jpx`**. CCITT, JBIG2, LZW and indexed palettes → `null` |
+| `collectImages` (3329) | walks a page's XObjects, three levels into `/Form`s, skipping anything logo-sized (`MIN_IMAGE_PX`) |
+| **`images`** (3406) | page-ordered pictures; falls back to every image object in the file when the page tree yields none |
 
-Two traps this reader was written around, both found by feeding it a PDF
-printed by Chromium rather than one hand-built in a test:
+Traps this reader was written around, all four found by feeding it real
+files rather than ones hand-built in a test:
 
+- **the page may draw nothing itself.** A design tool puts the whole
+  layout, text included, in a `/Form` XObject and leaves the page as
+  `/Fm0 Do`. A reader that stops at the page sees an empty page and calls
+  a perfectly good document a scan. `runContent` recurses; `formsOf`
+  supplies what it recurses into.
+- **`BT`/`ET` do not mean "line".** Producers exist that wrap *every single
+  glyph* in its own text object. Line breaks come from geometry only.
+- **`Tm` is not a reason to forget where the last glyph ended.** With a
+  fresh `Tm` before every glyph, the gap from `prevEnd` is the only
+  evidence a space belongs there — so `prevEnd` survives a `Tm`, and the y
+  test in `show()` is what ends a line.
 - **the page can be flipped.** Skia writes `1 0 0 -1 … Tm`, so its lines
   arrive bottom-first. `show()` normalises with the sign of the composite
   matrix's `d`; nothing downstream needs to know.
-- **runs are split by font, not by word.** "min" arrives as `m` + `in` when
-  a diacritic pulls in a second font, so a space can only be inferred from
-  the *real* advance width — hence `widthsOf`. With a guessed width the
-  output reads "m in", "arom ă", "10m l".
+- **runs are split by font, not by word.** "min" arrives as `m` + `in`
+  when a diacritic pulls in a second font, so a space can only be inferred
+  from the *real* advance width — hence `widthsOf`. With a guessed width
+  the output reads "m in", "arom ă", "10m l".
 
-### `Recipes` (2214–2464)
+### `Recipes` (3449–3798)
 
-`parse(text)` → `[{ n, title, meals:[{ kind, label, name, ingredients:[{ qty,
-unit, item, fdc }], steps:[] }] }]`. `toLines` cleans and re-joins wrapped
-lines, `isStep` decides ingredient vs method, `parseIngredient` splits
-quantity/unit/name, `splitSteps` cuts prose into numbered steps.
+`parse(text)` → `[{ n, title, auto, meals:[{ kind, label, name,
+ingredients:[{ qty, unit, item, group, fdc }], steps:[] }] }]`. `toLines`
+cleans and re-joins wrapped lines, `isStep` decides ingredient vs method,
+`parseIngredient` splits quantity/unit/name, `splitSteps` cuts prose into
+numbered steps.
+
+| Piece | What |
+|---|---|
+| `clean` | among other things, repairs **cedilla ş/ţ to comma-below ș/ț** — a great many PDFs are set in the wrong characters, and everything downstream should only ever see the right ones |
+| `WORD_QTY` / `NUM_WORD` | "o conservă ton", "un ou mare" — a quantity written as a word, stored as the digit it means, because that column is meant to be multiplied by |
+| `COMPONENT_RE` | "Sos:", "Dressing:", "Topping:" — a part of the dish, not the next meal. Read as meals they left the parent with no method and themselves with no ingredients |
+| `SEC_ING` / `SEC_STEP` | "Ingrediente:" / "Mod de preparare:" — believed when present, so a labelled book parses as well as an unlabelled one |
+| `day.auto` | true when the parser invented the day rather than reading a header. Once real day headers exist, an invented day with no ingredients is front matter and is dropped |
 
 **`NOT_LETTER`, never `\b`** — after `ă` a `\b` cannot match (it is not a
 word character in a non-unicode regex), which silently turned every Romanian
 imperative into an ingredient once. Every word-end test in this block is that
 lookahead; keep new verbs and units on it.
 
-### The markdown (`buildDayMarkdown`, 2409)
+**Two rules decide a `Word:` header**, in this order: a known meal word
+starts a meal; a known component word, *or* an unknown word arriving while
+the current meal has ingredients but no method yet, is a component of that
+meal. Anything else is still accepted as a custom meal.
+
+### The day view (3875–4270)
+
+A book of 100 menus is 300 meals — 14,274 DOM nodes and a page 140,727
+pixels tall if every one is rendered. The list is a **view** over
+`model.days`; nothing here mutates it except the explicit edits.
+
+| Line | What |
+|---|---|
+| 3878–3883 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
+| 3887 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
+| 3901 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
+| 3920 / 3933 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
+| 3939 / 3966 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
+| 3988 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
+| 4012 | `daySummary` — a day nobody is editing, in one row |
+| 4043 | `daySelect` — move a meal to another day; options filled on first use |
+| **4081** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
+| **4111** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open |
+| 4380 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
+
+**Two things must stay in step:** `MEAL_KINDS` (3889) is the one list of
+meal kinds — the `<select>` in a meal header, the filter chips and
+`arrangeIntoDays` all read it. `mealLabel` (3832) is the one place a kind
+becomes a word.
+
+### The markdown (`buildDayMarkdown`, 4280)
 
 The output shape is a contract (`docs/RECIPES.md` § C): `#` day, `##` meal,
 `### 1. Ingrediente` as a four-column table whose last column is the empty
 USDA FDC id, `### 2. Metoda de preparare` as an ordered list, then the
-totals stub. Change it there and in that doc together.
-
----
+totals stub. Its third argument is the list of meal indices to write, which
+is how "only the recipes shown" narrows a day. Change the shape here and in
+that doc together.
 
 ## Fast recipes
 

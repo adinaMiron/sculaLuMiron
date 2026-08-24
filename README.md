@@ -8,7 +8,7 @@ open any `.html` file in a browser and it runs.
 | **Caiet vocal** | `index.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `markdown-editor.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, and an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`. |
-| **Rețete** | `recipes.html` | Reads a meal plan out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. |
+| **Rețete** | `recipes.html` | Reads a meal plan or a recipe book out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. Reads its own PDFs and its own JPEG 2000 scans, recognises photos in the page, and lets a hundred days be searched, filtered and rearranged. |
 
 All four share a common nav bar and link to each other.
 

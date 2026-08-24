@@ -9,7 +9,7 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 5633 | 50k | Markdown editor + preview + workbooks + knowledge graph | dark (earth) |
-| `recipes.html` | 3330 | 33k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
+| `recipes.html` | 5024 | 50k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
@@ -34,7 +34,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | English/Romanian UI, strings | `docs/I18N.md` |
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
-| PDF/OCR reading, recipe markdown, USDA plans | `docs/RECIPES.md` |
+| PDF/OCR reading, JPEG 2000, recipe markdown, searching a big plan, USDA plans | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 
 Do not read a doc the task doesn't touch.
@@ -43,7 +43,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1194-1849`, `recipes.html:260-915`). It carries the nav
+`markdown-editor.html:1194-1849`, `recipes.html:305-960`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -52,7 +52,7 @@ must be applied to **all four** or they drift. Verify with:
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
 sed -n '1194,1849p' markdown-editor.html > /tmp/n3
-sed -n '260,915p' recipes.html           > /tmp/n4
+sed -n '305,960p' recipes.html           > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -70,9 +70,12 @@ block's `SUBDIR` map, so the new page gets its own folder.
   that is a visible, editable field, the page reads PDFs and takes pasted
   text without it, and pointing the field at a local `./ocr/` makes it work
   offline. It loads on arrival of a photo now rather than on a button press
-  — `docs/RECIPES.md` § A. The knowledge graph in `markdown-editor.html` is
-  what the rule looks like when it holds: it is hand-rolled rather than
-  reaching for d3 or a force-graph library.
+  — `docs/RECIPES.md` § A. The knowledge graph in `markdown-editor.html`
+  and the JPEG 2000 decoder in `recipes.html` § 3 are what the rule looks
+  like when it holds: a force-graph library and an image codec, both
+  hand-rolled rather than pulled in. The codec is 1000 lines for one image
+  format, and it is still the right answer — no browser but Safari decodes
+  JPEG 2000, and most scanned books are stored in it.
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
