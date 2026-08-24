@@ -1321,7 +1321,1057 @@ const store = (function(){
 const PREF_KEY = "scula:recipes";
 
 /* ============================================================
-   3. PdfText — text out of a PDF, with no library
+   3. Jpx — JPEG 2000, decoded here
+
+   A great many scanned PDFs — every book that has been through a
+   Xerox or ABBYY compressor, among them — store their pages as
+   /JPXDecode. No browser except Safari can decode JPEG 2000, so
+   `createImageBitmap` cannot see such a page, and this reader used
+   to hand back null and call the file unreadable.
+
+   So the decoder is here. Hand-rolled, like the knowledge graph in
+   markdown-editor.html and like everything else in this repo: no
+   dependency, no wasm, no fetch. It is a lot of code for one image
+   format, but the alternative is a page a user cannot read at all.
+
+   Covers what real files use: tiles, precincts, layers, all five
+   progression orders, 5/3 and 9/7 wavelets, RCT/ICT, subsampled
+   components, COC/QCC overrides and the code-block styles.
+
+   `decode(bytes, { luma:true })` reads only the first component when
+   the file has a component transform. Y is the luma both transforms
+   are built around, so OCR gets the grey page it wants for a third
+   of the work.
+   ============================================================ */
+const Jpx = (function(){
+  "use strict";
+
+  /* ---- 1. MQ arithmetic decoder (Annex C) --------------------------
+     Table C.2 verbatim: none of this is a choice. */
+  const QE = new Uint16Array([
+    0x5601,0x3401,0x1801,0x0AC1,0x0521,0x0221,0x5601,0x5401,0x4801,0x3801,
+    0x3001,0x2401,0x1C01,0x1601,0x5601,0x5401,0x5101,0x4801,0x3801,0x3401,
+    0x3001,0x2801,0x2401,0x2201,0x1C01,0x1801,0x1601,0x1401,0x1201,0x1101,
+    0x0AC1,0x09C1,0x08A1,0x0521,0x0441,0x02A1,0x0221,0x0141,0x0111,0x0085,
+    0x0049,0x0025,0x0015,0x0009,0x0005,0x0001,0x5601 ]);
+  const NMPS = new Uint8Array([
+    1,2,3,4,5,38,7,8,9,10,11,12,13,29,15,16,17,18,19,20,21,22,23,24,25,26,
+    27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,45,46 ]);
+  const NLPS = new Uint8Array([
+    1,6,9,12,29,33,6,14,14,14,17,18,20,21,14,14,15,16,17,18,19,19,20,21,22,
+    23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,46 ]);
+  const SW = new Uint8Array([
+    1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0 ]);
+
+  function MQ(data, start, end){
+    this.data = data; this.bp = start; this.end = end;
+    this.chigh = start < end ? data[start] : 0xff;
+    this.clow = 0;
+    this.byteIn();
+    this.chigh = ((this.chigh << 7) & 0xffff) | ((this.clow >> 9) & 0x7f);
+    this.clow = (this.clow << 7) & 0xffff;
+    this.ct -= 7;
+    this.a = 0x8000;
+  }
+  MQ.prototype.byteIn = function(){
+    const d = this.data;
+    if(d[this.bp] === 0xff){
+      // 0xFF followed by > 0x8F is a marker: the segment has ended and
+      // the decoder feeds itself 1-bits from here on.
+      if(this.bp + 1 >= this.end || d[this.bp + 1] > 0x8f){ this.clow += 0xff00; this.ct = 8; }
+      else { this.bp++; this.clow += d[this.bp] << 9; this.ct = 7; }
+    } else {
+      this.bp++;
+      this.clow += this.bp < this.end ? d[this.bp] << 8 : 0xff00;
+      this.ct = 8;
+    }
+    if(this.clow > 0xffff){ this.chigh += this.clow >> 16; this.clow &= 0xffff; }
+  };
+  MQ.prototype.bit = function(cx, i){
+    let idx = cx[i] >> 1, mps = cx[i] & 1;
+    const qe = QE[idx];
+    let d;
+    this.a -= qe;
+    if(this.chigh < qe){
+      if(this.a < qe){ this.a = qe; d = mps; idx = NMPS[idx]; }
+      else { this.a = qe; d = 1 ^ mps; if(SW[idx] === 1) mps = d; idx = NLPS[idx]; }
+    } else {
+      this.chigh -= qe;
+      if((this.a & 0x8000) !== 0) return mps;
+      if(this.a < qe){ d = 1 ^ mps; if(SW[idx] === 1) mps = d; idx = NLPS[idx]; }
+      else { d = mps; idx = NMPS[idx]; }
+    }
+    do {
+      if(this.ct === 0) this.byteIn();
+      this.a <<= 1;
+      this.chigh = ((this.chigh << 1) & 0xffff) | ((this.clow >> 15) & 1);
+      this.clow = (this.clow << 1) & 0xffff;
+      this.ct--;
+    } while((this.a & 0x8000) === 0);
+    cx[i] = (idx << 1) | mps;
+    return d;
+  };
+
+  /* The "lazy" passes of a bypass-coded block are not arithmetic coded
+     at all — raw bits, with the same 0xFF stuffing as a packet header. */
+  function RawBits(data, start, end){
+    this.data = data; this.pos = start; this.end = end;
+    this.buf = 0; this.cnt = 0; this.prev = 0;
+  }
+  RawBits.prototype.bit = function(){
+    if(this.cnt === 0){
+      const b = this.pos < this.end ? this.data[this.pos++] : 0xff;
+      if(this.prev === 0xff){ this.buf = b & 0x7f; this.cnt = 7; }
+      else { this.buf = b; this.cnt = 8; }
+      this.prev = b;
+    }
+    this.cnt--;
+    return (this.buf >> this.cnt) & 1;
+  };
+
+  /* ---- 2. Packet-header bit reader (B.10.1) ------------------------ */
+  function HeadBits(data, pos, end){
+    this.data = data; this.pos = pos; this.end = end;
+    this.buf = 0; this.cnt = 0; this.prev = 0;
+  }
+  HeadBits.prototype.bit = function(){
+    if(this.cnt === 0){
+      const b = this.pos < this.end ? this.data[this.pos++] : 0;
+      if(this.prev === 0xff){ this.buf = b & 0x7f; this.cnt = 7; }
+      else { this.buf = b; this.cnt = 8; }
+      this.prev = b;
+    }
+    this.cnt--;
+    return (this.buf >> this.cnt) & 1;
+  };
+  HeadBits.prototype.bits = function(n){
+    let v = 0;
+    while(n-- > 0) v = (v * 2) + this.bit();   // n can reach 32; stay off <<
+    return v;
+  };
+  HeadBits.prototype.align = function(){
+    this.cnt = 0;
+    if(this.prev === 0xff){ this.pos++; this.prev = 0; }  // the stuffed byte
+  };
+
+  /* ---- 3. Tag trees (B.10.2) ---------------------------------------
+     Two per precinct: one says in which layer a code-block first
+     appears, the other how many leading bit-planes are zero. Both are
+     decoded against a rising threshold across packets, so the state
+     has to live on the object. */
+  function TagTree(w, h){
+    this.levels = [];
+    let lw = Math.max(1, w), lh = Math.max(1, h);
+    for(;;){
+      this.levels.push({ w: lw, val: new Int32Array(lw * lh), known: new Uint8Array(lw * lh) });
+      if(lw <= 1 && lh <= 1) break;
+      lw = (lw + 1) >> 1; lh = (lh + 1) >> 1;
+    }
+  }
+  TagTree.prototype.decode = function(rd, x, y, threshold){
+    let lo = 0;
+    for(let l = this.levels.length - 1; l >= 0; l--){
+      const lev = this.levels[l];
+      const idx = (y >> l) * lev.w + (x >> l);
+      if(lev.val[idx] < lo) lev.val[idx] = lo;
+      while(!lev.known[idx] && lev.val[idx] < threshold){
+        if(rd.bit()) lev.known[idx] = 1;
+        else lev.val[idx]++;
+      }
+      lo = lev.val[idx];
+      if(!lev.known[idx]) return { value: lo, known: false };
+    }
+    return { value: lo, known: true };
+  };
+
+  /* ---- 4. EBCOT tier-1: the bit-plane coder (Annex D) --------------- */
+
+  const CX_RL = 17, CX_UNI = 18, CX_COUNT = 19;
+
+  // Zero-coding context from the eight neighbours (Table D.1). Three
+  // tables: the subband orientation decides whether a horizontal or a
+  // vertical neighbour is the telling one.
+  function buildZC(){
+    const t = [new Uint8Array(45), new Uint8Array(45), new Uint8Array(45)];
+    for(let h = 0; h <= 2; h++) for(let v = 0; v <= 2; v++) for(let d = 0; d <= 4; d++){
+      const i = (h * 3 + v) * 5 + d;
+      let ll;                                     // LL and LH
+      if(h === 2) ll = 8;
+      else if(h === 1) ll = v >= 1 ? 7 : (d >= 1 ? 6 : 5);
+      else if(v === 2) ll = 4;
+      else if(v === 1) ll = 3;
+      else ll = d >= 2 ? 2 : d;
+      t[0][i] = ll;
+      let hl;                                     // HL: h and v swapped
+      if(v === 2) hl = 8;
+      else if(v === 1) hl = h >= 1 ? 7 : (d >= 1 ? 6 : 5);
+      else if(h === 2) hl = 4;
+      else if(h === 1) hl = 3;
+      else hl = d >= 2 ? 2 : d;
+      t[1][i] = hl;
+      const hv = h + v;                           // HH counts diagonals first
+      let hh;
+      if(d >= 3) hh = 8;
+      else if(d === 2) hh = hv >= 1 ? 7 : 6;
+      else if(d === 1) hh = hv >= 2 ? 5 : (hv === 1 ? 4 : 3);
+      else hh = hv >= 2 ? 2 : hv;
+      t[2][i] = hh;
+    }
+    return t;
+  }
+  const ZC = buildZC();
+  const ORIENT = { LL: 0, LH: 0, HL: 1, HH: 2 };
+
+  // Sign coding (Tables D.3/D.4), keyed by (H+1)*3 + (V+1).
+  const SC_CX = new Uint8Array([13,12,11,10,9,10,11,12,13]);
+  const SC_XOR = new Uint8Array([1,1,1,1,0,0,0,0,0]);
+
+  const P_SIG = 1, P_VISIT = 2, P_REFINED = 4;
+
+  function BitModel(w, h, orientation){
+    this.w = w; this.h = h;
+    this.zc = ZC[orientation];
+    const n = w * h;
+    this.mag = new Uint32Array(n);
+    this.sign = new Uint8Array(n);
+    this.flags = new Uint8Array(n);
+    this.nbSig = new Uint8Array(n);     // h in bits 0-1, v in 2-3, d in 4-6
+    this.cx = new Uint8Array(CX_COUNT);
+    this.reset();
+  }
+  BitModel.prototype.reset = function(){
+    this.cx.fill(0);
+    this.cx[0] = 4 << 1;                // Table D.7
+    this.cx[CX_RL] = 3 << 1;
+    this.cx[CX_UNI] = 46 << 1;
+  };
+  // Keeping the neighbour counts incrementally is what stops tier-1
+  // from re-reading eight flags per coefficient per bit-plane.
+  BitModel.prototype.setSig = function(x, y){
+    const w = this.w, h = this.h, nb = this.nbSig;
+    const i = y * w + x;
+    this.flags[i] |= P_SIG;
+    const left = x > 0, right = x < w - 1, up = y > 0, down = y < h - 1;
+    if(left)  nb[i - 1] += 1;
+    if(right) nb[i + 1] += 1;
+    if(up)    nb[i - w] += 4;
+    if(down)  nb[i + w] += 4;
+    if(up && left)    nb[i - w - 1] += 16;
+    if(up && right)   nb[i - w + 1] += 16;
+    if(down && left)  nb[i + w - 1] += 16;
+    if(down && right) nb[i + w + 1] += 16;
+  };
+  BitModel.prototype.zcContext = function(i){
+    const p = this.nbSig[i];
+    let hN = p & 3, vN = (p >> 2) & 3, dN = (p >> 4) & 7;
+    if(hN > 2) hN = 2; if(vN > 2) vN = 2; if(dN > 4) dN = 4;
+    return this.zc[(hN * 3 + vN) * 5 + dN];
+  };
+  BitModel.prototype.scContext = function(x, y){
+    const w = this.w, h = this.h, f = this.flags, s = this.sign;
+    const i = y * w + x;
+    let hC = 0, vC = 0;
+    if(x > 0     && (f[i - 1] & P_SIG)) hC += s[i - 1] ? -1 : 1;
+    if(x < w - 1 && (f[i + 1] & P_SIG)) hC += s[i + 1] ? -1 : 1;
+    if(y > 0     && (f[i - w] & P_SIG)) vC += s[i - w] ? -1 : 1;
+    if(y < h - 1 && (f[i + w] & P_SIG)) vC += s[i + w] ? -1 : 1;
+    if(hC > 1) hC = 1; else if(hC < -1) hC = -1;
+    if(vC > 1) vC = 1; else if(vC < -1) vC = -1;
+    return (hC + 1) * 3 + (vC + 1);
+  };
+  BitModel.prototype.bit = function(dec, ctx){ return dec.bit(this.cx, ctx); };
+  BitModel.prototype.readSign = function(dec, raw, x, y, i){
+    if(raw){ this.sign[i] = raw.bit(); return; }
+    const k = this.scContext(x, y);
+    this.sign[i] = this.bit(dec, SC_CX[k]) ^ SC_XOR[k];
+  };
+
+  // Pass 1 — significance propagation (D.3.1).
+  BitModel.prototype.runSignificance = function(dec, raw, bitpos){
+    const w = this.w, h = this.h, f = this.flags, mag = this.mag;
+    const bit = 1 << bitpos;
+    for(let y0 = 0; y0 < h; y0 += 4){
+      const yEnd = Math.min(y0 + 4, h);
+      for(let x = 0; x < w; x++){
+        for(let y = y0; y < yEnd; y++){
+          const i = y * w + x;
+          if(f[i] & P_SIG) continue;
+          if(this.nbSig[i] === 0) continue;
+          const b = raw ? raw.bit() : this.bit(dec, this.zcContext(i));
+          if(b){
+            this.readSign(dec, raw, x, y, i);
+            mag[i] |= bit;
+            this.setSig(x, y);
+          }
+          f[i] |= P_VISIT;
+        }
+      }
+    }
+  };
+
+  // Pass 2 — magnitude refinement (D.3.2).
+  BitModel.prototype.runRefinement = function(dec, raw, bitpos){
+    const w = this.w, h = this.h, f = this.flags, mag = this.mag;
+    const bit = 1 << bitpos;
+    for(let y0 = 0; y0 < h; y0 += 4){
+      const yEnd = Math.min(y0 + 4, h);
+      for(let x = 0; x < w; x++){
+        for(let y = y0; y < yEnd; y++){
+          const i = y * w + x;
+          if(!(f[i] & P_SIG) || (f[i] & P_VISIT)) continue;
+          const ctx = (f[i] & P_REFINED) ? 16 : (this.nbSig[i] === 0 ? 14 : 15);
+          const b = raw ? raw.bit() : this.bit(dec, ctx);
+          if(b) mag[i] |= bit;
+          f[i] |= P_REFINED;
+        }
+      }
+    }
+  };
+
+  // Pass 3 — cleanup (D.3.4), with the run-length shortcut that codes a
+  // whole all-insignificant stripe column in a single bit.
+  BitModel.prototype.runCleanup = function(dec, bitpos, segSymbol){
+    const w = this.w, h = this.h, f = this.flags, mag = this.mag;
+    const bit = 1 << bitpos;
+    for(let y0 = 0; y0 < h; y0 += 4){
+      const full = y0 + 4 <= h;
+      const yEnd = Math.min(y0 + 4, h);
+      for(let x = 0; x < w; x++){
+        let y = y0;
+        if(full){
+          let allClear = true;
+          for(let k = 0; k < 4; k++){
+            const i = (y0 + k) * w + x;
+            if((f[i] & (P_SIG | P_VISIT)) || this.nbSig[i] !== 0){ allClear = false; break; }
+          }
+          if(allClear){
+            if(!this.bit(dec, CX_RL)) continue;      // all four stay zero
+            const first = (this.bit(dec, CX_UNI) << 1) | this.bit(dec, CX_UNI);
+            y = y0 + first;
+            const i = y * w + x;
+            this.readSign(dec, null, x, y, i);
+            mag[i] |= bit;
+            this.setSig(x, y);
+            y++;
+          }
+        }
+        for(; y < yEnd; y++){
+          const i = y * w + x;
+          if(f[i] & (P_SIG | P_VISIT)) continue;
+          if(this.bit(dec, this.zcContext(i))){
+            this.readSign(dec, null, x, y, i);
+            mag[i] |= bit;
+            this.setSig(x, y);
+          }
+        }
+      }
+    }
+    if(segSymbol){
+      let v = 0;
+      for(let k = 0; k < 4; k++) v = (v << 1) | this.bit(dec, CX_UNI);
+      if(v !== 0x0a) this.segError = true;
+    }
+    for(let i = 0; i < f.length; i++) f[i] &= ~P_VISIT;
+  };
+
+  /* ---- 5. Inverse wavelet (Annex F) ---------------------------------
+     Whole-sample symmetric extension. reflect(i) = 2c - i preserves
+     parity, which is what keeps low- and high-pass samples in place. */
+  function reflect(i, i0, i1){
+    const n = i1 - i0;
+    if(n === 1) return i0;
+    const p = 2 * (n - 1);
+    let k = (i - i0) % p;
+    if(k < 0) k += p;
+    if(k >= n) k = p - k;
+    return i0 + k;
+  }
+
+  const A97 = -1.586134342059924, B97 = -0.052980118572961,
+        G97 =  0.882911075530934, D97 =  0.443506852043971,
+        K97 =  1.230174104914001;
+
+  const MARGIN = 8;
+  const evenFrom = i => (i & 1) ? i + 1 : i;
+  const oddFrom  = i => (i & 1) ? i : i + 1;
+
+  // 1D synthesis over the absolute index range [i0, i0+len). buf[k] is
+  // sample(i0 + k); ext is scratch of length >= len + 2*MARGIN.
+  function synth1D(buf, len, i0, ext, reversible){
+    if(len === 1){ if(i0 & 1) buf[0] *= 0.5; return; }
+    const i1 = i0 + len;
+    const off = MARGIN - i0;                       // ext[i + off] = sample(i)
+    for(let k = 0; k < len; k++) ext[k + MARGIN] = buf[k];
+    for(let m = 1; m <= MARGIN; m++){
+      ext[MARGIN - m] = buf[reflect(i0 - m, i0, i1) - i0];
+      ext[MARGIN + len - 1 + m] = buf[reflect(i1 - 1 + m, i0, i1) - i0];
+    }
+    const lo = i0 - MARGIN, hi = i1 + MARGIN - 1;
+    if(reversible){
+      // X(2n) = Y(2n) - floor((Y(2n-1) + Y(2n+1) + 2)/4)
+      for(let i = evenFrom(lo + 1); i <= hi - 1; i += 2)
+        ext[i + off] -= Math.floor((ext[i - 1 + off] + ext[i + 1 + off] + 2) / 4);
+      // X(2n+1) = Y(2n+1) + floor((X(2n) + X(2n+2))/2)
+      for(let i = oddFrom(lo + 2); i <= hi - 2; i += 2)
+        ext[i + off] += Math.floor((ext[i - 1 + off] + ext[i + 1 + off]) / 2);
+    } else {
+      for(let i = oddFrom(lo); i <= hi; i += 2) ext[i + off] *= K97;
+      for(let i = evenFrom(lo + 1); i <= hi - 1; i += 2)
+        ext[i + off] = ext[i + off] / K97 - D97 * (ext[i - 1 + off] + ext[i + 1 + off]);
+      for(let i = oddFrom(lo + 2); i <= hi - 2; i += 2)
+        ext[i + off] -= G97 * (ext[i - 1 + off] + ext[i + 1 + off]);
+      for(let i = evenFrom(lo + 3); i <= hi - 3; i += 2)
+        ext[i + off] -= B97 * (ext[i - 1 + off] + ext[i + 1 + off]);
+      for(let i = oddFrom(lo + 4); i <= hi - 4; i += 2)
+        ext[i + off] -= A97 * (ext[i - 1 + off] + ext[i + 1 + off]);
+    }
+    for(let k = 0; k < len; k++) buf[k] = ext[k + MARGIN];
+  }
+
+  /* ---- 6. Codestream structure -------------------------------------- */
+
+  function ceilDiv(a, b){ return Math.ceil(a / b); }
+  function readU16(d, p){ return (d[p] << 8) | d[p + 1]; }
+  function readU32(d, p){ return ((d[p] << 24) | (d[p + 1] << 16) | (d[p + 2] << 8) | d[p + 3]) >>> 0; }
+
+  function precinctSizes(d, p, levels, defined){
+    const out = [];
+    for(let i = 0; i <= levels; i++){
+      const v = defined ? d[p + i] : 0xff;
+      out.push({ PPx: v & 0x0f, PPy: (v >> 4) & 0x0f });
+    }
+    return out;
+  }
+
+  function parseCOD(d, p){
+    const scod = d[p];
+    const c = {
+      definedPrecincts: !!(scod & 1), sop: !!(scod & 2), eph: !!(scod & 4),
+      progression: d[p + 1], layers: readU16(d, p + 2), mct: d[p + 4],
+      levels: d[p + 5], xcb: (d[p + 6] & 0x0f) + 2, ycb: (d[p + 7] & 0x0f) + 2,
+      cbStyle: d[p + 8], reversible: d[p + 9] === 1
+    };
+    c.precinctSizes = precinctSizes(d, p + 10, c.levels, c.definedPrecincts);
+    return c;
+  }
+
+  // COC overrides one component's coding style; progression and layer
+  // count are not in it, so they stay whatever COD said.
+  function parseCOC(d, p, base){
+    const c = Object.assign({}, base);
+    c.definedPrecincts = !!(d[p] & 1);
+    c.levels = d[p + 1];
+    c.xcb = (d[p + 2] & 0x0f) + 2;
+    c.ycb = (d[p + 3] & 0x0f) + 2;
+    c.cbStyle = d[p + 4];
+    c.reversible = d[p + 5] === 1;
+    c.precinctSizes = precinctSizes(d, p + 6, c.levels, c.definedPrecincts);
+    return c;
+  }
+
+  function parseQCD(d, p, len){
+    const s = d[p];
+    const q = { style: s & 0x1f, guardBits: s >> 5, spqcd: [] };
+    if(q.style === 0){
+      for(let i = 1; i < len; i++) q.spqcd.push({ epsilon: d[p + i] >> 3, mu: 0 });
+    } else {
+      for(let i = 1; i + 1 < len; i += 2){
+        const v = readU16(d, p + i);
+        q.spqcd.push({ epsilon: (v >> 11) & 0x1f, mu: v & 0x7ff });
+      }
+    }
+    return q;
+  }
+
+  const GAIN = { LL: 0, HL: 1, LH: 1, HH: 2 };   // Table E.1
+
+  function buildTile(ctx, tileIndex, want){
+    const siz = ctx.siz;
+    const numXTiles = ceilDiv(siz.Xsiz - siz.XTOsiz, siz.XTsiz);
+    const p = tileIndex % numXTiles, q = (tileIndex / numXTiles) | 0;
+    const tx0 = Math.max(siz.XTOsiz + p * siz.XTsiz, siz.XOsiz);
+    const ty0 = Math.max(siz.YTOsiz + q * siz.YTsiz, siz.YOsiz);
+    const tx1 = Math.min(siz.XTOsiz + (p + 1) * siz.XTsiz, siz.Xsiz);
+    const ty1 = Math.min(siz.YTOsiz + (q + 1) * siz.YTsiz, siz.Ysiz);
+    const tile = { index: tileIndex, tx0, ty0, tx1, ty1, comps: [] };
+
+    for(let c = 0; c < siz.comps.length; c++){
+      const sc = siz.comps[c];
+      const perTile = ctx.tileCOD[tileIndex] || {};
+      const cod = perTile[c] || ctx.cod[c] || ctx.codMain;
+      const perTileQ = ctx.tileQCD[tileIndex] || {};
+      const qcd = perTileQ[c] || ctx.qcd[c] || ctx.qcdMain;
+      const tcx0 = ceilDiv(tx0, sc.dx), tcx1 = ceilDiv(tx1, sc.dx);
+      const tcy0 = ceilDiv(ty0, sc.dy), tcy1 = ceilDiv(ty1, sc.dy);
+      const comp = { c, cod, qcd, tcx0, tcy0, tcx1, tcy1,
+                     w: tcx1 - tcx0, h: tcy1 - tcy0, resolutions: [],
+                     wanted: want < 0 || want === c };
+      const NL = cod.levels;
+      let bandIdx = 0;
+      for(let r = 0; r <= NL; r++){
+        const s = 1 << (NL - r);
+        const trx0 = ceilDiv(tcx0, s), trx1 = ceilDiv(tcx1, s);
+        const try0 = ceilDiv(tcy0, s), try1 = ceilDiv(tcy1, s);
+        const ps = cod.precinctSizes[Math.min(r, cod.precinctSizes.length - 1)];
+        const res = { r, trx0, try0, trx1, try1, PPx: ps.PPx, PPy: ps.PPy, subbands: [] };
+        // A code-block never straddles a precinct; at r>0 the precinct
+        // covers twice its subbands' area, hence the -1.
+        res.xcb = Math.min(cod.xcb, r === 0 ? ps.PPx : ps.PPx - 1);
+        res.ycb = Math.min(cod.ycb, r === 0 ? ps.PPy : ps.PPy - 1);
+        res.px0 = (trx0 / (1 << ps.PPx)) | 0;
+        res.py0 = (try0 / (1 << ps.PPy)) | 0;
+        res.numPX = trx1 > trx0 ? ceilDiv(trx1, 1 << ps.PPx) - res.px0 : 0;
+        res.numPY = try1 > try0 ? ceilDiv(try1, 1 << ps.PPy) - res.py0 : 0;
+        res.numPrecincts = res.numPX * res.numPY;
+
+        const bands = r === 0 ? [{ type: "LL", xob: 0, yob: 0, nb: NL }]
+                              : [{ type: "HL", xob: 1, yob: 0, nb: NL - r + 1 },
+                                 { type: "LH", xob: 0, yob: 1, nb: NL - r + 1 },
+                                 { type: "HH", xob: 1, yob: 1, nb: NL - r + 1 }];
+        for(const b of bands){
+          const den = 1 << b.nb, half = b.nb > 0 ? 1 << (b.nb - 1) : 0;
+          const bx0 = ceilDiv(tcx0 - half * b.xob, den), bx1 = ceilDiv(tcx1 - half * b.xob, den);
+          const by0 = ceilDiv(tcy0 - half * b.yob, den), by1 = ceilDiv(tcy1 - half * b.yob, den);
+          const sb = { type: b.type, xob: b.xob, yob: b.yob, nb: b.nb,
+                       x0: bx0, y0: by0, x1: bx1, y1: by1,
+                       w: Math.max(0, bx1 - bx0), h: Math.max(0, by1 - by0) };
+          let sp;
+          if(qcd.style === 1){                       // scalar derived (E.1.1)
+            const b0 = qcd.spqcd[0] || { epsilon: 8, mu: 0 };
+            sp = { epsilon: b0.epsilon - NL + b.nb, mu: b0.mu };
+          } else {
+            sp = qcd.spqcd[Math.min(bandIdx, qcd.spqcd.length - 1)] || { epsilon: 8, mu: 0 };
+          }
+          sb.mb = qcd.guardBits + sp.epsilon - 1;
+          sb.delta = cod.reversible ? 1
+                   : Math.pow(2, sc.precision + GAIN[b.type] - sp.epsilon) * (1 + sp.mu / 2048);
+          sb.coefs = comp.wanted ? new Float32Array(sb.w * sb.h) : null;
+          buildCodeblocks(res, sb);
+          res.subbands.push(sb);
+          bandIdx++;
+        }
+        comp.resolutions.push(res);
+      }
+      tile.comps.push(comp);
+    }
+    return tile;
+  }
+
+  function buildCodeblocks(res, sb){
+    const cbw = 1 << res.xcb, cbh = 1 << res.ycb;
+    sb.blocks = [];
+    sb.precincts = new Map();
+    if(sb.w <= 0 || sb.h <= 0) return;
+    const cbx0 = (sb.x0 / cbw) | 0, cbx1 = ceilDiv(sb.x1, cbw);
+    const cby0 = (sb.y0 / cbh) | 0, cby1 = ceilDiv(sb.y1, cbh);
+    const shift = res.r === 0 ? 0 : 1;             // subband ▸ resolution grid
+    const pwx = 1 << res.PPx, pwy = 1 << res.PPy;
+    for(let j = cby0; j < cby1; j++){
+      for(let i = cbx0; i < cbx1; i++){
+        const x0 = Math.max(i * cbw, sb.x0), x1 = Math.min((i + 1) * cbw, sb.x1);
+        const y0 = Math.max(j * cbh, sb.y0), y1 = Math.min((j + 1) * cbh, sb.y1);
+        if(x1 <= x0 || y1 <= y0) continue;
+        // Precincts are a partition of the *resolution* grid.
+        const rx = (x0 << shift) + (shift ? sb.xob : 0);
+        const ry = (y0 << shift) + (shift ? sb.yob : 0);
+        const pi = ((rx / pwx) | 0) - res.px0;
+        const pj = ((ry / pwy) | 0) - res.py0;
+        const pidx = pj * res.numPX + pi;
+        let pr = sb.precincts.get(pidx);
+        if(!pr){ pr = { cbx0: i, cby0: j, cbx1: i + 1, cby1: j + 1, blocks: [] };
+                 sb.precincts.set(pidx, pr); }
+        if(i < pr.cbx0) pr.cbx0 = i;
+        if(j < pr.cby0) pr.cby0 = j;
+        if(i + 1 > pr.cbx1) pr.cbx1 = i + 1;
+        if(j + 1 > pr.cby1) pr.cby1 = j + 1;
+        pr.blocks.push({ x0, y0, x1, y1, cbi: i, cbj: j,
+                         included: false, lblock: 3, zeroBitPlanes: 0,
+                         passes: 0, segments: [] });
+      }
+    }
+    for(const pr of sb.precincts.values()){
+      pr.w = pr.cbx1 - pr.cbx0; pr.h = pr.cby1 - pr.cby0;
+      pr.incl = new TagTree(pr.w, pr.h);
+      pr.zbp = new TagTree(pr.w, pr.h);
+      for(const cb of pr.blocks) sb.blocks.push(cb);
+    }
+  }
+
+  /* ---- 7. Packet decoding (B.9, B.10) ------------------------------- */
+
+  function numPasses(rd){
+    if(!rd.bit()) return 1;
+    if(!rd.bit()) return 2;
+    let v = rd.bits(2);
+    if(v < 3) return 3 + v;
+    v = rd.bits(5);
+    if(v < 31) return 6 + v;
+    return 37 + rd.bits(7);
+  }
+
+  // Where the encoder terminated. With neither `termall` nor `bypass`,
+  // every pass of a code-block belongs to one MQ codeword segment.
+  function segmentBreaks(startPass, count, cbStyle){
+    const termall = !!(cbStyle & 0x04), bypass = !!(cbStyle & 0x01);
+    const out = [];
+    let cur = -1;
+    for(let k = 0; k < count; k++){
+      const p = startPass + k;
+      let isNew = k === 0;
+      if(k > 0){
+        if(termall) isNew = true;
+        else if(bypass && p >= 10){
+          const m = (p - 10) % 3;
+          if(m === 0 || m === 2) isNew = true;
+        }
+      }
+      if(isNew){ out.push(1); cur = out.length - 1; }
+      else out[cur]++;
+    }
+    return out;
+  }
+  function passIsRaw(p, cbStyle){
+    return !!(cbStyle & 0x01) && p >= 10 && ((p - 10) % 3) !== 2;
+  }
+  function log2floor(n){ let r = 0; while(n > 1){ n >>= 1; r++; } return r; }
+
+  function readPacket(data, pos, end, comp, res, precinct, layer){
+    const cod = comp.cod;
+    if(cod.sop && pos + 1 < end && data[pos] === 0xff && data[pos + 1] === 0x91) pos += 6;
+    const rd = new HeadBits(data, pos, end);
+    const contributions = [];
+    if(rd.bit()){
+      for(const sb of res.subbands){
+        const pr = sb.precincts.get(precinct);
+        if(!pr) continue;
+        for(const cb of pr.blocks){
+          const cx = cb.cbi - pr.cbx0, cy = cb.cbj - pr.cby0;
+          let included;
+          if(cb.included) included = !!rd.bit();
+          else {
+            const r = pr.incl.decode(rd, cx, cy, layer + 1);
+            included = r.known && r.value <= layer;
+          }
+          if(!included) continue;
+          if(!cb.included){
+            cb.included = true;
+            let t = 1, z;
+            while(!(z = pr.zbp.decode(rd, cx, cy, t)).known) t++;
+            cb.zeroBitPlanes = z.value;
+          }
+          const np = numPasses(rd);
+          while(rd.bit()) cb.lblock++;
+          for(const n of segmentBreaks(cb.passes, np, cod.cbStyle)){
+            contributions.push({ cb, len: rd.bits(cb.lblock + log2floor(n)), passes: n });
+          }
+          cb.passes += np;
+        }
+      }
+    }
+    rd.align();
+    pos = rd.pos;
+    if(cod.eph && pos + 1 < end && data[pos] === 0xff && data[pos + 1] === 0x92) pos += 2;
+    for(const ct of contributions){
+      ct.cb.segments.push({ start: pos, end: Math.min(pos + ct.len, end), passes: ct.passes });
+      pos += ct.len;
+    }
+    return pos;
+  }
+
+  /* Progression order: rather than the spec's five nested-loop machines,
+     enumerate every (component, resolution, precinct) with the position
+     it projects to on the reference grid and sort. Same order, far less
+     to get wrong. */
+  function packetSequence(tile, cod, siz){
+    const items = [];
+    for(let c = 0; c < tile.comps.length; c++){
+      const comp = tile.comps[c], sc = siz.comps[c];
+      for(let r = 0; r < comp.resolutions.length; r++){
+        const res = comp.resolutions[r];
+        const scale = 1 << (comp.cod.levels - r);
+        for(let p = 0; p < res.numPrecincts; p++){
+          const pi = p % res.numPX, pj = (p / res.numPX) | 0;
+          items.push({ c, r, p, comp, res,
+                       x: (res.px0 + pi) * (1 << res.PPx) * scale * sc.dx,
+                       y: (res.py0 + pj) * (1 << res.PPy) * scale * sc.dy });
+        }
+      }
+    }
+    const maxRes = Math.max(...tile.comps.map(t => t.resolutions.length));
+    const seq = [];
+    const allLayers = it => { for(let l = 0; l < cod.layers; l++) seq.push({ l, it }); };
+    const byPos = (a, b) => a.y - b.y || a.x - b.x || a.c - b.c || a.r - b.r || a.p - b.p;
+    switch(cod.progression){
+      case 1:                                              // RLCP
+        for(let r = 0; r < maxRes; r++)
+          for(let l = 0; l < cod.layers; l++)
+            for(let c = 0; c < tile.comps.length; c++)
+              for(const it of items) if(it.r === r && it.c === c) seq.push({ l, it });
+        break;
+      case 2:                                              // RPCL
+        for(let r = 0; r < maxRes; r++)
+          items.filter(i => i.r === r).sort(byPos).forEach(allLayers);
+        break;
+      case 3:                                              // PCRL
+        items.slice().sort(byPos).forEach(allLayers);
+        break;
+      case 4:                                              // CPRL
+        for(let c = 0; c < tile.comps.length; c++)
+          items.filter(i => i.c === c).sort(byPos).forEach(allLayers);
+        break;
+      default:                                             // 0 = LRCP
+        for(let l = 0; l < cod.layers; l++)
+          for(let r = 0; r < maxRes; r++)
+            for(let c = 0; c < tile.comps.length; c++)
+              for(const it of items) if(it.r === r && it.c === c) seq.push({ l, it });
+    }
+    return seq;
+  }
+
+  /* ---- 8. Tier-1 over a whole tile ---------------------------------- */
+
+  function decodeCodeblocks(tile, data){
+    for(const comp of tile.comps){
+      if(!comp.wanted) continue;
+      const cbStyle = comp.cod.cbStyle, reversible = comp.cod.reversible;
+      const resetProb = !!(cbStyle & 0x02), segSym = !!(cbStyle & 0x20);
+      for(const res of comp.resolutions){
+        for(const sb of res.subbands){
+          const orient = ORIENT[sb.type];
+          for(const cb of sb.blocks){
+            if(!cb.included || !cb.segments.length) continue;
+            const planes = Math.min(31, sb.mb - cb.zeroBitPlanes);
+            if(planes <= 0) continue;
+            const w = cb.x1 - cb.x0, h = cb.y1 - cb.y0;
+            const bm = new BitModel(w, h, orient);
+            let bitpos = planes - 1, passType = 2, passIdx = 0, done = 0;
+            let dec = null, raw = null, segI = 0, segLeft = 0;
+            for(let n = 0; n < cb.passes && bitpos >= 0; n++){
+              if(segLeft === 0){
+                if(segI >= cb.segments.length) break;
+                const s = cb.segments[segI++];
+                segLeft = s.passes;
+                if(passIsRaw(passIdx, cbStyle)){ raw = new RawBits(data, s.start, s.end); dec = null; }
+                else { dec = new MQ(data, s.start, s.end); raw = null; }
+              }
+              if(passType === 0) bm.runSignificance(dec, raw, bitpos);
+              else if(passType === 1) bm.runRefinement(dec, raw, bitpos);
+              else { bm.runCleanup(dec, bitpos, segSym); done++; }
+              if(resetProb) bm.reset();
+              segLeft--; passIdx++; passType++;
+              if(passType === 3){ passType = 0; bitpos--; }
+            }
+            writeBack(sb, cb, bm, reversible, planes - done);
+          }
+        }
+      }
+    }
+  }
+
+  // `missing` is how many low bit-planes the stream never sent — the
+  // same for every coefficient in the block, so the mid-point of what
+  // is left is the best guess for all of them.
+  function writeBack(sb, cb, bm, reversible, missing){
+    const w = cb.x1 - cb.x0, h = cb.y1 - cb.y0;
+    const delta = sb.delta;
+    const bump = missing > 0 ? Math.pow(2, missing - 1) : (reversible ? 0 : 0.5);
+    for(let y = 0; y < h; y++){
+      let o = (cb.y0 - sb.y0 + y) * sb.w + (cb.x0 - sb.x0);
+      for(let x = 0; x < w; x++, o++){
+        const m = bm.mag[y * w + x];
+        if(m === 0) continue;
+        const v = (m + bump) * delta;
+        sb.coefs[o] = bm.sign[y * w + x] ? -v : v;
+      }
+    }
+  }
+
+  /* ---- 9. Reassembly: subbands ▸ image ------------------------------ */
+
+  function reconstruct(comp){
+    const rev = comp.cod.reversible;
+    const ll0 = comp.resolutions[0].subbands[0];
+    let cur = { x0: ll0.x0, y0: ll0.y0, w: ll0.w, h: ll0.h, data: ll0.coefs };
+    const span = Math.max(comp.w, comp.h) + 2;
+    const ext = new Float32Array(span + 2 * MARGIN + 2);
+    const line = new Float32Array(span);
+    for(let r = 1; r < comp.resolutions.length; r++){
+      const res = comp.resolutions[r];
+      const u0 = res.trx0, v0 = res.try0;
+      const W = res.trx1 - u0, H = res.try1 - v0;
+      if(W <= 0 || H <= 0){ cur = { x0: u0, y0: v0, w: Math.max(0, W), h: Math.max(0, H),
+                                    data: new Float32Array(Math.max(0, W * H)) }; continue; }
+      const a = new Float32Array(W * H);
+      // 2D_INTERLEAVE (F.3.3): b(u,v) lands at a(2u + xob, 2v + yob).
+      const place = (x0, y0, bw, bh, xob, yob, src) => {
+        if(!src) return;
+        for(let y = 0; y < bh; y++){
+          const ay = 2 * (y0 + y) + yob - v0;
+          if(ay < 0 || ay >= H) continue;
+          const rowO = ay * W, srcO = y * bw;
+          for(let x = 0; x < bw; x++){
+            const ax = 2 * (x0 + x) + xob - u0;
+            if(ax < 0 || ax >= W) continue;
+            a[rowO + ax] = src[srcO + x];
+          }
+        }
+      };
+      place(cur.x0, cur.y0, cur.w, cur.h, 0, 0, cur.data);
+      for(const sb of res.subbands) place(sb.x0, sb.y0, sb.w, sb.h, sb.xob, sb.yob, sb.coefs);
+      for(let y = 0; y < H; y++){                          // HOR_SR
+        const o = y * W;
+        for(let x = 0; x < W; x++) line[x] = a[o + x];
+        synth1D(line, W, u0, ext, rev);
+        for(let x = 0; x < W; x++) a[o + x] = line[x];
+      }
+      for(let x = 0; x < W; x++){                          // VER_SR
+        for(let y = 0; y < H; y++) line[y] = a[y * W + x];
+        synth1D(line, H, v0, ext, rev);
+        for(let y = 0; y < H; y++) a[y * W + x] = line[y];
+      }
+      cur = { x0: u0, y0: v0, w: W, h: H, data: a };
+    }
+    return cur;
+  }
+
+  /* ---- 10. Top level ------------------------------------------------ */
+
+  function parseSIZ(d, p){
+    const siz = {
+      Rsiz: readU16(d, p),
+      Xsiz: readU32(d, p + 2), Ysiz: readU32(d, p + 6),
+      XOsiz: readU32(d, p + 10), YOsiz: readU32(d, p + 14),
+      XTsiz: readU32(d, p + 18), YTsiz: readU32(d, p + 22),
+      XTOsiz: readU32(d, p + 26), YTOsiz: readU32(d, p + 30),
+      comps: []
+    };
+    const n = readU16(d, p + 34);
+    for(let i = 0; i < n; i++){
+      const s = d[p + 36 + i * 3];
+      siz.comps.push({ precision: (s & 0x7f) + 1, signed: !!(s & 0x80),
+                       dx: d[p + 37 + i * 3] || 1, dy: d[p + 38 + i * 3] || 1 });
+    }
+    return siz;
+  }
+
+  // A .jp2 wrapper is a box tree; a bare .j2k is the codestream itself.
+  function findCodestream(d){
+    if(d[0] === 0xff && d[1] === 0x4f) return { start: 0, end: d.length };
+    let i = 0;
+    while(i + 8 <= d.length){
+      let len = readU32(d, i), hdr = 8;
+      const type = String.fromCharCode(d[i + 4], d[i + 5], d[i + 6], d[i + 7]);
+      if(len === 1){ len = readU32(d, i + 12); hdr = 16; }   // no 4GB pages
+      else if(len === 0) len = d.length - i;
+      if(type === "jp2c") return { start: i + hdr, end: Math.min(i + len, d.length) };
+      if(len < 8) break;
+      i += len;
+    }
+    // Some producers hand out a raw codestream with junk in front.
+    for(let k = 0; k + 3 < d.length && k < 4096; k++)
+      if(d[k] === 0xff && d[k + 1] === 0x4f && d[k + 2] === 0xff && d[k + 3] === 0x51)
+        return { start: k, end: d.length };
+    return null;
+  }
+
+  function decode(bytes, opts){
+    opts = opts || {};
+    const d = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const cs = findCodestream(d);
+    if(!cs) throw new Error("not a JPEG 2000 codestream");
+    let p = cs.start;
+    const end = cs.end;
+    if(readU16(d, p) !== 0xff4f) throw new Error("missing SOC");
+    p += 2;
+
+    const ctx = { siz: null, codMain: null, qcdMain: null, cod: [], qcd: [],
+                  tileCOD: {}, tileQCD: {} };
+    const tiles = {};
+    let curTile = -1, tileEnd = 0;
+
+    while(p < end - 1){
+      const marker = readU16(d, p);
+      if(marker === 0xffd9) break;                          // EOC
+      if(marker === 0xff93){                                // SOD
+        p += 2;
+        if(tiles[curTile]) tiles[curTile].parts.push({ start: p, end: tileEnd });
+        p = tileEnd;
+        continue;
+      }
+      if((marker & 0xff00) !== 0xff00) break;               // lost sync
+      const len = readU16(d, p + 2);
+      const body = p + 4, blen = len - 2;
+      const nc = ctx.siz ? ctx.siz.comps.length : 1;
+      switch(marker){
+        case 0xff51: ctx.siz = parseSIZ(d, body); break;
+        case 0xff52: {
+          const c = parseCOD(d, body);
+          if(curTile < 0) ctx.codMain = c;
+          else {
+            ctx.tileCOD[curTile] = ctx.tileCOD[curTile] || {};
+            for(let i = 0; i < nc; i++) ctx.tileCOD[curTile][i] = c;
+          }
+          break;
+        }
+        case 0xff53: {                                      // COC
+          const wide = nc >= 257, ci = wide ? readU16(d, body) : d[body], off = wide ? 2 : 1;
+          if(curTile < 0) ctx.cod[ci] = parseCOC(d, body + off, ctx.codMain);
+          else {
+            ctx.tileCOD[curTile] = ctx.tileCOD[curTile] || {};
+            const base = ctx.tileCOD[curTile][ci] || ctx.cod[ci] || ctx.codMain;
+            ctx.tileCOD[curTile][ci] = parseCOC(d, body + off, base);
+          }
+          break;
+        }
+        case 0xff5c: {
+          const q = parseQCD(d, body, blen);
+          if(curTile < 0) ctx.qcdMain = q;
+          else {
+            ctx.tileQCD[curTile] = ctx.tileQCD[curTile] || {};
+            for(let i = 0; i < nc; i++) ctx.tileQCD[curTile][i] = q;
+          }
+          break;
+        }
+        case 0xff5d: {                                      // QCC
+          const wide = nc >= 257, ci = wide ? readU16(d, body) : d[body], off = wide ? 2 : 1;
+          const q = parseQCD(d, body + off, blen - off);
+          if(curTile < 0) ctx.qcd[ci] = q;
+          else {
+            ctx.tileQCD[curTile] = ctx.tileQCD[curTile] || {};
+            ctx.tileQCD[curTile][ci] = q;
+          }
+          break;
+        }
+        case 0xff90: {                                      // SOT
+          const isot = readU16(d, body), psot = readU32(d, body + 2);
+          curTile = isot;
+          tileEnd = psot ? Math.min(p + psot, end) : end;
+          if(!tiles[isot]) tiles[isot] = { parts: [] };
+          break;
+        }
+        default: break;                                     // COM, TLM, PLT, …
+      }
+      p += 2 + len;
+    }
+
+    if(!ctx.siz) throw new Error("missing SIZ");
+    if(!ctx.codMain) throw new Error("missing COD");
+    if(!ctx.qcdMain) ctx.qcdMain = { style: 0, guardBits: 2, spqcd: [{ epsilon: 8, mu: 0 }] };
+
+    const siz = ctx.siz;
+    const W = siz.Xsiz - siz.XOsiz, H = siz.Ysiz - siz.YOsiz;
+    if(W <= 0 || H <= 0) throw new Error("empty image");
+    const nc = siz.comps.length;
+    // Y of both component transforms is a luma, so one component is all
+    // OCR needs. Without a transform, component 0 is just red — decode
+    // the lot in that case.
+    const luma = !!opts.luma && (nc === 1 || !!ctx.codMain.mct);
+    const want = luma ? 0 : -1;
+    const outCount = luma ? 1 : nc;
+    const out = [];
+    for(let c = 0; c < outCount; c++){
+      const sc = siz.comps[c];
+      out.push(new Float32Array(ceilDiv(W, sc.dx) * ceilDiv(H, sc.dy)));
+    }
+
+    for(const key of Object.keys(tiles)){
+      const tile = buildTile(ctx, +key, want);
+      const cod = tile.comps[0].cod;
+      const seq = packetSequence(tile, cod, siz);
+      let si = 0;
+      for(const part of tiles[key].parts){
+        let pp = part.start;
+        while(si < seq.length && pp < part.end){
+          const { l, it } = seq[si++];
+          pp = readPacket(d, pp, part.end, it.comp, it.res, it.p, l);
+        }
+      }
+      decodeCodeblocks(tile, d);
+      for(let c = 0; c < outCount; c++){
+        const comp = tile.comps[c];
+        if(!comp || comp.w <= 0 || comp.h <= 0) continue;
+        const img = reconstruct(comp);
+        const sc = siz.comps[c];
+        const cw = ceilDiv(W, sc.dx);
+        const ox = comp.tcx0 - ceilDiv(siz.XOsiz, sc.dx);
+        const oy = comp.tcy0 - ceilDiv(siz.YOsiz, sc.dy);
+        const dst = out[c];
+        for(let y = 0; y < img.h; y++){
+          const dy = oy + y;
+          if(dy < 0) continue;
+          for(let x = 0; x < img.w; x++){
+            const dx = ox + x;
+            if(dx < 0 || dx >= cw) continue;
+            dst[dy * cw + dx] = img.data[y * img.w + x];
+          }
+        }
+      }
+      if(!luma && cod.mct && nc >= 3){
+        const sc = siz.comps[0], cw = ceilDiv(W, sc.dx);
+        const ox = tile.comps[0].tcx0 - ceilDiv(siz.XOsiz, sc.dx);
+        const oy = tile.comps[0].tcy0 - ceilDiv(siz.YOsiz, sc.dy);
+        const tw = tile.comps[0].w, th = tile.comps[0].h;
+        const A = out[0], B = out[1], C = out[2];
+        for(let y = 0; y < th; y++){
+          for(let x = 0; x < tw; x++){
+            const i = (oy + y) * cw + (ox + x);
+            const y0 = A[i], u = B[i], v = C[i];
+            if(cod.reversible){
+              const g = y0 - Math.floor((u + v) / 4);
+              A[i] = v + g; B[i] = g; C[i] = u + g;
+            } else {
+              A[i] = y0 + 1.402 * v;
+              B[i] = y0 - 0.34413 * u - 0.71414 * v;
+              C[i] = y0 + 1.772 * u;
+            }
+          }
+        }
+      }
+    }
+
+    return { width: W, height: H, comps: out, siz, luma };
+  }
+
+  // 8-bit RGBA at full size, subsampled components stretched back up.
+  function toRGBA(res){
+    const { width: W, height: H, comps, siz, luma } = res;
+    const n = comps.length;
+    const rgba = new Uint8ClampedArray(W * H * 4);
+    const shift = siz.comps.map(c => c.signed ? 0 : 1 << (c.precision - 1));
+    const scale = siz.comps.map(c => c.precision === 8 ? 1 : 255 / ((1 << c.precision) - 1));
+    const cw = siz.comps.map(c => ceilDiv(W, c.dx));
+    const get = (ci, x, y) => {
+      const sc = siz.comps[ci];
+      return (comps[ci][((y / sc.dy) | 0) * cw[ci] + ((x / sc.dx) | 0)] + shift[ci]) * scale[ci];
+    };
+    for(let y = 0; y < H; y++){
+      for(let x = 0; x < W; x++){
+        const o = (y * W + x) * 4;
+        if(n === 1 || luma){
+          const g = get(0, x, y);
+          rgba[o] = rgba[o + 1] = rgba[o + 2] = g; rgba[o + 3] = 255;
+        } else if(n === 2){
+          const g = get(0, x, y);
+          rgba[o] = rgba[o + 1] = rgba[o + 2] = g; rgba[o + 3] = get(1, x, y);
+        } else if(n === 4 && siz.cmyk){
+          const k = get(3, x, y) / 255;
+          rgba[o] = get(0, x, y) * k; rgba[o + 1] = get(1, x, y) * k;
+          rgba[o + 2] = get(2, x, y) * k; rgba[o + 3] = 255;
+        } else {
+          rgba[o] = get(0, x, y); rgba[o + 1] = get(1, x, y); rgba[o + 2] = get(2, x, y);
+          rgba[o + 3] = n >= 4 ? get(3, x, y) : 255;
+        }
+      }
+    }
+    return { width: W, height: H, rgba, components: n };
+  }
+
+  return { decode, toRGBA };
+})();
+
+/* ============================================================
+   4. PdfText — text out of a PDF, with no library
    ------------------------------------------------------------
    Only what a text PDF needs, nothing of what a *renderer* needs:
 
@@ -2016,9 +3066,11 @@ const PdfText = (function(){
   /* ---- pictures: what a scanned page holds instead of text ----
      Only as much of the image model as handing a page to an OCR engine
      needs. JPEG bytes go straight to the browser's own decoder; anything
-     Flate-packed is unpacked to RGBA here. CCITT, JBIG2 and JPEG-2000 each
-     need a decoder of their own and this file is not growing one — those
-     come back null and the page says so. */
+     Flate-packed is unpacked to RGBA here; JPEG 2000 goes through § 3,
+     because no browser but Safari can decode it and it is what a great
+     many scanned books are stored as. CCITT, JBIG2 and LZW each still
+     need a decoder of their own — those come back null and the page
+     says so. */
   const MIN_IMAGE_PX = 40000;                  // 200×200: below that it is a logo
 
   function xobjectsOf(resources, objs){
@@ -2130,8 +3182,24 @@ const PdfText = (function(){
       }
       return { kind:"jpeg", width:w, height:h, bytes:data };
     }
-    if(last === "/JPXDecode" || last === "/JBIG2Decode" ||
-       last === "/CCITTFaxDecode" || last === "/LZWDecode" || last === "/RunLengthDecode") return null;
+    if(last === "/JPXDecode"){
+      // The one format the browser cannot help with; § 3 decodes it here.
+      // A JPEG 2000 page carries its own colour space, so /ColorSpace in
+      // the PDF dictionary is advisory and deliberately not consulted.
+      let data = o.data;
+      for(const n of names.slice(0, -1)){
+        if(n === "/FlateDecode") data = await inflate(data);
+        else if(n === "/ASCIIHexDecode") data = hexDecode(data);
+        else if(n === "/ASCII85Decode") data = a85Decode(data);
+        else return null;
+      }
+      try{
+        const img = Jpx.toRGBA(Jpx.decode(data, { luma: true }));
+        return { kind:"raw", width:img.width, height:img.height, rgba:img.rgba };
+      }catch(e){ return null; }
+    }
+    if(last === "/JBIG2Decode" || last === "/CCITTFaxDecode" ||
+       last === "/LZWDecode" || last === "/RunLengthDecode") return null;
     const data = await decodeStream(o);
     if(!data) return null;
     const mask = /\/ImageMask\s+true/.test(o.dict);
@@ -2263,7 +3331,7 @@ const PdfText = (function(){
 })();
 
 /* ============================================================
-   4. The recipe parser
+   5. The recipe parser
    ------------------------------------------------------------
    Free text ─► days ─► meals ─► { ingredients[], steps[] }.
 
@@ -2626,7 +3694,7 @@ const Recipes = (function(){
 })();
 
 /* ============================================================
-   5. The app — state, review cards, markdown
+   6. The app — state, review cards, markdown
    ============================================================ */
 var booted = false;                       // var: applyUILang() reads it early
 const model = { days: [], source: "" };
@@ -2902,7 +3970,7 @@ function renderMarkdown(){
 }
 
 /* ============================================================
-   6. Getting the text in
+   7. Getting the text in
    ============================================================ */
 function ingest(text, sourceName, forceAppend){
   const append = !!(forceAppend || (els.appendMode.checked && model.days.length > 0));
@@ -3234,7 +4302,7 @@ async function ocrPages(imgs){
 }
 
 /* ============================================================
-   7. Saving — a .md file, or a chapter in the Markdown workbook
+   8. Saving — a .md file, or a chapter in the Markdown workbook
    ============================================================ */
 // Same rules as wbSlug() in markdown-editor.html: Romanian diacritics are
 // legal file names and survive; only what a file system rejects is replaced.
@@ -3336,7 +4404,7 @@ async function toWorkbook(){
 }
 
 /* ============================================================
-   8. Wiring
+   9. Wiring
    ============================================================ */
 async function savePrefs(){
   try{
@@ -3482,7 +4550,7 @@ window.addEventListener("scula-ui-lang", ev => {
 
 // The parser and the PDF reader are the two pieces worth testing on their
 // own — tests/recipes.js drives them through this handle.
-window.ScuLaRecipes = { Recipes, PdfText, model, analyse, allMarkdown, buildDayMarkdown,
+window.ScuLaRecipes = { Recipes, PdfText, Jpx, model, analyse, allMarkdown, buildDayMarkdown,
                         renderDays, renderMarkdown, prepImage, OCR };
 
 })();
