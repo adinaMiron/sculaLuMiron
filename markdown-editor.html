@@ -6311,6 +6311,11 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*','*'); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); openLinkModal(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'K') { e.preventDefault(); insertCodeBlock(); }
+  // Ctrl+Shift+1..6 → H1..H6. e.code (not e.key) because Shift+digit
+  // produces a punctuation character ("!", "@", …) on US layouts.
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && /^Digit[1-6]$/.test(e.code)) {
+    e.preventDefault(); insertHeading(e.code.slice(5));
+  }
 });
 
 updatePreview();
