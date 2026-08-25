@@ -298,6 +298,35 @@ Fixed points:
 
 Cells escape `|`, so an ingredient can contain one safely.
 
+### Reading it back — `Recipes.fromMarkdown(text)`
+
+A contract only earns the name if it can be read as well as written, so the
+inverse exists: `fromMarkdown(text)` → `{ days, source }`, the same model
+`parse()` produces, out of a file this page (or `markdown-editor.html`)
+wrote. Everything downstream then works on an imported plan exactly as it
+does on a freshly-read PDF — the day cards, the search, the `.md` save, the
+workbook, the HTML page.
+
+| Piece | Rule |
+|---|---|
+| `#` | a day. `Ziua 7` / `Day 7` with nothing after the number keeps `title` **empty**, so it goes on following the interface language, the way a day the parser found does. A heading with a name of its own keeps it |
+| `##` | a meal, `<label>: <dish>`. The label goes through `mealKind()`, so a Romanian file read by an English page still knows breakfast from dinner. `## Total pe zi` / `## Day total` is skipped: it is a section of the day, not a meal, and it is written again from the meals on the way out |
+| `###` | matched on the leading **`1.` / `2.`**, never on the word — the same file says *Ingrediente* or *Ingredients* depending on the language it was written in, and a reader has to take both. `Ingrediente:`-style headings are believed as a fallback |
+| table | header rows are the ones **above the `\| --- \|` row**; a row of four empty cells is how "no ingredients" is spelled and is dropped. `\|` inside a cell comes back as a pipe |
+| method | `1. …`, `- …`, or a bare line. `1.` with nothing after it is the empty-method stub and adds no step — the `\s+` in the content match is deliberate: with `\s*`, a step opening `2.5 litri de apă` would lose its first two characters |
+| `---`, `*Sursă: …*` | the day separator is ignored; the source line is read and **beats the name of the file it arrived in** — `Ziua-7.md` is a file name, the line inside it is the book |
+
+`looksLikeMarkdown(text)` is what decides which reader gets the text, and
+`analyse()` asks it on every route in — a picked file, a drop, a paste,
+the box in step 2. It wants a heading **and** either a numbered section or
+a table, so a plan with a stray `#` in it still goes to `parse()`.
+
+One thing does not survive the trip, because the table has no column for
+it: an ingredient's **group** (`Sos:`, `Topping:`). Everything else does —
+`tests/recipes.js` reads the page's own output back and asserts the file
+comes out byte-identical, and the 100-menu book of § B round-trips the same
+way, all 6,584 lines of it.
+
 ---
 
 ## D. A hundred days at once
@@ -378,7 +407,41 @@ rather than overwriting anything.
 
 ---
 
-## G. Testing
+## G. The page you can share
+
+The markdown is the format a *program* reads. `Exportă .html` is the one a
+person does: the same days, laid out to be read, as **one self-contained
+file** — no script in it, no stylesheet, no font, nothing to fetch. It
+opens out of an e-mail attachment, off a phone, and out of a printer.
+
+```
+model ──► buildHtmlDoc() ──► one string ──┬─► <iframe srcdoc>   (card 5)
+                                          ├─► ScuLaFolder.save() → .html
+                                          └─► blob: URL          → a tab
+```
+
+The single string is the point: **what the preview shows is the file that
+gets saved**, so there is no second renderer to keep in step with the first.
+
+| Decision | Why |
+|---|---|
+| built from the **model**, not from the markdown | an ingredient group (`Sos`, `Topping`) has no column in the table, and on a page it can simply be a subheading |
+| **no totals stub** | in the markdown, `## Total pe zi` is a place for the USDA pass to write (§ E). In a file meant for reading, five empty columns are furniture |
+| previewed in an **iframe**, `sandbox=""` | the file carries a whole document's worth of CSS — page background, print rules, its own type — and none of it may leak into `recipes.html` or be overwritten by it. The sandbox gives it an opaque origin and no scripts; it has none to run |
+| the preview is a **fold** | building a second document the size of the page on every keystroke is not free. It is rebuilt only while the fold is open, and only after the typing stops (250 ms). The fold opens itself for eight days or fewer and stays shut for a book — the same size heuristic the day view uses |
+| the contents list is a `<details>` | a hundred days is a hundred links: on a phone that is three screens of contents before the first recipe. `<details>` folds it with no script, which is what keeps the file inert. Open at 24 days or fewer |
+| ingredients are a **grid**, not a row each | one quantity column per list, as wide as the widest quantity in it. A fixed column is fine until a row says `1 conservă` and the unit spills over the name beside it |
+| `@media print` + `@page` | the screen page is the dark earth palette; on paper it turns back into ink, one day per sheet, contents dropped. *Deschide într-o filă* is the route to that — and to a PDF, through the browser's own printer |
+
+`Doar rețetele afișate` narrows this the same way it narrows the markdown:
+the page is built from `outputDays()`, so a search is also a way to share
+part of a book. The title field defaults to the source file's name with its
+extension and dashes taken off, and is what the saved file is named after —
+through `slug()`, so Romanian diacritics survive into the file name.
+
+---
+
+## H. Testing
 
 `tests/recipes.js` — a plain Node + Playwright script like the rest of that
 folder, but it serves the repo over `http://127.0.0.1` instead of `file://`
@@ -408,6 +471,20 @@ wavelet and the level shift without needing an encoder. The entropy-coded
 path is then checked against a real page pulled out of
 `100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf` when that file is in
 the tree, and skipped with a note when it is not.
+
+**The markdown is checked from both ends.** The page's own output goes
+back through `fromMarkdown()` and has to come out byte-identical; a plain
+plan must *not* be mistaken for markdown; and a hand-built file covers the
+corners — an English file read by a Romanian page, `## Day total` not
+becoming a fourth meal, an escaped pipe inside a cell, and `1.` with
+nothing after it staying an empty method. The shareable page is checked for
+what it must contain (one article per day, one section per meal, the dish,
+an ingredient, a step, both languages, `@media print`), for what it must
+**not** (a `<script`, an `src=`, an `http` URL, an unescaped `<b>` from an
+ingredient name), and for the two things that make it trustworthy: the
+preview iframe holds the very string the export saves, and the export goes
+out through `ScuLaFolder.save` as `text/html` under a diacritic-keeping
+file name.
 
 The parser rules the book needed each have a check of their own
 (`Sos:` staying inside its meal, word quantities, `Ingrediente:` headings,

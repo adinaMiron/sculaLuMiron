@@ -9,11 +9,11 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 6481 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 5024 | 50k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
+| `recipes.html` | 5502 | 55k | "Rețete" — PDF/photo → recipe markdown/HTML | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all four costs ~152k tokens; `markdown-editor.html` alone is 57k
+Reading all four costs ~174k tokens; `markdown-editor.html` alone is 57k
 and `editor.html` 46k. **Never `view` an entire app file.** Locate first,
 then read a narrow range.
 
@@ -34,7 +34,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | English/Romanian UI, strings | `docs/I18N.md` |
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
-| PDF/OCR reading, JPEG 2000, recipe markdown, searching a big plan, USDA plans | `docs/RECIPES.md` |
+| PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md`, the shareable HTML page, searching a big plan, USDA plans | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 
@@ -44,7 +44,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1385-2040`, `recipes.html:310-965`). It carries the nav
+`markdown-editor.html:1385-2040`, `recipes.html:321-976`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -53,7 +53,7 @@ must be applied to **all four** or they drift. Verify with:
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
 sed -n '1385,2040p' markdown-editor.html > /tmp/n3
-sed -n '310,965p' recipes.html           > /tmp/n4
+sed -n '321,976p' recipes.html           > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -117,8 +117,9 @@ browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
 pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
-the PDF reader including scanned pages, the parser, the markdown, the whole
-OCR path against a stub engine, both save routes), and for
+the PDF reader including scanned pages, the parser, the markdown both
+written and read back, the shareable HTML page, the whole OCR path against
+a stub engine, all three save routes), and for
 `markdown-editor.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`) and its navigation panel (`nav.js`). It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`

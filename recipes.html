@@ -251,6 +251,17 @@
   #mdPreview li{margin:.15rem 0}
   #mdPreview em{color:var(--text-2)}
   #mdPreview p{margin:.3rem 0}
+  /* The shareable page, previewed as itself. An iframe rather than a div
+     because the file has a whole document's worth of CSS in it — page
+     background, print rules, its own fonts — and none of that may leak
+     into this page or be overwritten by it. `sandbox=""` gives it an
+     opaque origin and no scripts; the file has none to run. */
+  #htmlFrame{
+    width:100%;height:34rem;border:1px solid var(--border);border-radius:.7rem;
+    background:var(--bg);display:block;margin:.5rem 0 0;
+  }
+  @media (max-width:900px){ #htmlFrame{height:26rem} }
+
   .tabs{display:flex;gap:.3rem;margin:0 0 .6rem}
   .tabs button{
     background:transparent;border:1px solid var(--border);color:var(--text-2);
@@ -978,17 +989,20 @@
         <h2><span class="step">1</span><span data-i="stepSource">Sursa</span></h2>
         <div id="drop">
           <p class="big" data-i="dropBig">Trage aici un PDF sau o poză</p>
-          <p class="dsub" data-i="dropSub">PDF (și scanat), JPG, PNG, WEBP sau text. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
+          <p class="dsub" data-i="dropSub">PDF (și scanat), JPG, PNG, WEBP, text sau un .md scris aici. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
           <div class="row" style="justify-content:center">
             <button type="button" class="btn primary" id="btnPick" data-i="pickFile">Alege fișier</button>
             <button type="button" class="btn" id="btnCam" data-i="camera">Fotografiază</button>
             <button type="button" class="btn ghost" id="btnPaste" data-i="pasteText">Lipesc textul</button>
+            <button type="button" class="btn ghost" id="btnMd" data-i="importMd">Importă .md</button>
           </div>
         </div>
         <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf" multiple>
         <input type="file" id="cam" accept="image/*" capture="environment" multiple>
+        <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown" multiple>
         <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span><button type="button" class="btn mini ghost" id="btnStop" hidden data-i="stopOcr">Oprește</button></div>
         <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.</p>
+        <p class="hint" data-i="importMdHint">„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.</p>
 
         <details class="more" id="ocrBox">
           <summary data-i="ocrTitle">Text din poze (OCR)</summary>
@@ -1103,6 +1117,24 @@
       </div>
     </section>
   </div>
+
+  <!-- ===== 5. the shareable page ===== -->
+  <div class="card" id="htmlCard" hidden>
+    <h2><span class="step">5</span><span data-i="stepHtml">Pagina HTML</span></h2>
+    <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
+    <label class="field">
+      <span data-i="htmlTitleLabel">Titlul paginii</span>
+      <input type="text" id="htmlTitle" data-i-placeholder="htmlTitlePh">
+    </label>
+    <div class="row">
+      <button type="button" class="btn primary" id="btnHtmlSave" data-i="exportHtml">Exportă .html</button>
+      <button type="button" class="btn" id="btnHtmlOpen" data-i="openHtml">Deschide într-o filă</button>
+    </div>
+    <details class="more" id="htmlBox">
+      <summary data-i="htmlPreviewLabel">Previzualizare</summary>
+      <iframe id="htmlFrame" sandbox="" title="" data-i-title="htmlPreviewLabel"></iframe>
+    </details>
+  </div>
 </div>
 
 <script>
@@ -1134,7 +1166,7 @@ const I18N = {
     intro:"Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.",
     stepSource:"Sursa",
     dropBig:"Trage aici un PDF sau o poză",
-    dropSub:"PDF (și scanat), JPG, PNG, WEBP sau text. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).",
+    dropSub:"PDF (și scanat), JPG, PNG, WEBP, text sau un .md scris aici. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).",
     pickFile:"Alege fișier",
     camera:"Fotografiază",
     pasteText:"Lipesc textul",
@@ -1220,6 +1252,24 @@ const I18N = {
     mdSource:s => "Sursă: " + s,
     mdDay:n => "Ziua " + n,
 
+    /* importul unui .md și pagina de trimis mai departe */
+    importMd:"Importă .md",
+    importMdHint:"„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.",
+    stepHtml:"Pagina HTML",
+    htmlHint:"Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.",
+    htmlTitleLabel:"Titlul paginii",
+    htmlTitlePh:"După numele fișierului sursă",
+    htmlPreviewLabel:"Previzualizare",
+    exportHtml:"Exportă .html",
+    openHtml:"Deschide într-o filă",
+    /* textul din pagina exportată */
+    hIngredients:"Ingrediente",
+    hMethod:"Metoda de preparare",
+    docContents:"Cuprins",
+    docDays:n => n === 1 ? "o zi" : n + " zile",
+    docRecipes:n => n === 1 ? "o rețetă" : n + " rețete",
+    docFooter:"Scris cu Rețete. Tot ce se vede aici stă în acest singur fișier.",
+
     /* status */
     stReading:f => "Citesc „" + f + "”…",
     stPdfPages:n => "PDF citit: " + n + (n === 1 ? " pagină." : " pagini."),
@@ -1239,6 +1289,9 @@ const I18N = {
     stFileOf:(i, n) => "Fișierul " + i + " din " + n + "…",
     stFound:(d) => d === 1 ? "Am găsit o zi." : "Am găsit " + d + " zile.",
     stNothing:"Nu am recunoscut nicio rețetă. Verifică textul din pasul 2 — sau adaugă manual o zi.",
+    stMdFound:n => n === 1 ? "Am citit o zi din markdown." : "Am citit " + n + " zile din markdown.",
+    stMdNothing:"Fișierul e markdown, dar nu în forma pe care o scrie pagina asta: o zi cu „#”, o masă cu „##”, apoi „### 1. Ingrediente” și „### 2. Metoda de preparare”.",
+    stNoTab:"Fila nu s-a putut deschide (blocată de browser). Folosește „Exportă .html”.",
     stCopied:"Markdown copiat.",
     stCopyFailed:"Nu am putut copia. Selectează textul din fila „Markdown”.",
     stWbSaved:n => n === 1 ? "Un capitol adăugat în caiet." : n + " capitole adăugate în caiet.",
@@ -1258,7 +1311,7 @@ const I18N = {
     intro:"Read the text out of a PDF or a photo, split it into days and meals and write a clean recipe in markdown: 1. Ingredients, 2. Method. The file stays with you — nothing leaves the device.",
     stepSource:"Source",
     dropBig:"Drop a PDF or a photo here",
-    dropSub:"PDF (scanned too), JPG, PNG, WEBP or text. Several photos at once are fine. You can also paste a picture from the clipboard (Ctrl+V).",
+    dropSub:"PDF (scanned too), JPG, PNG, WEBP, text, or a .md written here. Several photos at once are fine. You can also paste a picture from the clipboard (Ctrl+V).",
     pickFile:"Choose file",
     camera:"Take a photo",
     pasteText:"Paste text",
@@ -1340,6 +1393,24 @@ const I18N = {
     mdSource:s => "Source: " + s,
     mdDay:n => "Day " + n,
 
+    /* importing a .md, and the page to pass on */
+    importMd:"Import .md",
+    importMdHint:"“Import .md” reads back a file this page wrote — or one edited since in the Markdown editor: the days, the meals, the ingredients and the steps all come back whole, ready to correct, to save again, or to send on as an HTML page.",
+    stepHtml:"HTML page",
+    htmlHint:"The same recipes, laid out to be read: one .html file, with no script in it and nothing to fetch from the internet. It opens from an e-mail, on a phone, and out of a printer.",
+    htmlTitleLabel:"Page title",
+    htmlTitlePh:"After the name of the source file",
+    htmlPreviewLabel:"Preview",
+    exportHtml:"Export .html",
+    openHtml:"Open in a tab",
+    /* the words inside the exported page */
+    hIngredients:"Ingredients",
+    hMethod:"Method",
+    docContents:"Contents",
+    docDays:n => n === 1 ? "one day" : n + " days",
+    docRecipes:n => n === 1 ? "one recipe" : n + " recipes",
+    docFooter:"Written with Recipes. Everything you see here lives in this one file.",
+
     stReading:f => "Reading “" + f + "”…",
     stPdfPages:n => "PDF read: " + n + (n === 1 ? " page." : " pages."),
     stPdfNoText:"This PDF holds neither text nor pictures to read. Photograph the page or paste the text.",
@@ -1358,6 +1429,9 @@ const I18N = {
     stFileOf:(i, n) => "File " + i + " of " + n + "…",
     stFound:(d) => d === 1 ? "Found one day." : "Found " + d + " days.",
     stNothing:"No recipe recognised. Check the text in step 2 — or add a day by hand.",
+    stMdFound:n => n === 1 ? "Read one day from the markdown." : "Read " + n + " days from the markdown.",
+    stMdNothing:"That file is markdown, but not the shape this page writes: a day as “#”, a meal as “##”, then “### 1. Ingredients” and “### 2. Method”.",
+    stNoTab:"The tab couldn't be opened (the browser blocked it). Use “Export .html” instead.",
     stCopied:"Markdown copied.",
     stCopyFailed:"Couldn't copy. Select the text in the “Markdown” tab instead.",
     stWbSaved:n => n === 1 ? "One chapter added to the workbook." : n + " chapters added to the workbook.",
@@ -3800,7 +3874,137 @@ const Recipes = (function(){
     return out;
   }
 
-  return { parse, parseIngredient, splitSteps, splitIngredients, isStep, newDay, newMeal, mealKind };
+  /* ---------- reading the contract back ----------
+     The inverse of buildDayMarkdown() in section 6 — docs/RECIPES.md § C.
+     A file this page wrote (or one edited since in markdown-editor.html)
+     comes back as the model it was built from, so the day cards, the
+     search, the workbook and the HTML page all work on an imported plan
+     exactly as they do on a freshly-read PDF.
+
+     The `###` sections are matched on their leading `1.` / `2.`, never on
+     the word: the same file says "Ingrediente" or "Ingredients" depending
+     on the language its interface was in, and a reader has to take both.
+
+     One thing does not survive the round trip, because the table has no
+     column for it: an ingredient's group ("Sos:", "Topping:"). Everything
+     else does. */
+  const MD_SOURCE = new RegExp("^\\*\\s*(?:surs[ăa]|source)\\s*[:：]\\s*(.+?)\\s*\\*$", "i");
+  const MD_TOTALS = new RegExp("^(total pe zi|day total)\\s*$", "i");
+  const MD_RULE   = /^([-*_])\1{2,}$/;
+  const MD_SEP_ROW = /^\|[\s:|-]+\|$/;
+
+  // Cells escape a literal pipe as `\|` (cell() in section 6) and escape
+  // nothing else, so one walk over the characters is the whole reader.
+  function mdCells(line){
+    const inner = line.replace(/^\|/, "").replace(/\|\s*$/, "");
+    const out = [];
+    let cur = "";
+    for(let i = 0; i < inner.length; i++){
+      const c = inner.charAt(i);
+      if(c === "\\" && inner.charAt(i + 1) === "|"){ cur += "|"; i++; continue; }
+      if(c === "|"){ out.push(cur.trim()); cur = ""; continue; }
+      cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  }
+
+  // Enough of the shape to be sure before handing the text to the wrong
+  // reader: a heading, plus either a numbered section or a table. Prose
+  // with a stray "#" in it has neither, and goes to parse() as before.
+  function looksLikeMarkdown(text){
+    const s = clean(text);
+    if(!/^#{1,3}\s+\S/m.test(s)) return false;
+    return /^###\s*[12]\s*[.)]/m.test(s) || /^\|(?:[^|\n]*\|){3,}\s*$/m.test(s);
+  }
+
+  function fromMarkdown(text){
+    const lines = clean(text).split("\n");
+    const days = [];
+    let source = "", day = null, meal = null;
+    let section = "";        // "ing" | "steps" | ""
+    let sawSep = false;      // the |---| row: everything above it is a header
+    let skipping = false;    // inside "## Total pe zi", which is not a meal
+
+    function startDay(title){
+      const d = DAY_HEAD.exec(title);
+      const n = d ? (/^\d+$/.test(d[1]) ? parseInt(d[1], 10) : romanToInt(d[1])) : null;
+      // "Ziua 7" with nothing after it is the *number* of the day, not a
+      // name for it. Left as a number it keeps following the interface
+      // language, exactly as a day the parser found does.
+      day = newDay(n || days.length + 1, (d && !d[2].trim()) ? "" : title);
+      days.push(day);
+      meal = null; section = ""; skipping = false;
+    }
+    function startMeal(title){
+      if(!day){ day = newDay(days.length + 1, ""); days.push(day); }
+      const at = title.indexOf(":");
+      const head = (at >= 0 ? title.slice(0, at) : title).trim();
+      const kind = mealKind(head);
+      meal = newMeal(kind, kind ? "" : head, at >= 0 ? title.slice(at + 1).trim() : "");
+      day.meals.push(meal);
+      section = ""; sawSep = false;
+    }
+
+    lines.forEach(raw => {
+      const line = raw.trim();
+      if(!line) return;
+
+      const h = line.match(/^(#{1,6})\s+(.*)$/);
+      if(h){
+        const level = h[1].length, title = h[2].trim();
+        if(level === 1){ startDay(title); return; }
+        if(level === 2){
+          meal = null; section = "";
+          // "## Total pe zi" is a section of the day, not a meal: a stub
+          // for numbers nobody has filled in yet. It is written again from
+          // the meals on the way out, so there is nothing to read here.
+          skipping = MD_TOTALS.test(title);
+          if(!skipping) startMeal(title);
+          return;
+        }
+        if(level === 3 && meal){
+          const num = title.match(/^\s*(\d)\s*[.)]/);
+          if(num) section = num[1] === "1" ? "ing" : "steps";
+          else if(SEC_ING.test(title)) section = "ing";
+          else if(SEC_STEP.test(title)) section = "steps";
+          sawSep = false;
+        }
+        return;
+      }
+
+      if(!source){
+        const src = MD_SOURCE.exec(line);
+        if(src){ source = src[1].trim(); return; }
+      }
+      if(skipping || MD_RULE.test(line)) return;
+      if(!meal) return;
+
+      if(line.charAt(0) === "|"){
+        if(section !== "ing") return;
+        if(MD_SEP_ROW.test(line)){ sawSep = true; return; }
+        if(!sawSep) return;                       // the header row it wrote
+        const c = mdCells(line);
+        if(!c.some(Boolean)) return;              // "|  |  |  |  |" — no ingredients
+        meal.ingredients.push({ qty:c[0] || "", unit:c[1] || "", item:c[2] || "",
+                                group:"", fdc:c[3] || "" });
+        return;
+      }
+      if(section !== "steps") return;
+      // "1." on its own is how an empty method is spelled on the way out.
+      // The content match keeps its \s+ on purpose: with \s* a step that
+      // opens "2.5 litri de apă" would lose its first two characters.
+      if(/^(?:\d{1,3}\s*[.)]|[-*•·])$/.test(line)) return;
+      const li = line.match(/^(?:\d{1,3}\s*[.)]|[-*•·])\s+(.*)$/);
+      const step = (li ? li[1] : line).trim();
+      if(step) meal.steps.push(step);
+    });
+
+    return { days: days.filter(d => d.meals.length), source: source };
+  }
+
+  return { parse, parseIngredient, splitSteps, splitIngredients, isStep, newDay, newMeal, mealKind,
+           fromMarkdown, looksLikeMarkdown, mdCells };
 })();
 
 /* ============================================================
@@ -3812,6 +4016,7 @@ const $ = id => document.getElementById(id);
 const els = {
   drop:$("drop"), file:$("file"), cam:$("cam"),
   btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"),
+  btnMd:$("btnMd"), mdFile:$("mdFile"),
   status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
   textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
   days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
@@ -3821,6 +4026,8 @@ const els = {
   tabPreview:$("tabPreview"), tabSource:$("tabSource"),
   wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"),
   btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnCopy:$("btnCopy"),
+  htmlCard:$("htmlCard"), htmlTitle:$("htmlTitle"), htmlBox:$("htmlBox"), htmlFrame:$("htmlFrame"),
+  btnHtmlSave:$("btnHtmlSave"), btnHtmlOpen:$("btnHtmlOpen"),
   ocrBox:$("ocrBox"), btnOcrLoad:$("btnOcrLoad"), ocrState:$("ocrState"),
   ocrAuto:$("ocrAuto"), ocrWarm:$("ocrWarm"),
   ocrLangs:$("ocrLangs"), ocrUrl:$("ocrUrl"), ocrCore:$("ocrCore"), ocrData:$("ocrData")
@@ -4405,6 +4612,216 @@ function renderMarkdown(){
   els.mdText.value = md;
   els.mdPreview.innerHTML = renderPreview(md);
   els.mdCard.hidden = model.days.length === 0;
+  paintHtml();
+}
+
+/* ---------- the page you can share ----------
+   The same recipes as the markdown, laid out to be *read* rather than
+   parsed: one self-contained .html file with no script in it and nothing
+   to fetch, so it opens from an e-mail attachment, from a phone, and out
+   of a printer. The dark page is the one on screen; @media print turns it
+   back into ink on paper.
+
+   It is built from the model rather than from the markdown, which is what
+   lets an ingredient group ("Sos", "Topping") — a thing the four-column
+   table has no room for — show up on the page. What is deliberately left
+   out is the totals stub: in a file meant for reading, a table of five
+   empty columns is furniture. It stays in the markdown, where it is a
+   place for the USDA pass to write (docs/RECIPES.md § E).
+
+   The same string is what the preview iframe shows and what the export
+   button saves, so what is on screen is the file. */
+const DOC_CSS = [
+  ":root{",
+  "  --bg:#14201A; --surface:#1B2A22; --surface-2:#22342A; --border:#2E4739;",
+  "  --text:#F3EEE1; --text-2:#9FB3A5; --text-3:#5A6A60;",
+  "  --accent:#C1BB45; --accent-2:#D3CD7C; --on-accent:#1A2117;",
+  '  --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;',
+  '  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;',
+  "}",
+  "*{box-sizing:border-box}",
+  "html,body{margin:0;padding:0}",
+  "body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:16px;line-height:1.55}",
+  ".sheet{max-width:62rem;margin:0 auto;padding:2.2rem 1.1rem 4rem}",
+  "header.book{border-bottom:1px solid var(--border);padding:0 0 1.1rem;margin:0 0 1.5rem}",
+  "header.book h1{font-family:var(--font-display);font-size:clamp(1.8rem,5vw,2.6rem);",
+  "  margin:0 0 .35rem;color:var(--accent-2);letter-spacing:.01em}",
+  "header.book .meta{margin:0;color:var(--text-2);font-size:.85rem}",
+  "/* A hundred days is a hundred links: on a phone that is three screens of",
+  "   contents before the first recipe, so the list is a fold. <details> does",
+  "   it with no script, which is what keeps the file inert. */",
+  "details.toc{margin:0 0 2rem}",
+  "details.toc > summary{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;",
+  "  color:var(--text-3);font-weight:600;cursor:pointer;list-style:none;padding:.25rem 0}",
+  "details.toc > summary::-webkit-details-marker{display:none}",
+  "details.toc > summary::before{content:\"\\25B8 \";color:var(--accent)}",
+  "details.toc[open] > summary::before{content:\"\\25BE \"}",
+  "details.toc ul{list-style:none;display:flex;flex-wrap:wrap;gap:.35rem;margin:.5rem 0 0;padding:0}",
+  "details.toc a{display:inline-block;border:1px solid var(--border);border-radius:999px;",
+  "  padding:.2rem .7rem;font-size:.78rem;color:var(--text-2);text-decoration:none}",
+  "details.toc a:hover{border-color:var(--accent);color:var(--accent-2)}",
+  "article.day{margin:0 0 2.4rem}",
+  "article.day > h2{font-family:var(--font-display);font-size:1.5rem;margin:0 0 .9rem;",
+  "  padding:0 0 .35rem;border-bottom:2px solid var(--accent)}",
+  "section.meal{background:var(--surface);border:1px solid var(--border);border-radius:14px;",
+  "  padding:1rem 1.1rem;margin:0 0 .9rem;break-inside:avoid;page-break-inside:avoid}",
+  "section.meal > h3{margin:0 0 .85rem;font-family:var(--font-display);font-size:1.2rem;",
+  "  font-weight:600;display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline}",
+  ".kind{font-family:var(--font-ui);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;",
+  "  font-weight:700;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:.2rem .65rem}",
+  ".half{display:grid;grid-template-columns:minmax(13rem,19rem) minmax(0,1fr);gap:1.2rem}",
+  "@media (max-width:640px){.half{grid-template-columns:minmax(0,1fr);gap:.9rem}}",
+  ".half h4{margin:0 0 .5rem;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;",
+  "  color:var(--text-3);font-weight:600}",
+  "/* A grid rather than a row per ingredient, so the quantity column is one",
+  "   width for the whole list and that width is the widest quantity in it:",
+  "   a fixed column is fine until a row says \"1 conserv\\u0103\" and the unit",
+  "   spills over the name beside it. */",
+  "ul.ing{list-style:none;margin:0;padding:0;display:grid;",
+  "  grid-template-columns:max-content minmax(0,1fr);column-gap:.65rem}",
+  "ul.ing li{display:contents}",
+  "ul.ing li > span{padding:.32rem 0;font-size:.92rem;border-bottom:1px dashed var(--border)}",
+  "ul.ing li:last-child > span{border-bottom:0}",
+  "ul.ing li.grp{display:block;grid-column:1/-1;border-bottom:0;padding:.6rem 0 .1rem;",
+  "  color:var(--text-3);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase}",
+  "ul.ing .q{color:var(--accent-2);font-weight:600;font-variant-numeric:tabular-nums;",
+  "  overflow-wrap:anywhere}",
+  "ul.ing .it{min-width:0}",
+  "ol.steps{margin:0;padding-left:1.25rem}",
+  "ol.steps li{margin:0 0 .5rem;font-size:.93rem}",
+  "ol.steps li::marker{color:var(--accent);font-weight:700}",
+  "p.none{margin:0;color:var(--text-3);font-size:.9rem}",
+  "footer.book{border-top:1px solid var(--border);margin:2.5rem 0 0;padding:.9rem 0 0;",
+  "  color:var(--text-3);font-size:.78rem}",
+  "/* On paper the page is ink, one day per sheet, and the links are dead weight. */",
+  "@page{margin:16mm}",
+  "@media print{",
+  "  :root{--bg:#fff; --surface:#fff; --surface-2:#f2f0e8; --border:#c7c2b2;",
+  "    --text:#181818; --text-2:#4a544c; --text-3:#6d766f; --accent:#8a8428; --accent-2:#5f5b1c;",
+  "    --on-accent:#fff}",
+  "  body{font-size:10.5pt}",
+  "  .sheet{max-width:none;padding:0}",
+  "  details.toc{display:none}",
+  "  article.day{break-before:page;page-break-before:always}",
+  "  article.day:first-of-type{break-before:auto;page-break-before:auto}",
+  "  section.meal{border-color:var(--border)}",
+  "  a{color:inherit;text-decoration:none}",
+  "}"
+].join("\n");
+
+function escHtml(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Typed in, or the file the recipes came out of, or just the page's name.
+function htmlTitle(){
+  const typed = (els.htmlTitle.value || "").trim();
+  if(typed) return typed;
+  if(model.source){
+    const base = model.source.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim();
+    if(base) return base;
+  }
+  return t("title");
+}
+
+function mealHtml(meal){
+  const L = [];
+  L.push('<section class="meal">');
+  L.push('<h3><span class="kind">' + escHtml(mealLabel(meal)) + "</span>" +
+         (meal.name ? '<span class="dish">' + escHtml(meal.name) + "</span>" : "") + "</h3>");
+  L.push('<div class="half">');
+  L.push("<div><h4>" + escHtml(t("hIngredients")) + "</h4>");
+  if(meal.ingredients.length){
+    L.push('<ul class="ing">');
+    let group = "";
+    meal.ingredients.forEach(ing => {
+      const g = String(ing.group || "").trim();
+      if(g !== group){ group = g; if(g) L.push('<li class="grp">' + escHtml(g) + "</li>"); }
+      const qty = [ing.qty, ing.unit].map(v => String(v == null ? "" : v).trim()).filter(Boolean).join(" ");
+      L.push('<li><span class="q">' + escHtml(qty) + '</span><span class="it">' + escHtml(ing.item) + "</span></li>");
+    });
+    L.push("</ul>");
+  }else L.push('<p class="none">—</p>');
+  L.push("</div>");
+  L.push("<div><h4>" + escHtml(t("hMethod")) + "</h4>");
+  if(meal.steps.length){
+    L.push('<ol class="steps">');
+    meal.steps.forEach(step => L.push("<li>" + escHtml(step) + "</li>"));
+    L.push("</ol>");
+  }else L.push('<p class="none">—</p>');
+  L.push("</div></div></section>");
+  return L.join("\n");
+}
+
+function dayHtml(slice, i){
+  const meals = slice.meals.map(mi => slice.day.meals[mi]).filter(Boolean);
+  const L = [];
+  L.push('<article class="day" id="zi-' + (i + 1) + '">');
+  L.push("<h2>" + escHtml(dayTitle(slice.day, slice.di)) + "</h2>");
+  meals.forEach(meal => L.push(mealHtml(meal)));
+  L.push("</article>");
+  return L.join("\n");
+}
+
+function buildHtmlDoc(){
+  const out = outputDays();
+  const title = htmlTitle();
+  const meals = out.reduce((n, s) => n + s.meals.length, 0);
+  const meta = [t("docDays", out.length), t("docRecipes", meals)];
+  if(els.optSource.checked && model.source) meta.push(t("mdSource", model.source));
+  const L = [];
+  L.push("<!doctype html>");
+  L.push('<html lang="' + UI + '">');
+  L.push("<head>");
+  L.push('<meta charset="utf-8">');
+  L.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
+  L.push("<title>" + escHtml(title) + "</title>");
+  L.push("<style>");
+  L.push(DOC_CSS);
+  L.push("</style>");
+  L.push("</head>");
+  L.push("<body>");
+  L.push('<div class="sheet">');
+  L.push('<header class="book">');
+  L.push("<h1>" + escHtml(title) + "</h1>");
+  L.push('<p class="meta">' + escHtml(meta.join(" · ")) + "</p>");
+  L.push("</header>");
+  if(out.length > 1){
+    // Open for a plan somebody reads top to bottom, shut for a book they
+    // jump around in — where the list would otherwise be the first three
+    // screens of the file.
+    L.push('<details class="toc"' + (out.length <= 24 ? " open" : "") + ">");
+    L.push("<summary>" + escHtml(t("docContents") + " · " + t("docDays", out.length)) + "</summary>");
+    L.push("<ul>");
+    out.forEach((s, i) => L.push('<li><a href="#zi-' + (i + 1) + '">' +
+                                 escHtml(dayTitle(s.day, s.di)) + "</a></li>"));
+    L.push("</ul>");
+    L.push("</details>");
+  }
+  out.forEach((s, i) => L.push(dayHtml(s, i)));
+  L.push('<footer class="book">' + escHtml(t("docFooter")) + "</footer>");
+  L.push("</div>");
+  L.push("</body>");
+  L.push("</html>");
+  return L.join("\n") + "\n";
+}
+
+// Building a second document the size of the page on every keystroke is
+// not free, so the preview is a fold: it is rebuilt only while it is open,
+// and only after the typing stops.
+let htmlTimer = 0, htmlSeen = false;
+function paintHtml(){
+  if(!els.htmlCard) return;
+  const has = model.days.length > 0;
+  els.htmlCard.hidden = !has;
+  if(!has){ htmlSeen = false; els.htmlFrame.removeAttribute("srcdoc"); return; }
+  // Decided once, the first time the card appears: a plan of a few days is
+  // worth showing straight away, a book of a hundred is not.
+  if(!htmlSeen){ htmlSeen = true; els.htmlBox.open = model.days.length <= 8; }
+  if(!els.htmlBox.open) return;
+  clearTimeout(htmlTimer);
+  htmlTimer = setTimeout(() => { els.htmlFrame.srcdoc = buildHtmlDoc(); }, 250);
 }
 
 /* ============================================================
@@ -4421,13 +4838,24 @@ function ingest(text, sourceName, forceAppend){
   analyse(append, append ? text : undefined);
 }
 
+// Text arrives here from three places — a PDF, OCR, the box in step 2 —
+// and now from a fourth: a .md file this page wrote earlier. That one is
+// not prose to be guessed at, it is the contract of docs/RECIPES.md § C,
+// so it goes to the reader that knows the contract instead of to the
+// parser that has to infer everything. Which one it is decides itself.
 function analyse(append, only){
-  const days = Recipes.parse(only === undefined ? els.rawText.value : only);
+  const text = only === undefined ? els.rawText.value : only;
+  const isMd = Recipes.looksLikeMarkdown(text);
+  const read = isMd ? Recipes.fromMarkdown(text) : { days: Recipes.parse(text), source: "" };
   if(!append) model.days = [];
-  days.forEach(d => model.days.push(d));
+  read.days.forEach(d => model.days.push(d));
+  // A file that names its own source knows better than the name it arrived
+  // under: "Ziua-7.md" is a file name, the line inside it is the book.
+  if(read.source) model.source = read.source;
   renderDays();
   renderMarkdown();
-  setStatus(model.days.length ? t("stFound", model.days.length) : t("stNothing"),
+  setStatus(model.days.length ? t(isMd ? "stMdFound" : "stFound", model.days.length)
+                              : t(isMd ? "stMdNothing" : "stNothing"),
             model.days.length ? "" : "err");
 }
 
@@ -4776,8 +5204,8 @@ function slug(name, fallback){
   return s || fallback;
 }
 
-async function saveBlob(name, text){
-  const blob = new Blob([text], { type:"text/markdown" });
+async function saveBlob(name, text, mime){
+  const blob = new Blob([text], { type: mime || "text/markdown" });
   // Not quiet: at the foot of a long book the toast is the only place this
   // can be read. A cancelled share still says nothing — its message is null.
   const r = await ScuLaFolder.save(name, blob);
@@ -4786,6 +5214,28 @@ async function saveBlob(name, text){
 }
 function saveDay(day, di, only){
   return saveBlob(slug(dayTitle(day, di), "reteta") + ".md", buildDayMarkdown(day, di, only));
+}
+
+/* ---- the shareable page ----
+   One .html file with the whole plan in it and nothing outside it: no
+   script, no stylesheet, no font to fetch. Out through ScuLaFolder like
+   everything else — folder on a desktop, the share sheet on a phone. */
+async function saveHtml(){
+  if(!model.days.length){ say(t("stEmpty"), "err"); return; }
+  // saveBlob() already puts what happened on the status line.
+  return saveBlob(slug(htmlTitle(), "retete") + ".html", buildHtmlDoc(), "text/html");
+}
+
+// The same file, opened rather than saved — which is also the way to print
+// it, since the page carries its own @media print rules.
+function openHtml(){
+  if(!model.days.length){ say(t("stEmpty"), "err"); return; }
+  const url = URL.createObjectURL(new Blob([buildHtmlDoc()], { type:"text/html" }));
+  const w = window.open(url, "_blank");
+  if(!w){ say(t("stNoTab"), "err"); URL.revokeObjectURL(url); return; }
+  // Revoking straight away can beat the new tab to the file; a minute is
+  // long past the point where it has been read.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 /* ---- the Markdown editor's workbook store (docs/FEATURES.md § E) ----
@@ -4903,6 +5353,11 @@ els.btnPick.addEventListener("click", () => els.file.click());
 els.btnCam.addEventListener("click", () => els.cam.click());
 els.file.addEventListener("change", () => { handleFiles(els.file.files); els.file.value = ""; });
 els.cam.addEventListener("change", () => { handleFiles(els.cam.files); els.cam.value = ""; });
+// A .md goes down the same road as everything else — handleFile() reads a
+// non-PDF, non-picture as text and ingest() hands it on. Its own picker
+// only narrows what the file dialog offers.
+els.btnMd.addEventListener("click", () => els.mdFile.click());
+els.mdFile.addEventListener("change", () => { handleFiles(els.mdFile.files); els.mdFile.value = ""; });
 els.btnPaste.addEventListener("click", () => {
   els.textCard.hidden = false;
   els.rawText.focus();
@@ -4990,6 +5445,12 @@ els.btnSaveMd.addEventListener("click", () => {
   return saveBlob(base + ".md", allMarkdown());
 });
 els.btnWorkbook.addEventListener("click", toWorkbook);
+els.btnHtmlSave.addEventListener("click", saveHtml);
+els.btnHtmlOpen.addEventListener("click", openHtml);
+// Opening the fold is what asks for the page to be built; closing it is
+// what stops it being rebuilt on every edit.
+els.htmlBox.addEventListener("toggle", paintHtml);
+els.htmlTitle.addEventListener("input", paintHtml);
 els.btnCopy.addEventListener("click", async () => {
   const md = allMarkdown();
   if(!md.trim()){ say(t("stEmpty"), "err"); return; }
@@ -5033,7 +5494,7 @@ window.addEventListener("scula-ui-lang", ev => {
 // The parser and the PDF reader are the two pieces worth testing on their
 // own — tests/recipes.js drives them through this handle.
 window.ScuLaRecipes = { Recipes, PdfText, Jpx, model, analyse, allMarkdown, buildDayMarkdown,
-                        renderDays, renderMarkdown, prepImage, OCR };
+                        buildHtmlDoc, renderDays, renderMarkdown, prepImage, OCR };
 
 })();
 </script>

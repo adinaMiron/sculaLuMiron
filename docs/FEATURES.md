@@ -399,7 +399,10 @@ rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
 - **the markdown it writes** (§ C there): `#` day, `##` meal, `### 1.
   Ingrediente` as a four-column table ending in an empty USDA FDC id,
   `### 2. Metoda de preparare` as an ordered list. Anything that reads those
-  files later — the planned nutrition pass — depends on that shape;
+  files later — the planned nutrition pass — depends on that shape. It is
+  read as well as written: *Importă .md* takes such a file back
+  (`Recipes.fromMarkdown`), so a plan can leave, be edited elsewhere, and
+  come home;
 - **the OCR policy** (§ A there): no recogniser is bundled or auto-loaded.
   Pasted text and the dependency-free PDF reader are the routes that always
   work; an engine is fetched only when the person presses the button, from
@@ -407,6 +410,13 @@ rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
 
 It writes chapters into the same workbook store as § E, one per day, so a
 day extracted here shows up in `markdown-editor.html` on its next load.
+
+There is a third way out, for people rather than programs: *Exportă .html*
+(§ G there) writes the same recipes as **one self-contained page** — no
+script, no stylesheet, nothing to fetch — that opens from an e-mail, on a
+phone, and out of a printer. It goes through `ScuLaFolder.save()` like every
+other save in this repo (§ D), and card 5 previews it in a sandboxed
+`<iframe srcdoc>` holding the very string the file gets.
 
 ---
 

@@ -918,6 +918,167 @@ function serve() {
         flat.length === 3 && flat[0].join() === 'breakfast,lunch,dinner' && flat[2].length === 1,
         JSON.stringify(flat));
 
+  /* ---- 7f. reading a .md back, and the page that makes ----
+     The markdown of docs/RECIPES.md § C is a contract, and a contract is
+     only worth having if it can be read as well as written. So: the page's
+     own output goes back in and has to come out identical, a file the
+     parser would have guessed at is not mistaken for it, and the one thing
+     the .md cannot be — a page laid out to be read — is built from the same
+     model and carries nothing it would have to fetch. */
+  const trip = await page.evaluate(sample => {
+    const R = window.ScuLaRecipes;
+    R.model.days = R.Recipes.parse(sample);
+    R.model.source = 'plan-de-test.pdf';
+    R.renderDays(); R.renderMarkdown();
+    const out = R.allMarkdown();
+    const back = R.Recipes.fromMarkdown(out);
+    R.model.days = back.days;
+    R.renderDays(); R.renderMarkdown();
+    return { md: out, again: R.allMarkdown(), source: back.source,
+             days: back.days.length,
+             meals: back.days.reduce((a, d) => a + d.meals.length, 0),
+             ings: back.days.reduce((a, d) => a + d.meals.reduce((b, m) => b + m.ingredients.length, 0), 0),
+             plainLooksLikeMd: R.Recipes.looksLikeMarkdown(sample),
+             ownOutputLooksLikeMd: R.Recipes.looksLikeMarkdown(out) };
+  }, SAMPLE);
+  const firstDiff = (a, b) => {
+    const x = a.split('\n'), y = b.split('\n');
+    for (let i = 0; i < Math.max(x.length, y.length); i++)
+      if (x[i] !== y[i]) return 'line ' + (i + 1) + ': ' + JSON.stringify(x[i]) + ' vs ' + JSON.stringify(y[i]);
+    return '';
+  };
+  check('md-import: a plain plan is not mistaken for markdown',
+        trip.plainLooksLikeMd === false);
+  check('md-import: the page\'s own output is recognised as markdown',
+        trip.ownOutputLooksLikeMd === true);
+  check('md-import: reading it back and writing it out gives the same file',
+        trip.md === trip.again, firstDiff(trip.md, trip.again));
+  check('md-import: the day, its three meals and every ingredient came back',
+        trip.days === 1 && trip.meals === 3 && trip.ings === 12,
+        JSON.stringify({ days: trip.days, meals: trip.meals, ings: trip.ings }));
+  check('md-import: the file names its own source, and that wins over the file name',
+        trip.source === 'plan-de-test.pdf', trip.source);
+
+  // Through the button and the file picker, the way a person does it.
+  const mdPath = path.join(tmp, 'plan.md');
+  fs.writeFileSync(mdPath, trip.md, 'utf8');
+  await page.setInputFiles('#mdFile', mdPath);
+  await page.waitForTimeout(400);
+  const imported = await page.evaluate(() => ({
+    days: window.ScuLaRecipes.model.days.length,
+    meals: window.ScuLaRecipes.model.days.reduce((a, d) => a + d.meals.length, 0),
+    status: document.getElementById('statusText').textContent,
+    source: window.ScuLaRecipes.model.source,
+    card: !document.getElementById('htmlCard').hidden
+  }));
+  check('md-import: the picker route lands one day of three meals',
+        imported.days === 1 && imported.meals === 3, JSON.stringify(imported));
+  check('md-import: the status line says it read markdown, not that it parsed prose',
+        /markdown/i.test(imported.status), imported.status);
+  check('md-import: the HTML card appears with the days',
+        imported.card === true);
+
+  // The corners: an empty method, a totals stub that is not a meal, an
+  // escaped pipe inside a cell, and an English file read by a Romanian page.
+  const HAND = [
+    '# Day 9', '',
+    '*Source: notebook.pdf*', '',
+    '## Breakfast: Toast', '',
+    '### 1. Ingredients', '',
+    '| Amount | Unit | Ingredient | USDA FDC |',
+    '| --- | --- | --- | --- |',
+    '| 2 |  | slices of bread \\| toasted |  |', '',
+    '### 2. Method', '',
+    '1. ', '',
+    '## Day total', '',
+    '| Meal | kcal | Protein (g) | Carbs (g) | Fat (g) |',
+    '| --- | --- | --- | --- | --- |',
+    '| Breakfast: Toast |  |  |  |  |',
+    '| **Total** |  |  |  |  |', ''
+  ].join('\n');
+  const hand = await page.evaluate(text => {
+    const r = window.ScuLaRecipes.Recipes.fromMarkdown(text);
+    const d = r.days[0];
+    return { days: r.days.length, n: d && d.n, title: d && d.title,
+             meals: d && d.meals.length, kind: d && d.meals[0].kind,
+             item: d && d.meals[0].ingredients[0].item,
+             qty: d && d.meals[0].ingredients[0].qty,
+             steps: d && d.meals[0].steps.length, source: r.source };
+  }, HAND);
+  check('md-import: "## Day total" is a stub, not a fourth meal',
+        hand.days === 1 && hand.meals === 1, JSON.stringify(hand));
+  check('md-import: an English file is read by a Romanian page',
+        hand.kind === 'breakfast' && hand.n === 9 && hand.title === '',
+        JSON.stringify(hand));
+  check('md-import: a cell\'s escaped pipe comes back as a pipe',
+        hand.item === 'slices of bread | toasted', hand.item);
+  check('md-import: an empty method comes back empty, not as a step called "1."',
+        hand.steps === 0, JSON.stringify(hand));
+
+  /* ---- 7g. the page you can share ---- */
+  const doc = await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    // An ingredient that would break out of the page if it were not escaped.
+    R.model.days[0].meals[0].ingredients[0].item = '<b>ovăz</b> & "co"';
+    R.renderMarkdown();
+    return R.buildHtmlDoc();
+  });
+  check('html: one article per day and one section per meal',
+        (doc.match(/<article class="day"/g) || []).length === 1 &&
+        (doc.match(/<section class="meal"/g) || []).length === 3,
+        JSON.stringify({ days: (doc.match(/<article class="day"/g) || []).length,
+                         meals: (doc.match(/<section class="meal"/g) || []).length }));
+  check('html: the dish, an ingredient and a step are all on it',
+        /Terci de ov[ăa]z proteic/.test(doc) && /unt de arahide/.test(doc) &&
+        /Toarn[ăa] apa peste ov[ăa]z/.test(doc), '');
+  check('html: an ingredient cannot break out of the page',
+        doc.indexOf('&lt;b&gt;ovăz&lt;/b&gt; &amp; &quot;co&quot;') > 0 &&
+        doc.indexOf('<b>ovăz</b>') < 0);
+  check('html: nothing to run and nothing to fetch',
+        !/<script/i.test(doc) && !/\ssrc=/i.test(doc) && !/https?:\/\//i.test(doc) &&
+        !/@import/i.test(doc));
+  check('html: it is a whole document, in the interface language',
+        /^<!doctype html>/.test(doc) && /<html lang="ro">/.test(doc) &&
+        /Metoda de preparare/.test(doc));
+  check('html: it carries its own print rules, so it can be a paper recipe',
+        /@media print/.test(doc) && /@page/.test(doc));
+
+  const savedHtml = await page.evaluate(async () => {
+    document.getElementById('htmlTitle').value = 'Rețete de iarnă';
+    const calls = [];
+    const real = window.ScuLaFolder.save;
+    window.ScuLaFolder.save = async (name, blob) => {
+      calls.push({ name, type: blob.type, head: (await blob.text()).slice(0, 15) });
+      return { saved: true, via: 'folder', name, path: name, message: 'ok' };
+    };
+    document.getElementById('btnHtmlSave').click();
+    await new Promise(r => setTimeout(r, 200));
+    window.ScuLaFolder.save = real;
+    return calls;
+  });
+  check('html: the export goes out through ScuLaFolder, like every other save',
+        savedHtml.length === 1, JSON.stringify(savedHtml));
+  check('html: named after the title, diacritics kept',
+        savedHtml[0] && savedHtml[0].name === 'Rețete-de-iarnă.html', savedHtml[0] && savedHtml[0].name);
+  check('html: an html blob, not markdown',
+        savedHtml[0] && savedHtml[0].type === 'text/html' && /^<!doctype html>/.test(savedHtml[0].head),
+        JSON.stringify(savedHtml[0]));
+
+  // What the preview shows has to be the file that gets saved, or the
+  // preview is a second renderer to keep in step with the first.
+  await page.evaluate(() => { document.getElementById('htmlBox').open = true; });
+  await page.waitForTimeout(500);
+  const same = await page.evaluate(() =>
+    document.getElementById('htmlFrame').getAttribute('srcdoc') === window.ScuLaRecipes.buildHtmlDoc());
+  check('html: the preview is the exported file, not a second rendering of it', same === true);
+
+  const gone = await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    R.model.days = []; R.renderDays(); R.renderMarkdown();
+    return document.getElementById('htmlCard').hidden;
+  });
+  check('html: the card goes away when there is nothing to make a page of', gone === true);
+
   // Put the sample day back so the language checks below still have it.
   await page.evaluate(s => {
     const R = window.ScuLaRecipes;
@@ -932,6 +1093,7 @@ function serve() {
     lang: document.documentElement.lang,
     h1: document.querySelector('header.page h1').textContent,
     md: window.ScuLaRecipes.allMarkdown(),
+    doc: window.ScuLaRecipes.buildHtmlDoc(),
     nav: document.getElementById('navLangBtn').textContent
   }));
   check('i18n: html lang flips', en.lang === 'en', en.lang);
@@ -940,6 +1102,10 @@ function serve() {
   check('i18n: markdown follows the interface language',
         /^# Day 3/m.test(en.md) && /^### 1\. Ingredients/m.test(en.md) && /^## Breakfast:/m.test(en.md),
         en.md.split('\n').slice(0, 6).join(' / '));
+  check('i18n: the shareable page follows the interface language too',
+        /<html lang="en">/.test(en.doc) && />Ingredients</.test(en.doc) &&
+        />Method</.test(en.doc) && /Day 3/.test(en.doc),
+        en.doc.slice(0, 120));
   check('i18n: no cedilla forms in the page',
         await page.evaluate(() => !/[şţ]/.test(document.documentElement.outerHTML)));
 

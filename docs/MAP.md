@@ -363,7 +363,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 5041 lines · "Rețete" (PDF / photo → recipe markdown)
+## recipes.html — 5502 lines · "Rețete" (PDF / photo → recipe markdown)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -371,24 +371,24 @@ Map only below.
 
 | Lines | Contents |
 |---|---|
-| 11–302 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, **search / chips / collapsed days / `.grp` 189–232**, markdown preview 234–255, folds + checkboxes + `.badge` 257–278, narrow 280–292, touch 294–301 |
-| 305–960 | **Shared nav + `ScuLaFolder`** |
-| 963–1120 | Markup: the four numbered cards — source ▸ text ▸ markdown ▸ review. The OCR fold is `#ocrBox` (988–1023); `#onlyShownBox` 1069, the filter bar is `#filters` (1087–1093), `#found` 1094 |
-| 1122–5039 | App script, numbered sections below |
+| 11–318 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, **search / chips / collapsed days / `.grp` 189–232**, markdown preview 239–257, **`#htmlFrame` (the shareable page, previewed) 259–263**, tabs 265–271, folds + checkboxes + `.badge` 273–294, narrow 296–308, touch 310–317 |
+| 321–976 | **Shared nav + `ScuLaFolder`** |
+| 979–1137 | Markup: **five** numbered cards — source ▸ text ▸ markdown ▸ review, then `#htmlCard` (**1121–1137**, full width under the two columns). The OCR fold is `#ocrBox` (1007–1042); `#onlyShownBox` 1083, the filter bar is `#filters` (1101–1107), `#found` 1108. `#btnMd` + `#mdFile` are in card 1 |
+| 1140–5500 | App script, numbered sections below |
 
 | Line | Section |
 |---|---|
-| 1129 | **1. i18n** — `I18N` (`ro:` 1132 / `en:` 1269), `t()` (variadic), `applyUILang()` |
-| 1402 | 2. Settings store (`scula:recipes`) |
-| **1428** | **3. `Jpx`** — the JPEG 2000 decoder |
-| **2478** | **4. `PdfText`** — the dependency-free PDF reader |
-| **3438** | **5. `Recipes`** — the parser |
-| 3807 | 6. The app — state, `setStatus`/**`say`**, **the day view**, review cards, markdown |
-| 4411 | 7. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
-| 4763 | 8. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
-| 4867 | 9. Wiring + init |
+| 1161 | **1. i18n** — `I18N` (`ro:` 1164 / `en:` 1322), `t()` (variadic), `applyUILang()` |
+| 1476 | 2. Settings store (`scula:recipes`) |
+| **1502** | **3. `Jpx`** — the JPEG 2000 decoder |
+| **2552** | **4. `PdfText`** — the dependency-free PDF reader |
+| **3512** | **5. `Recipes`** — the parser, and the reader that takes its markdown back |
+| 4011 | 6. The app — state, `setStatus`/**`say`**, **the day view**, review cards, markdown, **the shareable HTML page** |
+| 4828 | 7. Getting the text in — `ingest`/**`analyse`** (which reader gets the text)/`handleFile(s)`, then OCR |
+| 5191 | 8. Saving — `.md` and **`.html`** via `ScuLaFolder`, chapters via `scula-md` |
+| 5317 | 9. Wiring + init |
 
-### `Jpx` (1445–2461)
+### `Jpx` (1524–2549)
 
 `decode(bytes, opts)` → `{ width, height, comps, siz, luma }` and
 `toRGBA(res)` → 8-bit RGBA. The only two entry points. It exists because no
@@ -404,23 +404,23 @@ lengths are what advance the stream — only tier-1 is skipped.
 
 | Function | What |
 |---|---|
-| `MQ` (1466) | the arithmetic decoder, Annex C. `QE`/`NMPS`/`NLPS`/`SW` are Table C.2 verbatim |
+| `MQ` (1545) | the arithmetic decoder, Annex C. `QE`/`NMPS`/`NLPS`/`SW` are Table C.2 verbatim |
 | `RawBits` / `HeadBits` | the two other bit readers: bypass passes, and packet headers with their 0xFF stuffing |
-| `TagTree` (1562) | inclusion and zero-bit-planes, decoded against a rising threshold **across packets** — hence the state on the object |
-| `BitModel` (1631) | tier-1: `runSignificance`, `runRefinement`, `runCleanup`. `nbSig` keeps the neighbour counts packed in a byte and updated in `setSig`, which is what stops a naive tier-1 re-reading eight flags per coefficient per plane |
-| `synth1D` (1800) | the inverse wavelet, 5/3 and 9/7, over an **absolute** index range — the parity of `i0` decides which samples are low-pass. Whole-sample symmetric extension, filled only in the margins |
-| `buildTile` (1888) / `buildCodeblocks` (1960) | the geometry of Annex B: tiles ▸ components ▸ resolutions ▸ subbands ▸ precincts ▸ code-blocks. Precinct indices are computed on the **resolution** grid, not the subband's |
-| `numPasses` (2002) / `segmentBreaks` (2014) | how many coding passes a packet declares, and where the encoder terminated (`termall`, `bypass`) |
-| `readPacket` (2038) | one packet header: inclusion ▸ zero bit-planes ▸ passes ▸ `Lblock` ▸ segment lengths, then the bodies |
-| **`packetSequence`** (2085) | the progression order. Rather than the spec's five nested-loop machines, every (component, resolution, precinct) is listed with the position it projects to and **sorted** — same order, far less to get wrong |
-| `decodeCodeblocks` (2133) / `writeBack` (2174) | tier-1 over a tile, then coefficients into their subband. `missing` is how many low bit-planes never arrived — uniform per block, so the mid-point of what is left is the best guess for all of them |
-| `reconstruct` (2191) | `2D_INTERLEAVE` + `HOR_SR` + `VER_SR`, coarsest resolution upwards |
-| `parseSIZ`/`parseCOD`/`parseQCD` (2239, 1846, 1872) | the marker segments; `parseCOC`/`parseQCC` override them per component |
-| `findCodestream` (2258) | the `.jp2` box tree, or a bare `.j2k`, or a codestream with junk in front |
-| `decode` (2277) | markers ▸ tiles ▸ packets ▸ tier-1 ▸ wavelet ▸ MCT |
-| `toRGBA` (2436) | subsampled components stretched back up; grey, RGB, RGBA and CMYK |
+| `TagTree` (1641) | inclusion and zero-bit-planes, decoded against a rising threshold **across packets** — hence the state on the object |
+| `BitModel` (1710) | tier-1: `runSignificance`, `runRefinement`, `runCleanup`. `nbSig` keeps the neighbour counts packed in a byte and updated in `setSig`, which is what stops a naive tier-1 re-reading eight flags per coefficient per plane |
+| `synth1D` (1879) | the inverse wavelet, 5/3 and 9/7, over an **absolute** index range — the parity of `i0` decides which samples are low-pass. Whole-sample symmetric extension, filled only in the margins |
+| `buildTile` (1967) / `buildCodeblocks` (2039) | the geometry of Annex B: tiles ▸ components ▸ resolutions ▸ subbands ▸ precincts ▸ code-blocks. Precinct indices are computed on the **resolution** grid, not the subband's |
+| `numPasses` (2081) / `segmentBreaks` (2093) | how many coding passes a packet declares, and where the encoder terminated (`termall`, `bypass`) |
+| `readPacket` (2117) | one packet header: inclusion ▸ zero bit-planes ▸ passes ▸ `Lblock` ▸ segment lengths, then the bodies |
+| **`packetSequence`** (2164) | the progression order. Rather than the spec's five nested-loop machines, every (component, resolution, precinct) is listed with the position it projects to and **sorted** — same order, far less to get wrong |
+| `decodeCodeblocks` (2212) / `writeBack` (2253) | tier-1 over a tile, then coefficients into their subband. `missing` is how many low bit-planes never arrived — uniform per block, so the mid-point of what is left is the best guess for all of them |
+| `reconstruct` (2270) | `2D_INTERLEAVE` + `HOR_SR` + `VER_SR`, coarsest resolution upwards |
+| `parseSIZ`/`parseCOD`/`parseQCD` (2318, 1925, 1951) | the marker segments; `parseCOC`/`parseQCC` override them per component |
+| `findCodestream` (2337) | the `.jp2` box tree, or a bare `.j2k`, or a codestream with junk in front |
+| `decode` (2356) | markers ▸ tiles ▸ packets ▸ tier-1 ▸ wavelet ▸ MCT |
+| `toRGBA` (2515) | subsampled components stretched back up; grey, RGB, RGBA and CMYK |
 
-### `PdfText` (2488–3430)
+### `PdfText` (2567–3509)
 
 `extract(buffer)` (text) and `images(buffer)` (a scan's pictures) are the
 only entry points; everything else is one stage of one of them. Order
@@ -441,22 +441,22 @@ questions about one scan costs a single parse.
 | `pageList` | `/Root → /Pages → /Kids`, falling back to every `/Type /Page` |
 | `parseCMap` / `fontsOf` / `decodeShown` | `/ToUnicode` → the map that keeps ă â î ș ț; WinAnsi when a font has none |
 | **`widthsOf`** | `/Widths` (simple) and `/W` + `/DW` (CID) → real glyph advances. Guessing them instead is what puts spaces inside words |
-| **`pageText`** (2902) | the entry point; hands off to `runContent` |
-| **`runContent`** (2913) | the tiny interpreter, **re-entrant**: text operators plus `q`/`Q`/`cm`/`Do`, with the full text matrix — see the traps below |
-| **`formsOf`** (3195) | every `/Form` XObject a resource dictionary offers, inflated and ready for `runContent` to walk into. Memoised, so one form drawn on 108 pages is inflated once; `building` guards a form that draws itself |
-| `joinLines` (3150) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
-| `parseDoc` / `contentOf` (3354, 3370) | the shared front half: scan ▸ refuse encrypted ▸ expand object streams ▸ page list; then one page's content stream |
+| **`pageText`** (2981) | the entry point; hands off to `runContent` |
+| **`runContent`** (2992) | the tiny interpreter, **re-entrant**: text operators plus `q`/`Q`/`cm`/`Do`, with the full text matrix — see the traps below |
+| **`formsOf`** (3274) | every `/Form` XObject a resource dictionary offers, inflated and ready for `runContent` to walk into. Memoised, so one form drawn on 108 pages is inflated once; `building` guards a form that draws itself |
+| `joinLines` (3229) | drawing order → reading order; a wide vertical gap becomes a paragraph break |
+| `parseDoc` / `contentOf` (3433, 3449) | the shared front half: scan ▸ refuse encrypted ▸ expand object streams ▸ page list; then one page's content stream |
 
 The picture half — everything a scanned page needs (`docs/RECIPES.md` § A):
 
 | Function | What |
 |---|---|
-| `xobjectsOf` (3175) | a page's `/XObject` dict → name → object number |
+| `xobjectsOf` (3254) | a page's `/XObject` dict → name → object number |
 | `drawnOrder` | the `/Im3 Do` operators, **in painting order**. The dictionary is unordered, and a scanner that cuts a page into strips relies on the order |
 | `componentsOf` / `sampleAt` | colour space → components; one sample at 1/2/4/8/16 bits |
-| **`imageOf`** (3267) | one `/Subtype /Image` → `{kind:"jpeg", bytes}` (the browser decodes it), or `{kind:"raw", rgba}` — including **`/JPXDecode`, through `Jpx`**. CCITT, JBIG2, LZW and indexed palettes → `null` |
-| `collectImages` (3329) | walks a page's XObjects, three levels into `/Form`s, skipping anything logo-sized (`MIN_IMAGE_PX`) |
-| **`images`** (3406) | page-ordered pictures; falls back to every image object in the file when the page tree yields none |
+| **`imageOf`** (3346) | one `/Subtype /Image` → `{kind:"jpeg", bytes}` (the browser decodes it), or `{kind:"raw", rgba}` — including **`/JPXDecode`, through `Jpx`**. CCITT, JBIG2, LZW and indexed palettes → `null` |
+| `collectImages` (3408) | walks a page's XObjects, three levels into `/Form`s, skipping anything logo-sized (`MIN_IMAGE_PX`) |
+| **`images`** (3485) | page-ordered pictures; falls back to every image object in the file when the page tree yields none |
 
 Traps this reader was written around, all four found by feeding it real
 files rather than ones hand-built in a test:
@@ -480,7 +480,7 @@ files rather than ones hand-built in a test:
   from the *real* advance width — hence `widthsOf`. With a guessed width
   the output reads "m in", "arom ă", "10m l".
 
-### `Recipes` (3449–3798)
+### `Recipes` (3528–4006)
 
 `parse(text)` → `[{ n, title, auto, meals:[{ kind, label, name,
 ingredients:[{ qty, unit, item, group, fdc }], steps:[] }] }]`. `toLines`
@@ -506,7 +506,24 @@ starts a meal; a known component word, *or* an unknown word arriving while
 the current meal has ingredients but no method yet, is a component of that
 meal. Anything else is still accepted as a custom meal.
 
-### The day view (3891–4291)
+#### `fromMarkdown` (3877–4006) — the contract, read back
+
+`fromMarkdown(text)` → `{ days, source }`: the inverse of
+`buildDayMarkdown()`, so a `.md` this page wrote comes back as the model it
+was built from and every feature downstream works on it. `looksLikeMarkdown`
+is what `analyse()` asks to decide which reader gets the text.
+
+| Line | What |
+|---|---|
+| 3892 (`MD_SOURCE`, `MD_TOTALS`, `MD_RULE`, `MD_SEP_ROW`) | the four lines that are *not* content: the source note, the totals stub's heading, a `---`, and a table's `\| --- \|` row |
+| `mdCells` (3898) | one walk over the characters. `\|` is the only escape `cell()` writes, so it is the only one read |
+| `looksLikeMarkdown` (3915) | a heading **and** either a `### 1.`/`### 2.` section or a table row — a plan with a stray `#` in it still goes to `parse()` |
+| `fromMarkdown` (3921) | `#` day ▸ `##` meal (`## Total pe zi` skipped) ▸ `###` matched on its **leading digit**, so both languages read ▸ table rows below the separator ▸ `1. …` steps |
+
+The rules and the one thing that does not survive (an ingredient's group)
+are in `docs/RECIPES.md` § C, "Reading it back".
+
+### The day view (4098–4498)
 
 A book of 100 menus is 300 meals — 14,274 DOM nodes and a page 140,727
 pixels tall if every one is rendered. The list is a **view** over
@@ -514,24 +531,24 @@ pixels tall if every one is rendered. The list is a **view** over
 
 | Line | What |
 |---|---|
-| 3894–3899 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
-| 3903 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
-| 3917 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
-| 3936 / 3949 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
-| 3955 / 3982 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
-| 4004 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
-| 4028 | `daySummary` — a day nobody is editing, in one row |
-| 4059 | `daySelect` — move a meal to another day; options filled on first use |
-| **4097** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
-| **4127** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open |
-| 4396 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
+| 4100–4108 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
+| 4110 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
+| 4124 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
+| 4143 / 4156 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
+| 4162 / 4189 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
+| 4211 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
+| 4235 | `daySummary` — a day nobody is editing, in one row |
+| 4266 | `daySelect` — move a meal to another day; options filled on first use |
+| **4304** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
+| **4334** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open |
+| 4603 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
 
-**Two things must stay in step:** `MEAL_KINDS` (3905) is the one list of
+**Two things must stay in step:** `MEAL_KINDS` (4112) is the one list of
 meal kinds — the `<select>` in a meal header, the filter chips and
-`arrangeIntoDays` all read it. `mealLabel` (3848) is the one place a kind
+`arrangeIntoDays` all read it. `mealLabel` (4055) is the one place a kind
 becomes a word.
 
-### The markdown (`buildDayMarkdown`, 4296)
+### The markdown (`buildDayMarkdown`, 4503)
 
 The output shape is a contract (`docs/RECIPES.md` § C): `#` day, `##` meal,
 `### 1. Ingrediente` as a four-column table whose last column is the empty
@@ -539,6 +556,27 @@ USDA FDC id, `### 2. Metoda de preparare` as an ordered list, then the
 totals stub. Its third argument is the list of meal indices to write, which
 is how "only the recipes shown" narrows a day. Change the shape here and in
 that doc together.
+
+### The shareable HTML page (4618–4826)
+
+One self-contained `.html` file — no script, no stylesheet, nothing to
+fetch — built from the model rather than from the markdown. The *why* is
+`docs/RECIPES.md` § G.
+
+| Line | What |
+|---|---|
+| `DOC_CSS` (4634) | the whole document's stylesheet as an array of lines: earth palette on screen, `@media print` turning it back into ink, `@page` margins. Kept as strings, like every other builder in this file |
+| `escHtml` (4712) | the only defence the page has. An ingredient name is user text and goes through it |
+| `htmlTitle` (4718) | the field, or the source file's name with its extension and dashes taken off, or the page's own name. Also what `saveHtml()` names the file after |
+| `mealHtml` (4728) / `dayHtml` (4757) | a meal is its kind chip, its dish, an ingredient list and an ordered method; ingredient **groups** become subheadings, which is the thing the markdown table cannot carry |
+| **`buildHtmlDoc`** (4767) | the whole file as one string — the same string the preview iframe shows and the export saves |
+| `paintHtml` (4814) | shows or hides card 5, and rebuilds the preview: only while the fold is open, and 250 ms after the typing stops. The fold decides itself once — open at eight days or fewer |
+
+`saveHtml` (5223) and `openHtml` (5231) are the two ways out, both in
+section 8: `ScuLaFolder.save()` for the file, a `blob:` URL for a tab (which
+is also how it reaches a printer).
+
+---
 
 ## Fast recipes
 
