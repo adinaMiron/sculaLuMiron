@@ -237,8 +237,9 @@ here is the `NOT_LETTER` lookahead instead — keep it that way when adding
 verbs or units.
 
 Nothing is guessed silently. Every decision the parser makes is shown in
-step 3 as an editable field, and the ↧ button moves a line the parser put
-in the wrong half. The markdown is regenerated on every keystroke there.
+step 4 (*Verifică rețetele*) as an editable field, and the ↧ button moves a
+line the parser put in the wrong half. The markdown is regenerated on every
+keystroke there.
 
 ---
 

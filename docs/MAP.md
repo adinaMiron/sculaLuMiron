@@ -373,7 +373,7 @@ Map only below.
 |---|---|
 | 11–302 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, **search / chips / collapsed days / `.grp` 189–232**, markdown preview 234–255, folds + checkboxes + `.badge` 257–278, narrow 280–292, touch 294–301 |
 | 305–960 | **Shared nav + `ScuLaFolder`** |
-| 963–1120 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown. The OCR fold is `#ocrBox` (988–1023); the filter bar is `#filters` (1046–1052), `#found` 1053, `#onlyShownBox` 1087 |
+| 963–1120 | Markup: the four numbered cards — source ▸ text ▸ markdown ▸ review. The OCR fold is `#ocrBox` (988–1023); `#onlyShownBox` 1069, the filter bar is `#filters` (1087–1093), `#found` 1094 |
 | 1122–5039 | App script, numbered sections below |
 
 | Line | Section |

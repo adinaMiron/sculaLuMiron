@@ -1042,33 +1042,10 @@
           </label>
         </div>
       </div>
-    </section>
 
-    <section>
-      <!-- ===== 3. review ===== -->
-      <div class="card">
-        <h2><span class="step">3</span><span data-i="stepCheck">Verifică rețetele</span></h2>
-        <div class="filters" id="filters" hidden>
-          <label class="search">
-            <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
-          </label>
-          <div class="chips" id="kindChips"></div>
-          <button type="button" class="btn mini ghost" id="btnExpand" data-i="expandAll">Desfă tot</button>
-        </div>
-        <p class="found" id="found" hidden></p>
-        <div id="days"></div>
-        <p class="empty" id="daysEmpty" data-i="noDays">Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.</p>
-        <div class="row" style="margin-top:.7rem">
-          <button type="button" class="btn mini" id="btnAddDay" data-i="addDay">+ zi</button>
-          <button type="button" class="btn mini ghost" id="btnArrange" data-i="arrange" data-i-title="arrangeHint" hidden>Așază pe zile</button>
-          <span class="spacer"></span>
-          <button type="button" class="btn mini danger ghost" id="btnClear" data-i="clearAll">Șterge tot</button>
-        </div>
-      </div>
-
-      <!-- ===== 4. markdown ===== -->
+      <!-- ===== 3. markdown ===== -->
       <div class="card" id="mdCard" hidden>
-        <h2><span class="step">4</span><span data-i="stepSave">Markdown</span></h2>
+        <h2><span class="step">3</span><span data-i="stepSave">Markdown</span></h2>
         <div class="tabs">
           <button type="button" id="tabPreview" aria-pressed="true" data-i="tabPreview">Previzualizare</button>
           <button type="button" id="tabSource" aria-pressed="false" data-i="tabSource">Markdown</button>
@@ -1100,6 +1077,29 @@
           <button type="button" class="btn ghost" id="btnCopy" data-i="copyMd">Copiază</button>
         </div>
         <p class="hint" data-i="saveHint">„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.</p>
+      </div>
+    </section>
+
+    <section>
+      <!-- ===== 4. review ===== -->
+      <div class="card">
+        <h2><span class="step">4</span><span data-i="stepCheck">Verifică rețetele</span></h2>
+        <div class="filters" id="filters" hidden>
+          <label class="search">
+            <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
+          </label>
+          <div class="chips" id="kindChips"></div>
+          <button type="button" class="btn mini ghost" id="btnExpand" data-i="expandAll">Desfă tot</button>
+        </div>
+        <p class="found" id="found" hidden></p>
+        <div id="days"></div>
+        <p class="empty" id="daysEmpty" data-i="noDays">Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.</p>
+        <div class="row" style="margin-top:.7rem">
+          <button type="button" class="btn mini" id="btnAddDay" data-i="addDay">+ zi</button>
+          <button type="button" class="btn mini ghost" id="btnArrange" data-i="arrange" data-i-title="arrangeHint" hidden>Așază pe zile</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn mini danger ghost" id="btnClear" data-i="clearAll">Șterge tot</button>
+        </div>
       </div>
     </section>
   </div>
