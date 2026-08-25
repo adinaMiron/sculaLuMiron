@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 6354 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `markdown-editor.html` | 6457 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 5024 | 50k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file

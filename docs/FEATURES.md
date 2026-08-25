@@ -139,6 +139,51 @@ toolbar button + its `I18N` keys.
 **The exported-HTML template (L5390-5424) stays literal hex** — it ships
 to people without the app, so it can't reference theme tokens.
 
+### Pasting a picture (Ctrl+V)
+
+A picture on the clipboard — a screenshot, "Copy image", a file copied in
+the file manager — is pasted straight into the editor as a **`data:` URI**:
+
+```md
+![pasted image](data:image/png;base64,iVBORw0…)
+```
+
+That is the whole design decision, and it is why the picture needs no
+second file: it is text inside the `.md`, so **every** route already
+carries it — the workbook autosave, the folder mirror, `saveOut()`, the
+share sheet, the HTML export. Move the file anywhere and the picture is
+still in it. The parser needs no new syntax either; base64 contains no
+space and no `)`, so the existing image rule in `applyInline()` matches a
+`data:` URI as-is, and `resolveImageSrc()` already treats `data:` as
+absolute.
+
+`handleEditorPaste()` (L2999) is a `paste` listener on `#editor`:
+
+- **Text wins.** If the clipboard carries any non-blank `text/plain`, the
+  handler returns and the browser pastes as usual — a copy out of a word
+  processor brings both, and there the text is what was meant.
+- The picture is read from `clipboardData.files` first, then
+  `clipboardData.items` (a screenshot arrives only as an item).
+- `imageBlobToDataUrl()` (L2967) keeps the original bytes when they are
+  under `PASTE_KEEP_BYTES` (512 KB) or the picture is an SVG. Anything
+  larger is drawn to a canvas at `PASTE_MAX_DIM` (1600 px on the long
+  edge) and re-encoded: **PNG if any pixel is transparent, JPEG
+  otherwise** — a data URI is text in a textarea that autosaves on every
+  keystroke, and a raw phone screenshot would put megabytes of base64
+  through IndexedDB on every keypress. If the re-encode comes out bigger
+  than the original, the original is used.
+- The insert goes through `setRangeText` at the caret position captured
+  *before* the decode, then `updatePreview(); updateStatus();
+  scheduleAutosave()` — `setRangeText` fires no `input` event, so the
+  textarea's own `oninput` chain does not run.
+
+Alt text is the pasted file's name when it has one (`schiță.png` →
+`![schiță]`), otherwise the `pastedImageAlt` i18n key.
+
+`tests/paste.js` covers all of it — the data URI in the markdown, the
+`<img>` in the preview, the export round-trip, text-wins, the 1600 px cap,
+the JPEG/PNG choice and that transparency survives.
+
 ---
 
 ## D. Saving files — one call, three destinations

@@ -2501,6 +2501,9 @@ const I18N = {
     lblOrPickComputer:"— sau alege de pe calculator —", lblAltText:"Text alternativ",
     imgAltPlaceholder:"O etichetă descriptivă", lblTitleOptional:"Titlu (indiciu opțional)",
     imgTitlePlaceholder:"Titlul imaginii", cancelBtn:"Anulează", insertBtn:"Inserează",
+    pastedImageAlt:"imagine lipită",
+    imagePasted:kb=>`Imagine adăugată în markdown (${kb} KB)`,
+    imagePasteFailed:"Imaginea din clipboard nu a putut fi citită.",
     modalTitleInsertLink:"Inserează link", lblUrl:"URL", lblDisplayText:"Text afișat",
     linkTextPlaceholder:"Eticheta linkului", linkTitlePlaceholder:"Indiciu la trecerea cu mouse-ul",
     modalTitleTableBuilder:"Constructor tabel", lblRows:"Rânduri", lblColumns:"Coloane",
@@ -2627,6 +2630,9 @@ const I18N = {
     lblOrPickComputer:"— or pick from your computer —", lblAltText:"Alt Text",
     imgAltPlaceholder:"A descriptive label", lblTitleOptional:"Title (optional tooltip)",
     imgTitlePlaceholder:"Image title", cancelBtn:"Cancel", insertBtn:"Insert",
+    pastedImageAlt:"pasted image",
+    imagePasted:kb=>`Image added to the markdown (${kb} KB)`,
+    imagePasteFailed:"Could not read the image on the clipboard.",
     modalTitleInsertLink:"Insert Link", lblUrl:"URL", lblDisplayText:"Display text",
     linkTextPlaceholder:"Link label", linkTitlePlaceholder:"Hover tooltip",
     modalTitleTableBuilder:"Table Builder", lblRows:"Rows", lblColumns:"Columns",
@@ -2920,6 +2926,98 @@ function insertImage() {
   const md = title ? `![${alt}](${url} "${title}")` : `![${alt}](${url})`;
   closeImageModal(); restoreSelection(); insertAtCursor(md);
 }
+
+/* ── Paste an image from the clipboard ──
+   Ctrl+V with a picture on the clipboard writes it into the markdown as a
+   data: URI, so the picture is part of the .md file itself — every save
+   route (workbook, folder mirror, download, share, HTML export) already
+   carries the text, so it carries the picture too, and moving the file
+   never breaks it.
+   A data: URI is text in a textarea that autosaves on every keystroke, so
+   anything past PASTE_KEEP_BYTES is downscaled before it goes in. */
+const PASTE_MAX_DIM = 1600;             // px on the long edge after shrinking
+const PASTE_KEEP_BYTES = 512 * 1024;    // below this, keep the original bytes
+const PASTE_JPEG_Q = 0.85;
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error || new Error('read failed'));
+    r.readAsDataURL(blob);
+  });
+}
+function imageFromBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+    img.src = url;
+  });
+}
+// Transparency only survives PNG; without it JPEG is several times smaller.
+function canvasHasAlpha(ctx, w, h) {
+  try {
+    const d = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 255) return true;
+    return false;
+  } catch (e) { return true; }   // tainted canvas — assume the worst, keep PNG
+}
+async function imageBlobToDataUrl(blob) {
+  // Small enough, or a vector we would only ruin by rasterising: keep as-is.
+  if (blob.size <= PASTE_KEEP_BYTES || blob.type === 'image/svg+xml')
+    return blobToDataUrl(blob);
+  let img;
+  try { img = await imageFromBlob(blob); }
+  catch (e) { return blobToDataUrl(blob); }   // not decodable here — paste raw
+  const long = Math.max(img.naturalWidth, img.naturalHeight) || 1;
+  const scale = Math.min(1, PASTE_MAX_DIM / long);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const shrunk = canvasHasAlpha(ctx, w, h)
+    ? canvas.toDataURL('image/png')
+    : canvas.toDataURL('image/jpeg', PASTE_JPEG_Q);
+  const original = await blobToDataUrl(blob);
+  return shrunk.length < original.length ? shrunk : original;
+}
+// The picture on the clipboard, whichever way it got there: a file copied in
+// the file manager (dt.files) or a screenshot / "Copy image" (dt.items).
+function clipboardImage(dt) {
+  if (!dt) return null;
+  const file = Array.from(dt.files || []).find(f => /^image\//i.test(f.type));
+  if (file) return file;
+  const item = Array.from(dt.items || [])
+    .find(i => i.kind === 'file' && /^image\//i.test(i.type));
+  return item ? item.getAsFile() : null;
+}
+async function handleEditorPaste(e) {
+  const dt = e.clipboardData;
+  // Text wins whenever the clipboard carries any: a copy out of a word
+  // processor brings both, and there the text is what was meant.
+  if (dt && dt.getData('text/plain').trim()) return;
+  const blob = clipboardImage(dt);
+  if (!blob) return;
+  e.preventDefault();
+  // Where the caret was before the await — decoding takes a moment.
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const name = (blob.name || '').replace(/\.[^.]+$/, '').replace(/[\[\]]/g, '').trim();
+  try {
+    const dataUrl = await imageBlobToDataUrl(blob);
+    editor.focus();
+    editor.setRangeText(`![${name || t('pastedImageAlt')}](${dataUrl})`, start, end, 'end');
+    updatePreview(); updateStatus(); scheduleAutosave();
+    if (typeof ScuLaFolder !== 'undefined')
+      ScuLaFolder.toast(t('imagePasted', Math.max(1, Math.round(dataUrl.length / 1024))));
+  } catch (err) {
+    if (typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(t('imagePasteFailed'));
+  }
+}
+editor.addEventListener('paste', handleEditorPaste);
 
 /* ── Image Explorer Panel ── */
 let workingFolderHandle = null;
