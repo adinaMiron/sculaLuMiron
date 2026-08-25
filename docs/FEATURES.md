@@ -191,15 +191,24 @@ the JPEG/PNG choice and that transparency survives.
 Every page saves through **one** call. Never build an `<a download>` by hand.
 
 ```js
-const r = await ScuLaFolder.save(filename, blob, { quiet:true });
+const r = await ScuLaFolder.save(filename, blob);
 //  r.via      "folder" | "share" | "download"
 //  r.saved    true when it landed somewhere the person chose
 //  r.path     "MyFolder/desen/edited-image.png", or just the filename
 //  r.message  ready-made, already translated - print it, or null for
 //             "say nothing" (they dismissed the share sheet)
-if (r.message) say(r.message);      // or drop { quiet:true } and the
-                                    // shared toast says it for you
+if (r.message) setStatus(r.message);   // the shared toast has already said
+                                       // it; this puts it in the app's own
+                                       // status line as well
 ```
+
+**Pass `{ quiet:true }` only when the app's own message lands where the
+person is looking.** The toast is `position:fixed`, so it is readable from
+anywhere on the page; a status line is not. `recipes.html` silenced the toast
+and wrote to a status line at the top of the page — which, for a book of a
+hundred days, sits ten thousand pixels above the save button. The file was
+written every time and the page looked like the button was dead. If a save
+can be started from far down a long page, let the toast speak.
 
 `ScuLaFolder` lives in the shared `#site-nav` block copied into every app
 file, so it is defined before any app script runs. `save()` picks a route with `currentMode()`:

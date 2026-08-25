@@ -3834,6 +3834,17 @@ function setStatus(msg, kind){
   els.status.querySelector(".dot").hidden = !msg;
 }
 
+// The status line lives in card 1. A book of a hundred days makes a page ten
+// thousand pixels tall, and the buttons that finish the job are at the foot
+// of card 4 — so a message written only up there is one nobody standing at
+// those buttons can read, and the save looks like it did nothing at all.
+// Whatever that row has to say goes to the shared toast as well, which is
+// fixed to the viewport and therefore visible from wherever the page is.
+function say(msg, kind){
+  setStatus(msg, kind);
+  if(msg && typeof ScuLaFolder !== "undefined") ScuLaFolder.toast(msg);
+}
+
 function mealLabel(meal){
   if(meal.kind && meal.kind !== "other") return t("m" + meal.kind.charAt(0).toUpperCase() + meal.kind.slice(1));
   return meal.label || t("mOther");
@@ -4767,7 +4778,9 @@ function slug(name, fallback){
 
 async function saveBlob(name, text){
   const blob = new Blob([text], { type:"text/markdown" });
-  const r = await ScuLaFolder.save(name, blob, { quiet:true });
+  // Not quiet: at the foot of a long book the toast is the only place this
+  // can be read. A cancelled share still says nothing — its message is null.
+  const r = await ScuLaFolder.save(name, blob);
   if(r.message) setStatus(r.message);
   return r;
 }
@@ -4812,7 +4825,7 @@ function wbNewId(prefix){ return prefix + Date.now().toString(36) + Math.random(
 
 async function toWorkbook(){
   const out = outputDays();
-  if(!out.length){ setStatus(t("stEmpty"), "err"); return; }
+  if(!out.length){ say(t("stEmpty"), "err"); return; }
   const name = (els.wbName.value || "").trim() || t("title");
   try{
     const books = await wbAll(WB_BOOKS);
@@ -4843,11 +4856,10 @@ async function toWorkbook(){
     }
     book.updated = Date.now();
     await wbPut(WB_BOOKS, book);
-    setStatus(t("stWbSaved", out.length));
-    if(typeof ScuLaFolder !== "undefined") ScuLaFolder.toast(t("stWbSaved", out.length));
+    say(t("stWbSaved", out.length));
     savePrefs();
   }catch(e){
-    setStatus(t("stWbFailed"), "err");
+    say(t("stWbFailed"), "err");
   }
 }
 
@@ -4972,7 +4984,7 @@ els.btnOcrLoad.addEventListener("click", () => { ocrWorker(); });
 els.btnStop.addEventListener("click", () => { OCR.stop = true; showStop(false); });
 els.btnSaveMd.addEventListener("click", () => {
   const out = outputDays();
-  if(!out.length){ setStatus(t("stEmpty"), "err"); return; }
+  if(!out.length){ say(t("stEmpty"), "err"); return; }
   if(out.length === 1) return saveDay(out[0].day, out[0].di, out[0].meals);
   const base = model.source ? slug(model.source.replace(/\.[a-z0-9]+$/i, ""), "retete") : slug(t("title"), "retete");
   return saveBlob(base + ".md", allMarkdown());
@@ -4980,14 +4992,14 @@ els.btnSaveMd.addEventListener("click", () => {
 els.btnWorkbook.addEventListener("click", toWorkbook);
 els.btnCopy.addEventListener("click", async () => {
   const md = allMarkdown();
-  if(!md.trim()){ setStatus(t("stEmpty"), "err"); return; }
+  if(!md.trim()){ say(t("stEmpty"), "err"); return; }
   try{
     await navigator.clipboard.writeText(md);
-    setStatus(t("stCopied"));
+    say(t("stCopied"));
   }catch(e){
     els.tabSource.click();
     els.mdText.focus(); els.mdText.select();
-    setStatus(t("stCopyFailed"), "err");
+    say(t("stCopyFailed"), "err");
   }
 });
 [els.wbName, els.ocrUrl, els.ocrCore, els.ocrData, els.ocrAuto, els.ocrWarm]
