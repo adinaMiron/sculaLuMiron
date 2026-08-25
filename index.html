@@ -968,6 +968,7 @@
         <button class="icon-btn" id="peekBtn" type="button" data-i="show">Arată</button>
       </span>
     </label>
+    <p class="tiny" id="keyTip"></p>
 
     <label class="stack">
       <span data-i="model">Model</span>
@@ -1000,8 +1001,6 @@
       <span data-i="tidyModel">Model pentru corectură</span>
       <input type="text" id="tidyModel" autocomplete="off" autocapitalize="off" spellcheck="false">
     </label>
-
-    <p class="tiny" id="keyTip"></p>
   </div>
 
   <div class="sheet-foot">
@@ -1053,7 +1052,7 @@ const I18N = {
     liveAuto:"Dictarea din browser are nevoie de o limbă anume; folosesc româna.",
     liveOn:"Dictare activă. Vorbește normal.",
     fileReading:"Se transcrie fișierul…",
-    keyTipGroq:'Cheie de la console.groq.com/keys. Whisper large v3 scrie corect cu diacritice.',
+    keyTipGroq:'Cheie de la <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 scrie corect cu diacritice. Ca să generezi una: intră pe link, conectează-te (sau creează cont gratuit), apasă „Create API Key”, dă-i un nume și copiaz-o — apare o singură dată, deci lipește-o aici acum.',
     keyTipOpenAI:'Cheie de la platform.openai.com/api-keys.',
     keyTipCustom:'Trimite POST multipart către adresa ta; cheia rămâne pe server. Lasă câmpul de cheie gol.',
     tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB)."
@@ -1094,7 +1093,7 @@ const I18N = {
     liveAuto:"Browser dictation needs a specific language; using Romanian.",
     liveOn:"Dictation on. Speak normally.",
     fileReading:"Transcribing the file…",
-    keyTipGroq:'Key from console.groq.com/keys. Whisper large v3 handles Romanian diacritics well.',
+    keyTipGroq:'Key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 handles Romanian diacritics well. To generate one: open the link, sign in (or create a free account), click “Create API Key”, name it, and copy it — it is shown only once, so paste it here right away.',
     keyTipOpenAI:'Key from platform.openai.com/api-keys.',
     keyTipCustom:'Sends a multipart POST to your address; the key stays on the server. Leave the key field empty.',
     tooBig:"File is too large for a single request (over 25 MB)."
@@ -1244,7 +1243,7 @@ function updateProviderUI(){
   apiKeyEl.placeholder = p.keyPlaceholder;
   modelList.innerHTML = p.models.map(m => '<option value="' + m + '"></option>').join("");
   endpointWrap.classList.toggle("hidden", providerSel.value !== "custom");
-  keyTip.textContent = t(p.tip);
+  keyTip.innerHTML = t(p.tip);
 }
 providerSel.addEventListener("change", () => {
   const p = PROVIDERS[providerSel.value];
