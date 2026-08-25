@@ -3482,6 +3482,25 @@ function gotoPreviewAnchor(id) {
   return true;
 }
 
+// The other half of a nav-panel click: take the Markdown source to the same
+// heading. The preview is jumped to by id, the textarea only knows offsets,
+// so this one goes by line — the line updateNav() read the heading from.
+// Selecting the whole heading line is what makes the landing visible, the
+// same way fdGoto() shows a search hit.
+function gotoSourceHeading(line) {
+  if (typeof line !== 'number' || line < 0) return false;
+  // On a phone only one pane is on screen, and gotoPreviewAnchor() has just
+  // claimed it. Moving the caret there too would raise the keyboard over a
+  // preview the reader asked for, so the source is left alone.
+  if (isMobile()) return false;
+  const start = fdOffsetOfLine(editor.value, line);
+  const nl = editor.value.indexOf('\n', start);
+  editor.focus();
+  editor.setSelectionRange(start, nl === -1 ? editor.value.length : nl);
+  editor.scrollTop = Math.max(0, editorMirrorAt(start).top - editor.clientHeight / 2);
+  return true;
+}
+
 // Follow one [[link]]: switch chapter if it points elsewhere, then jump to
 // the heading or block inside it. An unresolved name offers to become a
 // real chapter, the way Obsidian creates the note when you follow the link.
@@ -3709,7 +3728,8 @@ function updateNav() {
   let inCode = false;
   let slugCount = {};
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (line.match(/^```/)) { inCode = !inCode; continue; }
     if (inCode) continue;
     const m = line.match(/^(#{1,6})\s+(.*)/);
@@ -3717,8 +3737,10 @@ function updateNav() {
       const level = m[1].length;
       const raw = m[2].trim();
       // display text and preview anchor both come from the shared helpers,
-      // so the nav panel and every [[Note#Section]] link agree on the slug
-      headings.push({ level, text: mdPlain(raw), slug: headingSlug(raw, slugCount) });
+      // so the nav panel and every [[Note#Section]] link agree on the slug.
+      // `line` is what the source jump needs: the preview knows ids, the
+      // textarea only knows offsets, and the line is what connects them
+      headings.push({ level, text: mdPlain(raw), slug: headingSlug(raw, slugCount), line: i });
     }
   }
 
@@ -3731,7 +3753,7 @@ function updateNav() {
   const bullets = ['', '◆', '◇', '▸', '▹', '·', '·'];
 
   navTree.innerHTML = '';
-  headings.forEach(({ level, text, slug }) => {
+  headings.forEach(({ level, text, slug, line }) => {
     const item = document.createElement('div');
     item.className = `nav-item nav-h${level}`;
     item.title = text;
@@ -3747,9 +3769,11 @@ function updateNav() {
     item.appendChild(bullet);
     item.appendChild(label);
 
-    // clicking scrolls the preview to that heading, by its id
+    // clicking takes both panes to that heading: the preview by its id,
+    // the Markdown source by the line it was read from
     item.addEventListener('click', () => {
       gotoPreviewAnchor(slug);
+      gotoSourceHeading(line);
       navTree.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       item.classList.add('active');
     });

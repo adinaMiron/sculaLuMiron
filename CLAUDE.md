@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4646 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
-| `markdown-editor.html` | 6457 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `markdown-editor.html` | 6481 | 57k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 5024 | 50k | "Rețete" — PDF/photo → recipe markdown | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
@@ -119,8 +119,8 @@ browser under Xvfb; headless Chromium cannot decode media streams at all.
 pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown, the whole
 OCR path against a stub engine, both save routes), and for
-`markdown-editor.html`'s knowledge graph (`graph.js`) and its search &
-filter panel (`find.js`). It is dev-only
+`markdown-editor.html`'s knowledge graph (`graph.js`), its search &
+filter panel (`find.js`) and its navigation panel (`nav.js`). It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
 
