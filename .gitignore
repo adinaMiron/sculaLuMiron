@@ -18,3 +18,4 @@ tests/package-lock.json
 # A local OCR engine for recipes.html, if you keep one (docs/RECIPES.md § A).
 # ~45 MB of wasm and language data: it is fetched, never committed.
 /ocr/
+100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf
