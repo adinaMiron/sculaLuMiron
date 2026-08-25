@@ -363,7 +363,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 5024 lines · "Rețete" (PDF / photo → recipe markdown)
+## recipes.html — 5041 lines · "Rețete" (PDF / photo → recipe markdown)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -374,19 +374,19 @@ Map only below.
 | 11–302 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–115, drop zone 116–129, review rows 161–188, **search / chips / collapsed days / `.grp` 189–232**, markdown preview 234–255, folds + checkboxes + `.badge` 257–278, narrow 280–292, touch 294–301 |
 | 305–960 | **Shared nav + `ScuLaFolder`** |
 | 963–1120 | Markup: the four numbered cards — source ▸ text ▸ review ▸ markdown. The OCR fold is `#ocrBox` (988–1023); the filter bar is `#filters` (1046–1052), `#found` 1053, `#onlyShownBox` 1087 |
-| 1122–5022 | App script, numbered sections below |
+| 1122–5039 | App script, numbered sections below |
 
 | Line | Section |
 |---|---|
-| 1124 | **1. i18n** — `I18N` (`ro:` 1127 / `en:` 1264), `t()` (variadic), `applyUILang()` |
-| 1397 | 2. Settings store (`scula:recipes`) |
-| **1423** | **3. `Jpx`** — the JPEG 2000 decoder |
-| **2473** | **4. `PdfText`** — the dependency-free PDF reader |
-| **3433** | **5. `Recipes`** — the parser |
-| 3802 | 6. The app — state, **the day view**, review cards, markdown |
-| 4395 | 7. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
-| 4747 | 8. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
-| 4850 | 9. Wiring + init |
+| 1129 | **1. i18n** — `I18N` (`ro:` 1132 / `en:` 1269), `t()` (variadic), `applyUILang()` |
+| 1402 | 2. Settings store (`scula:recipes`) |
+| **1428** | **3. `Jpx`** — the JPEG 2000 decoder |
+| **2478** | **4. `PdfText`** — the dependency-free PDF reader |
+| **3438** | **5. `Recipes`** — the parser |
+| 3807 | 6. The app — state, `setStatus`/**`say`**, **the day view**, review cards, markdown |
+| 4411 | 7. Getting the text in — `ingest`/`analyse`/`handleFile(s)`, then OCR |
+| 4763 | 8. Saving — `.md` via `ScuLaFolder`, chapters via `scula-md` |
+| 4867 | 9. Wiring + init |
 
 ### `Jpx` (1445–2461)
 
@@ -506,7 +506,7 @@ starts a meal; a known component word, *or* an unknown word arriving while
 the current meal has ingredients but no method yet, is a component of that
 meal. Anything else is still accepted as a custom meal.
 
-### The day view (3875–4270)
+### The day view (3891–4291)
 
 A book of 100 menus is 300 meals — 14,274 DOM nodes and a page 140,727
 pixels tall if every one is rendered. The list is a **view** over
@@ -514,24 +514,24 @@ pixels tall if every one is rendered. The list is a **view** over
 
 | Line | What |
 |---|---|
-| 3878–3883 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
-| 3887 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
-| 3901 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
-| 3920 / 3933 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
-| 3939 / 3966 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
-| 3988 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
-| 4012 | `daySummary` — a day nobody is editing, in one row |
-| 4043 | `daySelect` — move a meal to another day; options filled on first use |
-| **4081** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
-| **4111** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open |
-| 4380 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
+| 3894–3899 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
+| 3903 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
+| 3917 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
+| 3936 / 3949 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
+| 3955 / 3982 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
+| 4004 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
+| 4028 | `daySummary` — a day nobody is editing, in one row |
+| 4059 | `daySelect` — move a meal to another day; options filled on first use |
+| **4097** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
+| **4127** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open |
+| 4396 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
 
-**Two things must stay in step:** `MEAL_KINDS` (3889) is the one list of
+**Two things must stay in step:** `MEAL_KINDS` (3905) is the one list of
 meal kinds — the `<select>` in a meal header, the filter chips and
-`arrangeIntoDays` all read it. `mealLabel` (3832) is the one place a kind
+`arrangeIntoDays` all read it. `mealLabel` (3848) is the one place a kind
 becomes a word.
 
-### The markdown (`buildDayMarkdown`, 4280)
+### The markdown (`buildDayMarkdown`, 4296)
 
 The output shape is a contract (`docs/RECIPES.md` § C): `#` day, `##` meal,
 `### 1. Ingrediente` as a four-column table whose last column is the empty

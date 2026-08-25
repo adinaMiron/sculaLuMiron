@@ -444,6 +444,39 @@ function serve() {
   check('save: file named after the day', saved[0] && saved[0].name === 'Ziua-3.md', saved[0] && saved[0].name);
   check('save: markdown blob', saved[0] && saved[0].type === 'text/markdown' && /^# Ziua 3/.test(saved[0].text));
 
+  /* ---- 4b. what the save says has to be readable from the save button ----
+     The status line is in card 1. A hundred days is a page ten thousand
+     pixels tall, so from the buttons at the foot of card 4 that line is far
+     off the top of the screen: the file was written and the page looked like
+     it had done nothing. The toast is fixed to the viewport, so the message
+     has to reach it too. */
+  const told = await page.evaluate(async () => {
+    const old = document.getElementById('scula-toast');
+    if (old) old.remove();
+    const real = window.ScuLaFolder.save;
+    let quiet = null;
+    // Stands in for save(), reporting the way the real one does: the shared
+    // toast speaks unless the caller asked it not to.
+    window.ScuLaFolder.save = async (name, blob, opts) => {
+      quiet = !!(opts && opts.quiet);
+      const r = { saved: true, via: 'folder', name, path: name, message: 'Salvat: ' + name };
+      if (!quiet) window.ScuLaFolder.toast(r.message);
+      return r;
+    };
+    document.getElementById('btnSaveMd').click();
+    await new Promise(r => setTimeout(r, 300));
+    window.ScuLaFolder.save = real;
+    const el = document.getElementById('scula-toast');
+    return { quiet, toast: el && el.classList.contains('show') ? el.textContent : null,
+             status: document.getElementById('statusText').textContent };
+  });
+  check('save: the toast is not silenced, so the message is visible from the button',
+        told.quiet === false, 'quiet was ' + told.quiet);
+  check('save: the toast actually carried the message', /Salvat: Ziua-3\.md/.test(told.toast || ''),
+        JSON.stringify(told.toast));
+  check('save: the status line still says it too', /Salvat: Ziua-3\.md/.test(told.status || ''),
+        JSON.stringify(told.status));
+
   /* ---- 5. the workbook chapter ---- */
   await page.click('#btnWorkbook');
   await page.waitForTimeout(400);
