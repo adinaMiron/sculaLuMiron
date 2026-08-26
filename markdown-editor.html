@@ -2923,6 +2923,41 @@ function insertLineAbove() {
   updatePreview(); updateStatus();
 }
 
+function moveLineDown() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const val = editor.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  const nl = val.indexOf('\n', start);
+  const lineEnd = nl === -1 ? val.length : nl;
+  if (lineEnd === val.length) return; // already the last line
+  const nextNl = val.indexOf('\n', lineEnd + 1);
+  const nextLineEnd = nextNl === -1 ? val.length : nextNl;
+  const currentLine = val.slice(lineStart, lineEnd);
+  const nextLine = val.slice(lineEnd + 1, nextLineEnd);
+  editor.setRangeText(nextLine + '\n' + currentLine, lineStart, nextLineEnd, 'select');
+  const shift = nextLine.length + 1;
+  editor.setSelectionRange(start + shift, end + shift);
+  updatePreview(); updateStatus();
+}
+function moveLineUp() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const val = editor.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  if (lineStart === 0) return; // already the first line
+  const nl = val.indexOf('\n', start);
+  const lineEnd = nl === -1 ? val.length : nl;
+  const prevLineStart = val.lastIndexOf('\n', lineStart - 2) + 1;
+  const prevLineEnd = lineStart - 1;
+  const currentLine = val.slice(lineStart, lineEnd);
+  const prevLine = val.slice(prevLineStart, prevLineEnd);
+  editor.setRangeText(currentLine + '\n' + prevLine, prevLineStart, lineEnd, 'select');
+  const shift = prevLine.length + 1;
+  editor.setSelectionRange(start - shift, end - shift);
+  updatePreview(); updateStatus();
+}
+
 function toggleTodoDone() {
   editor.focus();
   const start = editor.selectionStart, end = editor.selectionEnd;
@@ -6536,6 +6571,8 @@ document.addEventListener('keydown', e => {
   }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'Enter') { e.preventDefault(); insertLineAbove(); }
   else if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertLineBelow(); }
+  if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); moveLineDown(); }
+  else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); moveLineUp(); }
 });
 
 updatePreview();
