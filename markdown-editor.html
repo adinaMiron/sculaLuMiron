@@ -447,6 +447,9 @@
   #preview ul { margin: 0 0 14px 22px; }
   #preview ol { margin: 0 0 14px 22px; }
   #preview li { margin: 4px 0; }
+  #preview ul.task-list { list-style: none; margin-left: 4px; }
+  #preview li.task-list-item { margin: 4px 0; }
+  #preview .task-checkbox { margin-right: 6px; cursor: pointer; accent-color: var(--accent); }
   #preview strong { color: var(--text); font-weight: 700; }
   #preview em { color: var(--accent-2); font-style: italic; }
   #preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; border: 1px solid var(--border); }
@@ -2073,6 +2076,8 @@
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
   <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
+  <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
+  <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
 
   <div class="toolbar-sep"></div>
   <span class="tb-label" data-i="lblSize">Size</span>
@@ -2482,6 +2487,7 @@ const I18N = {
     headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
+    todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
     lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
     linkTip:"Inserează hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Imagine",
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
@@ -2611,6 +2617,7 @@ const I18N = {
     headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
+    todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
     lblSize:"Size", sizeDefault:"— Font Size —",
     linkTip:"Insert hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Image",
     tableTip:"Insert table", tableBtn:"⊞ Table",
@@ -2876,6 +2883,50 @@ function insertOrderedList() {
       const nextNum = m ? parseInt(m[1]) + 1 : 1;
       insertAtCursor(`\n${nextNum}. `);
     }
+  }
+  updatePreview(); updateStatus();
+}
+
+function insertTodoList() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const sel = editor.value.substring(start, end);
+  if (sel) {
+    editor.setRangeText(sel.split('\n').map(l => '- [ ] ' + l).join('\n'), start, end, 'end');
+  } else {
+    const val = editor.value;
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = val.indexOf('\n', start);
+    const lineEndPos = lineEnd === -1 ? val.length : lineEnd;
+    const line = val.substring(lineStart, lineEndPos);
+    if (!/^[-*+]\s+\[[ xX]\]\s/.test(line)) editor.setRangeText('- [ ] ' + line, lineStart, lineEndPos, 'end');
+    else insertAtCursor('\n- [ ] ');
+  }
+  updatePreview(); updateStatus();
+}
+
+function toggleTodoDone() {
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const val = editor.value;
+  const toggleLine = l => {
+    if (/^(\s*[-*+]\s+)\[([ xX])\]/.test(l)) {
+      return l.replace(/^(\s*[-*+]\s+)\[([ xX])\]/, (m, bullet, mark) => bullet + (mark === ' ' ? '[x]' : '[ ]'));
+    }
+    if (/^\s*[-*+]\s+/.test(l)) {
+      return l.replace(/^(\s*[-*+]\s+)/, '$1[ ] ');
+    }
+    return l;
+  };
+  if (start !== end) {
+    const sel = val.substring(start, end);
+    editor.setRangeText(sel.split('\n').map(toggleLine).join('\n'), start, end, 'end');
+  } else {
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = val.indexOf('\n', start);
+    const lineEndPos = lineEnd === -1 ? val.length : lineEnd;
+    const line = val.substring(lineStart, lineEndPos);
+    editor.setRangeText(toggleLine(line), lineStart, lineEndPos, 'end');
   }
   updatePreview(); updateStatus();
 }
@@ -3461,6 +3512,16 @@ function liWithBlockId(text, opts) {
   return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''}>${applyInline(b.text, opts)}</li>`;
 }
 
+// lineIdx is the source line number in editor.value (so a click on the
+// checkbox can flip that exact line); pass null for the export path,
+// which has no live editor to write back to.
+function liWithTodo(mark, text, opts, lineIdx) {
+  const b = takeBlockId(text);
+  const checked = mark.toLowerCase() === 'x';
+  const dataLine = lineIdx === null || lineIdx === undefined ? '' : ` data-line="${lineIdx}"`;
+  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${applyInline(b.text, opts)}</li>`;
+}
+
 /* ── Following a link ── */
 
 // The one place that jumps the preview to a heading or a ^block. The nav
@@ -3624,7 +3685,8 @@ function parseMarkdown(md, opts) {
     out.push('</table>');
   }
 
-  for (const line of lines) {
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx];
     // fenced code block
     if (line.match(/^```/)) {
       if (!inCode) {
@@ -3666,6 +3728,13 @@ function parseMarkdown(md, opts) {
       out.push(liWithBlockId(olm[1], opts));
       continue;
     }
+    const tlm = line.match(/^[-*+]\s+\[([ xX])\]\s+(.*)/);
+    if (tlm) {
+      if (inOL) { out.push('</ol>'); inOL = false; }
+      if (!inUL) { out.push('<ul class="task-list">'); inUL = true; }
+      out.push(liWithTodo(tlm[1], tlm[2], opts, forExport ? null : lineIdx));
+      continue;
+    }
     const lm = line.match(/^[-*+]\s+(.*)/);
     if (lm) {
       if (inOL) { out.push('</ol>'); inOL = false; }
@@ -3705,6 +3774,15 @@ function updatePreview() {
 /* Following a [[wikilink]] or a #tag from the preview. Delegated, because
    the preview is rebuilt from scratch on every keystroke. */
 preview.addEventListener('click', e => {
+  const cb = e.target.closest('.task-checkbox');
+  if (cb && cb.dataset.line !== undefined) {
+    const lineIdx = Number(cb.dataset.line);
+    const lines = editor.value.split('\n');
+    lines[lineIdx] = lines[lineIdx].replace(/\[([ xX])\]/, (m, mark) => mark === ' ' ? '[x]' : '[ ]');
+    editor.value = lines.join('\n');
+    updatePreview(); updateStatus(); scheduleAutosave();
+    return;
+  }
   const wl = e.target.closest('.wikilink');
   if (wl) {
     e.preventDefault();
