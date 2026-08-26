@@ -2905,6 +2905,24 @@ function insertTodoList() {
   updatePreview(); updateStatus();
 }
 
+function insertLineBelow() {
+  editor.focus();
+  const start = editor.selectionStart;
+  const val = editor.value;
+  const lineEnd = val.indexOf('\n', start);
+  const lineEndPos = lineEnd === -1 ? val.length : lineEnd;
+  editor.setRangeText('\n', lineEndPos, lineEndPos, 'end');
+  updatePreview(); updateStatus();
+}
+function insertLineAbove() {
+  editor.focus();
+  const start = editor.selectionStart;
+  const val = editor.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  editor.setRangeText('\n', lineStart, lineStart, 'start');
+  updatePreview(); updateStatus();
+}
+
 function toggleTodoDone() {
   editor.focus();
   const start = editor.selectionStart, end = editor.selectionEnd;
@@ -6516,6 +6534,8 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && /^Digit[1-6]$/.test(e.code)) {
     e.preventDefault(); insertHeading(e.code.slice(5));
   }
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'Enter') { e.preventDefault(); insertLineAbove(); }
+  else if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertLineBelow(); }
 });
 
 updatePreview();
