@@ -94,6 +94,10 @@
   }
   .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
 
+  /* On desktop this wrapper must not disturb .toolbar's own flex layout */
+  .toolbar-groups { display: contents; }
+  .tb-toggle { display: none; } /* shown only on small screens, see media queries */
+
   .tb-btn {
     background: transparent;
     border: none;
@@ -920,7 +924,19 @@
     .btn { padding: 6px 10px; font-size: 11px; }
     .file-name { font-size: 11px; padding: 5px 8px; }
 
-    .toolbar { padding: 5px 10px; gap: 1px; }
+    .toolbar { padding: 5px 10px; gap: 1px; flex-wrap: wrap; align-items: flex-start; }
+    .tb-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar-groups {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1px;
+      width: 100%;
+      max-height: 400px;
+      overflow: hidden;
+      transition: max-height 0.2s ease, opacity 0.2s ease;
+    }
+    .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; }
     .tb-btn { padding: 6px 7px; font-size: 12px; }
     .tb-select { font-size: 11px; padding: 4px 6px; }
     .toolbar-sep { margin: 0 4px; }
@@ -962,18 +978,9 @@
     }
     .btn { flex: 1 1 auto; min-width: 0; text-align: center; padding: 8px 6px; font-size: 11px; }
 
-    /* Toolbar becomes a horizontal scroll strip */
-    .toolbar {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      padding: 6px 10px;
-    }
-    .toolbar::-webkit-scrollbar { display: none; }
-    .tb-btn, .tb-select { flex: 0 0 auto; }
+    /* Toolbar wraps to show every button; give up vertical space instead */
+    .toolbar { padding: 6px 10px; }
     .tb-btn { padding: 8px 9px; font-size: 13px; }  /* bigger tap targets */
-    .tb-label { flex: 0 0 auto; }
 
     /* Show mobile tabs, stack panes and show only one at a time */
     #view-tabs { display: flex; }
@@ -2058,6 +2065,9 @@
 </header>
 
 <div class="toolbar">
+  <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
+
+  <div class="toolbar-groups" id="toolbar-groups">
   <span class="tb-label">H</span>
   <select class="tb-select" id="heading-select" onchange="insertHeading(this.value)">
     <option value="" data-i="headingDefault">— Heading —</option>
@@ -2119,6 +2129,7 @@
   <button class="tb-btn" id="btn-workbooks" onclick="toggleWorkbooks()" data-i="workbooksBtn" data-i-title="workbooksTip" title="Workbooks (Ctrl+2)">📓 Workbooks</button>
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
+  </div>
 </div>
 
 <div id="view-tabs">
@@ -2494,6 +2505,7 @@ const I18N = {
     codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
     explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
     navTip:"Navigare (Ctrl+1)", navBtn:"☰ Nav",
+    toolbarToggleTip:"Arată/ascunde bara de unelte",
     tabSource:"✎ Sursă", tabPreview:"👁 Previzualizare",
     explorerTitle:"Explorator imagini", closePanelTip:"Închide panoul",
     setFolderBtn:"📁 Alege folder…", insertIntoEditorBtn:"↩ Inserează în editor",
@@ -2624,6 +2636,7 @@ const I18N = {
     codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
     explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
     navTip:"Navigation (Ctrl+1)", navBtn:"☰ Nav",
+    toolbarToggleTip:"Show/hide toolbar",
     tabSource:"✎ Source", tabPreview:"👁 Preview",
     explorerTitle:"Image Explorer", closePanelTip:"Close panel",
     setFolderBtn:"📁 Set folder…", insertIntoEditorBtn:"↩ Insert into editor",
@@ -3185,6 +3198,27 @@ function togglePanelById(id) {
 function toggleWorkbooks() { togglePanelById('wb-panel'); }
 function togglePanel() { togglePanelById('img-panel'); }
 function toggleNav() { togglePanelById('nav-panel'); }
+
+const TB_COLLAPSED_KEY = 'scula:toolbar-collapsed';
+
+function toggleToolbarCollapse() {
+  const bar = document.querySelector('.toolbar');
+  const btn = document.getElementById('btn-toolbar-toggle');
+  const collapsed = bar.classList.toggle('collapsed');
+  btn.classList.toggle('active', !collapsed);
+  if (isSmallScreen()) {
+    try { store.set(TB_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+  }
+}
+
+async function initToolbarCollapse() {
+  if (!isSmallScreen()) return;
+  let saved = null;
+  try { saved = await store.get(TB_COLLAPSED_KEY); } catch (e) {}
+  const collapsed = saved === '1';
+  document.querySelector('.toolbar').classList.toggle('collapsed', collapsed);
+  document.getElementById('btn-toolbar-toggle').classList.toggle('active', !collapsed);
+}
 // Opening the search panel is always a request to search: refresh what is in
 // it and put the cursor in the query box. Asking for it while it is open but
 // not focused means the same thing, so that focuses rather than closes.
@@ -6601,6 +6635,7 @@ function applyResponsiveDefaults() {
 setView('source');
 applyResponsiveDefaults();
 loadWorkbooks();
+initToolbarCollapse();
 
 let lastSmall = isSmallScreen();
 window.addEventListener('resize', () => {
