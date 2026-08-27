@@ -223,6 +223,8 @@
     content:"⌕";position:absolute;left:.55rem;top:50%;transform:translateY(-50%);
     color:var(--text-3);font-size:1.05rem;line-height:1;pointer-events:none;
   }
+  /* the comma-separated ingredient filter: its own row, its own glyph */
+  .filters .ing-search::before{content:"≡";font-size:.9rem}
   .chips{display:flex;gap:.3rem;flex-wrap:wrap;flex:1 1 auto}
   .chip{
     background:transparent;border:1px solid var(--border);color:var(--text-2);
@@ -1138,6 +1140,9 @@
           <label class="search">
             <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
           </label>
+          <label class="search ing-search">
+            <input type="search" id="ingBox" spellcheck="false" data-i-placeholder="ingPh">
+          </label>
           <div class="chips" id="kindChips"></div>
           <button type="button" class="btn mini ghost" id="btnExpand" data-i="expandAll">Desfă tot</button>
         </div>
@@ -1268,6 +1273,7 @@ const I18N = {
 
     /* căutare, filtre, așezare pe zile */
     searchPh:"Caută un preparat sau un ingredient…",
+    ingPh:"Ingrediente, separate prin virgulă: ou, făină, lapte — rețetele care le au pe toate",
     fAll:"Toate",
     expandAll:"Desfă tot",
     collapseAll:"Strânge tot",
@@ -1439,6 +1445,7 @@ const I18N = {
     mealsCount:n => n === 1 ? "1 meal" : n + " meals",
 
     searchPh:"Search a dish or an ingredient…",
+    ingPh:"Ingredients, comma-separated: egg, flour, milk — recipes that have them all",
     fAll:"All",
     expandAll:"Open all",
     collapseAll:"Close all",
@@ -5144,7 +5151,7 @@ const els = {
   status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
   textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
   days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
-  filters:$("filters"), qBox:$("qBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
+  filters:$("filters"), qBox:$("qBox"), ingBox:$("ingBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
   found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
   tabPreview:$("tabPreview"), tabSource:$("tabSource"),
@@ -5289,7 +5296,7 @@ function fold(s){ return String(s == null ? "" : s).toLowerCase().replace(FOLD_R
 
 // `open` holds day objects, not indices: an index drifts the moment a day
 // above it is deleted, and the object does not.
-const view = { q:"", kinds:new Set(), open:new Set(), allOpen:false };
+const view = { q:"", ing:"", kinds:new Set(), open:new Set(), allOpen:false };
 
 const MEAL_KINDS = [["breakfast","mBreakfast"],["snack","mSnack"],["lunch","mLunch"],
                     ["dinner","mDinner"],["dessert","mDessert"],["other","mOther"]];
@@ -5298,13 +5305,25 @@ function mealHaystack(meal){
   const ing = meal.ingredients.map(i => [i.qty, i.unit, i.item, i.group].join(" ")).join(" ");
   return fold([meal.name, meal.label, mealLabel(meal), ing, meal.steps.join(" ")].join(" "));
 }
-function filterActive(){ return !!view.q.trim() || view.kinds.size > 0; }
+function filterActive(){ return !!view.q.trim() || !!view.ing.trim() || view.kinds.size > 0; }
+
+// The ingredient filter is a comma-separated list, matched against a meal's
+// ingredient names (and their group) only — not the dish name, not the
+// method. Every term has to be present, so "ou, faina" keeps only the meals
+// that have both. Folded, like every search on this page.
+function ingredientTerms(){
+  return fold(view.ing).split(",").map(s => s.trim()).filter(Boolean);
+}
+function mealIngredientHay(meal){
+  return fold(meal.ingredients.map(i => [i.item, i.group].join(" ")).join(" \n "));
+}
 
 // The indices of the meals of one day that survive the search and chips.
 // A day whose *title* matches keeps all of its meals — that is what makes
 // searching "Ziua 42" work.
 function dayMatches(day, di){
   const terms = fold(view.q).split(/\s+/).filter(Boolean);
+  const ingTerms = ingredientTerms();
   const titleHay = fold(dayTitle(day, di));
   const titleHit = terms.length > 0 && terms.every(term => titleHay.indexOf(term) >= 0);
   const out = [];
@@ -5313,6 +5332,13 @@ function dayMatches(day, di){
     if(terms.length && !titleHit){
       const hay = mealHaystack(meal);
       if(!terms.every(term => hay.indexOf(term) >= 0)) return;
+    }
+    // The ingredient list is checked per meal even when the day title
+    // matched: "recipes that have all these ingredients" means the meal's
+    // own ingredients, never the day name.
+    if(ingTerms.length){
+      const ihay = mealIngredientHay(meal);
+      if(!ingTerms.every(term => ihay.indexOf(term) >= 0)) return;
     }
     out.push(mi);
   });
@@ -5347,6 +5373,7 @@ function renderFilters(){
   els.btnArrange.hidden = !many;
   if(!many){ els.found.hidden = true; return; }
   if(els.qBox.value !== view.q) els.qBox.value = view.q;
+  if(els.ingBox.value !== view.ing) els.ingBox.value = view.ing;
 
   // Only the kinds actually present: a plan with no desserts should not
   // offer to filter by dessert.
@@ -5381,7 +5408,8 @@ function paintFound(shown, mealCount){
     clear.type = "button";
     clear.textContent = t("clearFilters");
     clear.addEventListener("click", () => {
-      view.q = ""; view.kinds.clear(); els.qBox.value = ""; filtersChanged();
+      view.q = ""; view.ing = ""; view.kinds.clear();
+      els.qBox.value = ""; els.ingBox.value = ""; filtersChanged();
     });
     els.found.appendChild(clear);
   }
@@ -6922,7 +6950,7 @@ els.btnAddDay.addEventListener("click", () => {
 els.btnClear.addEventListener("click", () => {
   if(!model.days.length || !confirm(t("askClear"))) return;
   model.days = [];
-  view.q = ""; view.kinds.clear(); view.open.clear(); view.allOpen = false;
+  view.q = ""; view.ing = ""; view.kinds.clear(); view.open.clear(); view.allOpen = false;
   renderDays(); renderMarkdown();
   setStatus("");
 });
@@ -6932,6 +6960,8 @@ els.btnClear.addEventListener("click", () => {
    that is already parsed, so there is nothing to debounce. */
 els.qBox.addEventListener("input", () => { view.q = els.qBox.value; filtersChanged(); });
 els.qBox.addEventListener("search", () => { view.q = els.qBox.value; filtersChanged(); });
+els.ingBox.addEventListener("input", () => { view.ing = els.ingBox.value; filtersChanged(); });
+els.ingBox.addEventListener("search", () => { view.ing = els.ingBox.value; filtersChanged(); });
 els.btnExpand.addEventListener("click", () => {
   view.allOpen = !view.allOpen;
   if(!view.allOpen) view.open.clear();

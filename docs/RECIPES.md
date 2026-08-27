@@ -365,7 +365,8 @@ every recipe present, none of them findable. So the list is a **view** over
 | Piece | What |
 |---|---|
 | collapsed days | a day nobody is editing is one row — its name and the dishes on it. Clicking opens the full editor for that day alone. The same book is then 700 nodes and 10,633 pixels. Eight days or fewer just open, since at that size collapsing is only in the way |
-| search | over dish names, ingredients, methods and day titles. **Folded**, because nobody types diacritics into a search box and this app exists to keep them: `sunca` finds `șuncă`. The match is put in `<mark>` on the original text, not the folded one |
+| search | over dish names, ingredients, methods and day titles. Space-separated words are ANDed. **Folded**, because nobody types diacritics into a search box and this app exists to keep them: `sunca` finds `șuncă`. The match is put in `<mark>` on the original text, not the folded one |
+| ingredient filter | a second box, comma-separated. Each term is matched against a meal's **ingredient names and groups only** (not the dish name, not the method), and **all** must be present — `ou, faina, lapte` keeps only the meals that have every one. Folded like the search; applied per meal even when the day title matched the main search |
 | meal chips | filter by kind, and only for the kinds the book actually has — a plan with no desserts should not offer to filter by dessert |
 | *Doar rețetele afișate* | filtering is a view by default; ticked, it makes the filter a **selection** — the markdown, the `.md` save and the workbook export all become the filtered set. It only appears while something is filtered out |
 | move a meal | a select in the meal header, its options filled on first use: with a hundred days, building every list up front is a thousand nodes nobody looks at |

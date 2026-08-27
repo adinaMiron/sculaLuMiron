@@ -373,7 +373,7 @@ Map only below.
 |---|---|
 | 11–337 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–120, drop zone 121–134, day/meal cards 166–212 including **the per-ingredient USDA line `.ing + .nut` 187–201**, **search / chips / collapsed days / `.grp` 213–257**, markdown preview 258–277, **`#htmlFrame` (the shareable page, previewed) 278–283**, tabs 284–291, folds + checkboxes + `.badge` 292–313 |
 | 340–995 | **Shared nav + `ScuLaFolder`** |
-| 998–1176 | Markup: **five** numbered cards — source ▸ text ▸ markdown ▸ review, then `#htmlCard` (**1158–1173**, full width under the two columns). The OCR fold is `#ocrBox` (1027–1062); `#optNutri` 1104, **the USDA fold `#nutriBox` 1113–1123**, `#onlyShownBox` 1107, the filter bar is `#filters` (1137), `#found` 1144. `#btnMd` + `#mdFile` + `#bookFile` are in card 1. `<datalist id="usdaList">` is at **1176**, after the wrap and filled once at init |
+| 998–1176 | Markup: **five** numbered cards — source ▸ text ▸ markdown ▸ review, then `#htmlCard` (**1158–1173**, full width under the two columns). The OCR fold is `#ocrBox` (1027–1062); `#optNutri` 1104, **the USDA fold `#nutriBox` 1113–1123**, `#onlyShownBox` 1107, the filter bar is `#filters` (1137, holds `#qBox` and the comma-separated `#ingBox`), `#found` 1144. `#btnMd` + `#mdFile` + `#bookFile` are in card 1. `<datalist id="usdaList">` is at **1176**, after the wrap and filled once at init |
 | 1178–7072 | App script, numbered sections below |
 
 | Line | Section |
@@ -558,7 +558,7 @@ pixels tall if every one is rendered. The list is a **view** over
 |---|---|
 | 5282–5290 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
 | 5292 | **`view`** — `{ q, kinds, open, allOpen }`. `open` holds **day objects**, not indices: an index drifts the moment a day above it is deleted |
-| 5306 | `dayMatches(day, di)` → the indices of that day's meals that survive the search and chips. A day whose *title* matches keeps all of them |
+| 5306 | `dayMatches(day, di)` → the indices of that day's meals that survive the search, the comma-separated ingredient filter (`ingredientTerms`/`mealIngredientHay`) and the chips. A day whose *title* matches keeps all of them — but the ingredient filter is still applied per meal |
 | 5325 / 5338 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
 | 5344 / 5371 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
 | 5393 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
