@@ -1192,6 +1192,7 @@
         <div class="row">
           <button type="button" class="btn primary" id="btnWorkbook" data-i="toWorkbook">Adaugă în caiet</button>
           <button type="button" class="btn" id="btnSaveMd" data-i="saveMd">Salvează .md</button>
+          <button type="button" class="btn" id="btnMdHtml" data-i="saveHtmlMd" hidden>Salvează .html</button>
           <button type="button" class="btn ghost" id="btnCopy" data-i="copyMd">Copiază</button>
         </div>
         <p class="hint" data-i="saveHint">„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.</p>
@@ -1311,6 +1312,7 @@ const I18N = {
     optNutri:"Valori nutriționale (USDA)",
     toWorkbook:"Adaugă în caiet",
     saveMd:"Salvează .md",
+    saveHtmlMd:"Salvează .html",
     copyMd:"Copiază",
     saveHint:"„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.",
 
@@ -1516,6 +1518,7 @@ const I18N = {
     optNutri:"Nutrition values (USDA)",
     toWorkbook:"Add to workbook",
     saveMd:"Save .md",
+    saveHtmlMd:"Save .html",
     copyMd:"Copy",
     saveHint:"“Add to workbook” writes each day as a new chapter in the Markdown editor, on this device. From there you can sync it to your folder.",
 
@@ -5750,7 +5753,7 @@ const els = {
   nutriBox:$("nutriBox"), nutriStats:$("nutriStats"), bookFile:$("bookFile"),
   btnNutriRescan:$("btnNutriRescan"), btnBookSave:$("btnBookSave"), btnBookPick:$("btnBookPick"),
   usdaList:$("usdaList"),
-  btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnCopy:$("btnCopy"),
+  btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnMdHtml:$("btnMdHtml"), btnCopy:$("btnCopy"),
   htmlCard:$("htmlCard"), htmlTitle:$("htmlTitle"), htmlBox:$("htmlBox"), htmlFrame:$("htmlFrame"),
   btnHtmlSave:$("btnHtmlSave"), btnHtmlOpen:$("btnHtmlOpen"),
   ocrBox:$("ocrBox"), btnOcrLoad:$("btnOcrLoad"), ocrState:$("ocrState"),
@@ -7630,9 +7633,9 @@ function dayHtml(slice, i){
   return L.join("\n");
 }
 
-function buildHtmlDoc(){
+function buildHtmlDoc(titleOverride){
   const out = outputDays();
-  const title = htmlTitle();
+  const title = (titleOverride && String(titleOverride).trim()) || htmlTitle();
   const meals = out.reduce((n, s) => n + s.meals.length, 0);
   const meta = [t("docDays", out.length), t("docRecipes", meals)];
   if(els.optSource.checked && model.source) meta.push(t("mdSource", model.source));
@@ -8280,7 +8283,23 @@ els.cam.addEventListener("change", () => { handleFiles(els.cam.files); els.cam.v
 // non-PDF, non-picture as text and ingest() hands it on. Its own picker
 // only narrows what the file dialog offers.
 els.btnMd.addEventListener("click", () => els.mdFile.click());
-els.mdFile.addEventListener("change", () => { handleFiles(els.mdFile.files); els.mdFile.value = ""; });
+// The name of the .md the recipes were imported from — used to name the
+// shareable .html when it is saved from the "Salvează .html" button in the
+// markdown card (rather than htmlTitle()'s source-line / page-name chain).
+let mdImportName = "";
+els.mdFile.addEventListener("change", () => {
+  const f = els.mdFile.files && els.mdFile.files[0];
+  if(f){
+    mdImportName = f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim();
+    els.btnMdHtml.hidden = false;
+  }
+  handleFiles(els.mdFile.files); els.mdFile.value = "";
+});
+els.btnMdHtml.addEventListener("click", () => {
+  if(!model.days.length){ say(t("stEmpty"), "err"); return; }
+  const title = mdImportName || htmlTitle();
+  saveBlob(slug(title, "retete") + ".html", buildHtmlDoc(title), "text/html");
+});
 els.btnPaste.addEventListener("click", () => {
   els.textCard.hidden = false;
   els.rawText.focus();
@@ -8297,6 +8316,7 @@ els.btnAddDay.addEventListener("click", () => {
 els.btnClear.addEventListener("click", () => {
   if(!model.days.length || !confirm(t("askClear"))) return;
   model.days = [];
+  mdImportName = ""; els.btnMdHtml.hidden = true;
   view.q = ""; view.ing = ""; view.kinds.clear(); view.open.clear(); view.allOpen = false;
   renderDays(); renderMarkdown();
   setStatus("");

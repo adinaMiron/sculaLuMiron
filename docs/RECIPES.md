@@ -693,6 +693,14 @@ gets saved**, so there is no second renderer to keep in step with the first.
 | the bar is **markup + one pass**, not a rebuild | filtering hides `section.meal` and `article.day` with the `hidden` attribute, and each meal's haystack is worked out once at load. There is no re-render, so a hundred days answer a keystroke without the file needing a framework in it |
 | `@media print` + `@page` | the screen page is the dark earth palette; on paper it turns back into ink, one day per sheet, contents dropped. *Deschide într-o filă* is the route to that — and to a PDF, through the browser's own printer |
 
+When a plan is brought in through *Importă .md* (`#btnMd`), the markdown
+card grows a **Salvează .html** button of its own beside *Salvează .md*. It
+writes the very same document `buildHtmlDoc()` builds for card 4, only its
+`<title>`/`<h1>` is the **name of the imported `.md` file** (dashes and
+underscores spaced out) rather than `htmlTitle()`'s source-line/page-name
+chain. `buildHtmlDoc(titleOverride)` takes the name; everything else is
+unchanged.
+
 `Doar rețetele afișate` narrows this the same way it narrows the markdown:
 the page is built from `outputDays()`, so a search is also a way to share
 part of a book. The title field defaults to the source file's name with its
