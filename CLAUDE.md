@@ -9,7 +9,7 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4647 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 7072 | 70k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `recipes.html` | 7446 | 74k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
@@ -44,7 +44,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1395-2050`, `recipes.html:340-995`). It carries the nav
+`markdown-editor.html:1395-2050`, `recipes.html:358-1013`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -53,7 +53,7 @@ must be applied to **all four** or they drift. Verify with:
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
 sed -n '1395,2050p' markdown-editor.html > /tmp/n3
-sed -n '340,995p' recipes.html           > /tmp/n4
+sed -n '358,1013p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 

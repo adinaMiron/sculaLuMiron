@@ -1150,7 +1150,7 @@
       <!-- ===== 4. the shareable page ===== -->
       <div class="card" id="htmlCard" hidden>
         <h2><span class="step">4</span><span data-i="stepHtml">Pagina HTML</span></h2>
-        <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
+        <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, cu tot ce-i trebuie înăuntru și nimic de adus de pe internet. Caută și filtrează după ingrediente chiar în pagină, ca aici. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
         <label class="field">
           <span data-i="htmlTitleLabel">Titlul paginii</span>
           <input type="text" id="htmlTitle" data-i-placeholder="htmlTitlePh">
@@ -1342,7 +1342,7 @@ const I18N = {
       : "Nimic nou de învățat — " + n + " ingrediente în bază.",
     importMdHint:"„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.",
     stepHtml:"Pagina HTML",
-    htmlHint:"Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.",
+    htmlHint:"Aceleași rețete, așezate ca să fie citite: un singur fișier .html, cu tot ce-i trebuie înăuntru și nimic de adus de pe internet. Caută și filtrează după ingrediente chiar în pagină, ca aici. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.",
     htmlTitleLabel:"Titlul paginii",
     htmlTitlePh:"După numele fișierului sursă",
     htmlPreviewLabel:"Previzualizare",
@@ -1513,7 +1513,7 @@ const I18N = {
       : "Nothing new to learn — " + n + " ingredients in the book.",
     importMdHint:"“Import .md” reads back a file this page wrote — or one edited since in the Markdown editor: the days, the meals, the ingredients and the steps all come back whole, ready to correct, to save again, or to send on as an HTML page.",
     stepHtml:"HTML page",
-    htmlHint:"The same recipes, laid out to be read: one .html file, with no script in it and nothing to fetch from the internet. It opens from an e-mail, on a phone, and out of a printer.",
+    htmlHint:"The same recipes, laid out to be read: one .html file with everything it needs inside it and nothing to fetch from the internet. Search and filter it by ingredient right on the page, the way you do here. It opens from an e-mail, on a phone, and out of a printer.",
     htmlTitleLabel:"Page title",
     htmlTitlePh:"After the name of the source file",
     htmlPreviewLabel:"Preview",
@@ -6020,6 +6020,34 @@ const DOC_CSS = [
   "header.book h1{font-family:var(--font-display);font-size:clamp(1.8rem,5vw,2.6rem);",
   "  margin:0 0 .35rem;color:var(--accent-2);letter-spacing:.01em}",
   "header.book .meta{margin:0;color:var(--text-2);font-size:.85rem}",
+  /* ---- finding a recipe inside the file itself ----
+     The same bar card 5 has, and the same rules behind it: a word or two
+     over the whole recipe, a comma-separated list over the ingredients
+     only, and the meal kinds as chips. It ships `hidden` and the script
+     un-hides it, so a page opened with scripting off shows no dead box —
+     just the recipes, the way this file always was. */
+  "#filters{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0 0 .7rem}",
+  "#filters .search{flex:1 1 100%;position:relative;display:block}",
+  "#filters .search input{width:100%;background:var(--surface-2);color:var(--text);",
+  "  border:1px solid var(--border);border-radius:12px;padding:.7rem .8rem .7rem 2.4rem;",
+  "  font-family:inherit;font-size:1rem;line-height:1.5}",
+  "#filters .search input:focus{outline:none;border-color:var(--accent)}",
+  "#filters .search::before{content:\"\\2315\";position:absolute;left:.8rem;top:50%;",
+  "  transform:translateY(-50%);color:var(--text-3);font-size:1.15rem;line-height:1;pointer-events:none}",
+  "/* the comma-separated ingredient filter: its own row, its own glyph */",
+  "#filters .ing-search::before{content:\"\\2261\";font-size:.9rem}",
+  "#filters .chips{display:flex;gap:.3rem;flex-wrap:wrap;flex:1 1 auto}",
+  "#filters .chip{background:transparent;border:1px solid var(--border);color:var(--text-2);",
+  "  border-radius:999px;padding:.28rem .7rem;font-size:.76rem;cursor:pointer;",
+  "  white-space:nowrap;font-family:inherit}",
+  "#filters .chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);",
+  "  color:var(--on-accent);font-weight:600}",
+  "#found{font-size:.78rem;color:var(--text-2);margin:0 0 1.4rem;display:flex;gap:.5rem;",
+  "  align-items:baseline;flex-wrap:wrap}",
+  "#found button{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;",
+  "  padding:0;text-decoration:underline}",
+  "@media (pointer:coarse){#filters .search input{min-height:44px;font-size:16px}",
+  "  #filters .chip{min-height:32px}}",
   "/* A hundred days is a hundred links: on a phone that is three screens of",
   "   contents before the first recipe, so the list is a fold. <details> does",
   "   it with no script, which is what keeps the file inert. */",
@@ -6055,6 +6083,8 @@ const DOC_CSS = [
   "ul.ing li{display:contents}",
   "ul.ing li > span{padding:.32rem 0;font-size:.92rem;border-bottom:1px dashed var(--border)}",
   "ul.ing li:last-child > span{border-bottom:0}",
+  "/* an ingredient the search asked for, in the recipe that has it */",
+  "ul.ing li.hit > span{background:var(--surface-2)}",
   "ul.ing li.grp{display:block;grid-column:1/-1;border-bottom:0;padding:.6rem 0 .1rem;",
   "  color:var(--text-3);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase}",
   "ul.ing .q{color:var(--accent-2);font-weight:600;font-variant-numeric:tabular-nums;",
@@ -6103,9 +6133,11 @@ const DOC_CSS = [
   "    --on-accent:#fff}",
   "  body{font-size:10.5pt}",
   "  .sheet{max-width:none;padding:0}",
-  "  details.toc{display:none}",
+  "  details.toc,#filters,#found{display:none}",
   "  article.day{break-before:page;page-break-before:always}",
   "  article.day:first-of-type{break-before:auto;page-break-before:auto}",
+  "  /* with a filter on, the first day *shown* is the one that starts flush */",
+  "  article.day.first{break-before:auto;page-break-before:auto}",
   "  section.meal{border-color:var(--border)}",
   "  a{color:inherit;text-decoration:none}",
   "  input.qty{border-bottom:0;color:inherit}",
@@ -6216,6 +6248,234 @@ function escHtml(s){
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/* A value on its way into the <script> of the exported page. Everything
+   outside plain ASCII is escaped, which does two things: the file stays
+   readable wherever its encoding is guessed wrong, and the cedilla
+   spellings the folder has to know about (see FOLD) never appear as
+   literal characters — not here, and not in the file this page writes. */
+function jsonForScript(v){
+  return JSON.stringify(v).replace(/[^\x20-\x7E]|[<>&]/g, c =>
+    "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+}
+
+/* The counted phrases the shareable page's filter bar needs, as templates.
+   t() is asked for each shape with counts nothing else in the sentence can
+   look like, and those are swapped for placeholders the exported script
+   fills in — so the plural rules of both languages stay in I18N rather
+   than being written a second time inside a file that ships to people who
+   don't have this page. */
+function docFilterTexts(){
+  const A = 7654321, B = 1234567;
+  const sub = x => String(x).split(String(A)).join("%a").split(String(B)).join("%b");
+  return {
+    days1:    t("foundDays", 1, 1),
+    daysAll:  sub(t("foundDays", A, A)),
+    daysSome: sub(t("foundDays", A, B)),
+    meals1:   t("foundMeals", 1),
+    mealsN:   sub(t("foundMeals", A)),
+    none:     t("noMatch"),
+    clear:    t("clearFilters")
+  };
+}
+
+/* ---------- the filter bar, in the file you send somebody ----------
+   Card 5's search is what makes a hundred days usable; a hundred days sent
+   to somebody else are no smaller. So the exported page carries the same
+   two boxes and the same chips, matching by the same rules: the search box
+   over the whole recipe, the comma-separated box over the ingredient names
+   only, and every term has to be present — "ou, faina" keeps the recipes
+   that have both.
+
+   It sits directly under the header, above the contents, and it ships
+   `hidden`: the script un-hides it, so with scripting off the file is
+   exactly the inert page it always was. */
+function filterHtml(out){
+  const present = new Set();
+  out.forEach(s => s.meals.forEach(mi => {
+    const meal = s.day.meals[mi];
+    if(meal) present.add(meal.kind || "other");
+  }));
+  const L = [];
+  L.push('<div class="filters" id="filters" hidden>');
+  [["q", "searchPh", "search"], ["ing", "ingPh", "search ing-search"]].forEach(([id, key, cls]) => {
+    const ph = escHtml(t(key));
+    L.push('<label class="' + cls + '"><input type="search" id="' + id + '" spellcheck="false"' +
+           ' placeholder="' + ph + '" aria-label="' + ph + '"></label>');
+  });
+  L.push('<div class="chips">');
+  // Only the kinds actually in the file: a plan with no desserts should
+  // not offer to filter by dessert.
+  MEAL_KINDS.filter(([kind]) => present.has(kind)).forEach(([kind, key]) => {
+    L.push('<button type="button" class="chip" data-kind="' + kind + '" aria-pressed="false">' +
+           escHtml(t(key)) + "</button>");
+  });
+  L.push("</div>");
+  L.push("</div>");
+  L.push('<p class="found" id="found" hidden></p>');
+  return L.join("\n");
+}
+
+/* The second half of the one script the page carries. It is written in the
+   same plain ES5 as the totals, and it works entirely off what is already
+   in the markup — no copy of the recipes embedded a second time, still
+   nothing to fetch.
+
+   The haystack it searches is the dish, the ingredient lines and the
+   method — deliberately not the nutrition table, or a search for "oil"
+   would answer with every row whose USDA food happens to be named one. */
+function docFilterJs(){
+  return [
+    "(function(){",
+    "  var bar = document.getElementById('filters'), found = document.getElementById('found');",
+    "  var qBox = document.getElementById('q'), ingBox = document.getElementById('ing');",
+    "  if(!bar || !found || !qBox || !ingBox) return;",
+    "  var T = " + jsonForScript(docFilterTexts()) + ";",
+    "  // The same folding card 5 searches with, handed over rather than",
+    "  // written again: 'sunca' has to find șuncă, and a book printed",
+    "  // with cedillas has to answer to the comma-below spelling.",
+    "  var FOLD = " + jsonForScript(FOLD) + ";",
+    "  var FOLD_RE = new RegExp('[' + Object.keys(FOLD).join('') + ']', 'g');",
+    "  function fold(s){",
+    "    return String(s == null ? '' : s).toLowerCase()",
+    "      .replace(FOLD_RE, function(c){ return FOLD[c] || c; });",
+    "  }",
+    "  // Words that carry no search intent of their own.",
+    "  var FILLER = {}, FW = " + jsonForScript(Array.from(FILLER)) + ";",
+    "  for(var fi = 0; fi < FW.length; fi++) FILLER[FW[fi]] = 1;",
+    "  function words(s){",
+    "    var a = fold(s).split(/\\s+/), o = [], i;",
+    "    for(i = 0; i < a.length; i++) if(a[i]) o.push(a[i]);",
+    "    return o;",
+    "  }",
+    "  function list(s){",
+    "    var a = fold(s).split(','), o = [], i, v;",
+    "    for(i = 0; i < a.length; i++){",
+    "      v = a[i].replace(/^\\s+|\\s+$/g, '');",
+    "      if(v) o.push(v);",
+    "    }",
+    "    return o;",
+    "  }",
+    "  function all(hay, ts){",
+    "    var i; for(i = 0; i < ts.length; i++) if(hay.indexOf(ts[i]) < 0) return false;",
+    "    return true;",
+    "  }",
+    "  function any(hay, ts){",
+    "    var i; for(i = 0; i < ts.length; i++) if(hay.indexOf(ts[i]) >= 0) return true;",
+    "    return false;",
+    "  }",
+    "  // The terms worth pointing at: the filler words drop out once the",
+    "  // query has something more specific in it.",
+    "  function marks(ts){",
+    "    if(ts.length <= 1) return ts;",
+    "    var kept = [], i;",
+    "    for(i = 0; i < ts.length; i++) if(!FILLER[ts[i]]) kept.push(ts[i]);",
+    "    return kept.length ? kept : ts;",
+    "  }",
+    "  // What one meal is searched by, worked out once. `rows` is the",
+    "  // ingredient lines on their own, so the ones that matched can be",
+    "  // pointed at inside a recipe that kept several.",
+    "  function index(sec){",
+    "    var lis = sec.querySelectorAll('ul.ing > li'), rows = [], names = [], parts = [];",
+    "    var group = '', k;",
+    "    for(k = 0; k < lis.length; k++){",
+    "      var li = lis[k];",
+    "      names.push(li.textContent);",
+    "      if(li.className.indexOf('grp') >= 0){ group = li.textContent; continue; }",
+    "      var q = li.querySelector('input.qty');",
+    "      parts.push((q ? q.value + ' ' : '') + li.textContent);",
+    "      var it = li.querySelector('.it');",
+    "      rows.push({ el: li, hay: fold((it ? it.textContent : '') + ' ' + group) });",
+    "    }",
+    "    var h3 = sec.querySelector('h3'), steps = sec.querySelector('ol.steps');",
+    "    return {",
+    "      el: sec, kind: sec.getAttribute('data-kind') || 'other', rows: rows,",
+    "      hay: fold((h3 ? h3.textContent : '') + ' ' + parts.join(' ') + ' ' +",
+    "                (steps ? steps.textContent : '')),",
+    "      ing: fold(names.join(' \\n '))",
+    "    };",
+    "  }",
+    "  var days = [], arts = document.querySelectorAll('article.day'), i, j;",
+    "  for(i = 0; i < arts.length; i++){",
+    "    var art = arts[i], h2 = art.querySelector('h2');",
+    "    var link = document.querySelector('details.toc a[href=\"#' + art.id + '\"]');",
+    "    var secs = art.querySelectorAll('section.meal'), meals = [];",
+    "    for(j = 0; j < secs.length; j++) meals.push(index(secs[j]));",
+    "    days.push({ el: art, meals: meals, toc: link ? link.parentNode : null,",
+    "                title: fold(h2 ? h2.textContent : '') });",
+    "  }",
+    "  var chips = bar.querySelectorAll('.chip');",
+    "  function fill(s, a, b){ return String(s).split('%a').join(a).split('%b').join(b); }",
+    "  function count(shown, meals){",
+    "    var total = days.length, d;",
+    "    if(shown === total) d = total === 1 ? T.days1 : fill(T.daysAll, total);",
+    "    else d = fill(T.daysSome, shown, total);",
+    "    return d + ' \\u00B7 ' + (meals === 1 ? T.meals1 : fill(T.mealsN, meals));",
+    "  }",
+    "  function paint(active, shown, meals){",
+    "    found.hidden = !active;",
+    "    while(found.firstChild) found.removeChild(found.firstChild);",
+    "    if(!active) return;",
+    "    var span = document.createElement('span');",
+    "    span.textContent = shown ? count(shown, meals) : T.none;",
+    "    found.appendChild(span);",
+    "    var b = document.createElement('button');",
+    "    b.type = 'button';",
+    "    b.textContent = T.clear;",
+    "    b.onclick = function(){",
+    "      var k;",
+    "      qBox.value = ''; ingBox.value = '';",
+    "      for(k = 0; k < chips.length; k++) chips[k].setAttribute('aria-pressed', 'false');",
+    "      apply();",
+    "    };",
+    "    found.appendChild(b);",
+    "  }",
+    "  // A day whose *title* matches keeps all of its meals — that is what",
+    "  // makes searching 'Ziua 42' work. The ingredient list is still",
+    "  // checked per meal: 'recipes that have all these' means the meal's",
+    "  // own ingredients, never the day name.",
+    "  function apply(){",
+    "    var ts = words(qBox.value), its = list(ingBox.value), ks = [], hi, a, b, m, ok;",
+    "    for(a = 0; a < chips.length; a++)",
+    "      if(chips[a].getAttribute('aria-pressed') === 'true') ks.push(chips[a].getAttribute('data-kind'));",
+    "    var active = ts.length > 0 || its.length > 0 || ks.length > 0;",
+    "    hi = marks(ts).concat(its);",
+    "    var shown = 0, meals = 0, first = null;",
+    "    for(a = 0; a < days.length; a++){",
+    "      var day = days[a], titleHit = ts.length > 0 && all(day.title, ts), on = 0;",
+    "      for(b = 0; b < day.meals.length; b++){",
+    "        m = day.meals[b]; ok = true;",
+    "        if(ks.length && ks.indexOf(m.kind) < 0) ok = false;",
+    "        if(ok && ts.length && !titleHit && !all(m.hay, ts)) ok = false;",
+    "        if(ok && its.length && !all(m.ing, its)) ok = false;",
+    "        m.el.hidden = !ok;",
+    "        if(ok){ on++; tint(m, hi); }",
+    "      }",
+    "      day.el.hidden = active && !on;",
+    "      day.el.className = 'day';",
+    "      if(day.toc) day.toc.hidden = day.el.hidden;",
+    "      if(!day.el.hidden){ shown++; meals += on; if(!first) first = day.el; }",
+    "    }",
+    "    // On paper the first day still shown is the one that starts flush.",
+    "    if(first) first.className = 'day first';",
+    "    paint(active, shown, meals);",
+    "  }",
+    "  function tint(m, hi){",
+    "    var k;",
+    "    for(k = 0; k < m.rows.length; k++)",
+    "      m.rows[k].el.className = hi.length && any(m.rows[k].hay, hi) ? 'hit' : '';",
+    "  }",
+    "  for(i = 0; i < chips.length; i++) chips[i].onclick = function(){",
+    "    this.setAttribute('aria-pressed', this.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');",
+    "    apply();",
+    "  };",
+    "  qBox.oninput = apply; qBox.onsearch = apply;",
+    "  ingBox.oninput = apply; ingBox.onsearch = apply;",
+    "  bar.hidden = false;",
+    "  apply();",
+    "})();"
+  ].join("\n");
+}
+
 // Typed in, or the file the recipes came out of, or just the page's name.
 function htmlTitle(){
   const typed = (els.htmlTitle.value || "").trim();
@@ -6292,7 +6552,7 @@ function mealHtml(meal){
   const L = [];
   const on = els.optNutri.checked && meal.ingredients.length > 0;
   const nut = Nutrition.forMeal(meal);
-  L.push('<section class="meal">');
+  L.push('<section class="meal" data-kind="' + escHtml(meal.kind || "other") + '">');
   L.push('<h3><span class="kind">' + escHtml(mealLabel(meal)) + "</span>" +
          (meal.name ? '<span class="dish">' + escHtml(meal.name) + "</span>" : "") + "</h3>");
   L.push('<div class="half">');
@@ -6389,6 +6649,10 @@ function buildHtmlDoc(){
   L.push("<h1>" + escHtml(title) + "</h1>");
   L.push('<p class="meta">' + escHtml(meta.join(" · ")) + "</p>");
   L.push("</header>");
+  // The filter bar, when there is more than one recipe for it to sift: on
+  // a page holding a single dish it would be furniture.
+  const bar = meals > 1 ? filterHtml(out) : "";
+  if(bar) L.push(bar);
   if(out.length > 1){
     // Open for a plan somebody reads top to bottom, shut for a book they
     // jump around in — where the list would otherwise be the first three
@@ -6404,11 +6668,16 @@ function buildHtmlDoc(){
   out.forEach((s, i) => L.push(dayHtml(s, i)));
   L.push('<footer class="book">' + escHtml(t("docFooter")) + "</footer>");
   L.push("</div>");
-  // The only script in the file, and only when there is a table for it to
-  // keep up to date. Nothing to fetch: what it needs is on the elements.
-  if(els.optNutri.checked){
+  // The only script in the file: the filter bar, and — when there are
+  // tables for it to keep up to date — the totals that follow an edited
+  // quantity. One block, so the file still answers "one script and nothing
+  // to fetch". What either half needs is already in the markup.
+  const js = [];
+  if(bar) js.push(docFilterJs());
+  if(els.optNutri.checked) js.push(DOC_JS);
+  if(js.length){
     L.push("<script>");
-    L.push(DOC_JS);
+    L.push(js.join("\n"));
     L.push("</" + "script>");
   }
   L.push("</body>");

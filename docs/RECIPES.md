@@ -529,13 +529,14 @@ the same name is already answered the next time any plan uses it.
 ### The one script the shareable page carries
 
 § G used to be able to say the file had nothing to run. It now has exactly
-one thing, and it is the reason: **a recipe is something people scale.**
-Change 60 to 90 in the ingredient list and the table under it has to
-follow, or the numbers on the page are a lie the moment anybody cooks for
-two.
+one script — two halves in one block — and the first reason is this:
+**a recipe is something people scale.** Change 60 to 90 in the ingredient
+list and the table under it has to follow, or the numbers on the page are a
+lie the moment anybody cooks for two. (The second half is the filter bar,
+§ G.)
 
-It stays honest about the rest. Everything the script needs is already on
-the elements — grams per unit and the four values per 100 g, as `data-`
+It stays honest about the rest. Everything either half needs is already in
+the markup — grams per unit and the four values per 100 g, as `data-`
 attributes — so there is no table embedded a second time and **still
 nothing to fetch**: no `src`, no `http`, no `@import`. The numbers written
 into the file are the ones an untouched field would produce, so a page
@@ -583,9 +584,31 @@ person does: the same days, laid out to be read, as **one self-contained
 file** — no stylesheet, no font, nothing to fetch. It opens out of an
 e-mail attachment, off a phone, and out of a printer.
 
-It carries exactly one script, and only when the nutrition tables are on:
-the quantities are fields and the totals follow them. Why that was worth
-breaking "nothing to run" for, and what is still true, is § E.
+It carries exactly one script — one `<script>` block, whichever halves the
+page needs. The totals half is there when the nutrition tables are (the
+quantities are fields and the totals follow them, § E); the filter half is
+there when there is more than one recipe to sift. Neither, and the file has
+no script at all.
+
+**The filter bar, directly under the header and above the contents.** A
+hundred days sent to somebody else are no smaller than a hundred days on
+this page, so the export carries card 5's search: the same two boxes — a
+word or two over the whole recipe, a comma-separated list over the
+ingredient names only, every term having to be present — and the same meal
+chips, only for the kinds the file actually holds. What matched is tinted
+in the ingredient list, the count line says how much is left with a way to
+clear it, and the contents list drops the days that went. It matches on
+the dish, the ingredient lines and the method, deliberately **not** on the
+nutrition table: a search for `ulei` is a search for the recipe's oil, not
+for every row whose USDA food happens to be named one.
+
+Two things keep it from costing the file its character. It reads the
+markup that is already there rather than a second copy of the recipes, so
+nothing is embedded twice; and it ships `hidden`, un-hidden by the script
+on arrival, so a page opened with scripting off is the inert document it
+always was rather than a page with a dead search box on it. On paper the
+bar and the count line are gone, and what is filtered stays filtered — the
+first day still shown is the one that starts flush.
 
 ```
 model ──► buildHtmlDoc() ──► one string ──┬─► <iframe srcdoc>   (card 5)
@@ -604,6 +627,7 @@ gets saved**, so there is no second renderer to keep in step with the first.
 | the preview is a **fold** | building a second document the size of the page on every keystroke is not free. It is rebuilt only while the fold is open, and only after the typing stops (250 ms). The fold opens itself for eight days or fewer and stays shut for a book — the same size heuristic the day view uses |
 | the contents list is a `<details>` | a hundred days is a hundred links: on a phone that is three screens of contents before the first recipe. `<details>` folds it with no script, which is what keeps the file inert. Open at 24 days or fewer |
 | ingredients are a **grid**, not a row each | one quantity column per list, as wide as the widest quantity in it. A fixed column is fine until a row says `1 conservă` and the unit spills over the name beside it |
+| the bar is **markup + one pass**, not a rebuild | filtering hides `section.meal` and `article.day` with the `hidden` attribute, and each meal's haystack is worked out once at load. There is no re-render, so a hundred days answer a keystroke without the file needing a framework in it |
 | `@media print` + `@page` | the screen page is the dark earth palette; on paper it turns back into ink, one day per sheet, contents dropped. *Deschide într-o filă* is the route to that — and to a PDF, through the browser's own printer |
 
 `Doar rețetele afișate` narrows this the same way it narrows the markdown:
@@ -660,9 +684,14 @@ holds the very string the export saves, and the export goes out through
 `ScuLaFolder.save` as `text/html` under a diacritic-keeping file name.
 
 **Then the exported file is opened on its own and driven**, off disk with
-nothing around it: doubling a quantity has to double that row, and the meal
-total and the day total have to move by the same amount. That is the check
-that the one script in it actually earns its place.
+nothing around it. Both halves of its script: doubling a quantity has to
+double that row, with the meal total and the day total moving by the same
+amount; and the filter bar has to un-hide itself, keep the recipes that
+have one named ingredient, keep only those that have *both* when two are
+named, say so when no recipe has both, reach into the method as well as the
+list, keep every meal on a day whose title matched, narrow to one kind on a
+chip, and put everything back when the filters are cleared. That is the
+check that the one script in it actually earns its place.
 
 **The USDA pass is checked from the name inwards.** A Romanian name
 finding its food; the longest phrase beating the shortest (`unt de

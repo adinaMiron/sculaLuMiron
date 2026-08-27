@@ -412,9 +412,11 @@ It writes chapters into the same workbook store as § E, one per day, so a
 day extracted here shows up in `markdown-editor.html` on its next load.
 
 There is a third way out, for people rather than programs: *Exportă .html*
-(§ G there) writes the same recipes as **one self-contained page** — no
-script, no stylesheet, nothing to fetch — that opens from an e-mail, on a
-phone, and out of a printer. It goes through `ScuLaFolder.save()` like every
+(§ G there) writes the same recipes as **one self-contained page** — its own
+stylesheet, one small script of its own, nothing to fetch — that opens from
+an e-mail, on a phone, and out of a printer. That script is why the page can
+be searched and filtered by ingredient the way card 5 is, and why its totals
+follow a quantity somebody changes. It goes through `ScuLaFolder.save()` like every
 other save in this repo (§ D), and card 5 previews it in a sandboxed
 `<iframe srcdoc>` holding the very string the file gets.
 

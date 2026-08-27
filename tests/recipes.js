@@ -1153,12 +1153,20 @@ function serve() {
   check('html: an ingredient cannot break out of the page',
         doc.indexOf('&lt;b&gt;ovăz&lt;/b&gt; &amp; &quot;co&quot;') > 0 &&
         doc.indexOf('<b>ovăz</b>') < 0);
-  // The file now carries exactly one script — the totals follow an edited
-  // quantity — and still nothing to fetch, which is the invariant that
-  // makes it openable out of an e-mail on a plane.
+  // The file carries exactly one script — the filter bar, and the totals
+  // that follow an edited quantity, in the same block — and still nothing
+  // to fetch, which is the invariant that makes it openable out of an
+  // e-mail on a plane.
   check('html: one script of its own and nothing to fetch',
         (doc.match(/<script/gi) || []).length === 1 && !/\ssrc=/i.test(doc) &&
         !/https?:\/\//i.test(doc) && !/@import/i.test(doc));
+  check('html: that one script is both halves — the filter and the totals',
+        /getElementById\('filters'\)/.test(doc) && /calcMeal/.test(doc));
+  check('html: the filter bar sits under the header, above the contents',
+        /<\/header>\s*<div class="filters" id="filters" hidden>/.test(doc) &&
+        (doc.indexOf('<details class="toc"') < 0 ||
+         doc.indexOf('id="filters"') < doc.indexOf('<details class="toc"')),
+        doc.slice(doc.indexOf('</header>'), doc.indexOf('</header>') + 120));
   check('html: a nutrition table under every meal, and one for the day',
         (doc.match(/<table class="nutri">/g) || []).length === 3 &&
         /<table class="nutri dtot">/.test(doc),
@@ -1203,6 +1211,61 @@ function serve() {
         near(Number(live.after.mealKc) - Number(live.before.mealKc), live.before.rowKc) &&
         near(Number(live.after.dayKc) - Number(live.before.dayKc), live.before.rowKc),
         JSON.stringify(live));
+  /* The other half of that script, driven the same way: the filter bar
+     under the header. Same rules as card 5 — the search box over the whole
+     recipe, the comma-separated box over the ingredient names only, and
+     every term has to be present. */
+  const shownMeals = () => sheet.evaluate(() =>
+    Array.from(document.querySelectorAll('section.meal')).filter(m => m.checkVisibility()).length);
+  const typeIn = async (id, v) => { await sheet.fill('#' + id, v); await sheet.waitForTimeout(80); };
+
+  check('html: the bar un-hides itself, so a page with scripting off has no dead box',
+        await sheet.evaluate(() => !document.getElementById('filters').hidden));
+
+  await typeIn('ing', 'arahide');
+  check('html: one ingredient keeps the recipes that have it',
+        await shownMeals() === 1, String(await shownMeals()));
+  const why = await sheet.evaluate(() => document.querySelectorAll('ul.ing li.hit').length);
+  check('html: the ingredient line that matched is pointed at', why >= 1, String(why));
+  check('html: and the count line says what is left',
+        /o mas/.test(await sheet.textContent('#found')), await sheet.textContent('#found'));
+
+  await typeIn('ing', 'arahide, banana');
+  check('html: several ingredients means the recipes that have all of them',
+        await shownMeals() === 1, String(await shownMeals()));
+
+  await typeIn('ing', 'arahide, broccoli');
+  const none = await sheet.evaluate(() => ({
+    meals: Array.from(document.querySelectorAll('section.meal')).filter(m => m.checkVisibility()).length,
+    days: Array.from(document.querySelectorAll('article.day')).filter(d => d.checkVisibility()).length,
+    found: document.getElementById('found').textContent }));
+  check('html: two ingredients no one recipe has leaves nothing, and it says so',
+        none.meals === 0 && none.days === 0 && /Nicio re/.test(none.found), JSON.stringify(none));
+
+  await typeIn('ing', '');
+  await typeIn('q', 'broccoli');
+  check('html: the search box reaches the method, not just the list',
+        await shownMeals() === 1, String(await shownMeals()));
+
+  await typeIn('q', 'ziua 3');
+  check('html: a day title keeps every meal on that day',
+        await shownMeals() === 3, String(await shownMeals()));
+
+  await typeIn('q', '');
+  await sheet.click('.chip[data-kind="dinner"]');
+  await sheet.waitForTimeout(80);
+  check('html: a chip keeps that kind of meal only',
+        await shownMeals() === 1, String(await shownMeals()));
+
+  await sheet.click('#found button');
+  await sheet.waitForTimeout(80);
+  const back = await sheet.evaluate(() => ({
+    meals: Array.from(document.querySelectorAll('section.meal')).filter(m => m.checkVisibility()).length,
+    hits: document.querySelectorAll('ul.ing li.hit').length,
+    quiet: document.getElementById('found').hidden }));
+  check('html: clearing the filters puts every recipe back',
+        back.meals === 3 && back.hits === 0 && back.quiet === true, JSON.stringify(back));
+
   check('html: nothing threw in the exported page', sheetErrors.length === 0, sheetErrors.join('\n'));
   await sheet.close();
   check('html: it is a whole document, in the interface language',
@@ -1211,8 +1274,10 @@ function serve() {
   check('html: it carries its own print rules, so it can be a paper recipe',
         /@media print/.test(doc) && /@page/.test(doc));
 
+  // Typed, not assigned: the field's own input event is what tells the
+  // preview to rebuild, and the check further down compares the two.
+  await page.fill('#htmlTitle', 'Rețete de iarnă');
   const savedHtml = await page.evaluate(async () => {
-    document.getElementById('htmlTitle').value = 'Rețete de iarnă';
     const calls = [];
     const real = window.ScuLaFolder.save;
     window.ScuLaFolder.save = async (name, blob) => {
