@@ -252,7 +252,7 @@ record **is** the UI↔folder correspondence.
 | 3818–3854 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
 | 3864–3893 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
 | 3905–3937 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 3937–4047 | Panel rendering: `wbActBtn`, `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 3937–4047 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
 | 4050–4200 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
 | 4201–4233 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
 | 4235–4365 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |

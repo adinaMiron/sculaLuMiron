@@ -44,7 +44,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1395-2050`, `recipes.html:407-1062`). It carries the nav
+`markdown-editor.html:1402-2057`, `recipes.html:407-1062`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -52,7 +52,7 @@ must be applied to **all four** or they drift. Verify with:
 ```bash
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
-sed -n '1395,2050p' markdown-editor.html > /tmp/n3
+sed -n '1402,2057p' markdown-editor.html > /tmp/n3
 sed -n '407,1062p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
@@ -130,7 +130,8 @@ ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
 detail panels on both sides**, the whole OCR path against a stub engine,
 all three save routes), and for
 `markdown-editor.html`'s knowledge graph (`graph.js`), its search &
-filter panel (`find.js`) and its navigation panel (`nav.js`). It is dev-only
+filter panel (`find.js`), its navigation panel (`nav.js`) and the
+in-place rename of a workbook or chapter name (`wbrename.js`). It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
 

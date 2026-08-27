@@ -273,6 +273,13 @@
   .wb-ch-row.current { border-left-color: var(--accent); background: var(--surface-2); color: var(--accent-2); }
   .wb-ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wb-ch-empty { padding: 6px 10px 6px 26px; font-size: 11px; color: var(--text-3); font-style: italic; }
+  .wb-name-editing {
+    overflow: visible; text-overflow: clip; white-space: normal;
+    outline: none; cursor: text;
+    background: var(--bg); color: var(--text);
+    border-radius: 3px; padding: 0 3px; margin: 0 -3px;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
 
   .wb-crumb {
     font-size: 11px;
@@ -2542,6 +2549,7 @@ const I18N = {
     wbLocalOnly:"💾 salvat local (fără dosar)",
     addChapterTip:"Capitol nou", renameWorkbookTip:"Redenumește caietul", deleteWorkbookTip:"Șterge caietul",
     renameChapterTip:"Redenumește capitolul", exportChapterTip:"Exportă capitolul", deleteChapterTip:"Șterge capitolul",
+    wbRenameHint:"Dublu-clic sau F2 pentru redenumire",
     moveWorkbookUpTip:"Mută caietul mai sus", moveWorkbookDownTip:"Mută caietul mai jos",
     moveChapterUpTip:"Mută capitolul mai sus", moveChapterDownTip:"Mută capitolul mai jos",
     promptNewWorkbook:"Numele caietului:", defaultWorkbookName:"Caiet nou",
@@ -2675,6 +2683,7 @@ const I18N = {
     wbLocalOnly:"💾 saved locally (no folder)",
     addChapterTip:"New chapter", renameWorkbookTip:"Rename workbook", deleteWorkbookTip:"Delete workbook",
     renameChapterTip:"Rename chapter", exportChapterTip:"Export chapter", deleteChapterTip:"Delete chapter",
+    wbRenameHint:"Double-click or F2 to rename",
     moveWorkbookUpTip:"Move workbook up", moveWorkbookDownTip:"Move workbook down",
     moveChapterUpTip:"Move chapter up", moveChapterDownTip:"Move chapter down",
     promptNewWorkbook:"Workbook name:", defaultWorkbookName:"New workbook",
@@ -4113,6 +4122,111 @@ function wbActBtn(label, title, fn) {
   b.addEventListener('click', ev => { ev.stopPropagation(); fn(); });
   return b;
 }
+/* Inline rename for workbook / chapter names in the panel.
+   Reachable by double-clicking a name, or focusing it (one click) and
+   pressing F2. Enter/blur commits, Escape cancels. */
+let wbNameClickTimer = null;   // debounces the single click on a name vs. a dblclick
+let wbLastName = null;         // {type,id} of the last name touched — survives repaints, so F2 still targets it
+
+function wbInlineRename(span, current, commit) {
+  if (span.getAttribute('contenteditable') === 'true') return;
+  const restore = span.textContent;
+  span.setAttribute('contenteditable', 'true');
+  span.spellcheck = false;
+  span.classList.add('wb-name-editing');
+  span.textContent = current;
+  span.focus();
+  const range = document.createRange();
+  range.selectNodeContents(span);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  let settled = false;
+  const cleanup = () => {
+    span.removeAttribute('contenteditable');
+    span.classList.remove('wb-name-editing');
+    span.removeEventListener('keydown', onKey);
+    span.removeEventListener('blur', onBlur);
+  };
+  const cancel = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    span.textContent = restore;
+  };
+  const save = () => {
+    if (settled) return;
+    settled = true;
+    const val = span.textContent.replace(/\s+/g, ' ').trim();
+    cleanup();
+    span.textContent = restore;          // renderWorkbooks() repaints if the name really changed
+    if (val && val !== current) commit(val);
+  };
+  const onKey = (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  };
+  const onBlur = () => save();
+  span.addEventListener('keydown', onKey);
+  span.addEventListener('blur', onBlur);
+}
+
+function wbInlineRenameById(type, id) {
+  const esc = window.CSS && CSS.escape ? CSS.escape(id) : id.replace(/"/g, '\\"');
+  if (type === 'book') {
+    const book = wbBook(id);
+    const span = document.querySelector('.wb-book-name[data-wb-id="' + esc + '"]');
+    if (book && span) wbInlineRename(span, book.name, v => renameWorkbook(id, v));
+  } else {
+    const ch = wbChapter(id);
+    const span = document.querySelector('.wb-ch-name[data-wb-id="' + esc + '"]');
+    if (ch && span) wbInlineRename(span, ch.title, v => renameChapter(id, v));
+  }
+}
+
+// Wire a name <span> so a click still does its normal job (open/toggle, after a
+// short delay), while a double-click renames instead. F2 is handled globally.
+function wbBindName(span, type, id, singleClick) {
+  span.tabIndex = 0;
+  span.dataset.wbId = id;
+  span.dataset.wbType = type;
+  span.title = t('wbRenameHint');
+  span.addEventListener('focus', () => { wbLastName = { type, id }; });
+  span.addEventListener('click', (e) => {
+    e.stopPropagation();
+    wbLastName = { type, id };
+    clearTimeout(wbNameClickTimer);
+    wbNameClickTimer = setTimeout(singleClick, 230);
+  });
+  span.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    clearTimeout(wbNameClickTimer);
+    wbInlineRenameById(type, id);
+  });
+}
+
+// Forget the remembered name once the user clicks anywhere that isn't a name.
+document.addEventListener('click', (e) => {
+  if (!e.target.closest || !e.target.closest('.wb-book-name, .wb-ch-name')) wbLastName = null;
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'F2') return;
+  const el = document.activeElement;
+  if (el && el.classList && el.classList.contains('wb-book-name')) { e.preventDefault(); wbInlineRenameById('book', el.dataset.wbId); return; }
+  if (el && el.classList && el.classList.contains('wb-ch-name')) { e.preventDefault(); wbInlineRenameById('chapter', el.dataset.wbId); return; }
+  if (wbLastName) {
+    const tag = el && el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable)) return;
+    e.preventDefault();
+    clearTimeout(wbNameClickTimer);
+    wbInlineRenameById(wbLastName.type, wbLastName.id);
+  }
+});
+
 function renderWorkbooks() {
   invalidateWikiIndex();      // titles and files are what [[links]] resolve against
   const tree = document.getElementById('wb-tree');
@@ -4148,6 +4262,10 @@ function renderWorkbooks() {
     const name = document.createElement('span');
     name.className = 'wb-book-name';
     name.textContent = '📓 ' + book.name;
+    wbBindName(name, 'book', book.id, () => {
+      if (wbOpenBooks.has(book.id)) wbOpenBooks.delete(book.id); else wbOpenBooks.add(book.id);
+      renderWorkbooks();
+    });
     const count = document.createElement('span');
     count.className = 'wb-count';
     count.textContent = chapters.length;
@@ -4180,6 +4298,7 @@ function renderWorkbooks() {
       const chName = document.createElement('span');
       chName.className = 'wb-ch-name';
       chName.textContent = '📄 ' + ch.title;
+      wbBindName(chName, 'chapter', ch.id, () => openChapter(ch.id));
 
       const chActs = document.createElement('div');
       chActs.className = 'wb-acts';
@@ -4237,10 +4356,10 @@ async function createWorkbook() {
   return book;
 }
 
-async function renameWorkbook(id) {
+async function renameWorkbook(id, preset) {
   const book = wbBook(id);
   if (!book) return;
-  const name = (prompt(t('promptRenameWorkbook'), book.name) || '').trim();
+  const name = (preset != null ? String(preset) : (prompt(t('promptRenameWorkbook'), book.name) || '')).trim();
   if (!name || name === book.name) return;
   const oldFolder = book.folder;
   book.name = name;
@@ -4316,10 +4435,10 @@ async function openChapter(id) {
   if (isSmallScreen()) closeAllPanels();
 }
 
-async function renameChapter(id) {
+async function renameChapter(id, preset) {
   const ch = wbChapter(id);
   if (!ch) return;
-  const title = (prompt(t('promptRenameChapter'), ch.title) || '').trim();
+  const title = (preset != null ? String(preset) : (prompt(t('promptRenameChapter'), ch.title) || '')).trim();
   if (!title || title === ch.title) return;
   const book = wbBook(ch.workbookId);
   const oldFile = ch.file;

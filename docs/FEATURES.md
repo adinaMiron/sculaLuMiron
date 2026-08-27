@@ -386,7 +386,16 @@ workbook subfolder.
   is schemaless past `keyPath: 'id'`. Add a real `WB_VER` upgrade only if
   you need a new object store or index.
 - Anything that changes `title` or `name` must go through the rename path
-  so the mirror moves with it.
+  so the mirror moves with it. `renameWorkbook(id, preset)` /
+  `renameChapter(id, preset)` take an optional pre-supplied name (skips the
+  `prompt()`); the `✎` buttons call them bare, the inline editor passes the
+  edited text.
+- **Inline rename.** `wbBindName()` wires each `.wb-book-name` /
+  `.wb-ch-name` span so a double-click — or one click then `F2` — turns it
+  `contenteditable` (`wbInlineRename()`); Enter/blur commits, Escape
+  cancels. A single click keeps its old job (toggle / open) but fires
+  ~230 ms late so the double-click can pre-empt it. `wbLastName` remembers
+  the last name touched so `F2` still lands after the click's repaint.
 - **Reordering.** `▲`/`▼` on each `.wb-book-row` and `.wb-ch-row` call
   `moveWorkbook(id, ±1)` / `moveChapter(id, ±1)`, which renumber the
   affected list's `order` fields sequentially and persist the changed
