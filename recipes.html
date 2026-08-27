@@ -1146,12 +1146,30 @@
         </div>
         <p class="hint" data-i="saveHint">„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.</p>
       </div>
+
+      <!-- ===== 4. the shareable page ===== -->
+      <div class="card" id="htmlCard" hidden>
+        <h2><span class="step">4</span><span data-i="stepHtml">Pagina HTML</span></h2>
+        <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
+        <label class="field">
+          <span data-i="htmlTitleLabel">Titlul paginii</span>
+          <input type="text" id="htmlTitle" data-i-placeholder="htmlTitlePh">
+        </label>
+        <div class="row">
+          <button type="button" class="btn primary" id="btnHtmlSave" data-i="exportHtml">Exportă .html</button>
+          <button type="button" class="btn" id="btnHtmlOpen" data-i="openHtml">Deschide într-o filă</button>
+        </div>
+        <details class="more" id="htmlBox">
+          <summary data-i="htmlPreviewLabel">Previzualizare</summary>
+          <iframe id="htmlFrame" sandbox="allow-scripts" title="" data-i-title="htmlPreviewLabel"></iframe>
+        </details>
+      </div>
     </section>
 
     <section>
-      <!-- ===== 4. review ===== -->
+      <!-- ===== 5. review ===== -->
       <div class="card">
-        <h2><span class="step">4</span><span data-i="stepCheck">Verifică rețetele</span></h2>
+        <h2><span class="step">5</span><span data-i="stepCheck">Verifică rețetele</span></h2>
         <div class="filters" id="filters" hidden>
           <label class="search">
             <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
@@ -1173,24 +1191,6 @@
         </div>
       </div>
     </section>
-  </div>
-
-  <!-- ===== 5. the shareable page ===== -->
-  <div class="card" id="htmlCard" hidden>
-    <h2><span class="step">5</span><span data-i="stepHtml">Pagina HTML</span></h2>
-    <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
-    <label class="field">
-      <span data-i="htmlTitleLabel">Titlul paginii</span>
-      <input type="text" id="htmlTitle" data-i-placeholder="htmlTitlePh">
-    </label>
-    <div class="row">
-      <button type="button" class="btn primary" id="btnHtmlSave" data-i="exportHtml">Exportă .html</button>
-      <button type="button" class="btn" id="btnHtmlOpen" data-i="openHtml">Deschide într-o filă</button>
-    </div>
-    <details class="more" id="htmlBox">
-      <summary data-i="htmlPreviewLabel">Previzualizare</summary>
-      <iframe id="htmlFrame" sandbox="allow-scripts" title="" data-i-title="htmlPreviewLabel"></iframe>
-    </details>
   </div>
 </div>
 

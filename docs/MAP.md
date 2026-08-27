@@ -373,7 +373,7 @@ Map only below.
 |---|---|
 | 11–337 | App CSS. `:root` **12–51** (earth palette, semantic names). Buttons 92–120, drop zone 121–134, day/meal cards 166–212 including **the per-ingredient USDA line `.ing + .nut` 187–201**, **search / chips / collapsed days / `.grp` 213–257**, markdown preview 258–277, **`#htmlFrame` (the shareable page, previewed) 278–283**, tabs 284–291, folds + checkboxes + `.badge` 292–313 |
 | 340–995 | **Shared nav + `ScuLaFolder`** |
-| 998–1176 | Markup: **five** numbered cards — source ▸ text ▸ markdown ▸ review, then `#htmlCard` (**1158–1173**, full width under the two columns). The OCR fold is `#ocrBox` (1027–1062); `#optNutri` 1104, **the USDA fold `#nutriBox` 1113–1123**, `#onlyShownBox` 1107, the filter bar is `#filters` (1137, holds `#qBox` and the comma-separated `#ingBox`), `#found` 1144. `#btnMd` + `#mdFile` + `#bookFile` are in card 1. `<datalist id="usdaList">` is at **1176**, after the wrap and filled once at init |
+| 998–1181 | Markup: **five** numbered cards — left column: source ▸ text ▸ markdown ▸ `#htmlCard` (**Pagina HTML**, step 4); right column: review (step 5). The OCR fold is `#ocrBox` (1027–1062); `#optNutri` 1104, **the USDA fold `#nutriBox` 1113–1123**, `#onlyShownBox` 1107, the filter bar is `#filters` (1137, holds `#qBox` and the comma-separated `#ingBox`), `#found` 1144. `#btnMd` + `#mdFile` + `#bookFile` are in card 1. `<datalist id="usdaList">` is at **1176**, after the wrap and filled once at init |
 | 1178–7072 | App script, numbered sections below |
 
 | Line | Section |
