@@ -16,7 +16,7 @@ Shared shape of all four files:
 
 ## The shared block (byte-identical in all four files)
 
-`index.html:226-881` · `editor.html:418-1073` ·
+`index.html:226-881` · `editor.html:422-1077` ·
 `markdown-editor.html:1402-2057` · `recipes.html:408-1063`
 
 Two features share it, because both must exist before any app script runs:
@@ -93,7 +93,7 @@ blob next to the transcript under the name the transcript actually got
 
 ---
 
-## editor.html — 4648 lines · "Image Marker" (canvas annotation)
+## editor.html — 4923 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -110,53 +110,88 @@ touch" for why and how.
 | Lines | Contents |
 |---|---|
 | 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
-| 15–414 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 15–418 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
 | 72–117 | Top toolbar |
-| 121–141 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform |
-| 247–342 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
-| 343–414 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 418–1072 | **Shared nav + `ScuLaFolder`** |
-| 1080–1107 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
-| 1109–1146 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1148–1274 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1275–1376 | Markup: modals, stage, sidebar |
-| 1378–4646 | App script |
+| 121–145 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform. `#stage.infinite` drops the drop shadow — that sheet has no edge worth casting one |
+| 251–346 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
+| 347–418 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 422–1076 | **Shared nav + `ScuLaFolder`** |
+| 1084–1111 | Markup: `#toolbar` (file / zoom / capture / panel toggles) |
+| 1113–1150 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1152–1263 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1264–1346 | Markup: `#newCanvasOverlay` — the size presets, incl. `.sizePreset[data-infinite="1"]` |
+| 1347–1380 | Markup: the other modals, stage, sidebar |
+| 1383–4921 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1382 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1596 | State — `state` object (incl. `zoom`/`panX`/`panY`), style defaults, `PALETTE` |
-| 1647 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1689 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
-| 1747 | Loading an image |
-| 1783 | Screen snapshot |
-| 1823 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 1969 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2071** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `setZoom`/`setZoomAt`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| 2200 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2252 | New canvas modal |
-| **2334** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| **2690** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
-| 3167 | Layer list (sidebar) — `renderLayerList` |
-| **3217** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3470** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3654** | **Selection panel contents** — `ROW_TYPES` (3668), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
-| 3752 | Text box auto-fit |
-| 3763 | Pointer/canvas coords — `canvasPoint()` |
-| **3802** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 4317 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 4400 | Keyboard shortcuts |
-| 4444 | Save — `renderComposite`, **`saveOut()`** 4475 (one line onto `ScuLaFolder.save`) |
-| 4483 | Save all sizes (zip) — `makeZip`, `crc32` |
-| 4632 | Fonts ready — `document.fonts.load()` startup pass |
+| 1387 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1605 | State — `state` object (incl. `zoom`/`panX`/`panY`, and `infinite`/`originX`/`originY`/`renderScale`), style defaults, `PALETTE` |
+| 1664 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1706 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, and `committed`, the pre-change state an undo returns to |
+| 1764 | Loading an image — `beginEditing(opts)`, `syncCanvasBuffers`, `setupStage` |
+| 1807 | Screen snapshot |
+| 1847 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 1993 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2120** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `clientToWorld`/`panWorldTo`, `setZoom`/`setZoomAt`, `zoomReset`/`fitDrawing`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| **2287** | **Infinite canvas** — `INF_PAD`, `worldTransform`, `ensureInfiniteWindow`. See the section below |
+| 2368 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2420 | New canvas modal — incl. `modalInfinite` |
+| **2522** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2878** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3366 | Layer list (sidebar) — `renderLayerList` |
+| **3416** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3669** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3853** | **Selection panel contents** — `ROW_TYPES` (3867), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 3951 | Text box auto-fit |
+| 3962 | Pointer/canvas coords — `canvasPoint()`, which returns **world** coords |
+| **4004** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4519 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4602 | Keyboard shortcuts |
+| **4646** | **Save** — `EXPORT_MARGIN`/`inkBounds`/`exportRect` (what an export frames), `renderComposite`, **`saveOut()`** 4742 (one line onto `ScuLaFolder.save`) |
+| 4751 | Save all sizes (zip) — `qualifyingSizes(rect)`, `makeZip`, `crc32` |
+| 4907 | Fonts ready — `document.fonts.load()` startup pass |
 
-Largest region by far is Rendering (2334–3167); go straight to the
+Largest region by far is Rendering (2522–3366); go straight to the
 specific `drawX()` you need.
 
-### The `spline` and `polyline` layers (2690–3018)
+### The infinite canvas (2287–2366, and everywhere it touches)
+
+The New canvas modal's `∞ Infinite` size. The two `<canvas>` elements stop
+being the drawing and become a **window** onto it: `state.originX/Y` say
+where in the unbounded world that window's top-left corner sits,
+`naturalW/H` how much world it spans, `renderScale` how many buffer pixels
+each world pixel gets. Layer coordinates are world coordinates and are
+never rewritten, so undo history, the clipboard and a drag in flight all
+survive a window move untouched.
+
+`ensureInfiniteWindow()` re-cuts the window whenever the view escapes it,
+always covering the viewport plus `INF_PAD` **screen** px and always at
+screen resolution — which is what keeps the buffers about viewport-sized
+however far the drawing sprawls or the view zooms out. There is no size
+cap because there is nothing that grows.
+
+| Where | What it has to know |
+|---|---|
+| `worldTransform(ctx)` | the one place the window becomes a `ctx` transform; `renderBase`/`renderOverlay` each wrap their drawing in it, clearing first at identity |
+| `canvasPoint(evt)` | scales by `naturalW / rect.width` (world px per CSS px, **not** buffer px) and adds the origin |
+| `positionEditor` (both text overlays) | same conversion, the other way: `(l.x - originX) * scale` |
+| `applyPan` | the pan clamp is skipped — an infinite sheet has no edge to hold on to. `zoomReset` → `fitDrawing()` is the way back instead |
+| end of `ensureInfiniteWindow` | `panOrigin` and `gesture.anchor` hold values in the frame that just moved, and are re-expressed. Without it a long pan runs away from the finger |
+| `exportRect()` | there is no sheet to export, so the export frames the ink — see below |
+
+**An export frames the ink, not the sheet.** `inkBounds()` paints the
+layers into a scratch canvas and scans the alpha channel for the real
+edges (layer boxes are only a first guess — a stroke straddles its path, a
+sketchy one wobbles off it, a spline overshoots its vertices); if ink
+reaches the scratch canvas's edge it widens and goes again. `exportRect()`
+adds `EXPORT_MARGIN` (10) px on each side, and that rectangle is the
+exported image's size. A fixed canvas still exports itself, to the pixel.
+
+### The `spline` and `polyline` layers (2878–3216)
 
 The two shapes whose geometry is worth reading before touching. Unlike every
 other type they are **re-derived from their vertices on every repaint** and

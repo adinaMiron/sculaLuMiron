@@ -1,6 +1,7 @@
 # tests/
 
-Ad-hoc Playwright checks for `editor.html` and `recipes.html`, and — in
+Ad-hoc Playwright checks for `editor.html` (including `infinite.js`, the
+infinite canvas and what an export's size is) and `recipes.html`, and — in
 `graph.js`, `find.js`, `nav.js`, `wbrename.js` and `paste.js` — for
 `markdown-editor.html`'s knowledge graph, its search panel, its navigation
 panel, renaming a workbook or chapter in place, and pasting a picture
@@ -65,6 +66,7 @@ viewport without editing it:
 | `desktop.js` | The mouse/keyboard side: Ctrl+wheel zoom at the pointer, plain/Shift+wheel pan, Alt/middle/Space+drag pan, arrow-key pan, zoom buttons, reset |
 | `extras.js` | Sidebar scrolling with a finger, an open text editor following zoom/pan, device rotation mid-session |
 | `withimage.js` | The same gesture checks against a real loaded image, landscape and portrait (`fixtures/land.png`, `fixtures/port.png`) |
+| `infinite.js` | The infinite canvas: the sheet starting larger than the viewport and staying viewport-sized however far the view roams, a rectangle drawn two screens away from the first one being painted where it was put, the zoom label fitting both back on screen, and the export — framed to the ink, its **10 px margin asserted on the exported PNG's own pixels**, growing by exactly the offset a second shape adds, while a fixed 800×600 canvas still exports 800×600 |
 | `undoredo.js` | Undo/redo: first action undoable in one press, redo, multi-step, a selection-only click costing no step, move/delete/paste/group/text/rect-label, redo-stack clearing on a new action, history reset on a new canvas |
 | `spline.js` | The spline curve, mouse side: click-to-place and the four ways to finish, that the curve interpolates its vertices without cusping on bunched-up ones, the curviness slider, dragging/adding/removing/cornering a vertex, closing the path, and vertex editing on a **rotated** curve (the rotation-pivot correction in `setSplinePoints`) |
 | `polyline.js` | The polyline: the `g` shortcut, click-to-place, that every span really is straight (no ink may stray off the chain through the vertices), the property rows it does and doesn't get, dragging / inserting / removing a vertex, closing the shape by clicking the first vertex again, and filling the closed one |

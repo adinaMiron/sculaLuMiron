@@ -138,6 +138,10 @@
      (absolutely positioned) kept getting bigger, which threw off both the
      drop shadow and the centering. */
   #stage{ position:relative; flex:0 0 auto; box-shadow: 0 6px 26px rgba(0,0,0,.18); margin:auto; }
+  /* The infinite sheet has no edges to speak of - it is a window that follows
+     the view and is always larger than the viewport - so its drop shadow
+     would only ever be a lie hanging just off screen. */
+  #stage.infinite{ box-shadow:none; }
   #baseCanvas, #overlayCanvas{ position:absolute; top:0; left:0; display:block; }
   #overlayCanvas{
     cursor: crosshair;
@@ -1270,6 +1274,7 @@
         <button class="sizePreset" data-w="1600" data-h="1200">1600 × 1200</button>
         <button class="sizePreset" data-w="1920" data-h="1080">1920 × 1080</button>
         <button class="sizePreset" data-w="4096" data-h="2160">4096 × 2160</button>
+        <button class="sizePreset" data-infinite="1" data-i="infiniteSizeBtn" style="grid-column:1/-1;">∞ Infinite — draw anywhere</button>
       </div>
 
       <label class="modalLabel" data-i="lblOrientation">Orientation</label>
@@ -1344,9 +1349,11 @@
       <div id="emptyState">
         <p><b data-i="emptyStateHeading">No image loaded yet.</b><br>
         <span data-i="emptyStateBody">Click “Open image” to load a JPG or PNG, or “New canvas” to start from
-        a blank canvas of a chosen size. Claude works on an in-memory
-        duplicate — your original file on disk is never touched, and the saved
-        result keeps the same pixel dimensions as the canvas.</span></p>
+        a blank canvas of a chosen size — or from the infinite canvas, where you
+        can draw anywhere. Claude works on an in-memory duplicate — your original
+        file on disk is never touched, and the saved result keeps the same pixel
+        dimensions as the canvas; on the infinite canvas it is cropped to your
+        drawing, with a 10 px margin.</span></p>
       </div>
       <div id="stage" style="display:none;">
         <canvas id="baseCanvas"></canvas>
@@ -1433,13 +1440,15 @@ const I18N = {
     landscapeBtn:"▭ Peisaj", portraitBtn:"▯ Portret", lblBackground:"Fundal",
     colorBgBtn:"🎨 Culoare", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Culoarea fundalului",
     cancelBtn:"Anulează", createCanvasBtn:"Creează canvas",
+    infiniteSizeBtn:"∞ Infinit — desenează oriunde",
+    infiniteSummary:bg=>`∞ Pânză infinită · ${bg} · exportul se decupează pe desen, cu 10 px margine`,
     saveAllSizesTitle:"Salvează toate dimensiunile", lblFormat:"Format", savingEllipsis:"Se salvează…",
     recordingPreviewTitle:"Previzualizare înregistrare", closeTip:"Închide",
     playTip:"Redă / pauză", playLabel:"▶ Redă",
     stopTip:"Oprește (derulează la început)", stopLabel:"⏹ Oprește",
     muteTip:"Fără sunet / cu sunet", volumeTip:"Volum", fullscreenTip:"Ecran complet", downloadBtn:"💾 Descarcă",
     emptyStateHeading:"Nicio imagine încărcată încă.",
-    emptyStateBody:"Apasă „Deschide imagine” pentru a încărca un JPG sau PNG, sau „Canvas nou” pentru a începe de la un canvas gol de o dimensiune aleasă. Claude lucrează pe o copie în memorie — fișierul tău original de pe disc nu este niciodată atins, iar rezultatul salvat păstrează aceleași dimensiuni în pixeli ca și canvasul.",
+    emptyStateBody:"Apasă „Deschide imagine” pentru a încărca un JPG sau PNG, sau „Canvas nou” pentru a începe de la un canvas gol de o dimensiune aleasă — ori de la pânza infinită, unde desenezi oriunde. Claude lucrează pe o copie în memorie — fișierul tău original de pe disc nu este niciodată atins, iar rezultatul salvat păstrează aceleași dimensiuni în pixeli ca și canvasul; pe pânza infinită se decupează pe desenul tău, cu 10 px margine.",
     lblLayers:"Straturi",
     copyBtn:"Copiază", copyTip:"Copiază (Ctrl+C)", pasteBtn:"Lipește", pasteTip:"Lipește (Ctrl+V)",
     groupBtn:"Grupează", groupTip:"Grupează (Ctrl+G)", ungroupBtn:"Degrupează", ungroupTip:"Degrupează (Ctrl+Shift+G)",
@@ -1508,13 +1517,15 @@ const I18N = {
     landscapeBtn:"▭ Landscape", portraitBtn:"▯ Portrait", lblBackground:"Background",
     colorBgBtn:"🎨 Color", transparentBgBtn:"▦ Transparent", newCanvasColorTip:"Background color",
     cancelBtn:"Cancel", createCanvasBtn:"Create canvas",
+    infiniteSizeBtn:"∞ Infinite — draw anywhere",
+    infiniteSummary:bg=>`∞ Infinite canvas · ${bg} · the export is cropped to your drawing, with a 10 px margin`,
     saveAllSizesTitle:"Save all sizes", lblFormat:"Format", savingEllipsis:"Saving…",
     recordingPreviewTitle:"Recording preview", closeTip:"Close",
     playTip:"Play / pause", playLabel:"▶ Play",
     stopTip:"Stop (rewind to start)", stopLabel:"⏹ Stop",
     muteTip:"Mute / unmute", volumeTip:"Volume", fullscreenTip:"Fullscreen", downloadBtn:"💾 Download",
     emptyStateHeading:"No image loaded yet.",
-    emptyStateBody:"Click “Open image” to load a JPG or PNG, or “New canvas” to start from a blank canvas of a chosen size. Claude works on an in-memory duplicate — your original file on disk is never touched, and the saved result keeps the same pixel dimensions as the canvas.",
+    emptyStateBody:"Click “Open image” to load a JPG or PNG, or “New canvas” to start from a blank canvas of a chosen size — or from the infinite canvas, where you can draw anywhere. Claude works on an in-memory duplicate — your original file on disk is never touched, and the saved result keeps the same pixel dimensions as the canvas; on the infinite canvas it is cropped to your drawing, with a 10 px margin.",
     lblLayers:"Layers",
     copyBtn:"Copy", copyTip:"Copy (Ctrl+C)", pasteBtn:"Paste", pasteTip:"Paste (Ctrl+V)",
     groupBtn:"Group", groupTip:"Group (Ctrl+G)", ungroupBtn:"Ungroup", ungroupTip:"Ungroup (Ctrl+Shift+G)",
@@ -1614,6 +1625,14 @@ const state = {
   naturalW: 0,
   naturalH: 0,
   canvasReady: false, // true once an image is loaded OR a blank canvas is created
+  // Infinite sheet (see that section). While it is on, naturalW/H stop being
+  // "the drawing" and become only the window of it currently painted, and
+  // originX/Y say where in the unbounded world that window sits. Every layer
+  // coordinate is a world coordinate, so nothing about a drawing changes when
+  // the window moves. Off, all three are the values that make it a no-op.
+  infinite: false,
+  originX: 0, originY: 0, // world coords of the sheet's top-left corner
+  renderScale: 1, // canvas buffer px per world px
   bgFill: null, // null = transparent background (blank-canvas mode only); otherwise a hex color
   liveVideoMode: false, // true while a screen recording's live feed is being drawn into the canvas
   zoom: 1, // user zoom multiplier on top of fitScale; 1 = "fit the window"
@@ -1767,13 +1786,20 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
-function beginEditing(){
+// An image, a screen snapshot and a recording all arrive as a sheet of a
+// fixed size; only the New canvas modal can ask for the unbounded one, by
+// passing { infinite:true }.
+function beginEditing(opts){
+  opts = opts || {};
   state.layers = [];
   state.selection = [];
   state.pendingSpline = null;
   state.vertexSel = null;
   resetHistory();
   state.canvasReady = true;
+  state.infinite = !!opts.infinite;
+  if (!state.infinite){ state.originX = 0; state.originY = 0; }
+  state.renderScale = 1;
   state.zoom = 1;
   state.panX = 0; state.panY = 0;
   setupStage();
@@ -2055,15 +2081,40 @@ recordingOverlay.addEventListener('click', (e) => {
   if (e.target === recordingOverlay){ recordingVideo.pause(); recordingOverlay.classList.remove('open'); }
 });
 
+// Buffer size follows both the sheet and the resolution it is kept at.
+// Assigning c.width clears the canvas even when the value is unchanged, so
+// this only writes when it actually differs - a pan must not blank the
+// drawing between two renders.
+function syncCanvasBuffers(){
+  const rs = state.renderScale || 1;
+  const bw = Math.max(1, Math.round(state.naturalW * rs));
+  const bh = Math.max(1, Math.round(state.naturalH * rs));
+  [baseCanvas, overlayCanvas].forEach(c => {
+    if (c.width !== bw) c.width = bw;
+    if (c.height !== bh) c.height = bh;
+  });
+}
+
 function setupStage(){
   emptyState.style.display = 'none';
   stage.style.display = 'block';
+  stage.classList.toggle('infinite', state.infinite);
+  if (state.infinite){
+    // Nothing to fit: the sheet is a window that follows the view, so 100%
+    // stays 100% and ensureInfiniteWindow() (via applyPan) sizes the window
+    // to whatever the viewport now shows.
+    state.fitScale = 1;
+    syncCanvasBuffers();
+    applyZoomDisplay();
+    return;
+  }
   // On short viewports (phones) the padding allowance can exceed the space
   // available, which previously yielded a negative scale and broke sizing.
   const maxW = Math.max(40, canvasWrap.clientWidth - 40);
   const maxH = Math.max(40, canvasWrap.clientHeight - 40);
   state.fitScale = Math.max(0.02, Math.min(1, maxW/state.naturalW, maxH/state.naturalH));
-  [baseCanvas, overlayCanvas].forEach(c => { c.width = state.naturalW; c.height = state.naturalH; });
+  state.renderScale = 1;
+  syncCanvasBuffers();
   applyZoomDisplay();
 }
 window.addEventListener('resize', () => { if (state.canvasReady) setupStage(); renderAll(); });
@@ -2108,9 +2159,12 @@ let appliedPanX = 0, appliedPanY = 0;
    is smaller - the drawing or the viewport - must stay on screen: zoomed in,
    that lets every edge be dragged well past the middle of the view (nothing
    ever jams against an edge, and no floating panel can permanently cover a
-   corner); zoomed out, the drawing can be nudged aside but never lost. */
+   corner); zoomed out, the drawing can be nudged aside but never lost.
+
+   The infinite sheet is exempt: it has no edges to hold on to, so the view
+   roams free and the zoom label doubles as the way back (see fitDrawing). */
 function applyPan(){
-  if (state.canvasReady){
+  if (state.canvasReady && !state.infinite){
     const r = stage.getBoundingClientRect();
     const wr = canvasWrap.getBoundingClientRect();
     const baseLeft = r.left - appliedPanX, baseTop = r.top - appliedPanY;
@@ -2123,6 +2177,8 @@ function applyPan(){
   appliedPanX = Math.round(state.panX); appliedPanY = Math.round(state.panY);
   stage.style.transform = `translate3d(${appliedPanX}px, ${appliedPanY}px, 0)`;
   if (repositionEditor) repositionEditor();
+  // The view just moved; on an infinite sheet the painted window follows it.
+  ensureInfiniteWindow();
 }
 
 // The point of the drawing (natural canvas pixels) under a screen point...
@@ -2139,6 +2195,17 @@ function panContentTo(c, cx, cy){
   applyPan();
 }
 function panBy(dx, dy){ state.panX += dx; state.panY += dy; applyPan(); }
+
+// The same two, in world coordinates - the space every layer is stored in,
+// and the one that outlives any particular window onto it. Identical to the
+// pair above unless the sheet is infinite.
+function clientToWorld(cx, cy){
+  const c = clientToContent(cx, cy);
+  return { x: c.x + state.originX, y: c.y + state.originY };
+}
+function panWorldTo(w, cx, cy){
+  panContentTo({ x: w.x - state.originX, y: w.y - state.originY }, cx, cy);
+}
 
 function setZoom(newZoom){
   if (!state.canvasReady) return;
@@ -2161,8 +2228,30 @@ function zoomIn(){ const c = viewportCenter(); setZoomAt(state.zoom * 1.25, c.x,
 function zoomOut(){ const c = viewportCenter(); setZoomAt(state.zoom / 1.25, c.x, c.y); }
 function zoomReset(){ // back to "fit the window", centred
   if (!state.canvasReady) return;
+  if (state.infinite){ fitDrawing(); return; }
   state.zoom = 1; state.panX = 0; state.panY = 0;
   applyZoomDisplay();
+}
+
+/* An infinite sheet has no "whole canvas" to fit, so the zoom label brings
+   the drawing back instead: every mark on screen at once, centred, with a
+   little room around it. With nothing drawn yet it returns to 100% at the
+   world origin - the corner the sheet started in. */
+function fitDrawing(){
+  const wr = canvasWrap.getBoundingClientRect();
+  const vis = state.layers.filter(l => l.visible !== false);
+  if (!vis.length){
+    state.zoom = 1;
+    applyZoomDisplay();
+    panWorldTo({ x:0, y:0 }, wr.left + 40, wr.top + 40);
+    return;
+  }
+  const b = boundingBoxOf(vis);
+  const pad = 48;
+  const fit = Math.min((wr.width - pad*2) / Math.max(1, b.w), (wr.height - pad*2) / Math.max(1, b.h));
+  state.zoom = Math.max(0.1, Math.min(8, fit)); // fitScale is 1 here, so zoom is the whole scale
+  applyZoomDisplay();
+  panWorldTo({ x: b.x + b.w/2, y: b.y + b.h/2 }, wr.left + wr.width/2, wr.top + wr.height/2);
 }
 
 document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
@@ -2196,6 +2285,87 @@ canvasWrap.addEventListener('wheel', (e) => {
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(type => {
   document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
 });
+
+/* ===================== Infinite canvas =====================
+   "Draw anywhere" is a coordinate story, not a bigger canvas. Layers already
+   live in world coordinates and canvasPoint() already hands back whatever
+   coordinate the pointer is over, negative ones included - what was missing
+   was somewhere to paint them. So the two canvases stop being the drawing and
+   become a *window* onto it: originX/Y say where in the world the window's
+   top-left corner sits, naturalW/H how much world it spans, renderScale how
+   many buffer pixels each world pixel gets. Nothing else in the app changes
+   coordinate system; renderBase/renderOverlay carry the window in a single
+   ctx transform, and canvasPoint adds the origin back.
+
+   The window is re-cut whenever the view escapes it, always covering the
+   viewport plus INF_PAD screen px of margin, and always at screen resolution.
+   That is what keeps this cheap: the buffers stay about the size of the
+   viewport no matter how far the drawing sprawls or how far the view is
+   zoomed out, so there is no size cap, no allocation that grows with the
+   drawing, and nothing to run out of. A layer outside the window simply is
+   not painted this frame - it is still in state.layers, still in the layers
+   panel, and still exported. Panning back paints it again.
+
+   Nothing here ever rewrites a layer, so undo history, the clipboard and an
+   in-progress drag all stay valid across a re-cut. */
+
+const INF_PAD = 320; // screen px painted beyond the viewport, so a small pan needs no re-cut
+
+// True while a re-cut is adjusting the pan, to keep applyPan from asking for
+// another one underneath the one in progress.
+let infiniteAdjusting = false;
+
+// World -> canvas buffer. Identity for a fixed sheet.
+function worldTransform(ctx){
+  const rs = state.renderScale || 1;
+  ctx.setTransform(rs, 0, 0, rs, -state.originX*rs, -state.originY*rs);
+}
+
+function ensureInfiniteWindow(){
+  if (!state.infinite || !state.canvasReady || infiniteAdjusting) return;
+  const wr = canvasWrap.getBoundingClientRect();
+  if (!wr.width || !wr.height) return;
+  const scale = viewScale();
+  // the world rectangle that has to be paintable right now
+  const tl = clientToWorld(wr.left - INF_PAD, wr.top - INF_PAD);
+  const br = clientToWorld(wr.right + INF_PAD, wr.bottom + INF_PAD);
+  const covers = state.originX <= tl.x && state.originY <= tl.y &&
+                 state.originX + state.naturalW >= br.x &&
+                 state.originY + state.naturalH >= br.y;
+  // Resolution is allowed to drift a little before it is worth re-cutting:
+  // a wheel zoom would otherwise reallocate and repaint on every event, and
+  // a fifth of a pixel either way is not something anyone can see.
+  const drift = state.renderScale / scale;
+  if (covers && drift >= 0.8 && drift <= 1.25) return;
+
+  const anchor = clientToWorld(wr.left, wr.top); // stays under the same pixel
+  const wasOriginX = state.originX, wasOriginY = state.originY;
+  const wasPanX = state.panX, wasPanY = state.panY;
+  state.originX = Math.floor(tl.x);
+  state.originY = Math.floor(tl.y);
+  state.naturalW = Math.max(1, Math.ceil(br.x - state.originX));
+  state.naturalH = Math.max(1, Math.ceil(br.y - state.originY));
+  state.renderScale = scale;
+  infiniteAdjusting = true;
+  syncCanvasBuffers();
+  applyZoomDisplay();
+  panWorldTo(anchor, wr.left, wr.top);
+  infiniteAdjusting = false;
+
+  /* A gesture in flight remembers where it started, and both frames it could
+     have remembered it in just moved: a pan drag holds the pan value it began
+     from, a pinch holds the sheet point it keeps under the fingers. Neither is
+     a world coordinate, so both are re-expressed here. Without this the view
+     lurches on every re-cut and a long pan runs away from the finger - each
+     re-cut used to be undone by the next move event, which restored the pan
+     but not the origin it was measured against. */
+  if (panOrigin){ panOrigin.panX += state.panX - wasPanX; panOrigin.panY += state.panY - wasPanY; }
+  if (gesture && gesture.anchor){
+    gesture.anchor.x -= state.originX - wasOriginX;
+    gesture.anchor.y -= state.originY - wasOriginY;
+  }
+  renderCanvasFrame(); // the buffers were just resized, so they are blank
+}
 
 /* ===================== Pan =====================
    Alt+drag, middle-click drag, Space+drag and a plain drag on the checkered
@@ -2254,6 +2424,7 @@ const newCanvasOverlay = document.getElementById('newCanvasOverlay');
 let modalPreset = { w: 800, h: 600 };
 let modalOrient = 'landscape';
 let modalBg = 'color';
+let modalInfinite = false;
 
 function openNewCanvasModal(){ newCanvasOverlay.classList.add('open'); }
 function closeNewCanvasModal(){ newCanvasOverlay.classList.remove('open'); }
@@ -2264,8 +2435,14 @@ newCanvasOverlay.addEventListener('click', (e) => { if (e.target === newCanvasOv
 
 document.querySelectorAll('.sizePreset').forEach(btn => {
   btn.addEventListener('click', () => {
-    modalPreset = { w: parseInt(btn.dataset.w,10), h: parseInt(btn.dataset.h,10) };
+    modalInfinite = btn.dataset.infinite === '1';
+    if (!modalInfinite) modalPreset = { w: parseInt(btn.dataset.w,10), h: parseInt(btn.dataset.h,10) };
     document.querySelectorAll('.sizePreset').forEach(b => b.classList.toggle('active', b===btn));
+    // an unbounded sheet is neither landscape nor portrait
+    document.querySelectorAll('.orientBtn').forEach(b => {
+      b.disabled = modalInfinite;
+      b.style.opacity = modalInfinite ? '.35' : '1';
+    });
     updateNewCanvasSummary();
   });
 });
@@ -2296,18 +2473,31 @@ function effectiveCanvasDims(){
 }
 
 function updateNewCanvasSummary(){
-  const { w, h } = effectiveCanvasDims();
   const bgLabel = modalBg === 'transparent' ? t('bgTransparent') : t('bgColor', document.getElementById('newCanvasColor').value);
-  document.getElementById('newCanvasSummary').textContent = `${w} × ${h} · ${bgLabel}`;
+  const el = document.getElementById('newCanvasSummary');
+  if (modalInfinite){ el.textContent = t('infiniteSummary', bgLabel); return; }
+  const { w, h } = effectiveCanvasDims();
+  el.textContent = `${w} × ${h} · ${bgLabel}`;
 }
 updateNewCanvasSummary();
 
 document.getElementById('newCanvasCreate').addEventListener('click', () => {
-  const { w, h } = effectiveCanvasDims();
   baseImage = null;
   state.bgFill = modalBg === 'transparent' ? null : document.getElementById('newCanvasColor').value;
-  state.naturalW = w; state.naturalH = h;
-  beginEditing();
+  if (modalInfinite){
+    // Start the window on the viewport with the world origin in its top-left
+    // corner - that corner is "home", where the zoom label returns to while
+    // the sheet is still empty. ensureInfiniteWindow() takes it from there.
+    const wr = canvasWrap.getBoundingClientRect();
+    state.originX = 0; state.originY = 0;
+    state.naturalW = Math.max(320, Math.round(wr.width) || 800);
+    state.naturalH = Math.max(240, Math.round(wr.height) || 600);
+    beginEditing({ infinite: true });
+  } else {
+    const { w, h } = effectiveCanvasDims();
+    state.naturalW = w; state.naturalH = h;
+    beginEditing();
+  }
   closeNewCanvasModal();
 });
 
@@ -3074,14 +3264,20 @@ function drawLayer(ctx, l){
 }
 
 function renderBase(){
+  // clearing is buffer work, so it happens before the world transform goes on
+  baseCtx.setTransform(1,0,0,1,0,0);
   baseCtx.clearRect(0,0,baseCanvas.width, baseCanvas.height);
+  baseCtx.save();
+  worldTransform(baseCtx);
   if (state.liveVideoMode && liveVideoEl && liveVideoEl.videoWidth){
-    baseCtx.drawImage(liveVideoEl, 0, 0, baseCanvas.width, baseCanvas.height);
+    baseCtx.drawImage(liveVideoEl, 0, 0, state.naturalW, state.naturalH);
   } else if (baseImage){
-    baseCtx.drawImage(baseImage, 0, 0, baseCanvas.width, baseCanvas.height);
+    baseCtx.drawImage(baseImage, 0, 0, state.naturalW, state.naturalH);
   } else if (state.bgFill){
+    // the whole window, wherever it currently sits, so an infinite sheet's
+    // background reaches every corner of the view
     baseCtx.fillStyle = state.bgFill;
-    baseCtx.fillRect(0, 0, baseCanvas.width, baseCanvas.height);
+    baseCtx.fillRect(state.originX, state.originY, state.naturalW, state.naturalH);
   } // else: leave fully transparent
   state.layers.forEach(l => {
     if (l.visible === false) return;
@@ -3093,6 +3289,7 @@ function renderBase(){
     }
     drawLayer(baseCtx, l);
   });
+  baseCtx.restore();
 }
 
 function boundingBoxOf(layers){
@@ -3108,7 +3305,10 @@ function boundingBoxOf(layers){
 }
 
 function renderOverlay(){
+  octx.setTransform(1,0,0,1,0,0);
   octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+  octx.save();
+  worldTransform(octx);
   const sel = selectedLayers();
   if (sel.length){
     const box = boundingBoxOf(sel);
@@ -3134,6 +3334,7 @@ function renderOverlay(){
     drawLayer(octx, pendingSplinePreview());
     drawSplineVertices(state.pendingSpline.layer);
   }
+  octx.restore();
 }
 
 function strokeSelBox(x,y,w,h){
@@ -3763,8 +3964,11 @@ function fitTextBox(l){
 /* ===================== Pointer / canvas coordinates ===================== */
 function canvasPoint(evt){
   const rect = overlayCanvas.getBoundingClientRect();
-  const sx = overlayCanvas.width / rect.width, sy = overlayCanvas.height / rect.height;
-  return { x: (evt.clientX - rect.left) * sx, y: (evt.clientY - rect.top) * sy };
+  // world px per CSS px - deliberately not buffer px per CSS px: on an
+  // infinite sheet the buffer is kept at screen resolution, so the two differ,
+  // and the origin has to come back on top
+  const sx = state.naturalW / rect.width, sy = state.naturalH / rect.height;
+  return { x: (evt.clientX - rect.left) * sx + state.originX, y: (evt.clientY - rect.top) * sy + state.originY };
 }
 
 function hitHandle(l, p){
@@ -4351,9 +4555,9 @@ function openTextEditor(l, isNew){
 
 function positionEditor(ta, l){
   const rect = overlayCanvas.getBoundingClientRect();
-  const scale = rect.width / overlayCanvas.width;
-  ta.style.left = (rect.left + window.scrollX + l.x*scale) + 'px';
-  ta.style.top = (rect.top + window.scrollY + l.y*scale) + 'px';
+  const scale = rect.width / state.naturalW; // CSS px per world px
+  ta.style.left = (rect.left + window.scrollX + (l.x - state.originX)*scale) + 'px';
+  ta.style.top = (rect.top + window.scrollY + (l.y - state.originY)*scale) + 'px';
   ta.style.width = Math.max(40, l.w*scale) + 'px';
   ta.style.height = Math.max(24, l.h*scale) + 'px';
   ta.style.font = (l.bold ? 'bold ' : '') + (l.fontSize*scale) + 'px "' + l.font + '"';
@@ -4371,9 +4575,9 @@ function openRectTextEditor(l){
   document.body.appendChild(ta);
   const posEditor = () => {
     const rect = overlayCanvas.getBoundingClientRect();
-    const scale = rect.width / overlayCanvas.width;
-    ta.style.left = (rect.left + window.scrollX + l.x*scale) + 'px';
-    ta.style.top = (rect.top + window.scrollY + l.y*scale) + 'px';
+    const scale = rect.width / state.naturalW; // CSS px per world px
+    ta.style.left = (rect.left + window.scrollX + (l.x - state.originX)*scale) + 'px';
+    ta.style.top = (rect.top + window.scrollY + (l.y - state.originY)*scale) + 'px';
     ta.style.width = Math.max(40, l.w*scale) + 'px';
     ta.style.height = Math.max(24, l.h*scale) + 'px';
     ta.style.font = ((l.textSize||18)*scale) + 'px "' + (l.font||'Raleway') + '"';
@@ -4442,13 +4646,77 @@ window.addEventListener('keydown', (e) => {
 });
 
 /* ===================== Save ===================== */
-// Renders the full composite (background + every layer) into a new canvas
-// at the given output size, by scaling the drawing context rather than
-// touching any per-layer coordinates - every layer already draws itself
-// correctly in "natural" canvas space, so this just maps that space onto
-// whatever physical pixel size we ask for.
+/* What an export covers, in world coordinates. A fixed sheet exports itself,
+   exactly as it always has. An infinite one has no edges to export, so it
+   exports the ink instead: the smallest rectangle containing every mark, with
+   EXPORT_MARGIN px of air on each side. That rectangle is the exported image's
+   size - a stroke in the far corner of a sprawling sheet costs nothing but the
+   pixels it needs. */
+const EXPORT_MARGIN = 10;
+
+/* The rectangle the ink actually occupies. Layer boxes are only a first
+   guess - a stroke straddles its own path, a sketchy one wobbles off it, and
+   a spline overshoots its own vertices - so the guess is padded generously,
+   painted once into a scratch canvas, and the alpha channel scanned for the
+   true edges. If ink reaches the edge of the scratch canvas the guess was too
+   tight, so it widens and goes again. Big drawings are scanned at a reduced
+   scale and rounded outwards; the margin is the same either way. */
+function inkBounds(){
+  const vis = state.layers.filter(l => l.visible !== false && (l.opacity === undefined || l.opacity > 0));
+  if (!vis.length) return null;
+  const box = boundingBoxOf(vis);
+  let pad = 48 + vis.reduce((m, l) => Math.max(m, (l.strokeWidth || 0) + (l.headSize || 0)), 0);
+  for (let attempt = 0; attempt < 4; attempt++){
+    const rx = Math.floor(box.x - pad), ry = Math.floor(box.y - pad);
+    const rw = Math.max(1, Math.ceil(box.w + pad*2)), rh = Math.max(1, Math.ceil(box.h + pad*2));
+    const s = Math.min(1, Math.sqrt(4e6 / (rw*rh)));
+    const cw = Math.max(1, Math.round(rw*s)), ch = Math.max(1, Math.round(rh*s));
+    const scan = document.createElement('canvas');
+    scan.width = cw; scan.height = ch;
+    const sctx = scan.getContext('2d');
+    sctx.setTransform(s, 0, 0, s, -rx*s, -ry*s);
+    vis.forEach(l => drawLayer(sctx, l));
+    const data = sctx.getImageData(0, 0, cw, ch).data;
+    let minX = cw, minY = ch, maxX = -1, maxY = -1;
+    for (let y = 0; y < ch; y++){
+      for (let x = 0; x < cw; x++){
+        if (data[(y*cw + x)*4 + 3]){
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null; // every layer transparent - nothing to frame
+    const touchesEdge = minX === 0 || minY === 0 || maxX === cw-1 || maxY === ch-1;
+    if (!touchesEdge || attempt === 3){
+      return {
+        x: rx + Math.floor(minX/s), y: ry + Math.floor(minY/s),
+        w: Math.ceil((maxX - minX + 1)/s), h: Math.ceil((maxY - minY + 1)/s)
+      };
+    }
+    pad *= 4;
+  }
+}
+
+function exportRect(){
+  if (!state.infinite) return { x: 0, y: 0, w: state.naturalW, h: state.naturalH };
+  const ink = inkBounds();
+  // nothing drawn yet: export what is on screen rather than nothing at all
+  if (!ink) return { x: state.originX, y: state.originY, w: state.naturalW, h: state.naturalH };
+  const m = EXPORT_MARGIN;
+  return { x: ink.x - m, y: ink.y - m, w: ink.w + m*2, h: ink.h + m*2 };
+}
+
+// Renders the composite (background + every layer) of a world rectangle into
+// a new canvas at the given output size, by scaling and offsetting the drawing
+// context rather than touching any per-layer coordinates - every layer already
+// draws itself correctly in world space, so this just maps the wanted piece of
+// that space onto whatever physical pixel size we ask for.
 function renderComposite(w, h, opts){
   opts = opts || {};
+  const src = opts.rect || { x: 0, y: 0, w: state.naturalW, h: state.naturalH };
   const out = document.createElement('canvas');
   out.width = w; out.height = h;
   const octx2 = out.getContext('2d');
@@ -4458,12 +4726,13 @@ function renderComposite(w, h, opts){
     octx2.fillStyle = '#ffffff';
     octx2.fillRect(0, 0, w, h);
   }
-  octx2.scale(w / state.naturalW, h / state.naturalH);
+  octx2.scale(w / src.w, h / src.h);
+  octx2.translate(-src.x, -src.y);
   if (baseImage){
     octx2.drawImage(baseImage, 0, 0, state.naturalW, state.naturalH);
   } else if (state.bgFill){
     octx2.fillStyle = state.bgFill;
-    octx2.fillRect(0, 0, state.naturalW, state.naturalH);
+    octx2.fillRect(src.x, src.y, src.w, src.h);
   }
   state.layers.forEach(l => drawLayer(octx2, l));
   return out;
@@ -4476,17 +4745,19 @@ const saveOut = (filename, blob) => ScuLaFolder.save(filename, blob);
 
 document.getElementById('saveBtn').addEventListener('click', () => {
   if (!state.canvasReady) return;
-  const out = renderComposite(state.naturalW, state.naturalH);
+  const rect = exportRect();
+  const out = renderComposite(Math.max(1, Math.round(rect.w)), Math.max(1, Math.round(rect.h)), { rect });
   out.toBlob((blob) => { saveOut('edited-image.png', blob); }, 'image/png');
 });
 
 /* ===================== Save all sizes (zip) ===================== */
 const SIZE_PRESETS = [[320,240],[480,360],[800,600],[1200,900],[1600,1200],[1920,1080],[4096,2160]];
 
-function qualifyingSizes(){
+function qualifyingSizes(rect){
   if (!state.canvasReady) return [];
-  const curMax = Math.max(state.naturalW, state.naturalH);
-  const portrait = state.naturalH > state.naturalW;
+  const r = rect || exportRect();
+  const curMax = Math.max(r.w, r.h);
+  const portrait = r.h > r.w;
   return SIZE_PRESETS
     .filter(([bigger]) => bigger <= curMax)
     .map(([bigger, smaller]) => ({
@@ -4577,12 +4848,17 @@ function makeZip(files){
 }
 
 const saveSizesOverlay = document.getElementById('saveSizesOverlay');
+// Framing the ink costs a scan, so the rectangle is worked out once when the
+// modal opens and reused by the save it leads to - nothing can change the
+// drawing in between.
+let saveSizesRect = null;
 function updateSaveSizesSummary(){
-  const sizes = qualifyingSizes();
+  saveSizesRect = exportRect();
+  const sizes = qualifyingSizes(saveSizesRect);
   const summary = document.getElementById('saveSizesSummary');
   const confirmBtn = document.getElementById('saveSizesConfirm');
   if (!sizes.length){
-    summary.textContent = t('tooSmallForExport', [state.naturalW, state.naturalH]);
+    summary.textContent = t('tooSmallForExport', [Math.round(saveSizesRect.w), Math.round(saveSizesRect.h)]);
     confirmBtn.disabled = true;
   } else {
     summary.textContent = t('willSaveSizes', sizes.map(s => `${s.w}×${s.h} (_${s.suffix})`).join(', '));
@@ -4605,7 +4881,8 @@ document.querySelectorAll('.sizesFormatBtn').forEach(btn => {
 });
 
 document.getElementById('saveSizesConfirm').addEventListener('click', async () => {
-  const sizes = qualifyingSizes();
+  const rect = saveSizesRect || exportRect();
+  const sizes = qualifyingSizes(rect);
   if (!sizes.length) return;
   const btn = document.getElementById('saveSizesConfirm');
   const origText = btn.textContent;
@@ -4616,7 +4893,7 @@ document.getElementById('saveSizesConfirm').addEventListener('click', async () =
     const ext = format === 'jpg' ? 'jpg' : 'png';
     const files = [];
     for (const s of sizes){
-      const canvas = renderComposite(s.w, s.h, { forceWhiteBg: format === 'jpg' });
+      const canvas = renderComposite(s.w, s.h, { rect, forceWhiteBg: format === 'jpg' });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, 0.92));
       const data = new Uint8Array(await blob.arrayBuffer());
       files.push({ name: `edited-image_${s.suffix}.${ext}`, data });

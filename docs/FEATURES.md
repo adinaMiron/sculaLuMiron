@@ -111,6 +111,21 @@ list of vertices, do the same rather than copying the block — and ask
 `isVertexShape(l)`, never `l.type === 'spline'`, when the question is whether
 a layer has editable vertices.
 
+### Coordinates are world coordinates, and they can be negative
+
+`canvasPoint(evt)` hands back a point in the world the drawing lives in, not
+a pixel of the canvas buffer. On the infinite canvas (`state.infinite`, the
+`∞ Infinite` size in the New canvas modal) the two `<canvas>` elements are
+only a window onto that world, so a perfectly ordinary shape may sit at
+`x = -4000`, or outside the window entirely.
+
+So a new tool must **never clamp a coordinate to `0 … state.naturalW/H`**,
+never treat those two as the size of the drawing, and never measure anything
+against `baseCanvas.width` — that is the buffer, which is a different number
+again once `state.renderScale` is not 1. Draw in world coordinates like every
+existing `drawX()` does and all three cases (fixed sheet, image, infinite)
+come out right for free. `HANDOFF.md` § "Infinite canvas" has the rest.
+
 ---
 
 ## C. New markdown syntax in `markdown-editor.html`

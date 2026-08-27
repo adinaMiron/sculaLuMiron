@@ -7,7 +7,7 @@ file). Open in a browser; that's the whole toolchain.
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `index.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 4647 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
+| `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
@@ -19,7 +19,7 @@ first, then read a narrow range.
 
 ```bash
 grep -n "functionName\|#elementId" editor.html   # locate
-sed -n '1080,1140p' editor.html                  # read just that
+sed -n '1084,1144p' editor.html                  # read just that
 ```
 
 `docs/MAP.md` has line anchors for every section of all four files. Read
@@ -34,6 +34,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | English/Romanian UI, strings | `docs/I18N.md` |
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
+| The infinite canvas, or what an export's size is | `docs/MAP.md` § "The infinite canvas" |
 | PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md`, the shareable HTML page, searching a big plan, **USDA nutrition** | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
@@ -43,7 +44,7 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all four files (`index.html:226-881`, `editor.html:418-1073`,
+in all four files (`index.html:226-881`, `editor.html:422-1077`,
 `markdown-editor.html:1402-2057`, `recipes.html:408-1063`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
@@ -51,7 +52,7 @@ must be applied to **all four** or they drift. Verify with:
 
 ```bash
 sed -n '226,881p' index.html             > /tmp/n1
-sed -n '418,1073p' editor.html           > /tmp/n2
+sed -n '422,1077p' editor.html           > /tmp/n2
 sed -n '1402,2057p' markdown-editor.html > /tmp/n3
 sed -n '408,1063p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
@@ -123,7 +124,9 @@ needs pixel assertions (`getImageData`), not screenshots. Anything using
 browser under Xvfb; headless Chromium cannot decode media streams at all.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
-pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
+pan, gestures, undo/redo, every tool, and — in `infinite.js` — the infinite
+canvas: drawing two screens apart, the window that follows the view, and the
+export framed to the ink plus its 10 px margin), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown both
 written and read back, the shareable HTML page **driven in the file it
 ships in**, the USDA matcher and the ingredient book, **the 38-nutrient

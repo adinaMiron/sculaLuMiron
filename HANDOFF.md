@@ -31,8 +31,10 @@ function name, and see `docs/MAP.md` for anchors that are kept current.
 ## Mental model
 
 Two stacked `<canvas>` elements inside `#stage`:
-- `#baseCanvas` — the actual content (background + every layer). This is
-  what gets exported.
+- `#baseCanvas` — the actual content (background + every layer). On a
+  fixed sheet this is exactly what gets exported; on an infinite one it is
+  the piece of the drawing currently in view, and the export is re-rendered
+  from `state.layers` at whatever size the ink needs (see § Export).
 - `#overlayCanvas` — selection box, resize/rotate handles, in-progress
   drag previews. Never exported, purely UI chrome. Pointer events are
   listened for one level up, on `#canvasWrap` (see § Zoom / Pan), so a
@@ -222,6 +224,9 @@ empty air, and a click on that air should reach whatever is behind it.
 1. Uploaded image (`Open image` → `baseImage`, original file untouched).
 2. Blank canvas (`New canvas` modal → picks one of 7 preset sizes ×
    landscape/portrait × color/transparent bg → `state.bgFill`).
+2b. **Infinite canvas** (same modal, the `∞ Infinite` size). Draw anywhere:
+   the two canvases stop being the drawing and become a *window* onto an
+   unbounded world — see § Infinite canvas below.
 3. Screenshot (`getDisplayMedia` one-frame grab → drawn into an `Image`,
    same path as #1).
 4. **Live screen recording** — the interesting one: the shared screen is
@@ -239,8 +244,46 @@ empty air, and a click on that air should reach whatever is behind it.
    post-recording review modal (`openRecordingPreview`, ~L753) gets full
    play/pause/seek/volume/mute/download/fullscreen controls.
 
-`beginEditing()` (~L545) is the shared reset used by all four sources:
-clears layers/history, resets zoom, calls `setupStage()`.
+`beginEditing(opts)` is the shared reset used by all four sources: clears
+layers/history, resets zoom, calls `setupStage()`. `opts.infinite` is what
+makes #2b different from #2; every other source passes nothing and gets a
+fixed sheet, which is the whole of what `state.infinite` guards.
+
+## Infinite canvas
+
+`state.infinite` turns `naturalW/H` from "the drawing" into "the piece of it
+currently painted", `state.originX/Y` into where that window sits in the
+world, and `state.renderScale` into how many buffer pixels a world pixel
+gets. **Layer coordinates were always world coordinates** and are never
+rewritten by any of this — which is the point: undo history, the clipboard,
+a drag in flight and an open text editor all stay valid when the window
+moves. `canvasPoint()` already returned whatever coordinate the pointer was
+over, negative ones included; all that was ever missing was somewhere to
+paint them.
+
+`ensureInfiniteWindow()` (called from `applyPan`, so: after every pan, zoom
+and resize) re-cuts the window when the view escapes it or the zoom has
+drifted more than ~20% from the resolution the buffers were cut at. The new
+window covers the viewport plus `INF_PAD` **screen** px, at screen
+resolution — so the buffers stay about viewport-sized no matter how far the
+drawing sprawls or how far out the view zooms. Nothing grows with the
+drawing, so there is no cap and nothing to run out of.
+
+Three consequences worth holding on to:
+
+- **The pan clamp does not apply.** An infinite sheet has no edge to keep
+  half of on screen. `zoomReset()` (the zoom label) runs `fitDrawing()`
+  instead — every mark on screen at once — and that is the only way back
+  from a long roam.
+- **A re-cut moves two frames of reference,** so anything holding a value
+  in either is re-expressed at the end of `ensureInfiniteWindow`:
+  `panOrigin.panX/panY` (a pan drag remembers the pan it started from) and
+  `gesture.anchor` (a pinch remembers a *sheet* point). Miss this and a long
+  pan runs away from the finger — each re-cut is undone by the next move
+  event, which restores the pan but not the origin it was measured against.
+- **A layer outside the window is not painted this frame.** It is still in
+  `state.layers`, still in the layers panel, still exported; panning back
+  paints it again.
 
 ## Zoom / Pan
 
@@ -263,17 +306,19 @@ Two numbers describe the view, both in `state`:
   `applyPan()`.
 
 `applyZoomDisplay()` only sets `style.width/height` on `#stage` and both
-canvases; the canvas *pixel buffers* always stay at `naturalW/H`.
-`canvasPoint()` divides by the same effective scale and reads
-`getBoundingClientRect()`, which already includes the transform, so drawing
-and hit-testing are zoom/pan agnostic — never hardcode pixel offsets against
-screen coordinates anywhere else.
+canvases; the canvas *pixel buffers* stay at `naturalW/H` (× `renderScale`,
+which is 1 unless the sheet is infinite). `canvasPoint()` divides by the same
+effective scale and reads `getBoundingClientRect()`, which already includes
+the transform, so drawing and hit-testing are zoom/pan agnostic — never
+hardcode pixel offsets against screen coordinates anywhere else.
 
 The whole thing rests on two functions (§ Viewport, ~L2004):
 
 ```js
-clientToContent(cx, cy)      // screen point  -> point of the drawing under it
-panContentTo(c, cx, cy)      // move the view so drawing-point c sits at (cx,cy)
+clientToContent(cx, cy)      // screen point  -> point of the sheet under it
+panContentTo(c, cx, cy)      // move the view so sheet-point c sits at (cx,cy)
+clientToWorld(cx, cy)        // the same two in world coordinates - identical
+panWorldTo(w, cx, cy)        // to the pair above unless the sheet is infinite
 ```
 
 Anchored zoom is those two in sequence — `setZoomAt(z, x, y)` remembers what
@@ -286,7 +331,8 @@ fingers. Do not "fix" a pinch by adding a separate delta-pan on top; that
 double-counts and is what the old code got wrong.
 
 `applyPan()` clamps: half of whichever is smaller — the drawing or the
-viewport — must stay on screen. It derives the rest position by measuring
+viewport — must stay on screen. (An infinite sheet is exempt — no edges to
+hold on to; § Infinite canvas.) It derives the rest position by measuring
 (`rect.left - appliedPanX`) rather than assuming, because flexbox centres
 the stage while it fits and start-aligns it once it overflows, and the clamp
 has to be right in both. `#stage` is `flex:0 0 auto` for the same reason a
@@ -336,14 +382,28 @@ the finger that drew it (checked with `getImageData`, not screenshots).
 
 ## Export
 
-- `renderComposite(w, h, opts)` (~L2122) — the one function that draws
-  background+layers at ANY target size, by `ctx.scale()`-ing the context
-  rather than touching per-layer coords. Both single-image save and
-  multi-size export call this.
-- Save image: `renderComposite` at native size → PNG.
-- Save all sizes: `qualifyingSizes()` (~L2156) filters the fixed
-  `SIZE_PRESETS` list (320×240 … 4096×2160) to those ≤ current canvas's
-  larger dimension, matching current orientation; suffix is always the
+- `exportRect()` — **what** an export covers, in world coords. A fixed
+  sheet exports itself, to the pixel, exactly as it always has. An infinite
+  one has no edges to export, so it exports the ink: the smallest rectangle
+  containing every mark, plus `EXPORT_MARGIN` (10) px of air on each side.
+  That rectangle is the exported image's size, so a stroke in the far corner
+  of a sprawling sheet costs only the pixels between it and the rest.
+- `inkBounds()` — the rectangle the ink actually occupies. Layer boxes are
+  only a first guess (a stroke straddles its own path, a sketchy one wobbles
+  off it, a spline overshoots its own vertices), so the guess is padded,
+  painted into a scratch canvas, and the *alpha channel* scanned for the
+  true edges; ink touching the scratch canvas's edge means the guess was too
+  tight, so it widens and goes again. Big drawings are scanned at a reduced
+  scale and rounded outwards — the margin comes out the same either way.
+- `renderComposite(w, h, opts)` — the one function that draws
+  background+layers of a world rectangle (`opts.rect`, default the whole
+  sheet) at ANY target size, by scaling and offsetting the context rather
+  than touching per-layer coords. Both single-image save and multi-size
+  export call this.
+- Save image: `renderComposite` over `exportRect()` → PNG.
+- Save all sizes: `qualifyingSizes(rect)` filters the fixed
+  `SIZE_PRESETS` list (320×240 … 4096×2160) to those ≤ the export
+  rectangle's larger dimension, matching its orientation; suffix is always the
   *larger* number of the preset pair. Files bundled into one `.zip` via a
   ~90-line hand-rolled STORE-only (uncompressed) zip writer (`makeZip`,
   `crc32`, ~L2172-2247) — no library, because multiple simultaneous
@@ -545,6 +605,9 @@ file download."
 
 ## Not yet implemented / possible next asks
 
+- Infinite canvas: a layer far outside the window is not painted until the
+  view goes back to it, and there is no minimap or layer-panel "go to this
+  one" to help. `fitDrawing()` (the zoom label) is the only way home.
 - No project save/load (JSON serialize `state.layers` + canvas source
   would be the natural extension — nothing currently persists across
   page reloads).
