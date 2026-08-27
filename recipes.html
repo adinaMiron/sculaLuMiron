@@ -218,10 +218,20 @@
   /* The search box gets a row of its own: sharing one with the chips left
      it about ten characters wide, which is not a search box. */
   .filters .search{flex:1 1 100%;position:relative;display:block}
-  .filters .search input{background:var(--surface-2);padding-left:1.85rem}
+  .filters .search input{
+    width:100%;
+    background:var(--surface-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:.7rem .8rem .7rem 2.4rem;
+    font-family:inherit;
+    font-size:1rem;
+    line-height:1.5;
+  }
   .filters .search::before{
-    content:"⌕";position:absolute;left:.55rem;top:50%;transform:translateY(-50%);
-    color:var(--text-3);font-size:1.05rem;line-height:1;pointer-events:none;
+    content:"⌕";position:absolute;left:.8rem;top:50%;transform:translateY(-50%);
+    color:var(--text-3);font-size:1.15rem;line-height:1;pointer-events:none;
   }
   /* the comma-separated ingredient filter: its own row, its own glyph */
   .filters .ing-search::before{content:"≡";font-size:.9rem}
@@ -338,7 +348,8 @@
     .btn{min-height:44px;padding:10px 16px}
     .btn.mini{min-height:36px}
     .iconbtn{width:36px;height:36px}
-    input[type=text],input[type=number],select{min-height:40px;font-size:16px}
+    input[type=text],input[type=number],input[type=search],select{min-height:40px;font-size:16px}
+    .filters .search input{min-height:44px;font-size:16px}
     textarea{font-size:14px}
   }
 </style>
