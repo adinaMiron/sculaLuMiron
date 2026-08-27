@@ -423,6 +423,65 @@ Three fallbacks, because the dataset is analytical rather than tidy:
 A food the dataset gives no fat at all is read as **0 g of fat**, which is
 right for a juice and slightly low for a berry.
 
+### The other 38 — `USDA_MICRO`
+
+Four numbers are what a plan is *judged* on, so they are the ones on
+screen. But the file those four were compiled out of carries 227 more per
+food, and "how much iron is in this week" is a fair question to ask a page
+that already has the answer in it. So there is a **second table beside the
+first**, read only when somebody opens a panel:
+
+| | |
+|---|---|
+| kept | 38 nutrients per 100 g, in five groups — carbohydrate detail (fibre, sugars, starch), fat detail (saturated, mono, poly, trans, cholesterol), 11 minerals, 14 vitamins, and water / ash / beta-carotene / lycopene / lutein+zeaxanthin |
+| shape | `fdcId → [v, v, , v, …]`, **sparse**: a hole is the dataset never having measured that nutrient in that food |
+| size | ~42 KB, 363 rows — only the FoodData foods. The 62 `L` staples have none, and show em-dashes rather than zeroes |
+
+What is left out is left out on purpose. FoodData's remaining 189 rows are
+the individual fatty acids (SFA 4:0 through PUFA 22:6), the amino acids,
+the sterols and the tocotrienols: analytical detail that would treble the
+table to tell a cook nothing. The four macros are not repeated in it
+either — they are on the food itself, and one number should live in one
+place.
+
+Two of the 38 need the same kind of fallback the macros do:
+
+- **fibre**: `1079 Fiber, total dietary` ▸ `2033 Total dietary fiber
+  (AOAC 2011.25)`, which is how the newer records report it. Without it
+  rolled oats read as having no fibre at all — 17 foods, and the ones a
+  breakfast is made of.
+- **sugars**: `1063 Sugars, Total` ▸ the sugars themselves added up
+  (sucrose, glucose, fructose, lactose, maltose, galactose) — the same
+  answer the carbohydrate column already gives when "by difference" is
+  missing.
+
+**A hole is never read as a nought, all the way to the screen.** A food
+FoodData never measured for iron has no iron *number*, and reading it as
+zero would make a total that leaves out half the plan look complete. So a
+sum carries `have[i]` beside `vals[i]` — how many rows actually
+contributed each nutrient — and the panel says *"din 6 din 9 ingrediente
+recunoscute"* on any number that covers less than all of them. Only those
+are marked; mark everything and the mark means nothing.
+
+### What a panel costs, and where it is built
+
+Nothing, until it is opened. A book of a hundred menus is 1,282 ingredient
+rows, and a panel apiece would be roughly a hundred thousand DOM nodes
+nobody has looked at. So in the app the caret builds its panel the first
+time it is clicked, and remembers what was open in a `Set` of **ingredient
+and meal objects** (`view.micro`, `view.tot`) so a re-render does not shut
+it.
+
+The shareable page makes the same trade with different arithmetic. A
+written-out panel is about 1.5 KB of markup, which on that same book would
+be two megabytes of table nobody opens. What ships instead is the *data*:
+one `data-m` per quantity field — the same sparse `index:value per 100 g`,
+about 130 bytes a row — and the file's own script builds the panel when
+somebody asks. Which is also why the carets and the two summaries ship
+`hidden` and the script un-hides them: they are the script's doing, and a
+page opened with scripting off should be the inert page it always was
+rather than one with dead buttons on it (§ G).
+
 ### The 62 rows that are not FoodData
 
 Foundation Foods has 363 entries and no bread, no pasta, no honey, no
@@ -522,27 +581,31 @@ the same name is already answered the next time any plan uses it.
 
 | Where | What |
 |---|---|
-| review cards | a line under every ingredient: the food it matched — an `<input list="usdaList">`, so it is searchable by typing and changeable — and `120 g · 168 kcal · P 33.8 · C 0 · G 2.9`. A `?` where nothing matched, an `L` for a local food, a `~` on a guessed weight |
-| the markdown | the fourth column of the ingredient table, `### 3. Valori nutriționale` per meal, and `## Total pe zi` filled in (§ C) |
-| the shareable page | the same table under each method, **and the quantities are fields** |
+| review cards | a line under every ingredient: the food it matched — an `<input list="usdaList">`, so it is searchable by typing and changeable — and `120 g · 168 kcal · P 33.8 · C 0 · G 2.9`. A `?` where nothing matched, an `L` for a local food, a `~` on a guessed weight. A **caret** at the end of that line opens the other 38 |
+| review cards | a `TOTAL PE MASĂ` line under each meal's ingredients and a `TOTAL PE ZI` under the day, the same four numbers plus `known/total` when some row has no food — each with the same caret onto the same 38, added up |
+| the markdown | the fourth column of the ingredient table, `### 3. Valori nutriționale` per meal, and `## Total pe zi` filled in (§ C). **Unchanged by the panels** — the format is a round-trip contract, and 38 more columns is not something `fromMarkdown()` should have to read back |
+| the shareable page | the same table under each method, **and the quantities are fields**; a caret per row and a *Toate valorile nutriționale, adunate* summary per meal and per day, all of it recomputed when a quantity changes |
 
 ### The one script the shareable page carries
 
 § G used to be able to say the file had nothing to run. It now has exactly
-one script — two halves in one block — and the first reason is this:
-**a recipe is something people scale.** Change 60 to 90 in the ingredient
-list and the table under it has to follow, or the numbers on the page are a
-lie the moment anybody cooks for two. (The second half is the filter bar,
-§ G.)
+one script — three halves, if you like, in one block — and the first
+reason is this: **a recipe is something people scale.** Change 60 to 90 in
+the ingredient list and the table under it has to follow, or the numbers on
+the page are a lie the moment anybody cooks for two. The second part is the
+detail panels above; the third is the filter bar, § G. They share one
+closure so `qty()` and `num()` ship once rather than three times.
 
-It stays honest about the rest. Everything either half needs is already in
-the markup — grams per unit and the four values per 100 g, as `data-`
-attributes — so there is no table embedded a second time and **still
+It stays honest about the rest. Everything any of them needs is already in
+the markup — grams per unit, the four values per 100 g, and the sparse 38
+as `data-m` — so there is no table embedded a second time and **still
 nothing to fetch**: no `src`, no `http`, no `@import`. The numbers written
 into the file are the ones an untouched field would produce, so a page
 opened with scripting off still shows the right thing; it just stops
-following. It is plain ES5, because this document may be opened years from
-now on whatever a phone has by then.
+following. What such a page does *not* show is the carets and the two
+summaries, which ship `hidden` for the script to un-hide — a control that
+cannot work should not be on the page at all. It is plain ES5, because this
+document may be opened years from now on whatever a phone has by then.
 
 The preview iframe in card 5 is `sandbox="allow-scripts"` for the same
 reason. There is no `allow-same-origin`, so the frame keeps its opaque
@@ -586,9 +649,9 @@ e-mail attachment, off a phone, and out of a printer.
 
 It carries exactly one script — one `<script>` block, whichever halves the
 page needs. The totals half is there when the nutrition tables are (the
-quantities are fields and the totals follow them, § E); the filter half is
-there when there is more than one recipe to sift. Neither, and the file has
-no script at all.
+quantities are fields, the totals follow them, and the detail panels come
+with it, § E); the filter half is there when there is more than one recipe
+to sift. Neither, and the file has no script at all.
 
 **The filter bar, directly under the header and above the contents.** A
 hundred days sent to somebody else are no smaller than a hundred days on

@@ -513,6 +513,105 @@ function serve() {
         JSON.stringify(bk.after));
   check('nutrition: looking the foods up again leaves hand-written entries alone',
         bk.kept === 'Ceva de-al casei', bk.kept);
+
+  /* ---- 3c. the other 38, and the panels that show them ----
+     The second table (docs/RECIPES.md § E). The thing worth guarding is
+     that a hole in it never becomes a nought: an unmeasured nutrient has
+     to stay `null` through the table, through the scaling, and through the
+     total, or a sum over four of nine ingredients starts looking like a
+     sum over nine. */
+  const mic = await page.evaluate(() => {
+    const N = window.ScuLaRecipes.Nutrition;
+    const defs = N.micros();
+    const at = k => defs.findIndex(d => d[0] === k);
+    const oats = N.microsOf('2346396');
+    const row = N.forIngredient({ qty: '60', unit: 'g', item: 'fulgi de ovăz fini', fdc: '' });
+    const scaled = N.microRow(row);
+    const sum = N.microSum([row, N.forIngredient({ qty: '10', unit: 'ml', item: 'ulei de măsline', fdc: '' })]);
+    return {
+      n: defs.length,
+      groupsCover: N.microGroups()[N.microGroups().length - 1][2],
+      keysUnique: new Set(defs.map(d => d[0])).size,
+      units: Array.from(new Set(defs.map(d => d[1]))).sort(),
+      oatsFe: oats && oats[at('fe')], oatsFiber: oats && oats[at('fiber')],
+      oatsIod: oats && oats[at('iod')],
+      local: N.microsOf('L01'),
+      scaledFe: scaled[at('fe')], scaledIod: scaled[at('iod')],
+      // olive oil has no iron row; oats do — so the total covers one of two
+      sumFe: sum.vals[at('fe')], haveFe: sum.have[at('fe')], counted: sum.counted
+    };
+  });
+  check('micro: 38 nutrients, uniquely keyed, and the groups cover them all',
+        mic.n === 38 && mic.groupsCover === 38 && mic.keysUnique === 38,
+        JSON.stringify({ n: mic.n, cover: mic.groupsCover, uniq: mic.keysUnique }));
+  check('micro: three units only, none of them translated',
+        JSON.stringify(mic.units) === JSON.stringify(['g', 'mg', 'µg']),
+        JSON.stringify(mic.units));
+  check('micro: fibre falls back to the AOAC row rather than reading as none',
+        mic.oatsFiber > 8 && mic.oatsFe > 3 && mic.oatsFe < 6,
+        JSON.stringify([mic.oatsFiber, mic.oatsFe]));
+  check('micro: a nutrient the dataset never measured stays null, not nought',
+        mic.oatsIod === null && mic.scaledIod === null, JSON.stringify(mic.oatsIod));
+  check('micro: a local "L" food has no row at all rather than a row of zeroes',
+        mic.local === null, JSON.stringify(mic.local));
+  check('micro: 60 g is 0.6 of the table row',
+        Math.abs(mic.scaledFe - mic.oatsFe * 0.6) < 1e-9, JSON.stringify([mic.scaledFe, mic.oatsFe]));
+  check('micro: a total counts the rows that carried each nutrient',
+        mic.counted === 2 && mic.haveFe === 1 && Math.abs(mic.sumFe - mic.scaledFe) < 1e-9,
+        JSON.stringify({ counted: mic.counted, have: mic.haveFe }));
+
+  // The panels themselves: nothing built until it is asked for, and what is
+  // open survives the re-render every edit causes.
+  const panel = await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    const before = document.querySelectorAll('.micro').length;
+    const carets = document.querySelectorAll('.nut .morebtn').length;
+    const totals = Array.from(document.querySelectorAll('.tot .lbl')).map(e => e.textContent);
+    document.querySelector('.nut .morebtn').click();
+    const p = document.querySelector('.nut .micro');
+    const read = () => Array.from(p.querySelectorAll('.mi')).map(e =>
+      e.querySelector('.mn').textContent + '=' + e.querySelector('.mv').textContent);
+    const items = read();
+    R.renderDays();
+    const after = document.querySelector('.nut .micro');
+    return { before, carets, totals,
+             groups: Array.from(p.querySelectorAll('p.g')).map(e => e.textContent),
+             fe: items.find(s => /^Fier=/.test(s)),
+             dashes: items.filter(s => /—$/.test(s)).length,
+             stillOpen: !!after && !after.hidden };
+  });
+  check('micro: no panel is built before somebody asks for one',
+        panel.before === 0 && panel.carets >= 3, JSON.stringify(panel.before));
+  check('micro: a totals line under every meal and one under the day',
+        panel.totals.length === 4 && panel.totals[panel.totals.length - 1] === 'Total pe zi',
+        JSON.stringify(panel.totals));
+  check('micro: the panel opens grouped, named and with its units',
+        panel.groups.length >= 4 && /^Fier=[\d.]+ mg$/.test(panel.fe || ''),
+        JSON.stringify(panel.groups) + ' / ' + panel.fe);
+  check('micro: a nutrient the table lacks is an em-dash, not a zero',
+        panel.dashes > 0, String(panel.dashes));
+  check('micro: an open panel survives the re-render every edit causes',
+        panel.stillOpen === true, JSON.stringify(panel.stillOpen));
+
+  const totPanel = await page.evaluate(() => {
+    document.querySelector('.tot .morebtn').click();
+    const p = document.querySelector('.tot + .micro');
+    const items = Array.from(p.querySelectorAll('.mi')).map(e => ({
+      n: e.querySelector('.mn').textContent,
+      v: e.querySelector('.mv').textContent,
+      part: e.querySelector('.mv').classList.contains('part'),
+      title: e.querySelector('.mv').title
+    }));
+    return { n: items.length, kcal: items.find(x => x.n === 'Energie'),
+             marked: items.filter(x => x.part).length,
+             titled: items.filter(x => x.title).length,
+             mismatch: items.filter(x => x.part !== !!x.title).length };
+  });
+  check('micro: the meal total leads with the macros it already showed',
+        totPanel.n > 20 && /kcal$/.test(totPanel.kcal.v), JSON.stringify(totPanel.kcal));
+  check('micro: only a partial total is marked, and every marked one says what it covers',
+        totPanel.marked > 0 && totPanel.mismatch === 0 && totPanel.titled === totPanel.marked,
+        JSON.stringify(totPanel));
   check('markdown: preview rendered a table', await page.evaluate(() =>
     document.querySelectorAll('#mdPreview table').length >= 3));
 
@@ -1174,6 +1273,20 @@ function serve() {
   check('html: the quantity is a field carrying its own numbers',
         /<input class="qty"[^>]*data-g="[\d.]+"[^>]*data-k="[\d.]+"/.test(doc),
         (doc.match(/<input class="qty"[^>]*>/) || [''])[0]);
+  // The other 38 travel as data rather than as markup: a written-out panel
+  // per ingredient is 1.5 KB, which on a hundred-day book is two megabytes
+  // nobody opens (docs/RECIPES.md § E).
+  check('html: the field also carries the sparse 38 per 100 g',
+        /<input class="qty"[^>]*data-m="\d+:[\d.]+/.test(doc),
+        (doc.match(/data-m="[^"]{0,50}/) || [''])[0]);
+  check('html: no panel is written into the file, only the empty row it goes in',
+        /<tr class="mrow" data-p="0" hidden><td colspan="7"><div class="micro"><\/div><\/td><\/tr>/.test(doc) &&
+        // the only `class="mi"` in the file is the one inside the builder
+        !/class="mi"/.test(doc.slice(0, doc.indexOf('<script>'))),
+        String((doc.match(/class="mi"/g) || []).length));
+  check('html: the carets and both summaries ship hidden, for the script to un-hide',
+        /<button class="more"[^>]*\shidden/.test(doc) &&
+        /<details class="mtot" hidden>/.test(doc) && /<details class="mtot dtotm" hidden>/.test(doc));
 
   /* The point of that script, driven in the file it ships in: the page is
      opened on its own, off disk, with nothing else around it. */
@@ -1211,6 +1324,58 @@ function serve() {
         near(Number(live.after.mealKc) - Number(live.before.mealKc), live.before.rowKc) &&
         near(Number(live.after.dayKc) - Number(live.before.dayKc), live.before.rowKc),
         JSON.stringify(live));
+  /* And the panels, in the file they ship in: built on demand out of the
+     data attributes, and following the same edited quantity. */
+  const sheetMicro = await sheet.evaluate(() => {
+    const un = { carets: document.querySelectorAll('button.more:not([hidden])').length,
+                 dets: document.querySelectorAll('details.mtot:not([hidden])').length,
+                 built: document.querySelectorAll('.micro .mi').length };
+    document.querySelector('section.meal button.more').click();
+    const tr = document.querySelector('section.meal tr.mrow');
+    const read = () => Array.from(tr.querySelectorAll('.mi')).map(e =>
+      e.querySelector('.mn').textContent + '=' + e.querySelector('.mv').textContent);
+    const opened = read();
+    const el = document.querySelector('section.meal input.qty');
+    const was = parseFloat(el.value);
+    el.value = String(was / 2);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    const halved = read();
+    const det = document.querySelector('details.mtot');
+    det.open = true;
+    det.dispatchEvent(new Event('toggle'));
+    const tot = Array.from(det.querySelectorAll('.mi')).map(e => ({
+      n: e.querySelector('.mn').textContent, v: e.querySelector('.mv').textContent,
+      part: e.querySelector('.mv').classList.contains('part'),
+      title: e.querySelector('.mv').title }));
+    const day = document.querySelector('details.dtotm');
+    day.open = true;
+    day.dispatchEvent(new Event('toggle'));
+    return { un, hidden: tr.hidden, n: opened.length,
+             groups: Array.from(tr.querySelectorAll('p.g')).map(e => e.textContent),
+             fe: opened.find(s => /^Fier=/.test(s)),
+             feHalf: halved.find(s => /^Fier=/.test(s)),
+             totFe: tot.find(x => x.n === 'Fier'),
+             marked: tot.filter(x => x.part).length,
+             mismatch: tot.filter(x => x.part !== !!x.title).length,
+             dayN: day.querySelectorAll('.mi').length };
+  });
+  check('html: the script un-hides the carets it is the reason for, and builds nothing yet',
+        sheetMicro.un.carets >= 3 && sheetMicro.un.dets >= 4 && sheetMicro.un.built === 0,
+        JSON.stringify(sheetMicro.un));
+  check('html: a caret builds its panel out of the data attributes',
+        !sheetMicro.hidden && sheetMicro.n > 20 && sheetMicro.groups.length >= 4 &&
+        /^Fier=[\d.]+ mg$/.test(sheetMicro.fe || ''),
+        JSON.stringify(sheetMicro.fe) + ' / ' + sheetMicro.n);
+  check('html: halving the quantity halves the panel with it',
+        Math.abs(parseFloat(sheetMicro.feHalf.split('=')[1]) -
+                 parseFloat(sheetMicro.fe.split('=')[1]) / 2) < 0.05,
+        sheetMicro.fe + ' -> ' + sheetMicro.feHalf);
+  check('html: the meal summary fills on open, marking only what it partly covers',
+        parseFloat(sheetMicro.totFe.v) > 0 && sheetMicro.marked > 0 && sheetMicro.mismatch === 0,
+        JSON.stringify({ fe: sheetMicro.totFe, marked: sheetMicro.marked }));
+  check('html: the day summary adds the meals together',
+        sheetMicro.dayN > 20, String(sheetMicro.dayN));
+
   /* The other half of that script, driven the same way: the filter bar
      under the header. Same rules as card 5 — the search box over the whole
      recipe, the comma-separated box over the ingredient names only, and

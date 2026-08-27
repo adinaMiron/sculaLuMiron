@@ -9,11 +9,11 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4647 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 7446 | 74k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 ## Rule 1: never read a whole HTML file
 
-Reading all four costs ~190k tokens; `recipes.html` alone is 70k and
+Reading all four costs ~200k tokens; `recipes.html` alone is 84k and
 `markdown-editor.html` 58k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
@@ -44,7 +44,7 @@ Do not read a doc the task doesn't touch.
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1395-2050`, `recipes.html:358-1013`). It carries the nav
+`markdown-editor.html:1395-2050`, `recipes.html:407-1062`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
@@ -53,7 +53,7 @@ must be applied to **all four** or they drift. Verify with:
 sed -n '221,876p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
 sed -n '1395,2050p' markdown-editor.html > /tmp/n3
-sed -n '358,1013p' recipes.html          > /tmp/n4
+sed -n '407,1062p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -81,7 +81,9 @@ block's `SUBDIR` map, so the new page gets its own folder.
   otherwise be an API key and a network round trip per ingredient, so the
   four numbers a recipe needs are compiled out of
   `FoodData_Central_foundation_food_json_2026-04-30.json` and live in the
-  page — 425 foods, ~27 KB, nothing to fetch (`docs/RECIPES.md` § E).
+  page — 425 foods, ~27 KB, nothing to fetch. The 38 further nutrients
+  behind the detail panels are a second table beside it, same answer,
+  another ~42 KB (`docs/RECIPES.md` § E).
 - **`rem`, not `px`**, for chrome in `editor.html` — the root font-size
   scales with viewport. Exception: inside `(pointer:coarse)` blocks, `px`
   is deliberate (44px touch-target floor).
@@ -124,8 +126,9 @@ browser under Xvfb; headless Chromium cannot decode media streams at all.
 pan, gestures, undo/redo, every tool), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown both
 written and read back, the shareable HTML page **driven in the file it
-ships in**, the USDA matcher and the ingredient book, the whole OCR path
-against a stub engine, all three save routes), and for
+ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
+detail panels on both sides**, the whole OCR path against a stub engine,
+all three save routes), and for
 `markdown-editor.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`) and its navigation panel (`nav.js`). It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`

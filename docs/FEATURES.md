@@ -411,12 +411,27 @@ rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
 It writes chapters into the same workbook store as § E, one per day, so a
 day extracted here shows up in `markdown-editor.html` on its next load.
 
+The nutrition pass is built (§ E there). Under every ingredient it names
+the USDA food it matched and what the quantity comes to — `120 g · 168
+kcal · P 33.8 · C 0 · G 2.9` — and under every meal, and every day, the
+same four numbers added up. **A caret at the end of each of those lines
+opens the other 38**: fibre, sugars and starch, the fat breakdown and
+cholesterol, eleven minerals, fourteen vitamins, water and the
+carotenoids, grouped and in the interface language. On a total each
+number says how much of the recipe it actually covers, because a food
+FoodData never measured for iron has no iron *number* and adding it as
+nought would make a partial total look complete. Nothing is built until
+somebody asks for it — a book of a hundred menus is 1,282 ingredient rows.
+
 There is a third way out, for people rather than programs: *Exportă .html*
 (§ G there) writes the same recipes as **one self-contained page** — its own
 stylesheet, one small script of its own, nothing to fetch — that opens from
 an e-mail, on a phone, and out of a printer. That script is why the page can
-be searched and filtered by ingredient the way card 5 is, and why its totals
-follow a quantity somebody changes. It goes through `ScuLaFolder.save()` like every
+be searched and filtered by ingredient the way card 5 is, why its totals
+follow a quantity somebody changes, and why the same carets are there —
+built on demand out of `data-` attributes rather than written into the
+file, and shipped `hidden` so a page opened with scripting off has no dead
+controls on it. It goes through `ScuLaFolder.save()` like every
 other save in this repo (§ D), and card 5 previews it in a sandboxed
 `<iframe srcdoc>` holding the very string the file gets.
 
