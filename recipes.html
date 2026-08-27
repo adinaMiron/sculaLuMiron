@@ -247,6 +247,11 @@
   .daysum .twist{color:var(--accent);flex:0 0 auto}
   .daysum .dname{font-weight:600;color:var(--text);flex:0 0 auto}
   .daysum .dmeal{color:var(--text-2);font-size:.8rem}
+  /* why a collapsed day matched: the ingredient lines / steps that hit,
+     each on its own line under the meal it belongs to */
+  .daysum .dhit{flex:1 1 100%;color:var(--text-3);font-size:.78rem;padding-left:1.15rem}
+  /* the same match, shown in the open editor: a tinted ingredient row */
+  .ing.hit input, .meal.hit textarea.steps{box-shadow:inset 2px 0 0 var(--accent-2)}
   .dayhead .twist{
     background:transparent;border:0;color:var(--accent);cursor:pointer;
     font:inherit;padding:0 .2rem;flex:0 0 auto;
@@ -5318,6 +5323,49 @@ function mealIngredientHay(meal){
   return fold(meal.ingredients.map(i => [i.item, i.group].join(" ")).join(" \n "));
 }
 
+// Words that carry no search intent of their own — "ulei de masline" is a
+// search for the oil, not for every line with a "de" in it.
+const FILLER = new Set(["de","cu","la","si","sau","in","pe","din","fara","un","o","ale","al"]);
+// How many of the search terms a piece of folded text carries. With more
+// than one word in the query, a line that caught *only* a filler word is
+// not the reason you searched, so it scores 0.
+function termScore(folded, terms){
+  const hit = terms.filter(term => folded.indexOf(term) >= 0);
+  if(!hit.length) return 0;
+  if(terms.length > 1 && hit.every(term => FILLER.has(term))) return 0;
+  return hit.length;
+}
+// The terms worth putting a <mark> on: the filler words drop out once the
+// query has something more specific in it.
+function markTerms(terms){
+  if(terms.length <= 1) return terms;
+  const kept = terms.filter(term => !FILLER.has(term));
+  return kept.length ? kept : terms;
+}
+function ingFolded(ing){ return fold([ing.item, ing.group].join(" ")); }
+function ingHasTerm(ing, term){ return ingFolded(ing).indexOf(term) >= 0; }
+function ingIsHit(ing, terms){ return termScore(ingFolded(ing), terms) > 0; }
+
+// The ingredient lines and steps of a meal that carry the search terms,
+// best match first. A collapsed day shows these so it is clear *why* it
+// matched and where — the search reaches into the ingredients, not just
+// the dish name.
+function mealHits(meal, terms){
+  if(!terms.length) return [];
+  const scored = [];
+  meal.ingredients.forEach(ing => {
+    const n = termScore(ingFolded(ing), terms);
+    const line = [ing.qty, ing.unit, ing.item].filter(Boolean).join(" ");
+    if(n && line) scored.push([n, line]);
+  });
+  meal.steps.forEach(st => {
+    const n = termScore(fold(st), terms);
+    if(n) scored.push([n, st]);
+  });
+  scored.sort((a, b) => b[0] - a[0]);
+  return scored.slice(0, 4).map(x => x[1]);
+}
+
 // The indices of the meals of one day that survive the search and chips.
 // A day whose *title* matches keeps all of its meals — that is what makes
 // searching "Ziua 42" work.
@@ -5453,17 +5501,26 @@ function daySummary(day, di, meals){
   tw.className = "twist";
   tw.textContent = "▸";
   row.appendChild(tw);
-  const terms = fold(view.q).split(/\s+/).filter(Boolean);
+  const terms = fold(view.q).split(/\s+/).filter(Boolean).concat(ingredientTerms());
+  const marks = markTerms(terms);
   const nm = document.createElement("span");
   nm.className = "dname";
-  markInto(nm, dayTitle(day, di), terms);
+  markInto(nm, dayTitle(day, di), marks);
   row.appendChild(nm);
   meals.forEach(mi => {
     const m = day.meals[mi];
     const s = document.createElement("span");
     s.className = "dmeal";
-    markInto(s, mealLabel(m) + (m.name ? ": " + m.name : ""), terms);
+    markInto(s, mealLabel(m) + (m.name ? ": " + m.name : ""), marks);
     row.appendChild(s);
+    // The ingredient lines / steps that matched, so the search visibly
+    // reaches past the dish name.
+    mealHits(m, terms).forEach(line => {
+      const h = document.createElement("span");
+      h.className = "dhit";
+      markInto(h, line, marks);
+      row.appendChild(h);
+    });
   });
   row.addEventListener("click", () => { view.open.add(day); renderDays(); });
   card.appendChild(row);
@@ -5553,6 +5610,9 @@ function renderDays(){
   // A handful of days is small enough to simply show; a hundred is not.
   const autoOpen = view.allOpen || shown.length <= 8;
   const active = filterActive();
+  // The words to point at inside an open day: the search terms and the
+  // comma-separated ingredient list together.
+  const hitTerms = fold(view.q).split(/\s+/).filter(Boolean).concat(ingredientTerms());
 
   if(!shown.length && model.days.length){
     const p = document.createElement("p");
@@ -5604,6 +5664,8 @@ function renderDays(){
       const mi = day.meals.indexOf(meal);
       const box = document.createElement("div");
       box.className = "meal";
+      if(hitTerms.length && meal.steps.some(st => termScore(fold(st), hitTerms) > 0))
+        box.classList.add("hit");
 
       const mh = document.createElement("div");
       mh.className = "mealhead";
@@ -5642,6 +5704,7 @@ function renderDays(){
         }
         const row = document.createElement("div");
         row.className = "ing";
+        if(ingIsHit(ing, hitTerms)) row.classList.add("hit");
         row.appendChild(textInput(ing.qty, t("colQty"), v => { ing.qty = v; }));
         row.appendChild(textInput(ing.unit, t("colUnit"), v => { ing.unit = v; }));
         row.appendChild(textInput(ing.item, t("colItem"), v => { ing.item = v; }));

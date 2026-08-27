@@ -944,6 +944,36 @@ function serve() {
   check('view: the search folds diacritics — "sunca" finds "șuncă"',
         await page.evaluate(() => document.querySelectorAll('#days .day').length) === 40);
 
+  // the search reaches into the ingredient list, and a collapsed day says
+  // which ingredient matched rather than just the dish name on the button
+  await page.fill('#qBox', 'orez');
+  await page.waitForTimeout(150);
+  const ingSeen = await page.evaluate(() => {
+    const hits = [...document.querySelectorAll('#days .daysum .dhit')];
+    return { days: document.querySelectorAll('#days .day').length,
+             hits: hits.length,
+             marked: hits.some(h => h.querySelector('mark') && /orez/i.test(h.textContent)) };
+  });
+  check('view: a search matches ingredients and the collapsed day shows which',
+        ingSeen.days === 39 && ingSeen.hits >= 39 && ingSeen.marked, JSON.stringify(ingSeen));
+  await page.fill('#qBox', '');
+  await page.waitForTimeout(150);
+
+  // the comma-separated ingredient filter: every term must sit in one meal
+  await page.evaluate(() => {
+    const R = window.ScuLaRecipes;
+    R.model.days[0].meals[1].ingredients.push({ qty: '1', unit: '', item: 'ceapă', group: '', fdc: '' });
+    R.renderDays();
+  });
+  await page.fill('#ingBox', 'orez, ceapa');
+  await page.waitForTimeout(150);
+  const ingFilter = await page.evaluate(() =>
+    document.querySelectorAll('#days .day').length);
+  check('filter: a comma-separated ingredient list keeps only meals that have every one',
+        ingFilter === 1, JSON.stringify({ days: ingFilter }));
+  await page.fill('#ingBox', '');
+  await page.waitForTimeout(150);
+
   await page.fill('#qBox', 'ton');
   await page.waitForTimeout(150);
   const onlyShown = await page.evaluate(() => {
