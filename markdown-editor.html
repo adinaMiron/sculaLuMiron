@@ -2542,6 +2542,8 @@ const I18N = {
     wbLocalOnly:"💾 salvat local (fără dosar)",
     addChapterTip:"Capitol nou", renameWorkbookTip:"Redenumește caietul", deleteWorkbookTip:"Șterge caietul",
     renameChapterTip:"Redenumește capitolul", exportChapterTip:"Exportă capitolul", deleteChapterTip:"Șterge capitolul",
+    moveWorkbookUpTip:"Mută caietul mai sus", moveWorkbookDownTip:"Mută caietul mai jos",
+    moveChapterUpTip:"Mută capitolul mai sus", moveChapterDownTip:"Mută capitolul mai jos",
     promptNewWorkbook:"Numele caietului:", defaultWorkbookName:"Caiet nou",
     promptNewChapter:"Titlul capitolului:", defaultChapterName:"Capitol nou",
     promptRenameWorkbook:"Nume nou pentru caiet:", promptRenameChapter:"Titlu nou pentru capitol:",
@@ -2673,6 +2675,8 @@ const I18N = {
     wbLocalOnly:"💾 saved locally (no folder)",
     addChapterTip:"New chapter", renameWorkbookTip:"Rename workbook", deleteWorkbookTip:"Delete workbook",
     renameChapterTip:"Rename chapter", exportChapterTip:"Export chapter", deleteChapterTip:"Delete chapter",
+    moveWorkbookUpTip:"Move workbook up", moveWorkbookDownTip:"Move workbook down",
+    moveChapterUpTip:"Move chapter up", moveChapterDownTip:"Move chapter down",
     promptNewWorkbook:"Workbook name:", defaultWorkbookName:"New workbook",
     promptNewChapter:"Chapter title:", defaultChapterName:"New chapter",
     promptRenameWorkbook:"New workbook name:", promptRenameChapter:"New chapter title:",
@@ -4122,7 +4126,8 @@ function renderWorkbooks() {
     tree.appendChild(empty);
   }
 
-  wbBooks.slice().sort(wbByOrder).forEach(book => {
+  const orderedBooks = wbBooks.slice().sort(wbByOrder);
+  orderedBooks.forEach((book, bookIdx) => {
     const chapters = wbChaptersOf(book.id);
     const open = wbOpenBooks.has(book.id);
 
@@ -4149,6 +4154,8 @@ function renderWorkbooks() {
 
     const acts = document.createElement('div');
     acts.className = 'wb-acts';
+    if (bookIdx > 0) acts.appendChild(wbActBtn('▲', t('moveWorkbookUpTip'), () => moveWorkbook(book.id, -1)));
+    if (bookIdx < orderedBooks.length - 1) acts.appendChild(wbActBtn('▼', t('moveWorkbookDownTip'), () => moveWorkbook(book.id, 1)));
     acts.appendChild(wbActBtn('＋', t('addChapterTip'), () => newChapter(book.id)));
     acts.appendChild(wbActBtn('✎', t('renameWorkbookTip'), () => renameWorkbook(book.id)));
     acts.appendChild(wbActBtn('🗑', t('deleteWorkbookTip'), () => deleteWorkbook(book.id)));
@@ -4164,7 +4171,7 @@ function renderWorkbooks() {
       none.textContent = t('wbNoChapters');
       list.appendChild(none);
     }
-    chapters.forEach(ch => {
+    chapters.forEach((ch, chIdx) => {
       const chRow = document.createElement('div');
       chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '');
       chRow.title = book.folder + '/' + ch.file;
@@ -4176,6 +4183,8 @@ function renderWorkbooks() {
 
       const chActs = document.createElement('div');
       chActs.className = 'wb-acts';
+      if (chIdx > 0) chActs.appendChild(wbActBtn('▲', t('moveChapterUpTip'), () => moveChapter(ch.id, -1)));
+      if (chIdx < chapters.length - 1) chActs.appendChild(wbActBtn('▼', t('moveChapterDownTip'), () => moveChapter(ch.id, 1)));
       chActs.appendChild(wbActBtn('✎', t('renameChapterTip'), () => renameChapter(ch.id)));
       chActs.appendChild(wbActBtn('⇪', t('exportChapterTip'), () => exportChapter(ch.id)));
       chActs.appendChild(wbActBtn('🗑', t('deleteChapterTip'), () => deleteChapter(ch.id)));
@@ -4337,6 +4346,41 @@ async function deleteChapter(id) {
   if (ch.id === wbCurrentId) detachChapter();
   renderWorkbooks();
   wbSay(t('wbRemoved'));
+}
+
+// Reorder a workbook among its siblings. Chapters keep their workbookId and
+// their own per-book order, so they travel with the workbook automatically.
+async function moveWorkbook(id, dir) {
+  const ordered = wbBooks.slice().sort(wbByOrder);
+  const i = ordered.findIndex(b => b.id === id);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= ordered.length) return;
+  ordered.splice(j, 0, ordered.splice(i, 1)[0]);
+  const changed = [];
+  ordered.forEach((b, k) => {
+    if ((b.order || 0) !== k) { b.order = k; b.updated = Date.now(); changed.push(b); }
+  });
+  for (const b of changed) { if (!await wbPersist(WB_BOOKS, b)) return; }
+  renderWorkbooks();
+}
+
+// Reorder a chapter within its workbook.
+async function moveChapter(id, dir) {
+  const ch = wbChapter(id);
+  if (!ch) return;
+  const ordered = wbChaptersOf(ch.workbookId);
+  const i = ordered.findIndex(c => c.id === id);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= ordered.length) return;
+  ordered.splice(j, 0, ordered.splice(i, 1)[0]);
+  const changed = [];
+  ordered.forEach((c, k) => {
+    if ((c.order || 0) !== k) { c.order = k; c.updated = Date.now(); changed.push(c); }
+  });
+  for (const c of changed) { if (!await wbPersist(WB_CHAPTERS, c)) return; }
+  renderWorkbooks();
 }
 
 // Hands one chapter out through the shared route: the markdown folder on

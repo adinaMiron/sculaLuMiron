@@ -387,6 +387,13 @@ workbook subfolder.
   you need a new object store or index.
 - Anything that changes `title` or `name` must go through the rename path
   so the mirror moves with it.
+- **Reordering.** `▲`/`▼` on each `.wb-book-row` and `.wb-ch-row` call
+  `moveWorkbook(id, ±1)` / `moveChapter(id, ±1)`, which renumber the
+  affected list's `order` fields sequentially and persist the changed
+  records. `wbByOrder` (order, then `created`) is the single sort used by
+  `renderWorkbooks()`, `wbChaptersOf()`, and the search/graph legends.
+  Chapters carry `workbookId` + their own per-book `order`, so a moved
+  workbook takes its chapters with it — no chapter writes needed.
 
 ---
 
