@@ -132,6 +132,11 @@
   .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
   .chip:active{transform:translateY(1px)}
 
+  /* keep-the-audio option — lives next to the record button, not in the
+     settings sheet, because it has to be decided before pressing record */
+  .rec-opt{margin-top:18px}
+  .rec-opt-tip{margin:6px 0 0}
+
   /* ---------- transcript ---------- */
   .paper{
     background:var(--text);color:var(--on-text);border-radius:18px;
@@ -905,6 +910,12 @@
     <div class="clock" id="clock">00:00</div>
   </div>
 
+  <label class="toggle rec-opt">
+    <input type="checkbox" id="keepAudio">
+    <span data-i="keepAudioLabel">Salvează și sunetul înregistrării</span>
+  </label>
+  <p class="tiny rec-opt-tip" data-i="keepAudioTip">Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.</p>
+
   <p class="field-label" data-i="langLabel">Limba vorbită</p>
   <div class="chips" role="group" id="langChips">
     <button class="chip" type="button" data-lang="ro" aria-pressed="true">Română</button>
@@ -1023,6 +1034,9 @@ const I18N = {
     copy:"Copiază", share:"Trimite", download:"Descarcă", clear:"Șterge tot",
     importFile:"Transcrie un fișier audio",
     rec:"Înregistrează", stop:"Oprește",
+    keepAudioLabel:"Salvează și sunetul înregistrării",
+    keepAudioTip:"Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.",
+    noAudio:"Nu s-a păstrat niciun fișier audio pentru acest text.",
     setHelp:"Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.",
     provider:"Furnizor", ownServer:"Server propriu (proxy)", endpoint:"Adresa proxy-ului",
     apiKey:"Cheie API", show:"Arată", hide:"Ascunde", model:"Model",
@@ -1064,6 +1078,9 @@ const I18N = {
     copy:"Copy", share:"Share", download:"Download", clear:"Clear all",
     importFile:"Transcribe an audio file",
     rec:"Record", stop:"Stop",
+    keepAudioLabel:"Also save the sound of the recording",
+    keepAudioTip:"Tick this before recording. The audio file is saved on “Download”, under the same name as the text.",
+    noAudio:"No audio was kept for this text.",
     setHelp:"The key stays on this device. Audio goes only to the provider you pick.",
     provider:"Provider", ownServer:"Your own server (proxy)", endpoint:"Proxy address",
     apiKey:"API key", show:"Show", hide:"Hide", model:"Model",
@@ -1156,7 +1173,8 @@ const store = (function(){
 const S = {
   ui:"ro", lang:"ro", engine:"api",
   provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
-  hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile"
+  hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile",
+  keepAudio:false
 };
 
 /* ============================================================
@@ -1171,7 +1189,7 @@ const sheet=$("#sheet"), scrim=$("#scrim");
 const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
 const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
 const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
-const fileInput=$("#fileInput");
+const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio");
 
 function say(msg, kind){
   statusEl.className = "status" + (kind ? " " + kind : "");
@@ -1281,6 +1299,7 @@ async function load(){
   segLenEl.value = String(S.segMin);
   tidyEl.checked = !!S.tidy;
   tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
+  keepAudioEl.checked = !!S.keepAudio;
   document.querySelectorAll("#langChips button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
   document.querySelectorAll("#engineChips button").forEach(b =>
@@ -1323,6 +1342,59 @@ function pickMime(){
 }
 
 const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, timer:null, rot:null, rotating:false, n:0 };
+
+/* Keeping the sound is a *second* MediaRecorder on the same stream, running
+   uninterrupted for the whole session. The transcription recorder above is
+   rotated every S.segMin minutes, and its segments are separate containers -
+   glueing them back together does not produce a playable file. One recorder
+   that never stops does. */
+const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null };
+
+// Read the checkbox once, when recording starts: what was ticked then is what
+// gets recorded. Any earlier take is dropped here, so a new recording never
+// leaves the previous session's sound behind to be saved with the new text.
+function armAudio(){
+  audio.armed = !!keepAudioEl.checked;
+  audio.blob = null; audio.chunks = [];
+}
+
+// `stream` is the recording stream when there is one (the API engine); browser
+// dictation has none, so ask for our own and stop it again when done.
+async function startAudioKeep(stream){
+  if(!audio.armed || typeof MediaRecorder === "undefined") return;
+  if(audio.mr && audio.mr.state === "recording") return;
+  if(!stream){
+    try{ stream = audio.own = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+    catch(e){ audio.armed = false; return; }
+  }
+  const fmt = pickMime();
+  audio.ext = fmt.ext;
+  const opts = {};
+  if(fmt.mime) opts.mimeType = fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ audio.mr = new MediaRecorder(stream, opts); }
+  catch(e){ try{ audio.mr = new MediaRecorder(stream); }catch(e2){ audio.armed = false; return; } }
+  audio.chunks = [];
+  audio.mr.ondataavailable = ev => { if(ev.data && ev.data.size) audio.chunks.push(ev.data); };
+  audio.mr.onstop = () => {
+    const type = audio.chunks.length ? (audio.chunks[0].type || fmt.mime) : fmt.mime;
+    const blob = new Blob(audio.chunks, {type: type || "audio/webm"});
+    audio.chunks = [];
+    audio.blob = blob.size > 1200 ? blob : null;
+    stopOwnStream();
+  };
+  try{ audio.mr.start(); }catch(e){ audio.armed = false; stopOwnStream(); }
+}
+
+function stopOwnStream(){
+  if(audio.own){ audio.own.getTracks().forEach(tr => tr.stop()); audio.own = null; }
+}
+function stopAudioKeep(){
+  try{ if(audio.mr && audio.mr.state !== "inactive"){ audio.mr.stop(); return; } }catch(e){}
+  stopOwnStream();
+}
+
+keepAudioEl.addEventListener("change", () => { S.keepAudio = keepAudioEl.checked; save(); });
 const queue = { items:[], busy:false, done:0 };
 let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
 
@@ -1343,6 +1415,7 @@ async function startRec(){
   }catch(e){ say(t("micDenied"), "err"); return; }
 
   rec.fmt = pickMime();
+  armAudio(); startAudioKeep(rec.stream);
   rec.active = true; rec.n = 0; rec.t0 = Date.now();
   queue.done = 0;
   setRecUI(true);
@@ -1385,6 +1458,7 @@ function stopRec(){
   rec.active = false; rec.rotating = false;
   clearTimeout(rec.rot); clearInterval(rec.timer);
   try{ if(rec.mr && rec.mr.state !== "inactive") rec.mr.stop(); }catch(e){}
+  stopAudioKeep();
   stopMeter();
   releaseWakeLock();
   setRecUI(false);
@@ -1561,6 +1635,7 @@ function startLive(){
   live.sr.continuous = true;
   live.sr.interimResults = true;
   live.wantOn = true; live.active = true;
+  armAudio(); startAudioKeep(null);
   setRecUI(true);
   say(t("liveOn"), "busy");
   clock.textContent = lang;
@@ -1600,6 +1675,7 @@ function startLive(){
 function stopLive(){
   live.wantOn = false;
   try{ if(live.sr) live.sr.stop(); }catch(e){}
+  stopAudioKeep();
   live.active = false; setRecUI(false); interim.textContent = "";
   clock.textContent = "00:00"; releaseWakeLock();
 }
@@ -1643,10 +1719,23 @@ $("#dlBtn").addEventListener("click", async () => {
   // ready-made message (null when there is nothing to say, e.g. the person
   // dismissed the share sheet). See the shared nav block.
   const r = await ScuLaFolder.save(name, blob, { quiet:true });
-  if(r.message) say(r.message);
+  const msgs = [r.message];
+  // The kept sound rides along under the name the text actually got (freeName
+  // may have bumped it to -1), so the pair stays together in the folder.
+  if(keepAudioEl.checked && !r.cancelled){
+    if(audio.blob){
+      const twin = (r.name || name).replace(/\.[^.]+$/, "") + "." + audio.ext;
+      const ra = await ScuLaFolder.save(twin, audio.blob, { quiet:true });
+      msgs.push(ra.message);
+    } else {
+      msgs.push(t("noAudio"));
+    }
+  }
+  const msg = msgs.filter(Boolean).join(" · ");
+  if(msg) say(msg);
 });
 $("#clearBtn").addEventListener("click", () => {
-  ta.value = ""; interim.textContent = ""; updateCounts(); say(t("cleared"));
+  ta.value = ""; interim.textContent = ""; audio.blob = null; updateCounts(); say(t("cleared"));
 });
 ta.addEventListener("input", updateCounts);
 

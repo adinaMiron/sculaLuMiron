@@ -6,7 +6,7 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `index.html` | 1659 | 16k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `index.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4647 | 46k | "Image Marker" — canvas annotation/drawing | dark (earth) |
 | `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
@@ -43,17 +43,17 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all four files (`index.html:221-876`, `editor.html:418-1073`,
-`markdown-editor.html:1402-2057`, `recipes.html:407-1062`). It carries the nav
+in all four files (`index.html:226-881`, `editor.html:418-1073`,
+`markdown-editor.html:1402-2057`, `recipes.html:408-1063`). It carries the nav
 links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
 where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
 must be applied to **all four** or they drift. Verify with:
 
 ```bash
-sed -n '221,876p' index.html             > /tmp/n1
+sed -n '226,881p' index.html             > /tmp/n1
 sed -n '418,1073p' editor.html           > /tmp/n2
 sed -n '1402,2057p' markdown-editor.html > /tmp/n3
-sed -n '407,1062p' recipes.html          > /tmp/n4
+sed -n '408,1063p' recipes.html          > /tmp/n4
 diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
 ```
 
@@ -131,7 +131,10 @@ detail panels on both sides**, the whole OCR path against a stub engine,
 all three save routes), and for
 `markdown-editor.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`) and the
-in-place rename of a workbook or chapter name (`wbrename.js`). It is dev-only
+in-place rename of a workbook or chapter name (`wbrename.js`), and for
+`index.html`'s keep-the-audio checkbox (`voice.js` — driven against
+Chromium's fake microphone, asserting on the real files that come out).
+It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
 

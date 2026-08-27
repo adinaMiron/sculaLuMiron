@@ -4,7 +4,8 @@ Ad-hoc Playwright checks for `editor.html` and `recipes.html`, and — in
 `graph.js`, `find.js`, `nav.js`, `wbrename.js` and `paste.js` — for
 `markdown-editor.html`'s knowledge graph, its search panel, its navigation
 panel, renaming a workbook or chapter in place, and pasting a picture
-into it, written the way `HANDOFF.md` §
+into it, plus — in `voice.js` — `index.html`'s keep-the-audio
+checkbox, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
@@ -37,6 +38,7 @@ for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
 - `EDITOR_URL` — override the `file://` URL under test, e.g. to point at a
   build of `editor.html` living somewhere other than the repo root, or at a
   copy on a different commit for a before/after comparison.
+- `VOICE_URL` — the same, for `voice.js`, which drives `index.html`.
 - `MD_URL` — the same, for `graph.js`, `find.js`, `nav.js`, `wbrename.js` and `paste.js`, which drive
   `markdown-editor.html` instead. Both open their own browser context rather
   than using `lib.js`'s `open()` (which is hard-wired to `editor.html`);
@@ -72,6 +74,7 @@ viewport without editing it:
 | `find.js` | `markdown-editor.html`'s search & filter panel: all three scopes (open chapter, one workbook, every workbook), the four toggles (match case, whole word, regex — including a broken one — and diacritic folding, which has to find "măsură" from "masura" and stop when turned off), the kind of every line counted and filtered on, the tag chips narrowing to the chapters carrying a `#tag`, a hit opening another chapter and landing selected in the textarea, a hit below the fold scrolling to itself through wrapped lines, a line of literal HTML shown rather than run, both languages, and `Ctrl+4` |
 | `nav.js` | `markdown-editor.html`'s navigation panel: every heading listed (and a `#` inside a fence not counted as one), a click taking the **preview** to the heading's id and the **Markdown source** to the line it was read from — selected in the textarea and scrolled to through wrapped lines — the repeated heading that has to reach its own line and its own `…-1` anchor, the clicked item becoming the active one, and a phone, where the click shows the preview and deliberately leaves the source (and the keyboard) alone |
 | `wbrename.js` | `markdown-editor.html`'s in-place rename of a workbook or chapter name in the panel: a double-click (and one click then `F2`) turning the name `contenteditable`, Enter and blur committing while the chapter file name follows the title, Escape restoring, an emptied name rejected, and the plain single click still toggling the workbook / opening the chapter after its short delay |
+| `voice.js` | `index.html`'s "also save the sound of the recording" checkbox: ticked before recording, the transcript and a **playable** audio file come out under one name (the container's magic bytes are checked, not just the size); unticked, only the transcript; ticked only after recording, no file and the page says so; a second recording never inherits the first one's sound; and the label is translated. Runs against Chromium's fake microphone (`--use-fake-device-for-media-stream`), and asserts on the real files — on `file://` there is no directory picker, so every `ScuLaFolder.save` takes the download route and each saved file arrives as a Playwright download |
 | `paste.js` | Pasting a picture into `markdown-editor.html` (Ctrl+V): the `data:` URI landing in the markdown at the caret, the `<img>` the preview renders, the export round-trip leaving the URI whole, a clipboard carrying text being left to the browser, a big paste capped at 1600 px and re-encoded as JPEG, and a transparent one staying PNG with its alpha intact — the pasted bytes are decoded back and asserted on pixels |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
@@ -90,10 +93,14 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js` and `paste.js` are the scripts that do **not** use
+`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `paste.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
 `http://127.0.0.1` server, because the workbook check reads IndexedDB and a
 `file://` origin is opaque. `graph.js`, `find.js`, `nav.js`, `wbrename.js` and `paste.js` stay on `file://` — all five drive the
-in-memory document, so none depends on a write landing. Set `PW_CHROME_PATH` for all of them the same way.
+in-memory document, so none depends on a write landing. `voice.js` stays
+there too: Chrome treats `file://` as a secure context, so `getUserMedia`
+and `MediaRecorder` both work, and the opaque origin is what forces
+`ScuLaFolder` into the download route the check reads its results from. Set
+`PW_CHROME_PATH` for all of them the same way.

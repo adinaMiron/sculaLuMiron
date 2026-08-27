@@ -16,8 +16,8 @@ Shared shape of all four files:
 
 ## The shared block (byte-identical in all four files)
 
-`index.html:221-876` · `editor.html:418-1073` ·
-`markdown-editor.html:1385-2040` · `recipes.html:407-1062`
+`index.html:226-881` · `editor.html:418-1073` ·
+`markdown-editor.html:1402-2057` · `recipes.html:408-1063`
 
 Two features share it, because both must exist before any app script runs:
 
@@ -45,39 +45,51 @@ Any edit here goes into **all four** files — see the diff snippet in
 
 ---
 
-## index.html — 1661 lines · "Caiet vocal" (voice dictation)
+## index.html — 1749 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
-| 11–217 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated) |
-| 220–874 | **Shared nav + `ScuLaFolder`** (identical in all 4 files) |
-| 875–1008 | Markup: header, controls, textarea, settings sheet |
-| 1009–1656 | App script, numbered sections below |
+| 11–221 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (keep-the-audio row) **137–138** |
+| 226–881 | **Shared nav + `ScuLaFolder`** (identical in all 4 files) |
+| 885–1020 | Markup: header, controls, `#keepAudio` **913–917**, textarea, settings sheet |
+| 1022–1745 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1014 | **1. i18n** — `I18N` object (`ro:` 1017 / `en:` 1058), `t()` at 1101, `UI` at 1100 |
-| 1104 | 2. Providers |
-| 1129 | 3. Settings store — `KEY` 1131, `store` 1132 w/ memory fallback, `save()` 1263, `load()` 1264 |
-| 1161 | 4. DOM refs |
-| 1192 | 5. Language / engine chips |
-| 1207 | **6. UI language** — `applyUILang()` **1211** |
-| 1229 | 7. Settings sheet |
-| 1301 | 8. Secure-context check |
-| 1306 | 9. Recording (MediaRecorder) + segment rotation |
-| 1453 | 10. Transcription queue |
-| 1547 | 11. Browser dictation (Web Speech API) |
-| 1606 | 12. File import |
-| 1620 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| 1652 | 14. Init |
+| 1027 | **1. i18n** — `I18N` object (`ro:` 1030 / `en:` 1074), `t()` at 1120, `UI` at 1119 |
+| 1123 | 2. Providers |
+| 1148 | 3. Settings store — `KEY` 1150, `store` 1151 w/ memory fallback, `save()` 1285, `load()` 1286 |
+| 1181 | 4. DOM refs |
+| 1212 | 5. Language / engine chips |
+| 1227 | **6. UI language** — `applyUILang()` **1231** |
+| 1249 | 7. Settings sheet |
+| 1322 | 8. Secure-context check |
+| 1327 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-audio recorder 1345–1397** |
+| 1529 | 10. Transcription queue |
+| 1623 | 11. Browser dictation (Web Speech API) |
+| 1684 | 12. File import |
+| 1698 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| 1743 | 14. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
-- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1551.
+- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1627.
+
+**Keeping the sound** (`#keepAudio`, off by default, persisted as
+`S.keepAudio`): a **second** `MediaRecorder` on the same stream, started in
+`startRec`/`startLive` via `armAudio()` + `startAudioKeep()` and stopped in
+`stopRec`/`stopLive`. It is deliberately *not* the transcription recorder —
+that one is rotated every `S.segMin` minutes and its segments are separate
+containers, which cannot be glued back into one playable file. The checkbox
+is read **once, at record time** (`audio.armed`); `#dlBtn` then writes the
+blob next to the transcript under the name the transcript actually got
+(`r.name`, which `freeName` may have bumped), so both land in
+`<folder>/transcript/`. Browser dictation has no stream of its own, so
+`startAudioKeep(null)` opens one and `stopOwnStream()` closes it.
 
 ---
 

@@ -2,9 +2,9 @@
   "name": "scula-lu-miron-tests",
   "private": true,
   "version": "1.0.0",
-  "description": "Ad-hoc Playwright checks for editor.html, recipes.html and markdown-editor.html (see README.md). Not part of the apps themselves - see the root CLAUDE.md for why the apps stay dependency-free.",
+  "description": "Ad-hoc Playwright checks for editor.html, recipes.html, markdown-editor.html and index.html (see README.md). Not part of the apps themselves - see the root CLAUDE.md for why the apps stay dependency-free.",
   "scripts": {
-    "test": "for f in flow stuck gestures stress regression desktop extras withimage undoredo spline spline-touch polyline recipes graph find nav wbrename paste; do node $f.js || exit 1; done"
+    "test": "for f in flow stuck gestures stress regression desktop extras withimage undoredo spline spline-touch polyline recipes graph find nav wbrename paste voice; do node $f.js || exit 1; done"
   },
   "dependencies": {
     "playwright": "^1.62.1"

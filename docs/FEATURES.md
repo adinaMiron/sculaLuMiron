@@ -9,7 +9,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 
 1. **Copy the closest existing app** as the skeleton. Keep it single-file:
    `<style>` → markup → `<script>`. No build step, no framework, no npm.
-2. **Paste the shared nav** verbatim from `index.html:221-873`.
+2. **Paste the shared nav** verbatim from `index.html:226-881`.
 3. **Add the new link to every nav copy** — the existing app files plus
    the new one. They must stay byte-identical:
    ```html
@@ -255,6 +255,10 @@ Full surface:
   reload, so on startup the block only *queries* (no gesture available)
   and the first `save()` re-requests inside the click.
 - **Nothing is overwritten.** `a.png` taken → `a-1.png`, `a-2.png`, …
+- **Two files that must share a name** — `index.html` saves the recording's
+  sound beside its transcript — take the second name from **`r.name`**, the
+  name the first file actually got, never from the name you asked for:
+  `freeName` may have bumped it to `-1`.
 - Right-click the nav button to forget the folder.
 
 ### The share route (phones and tablets)
