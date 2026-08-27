@@ -419,11 +419,100 @@ function serve() {
   check('markdown: numbered sections', /^### 1\. Ingrediente/m.test(md) && /^### 2\. Metoda de preparare/m.test(md));
   check('markdown: ingredient table header',
         /\| Cantitate \| Unitate \| Ingredient \| USDA FDC \|/.test(md));
-  check('markdown: ingredient row carries qty, unit and an empty USDA cell',
-        /\| 60 \| g \| fulgi de ov[ăa]z fini \|\s*\|/.test(md),
+  // The fourth cell leads with the fdcId — that is the part a reader takes
+  // back — and carries what it works out to at this quantity after it.
+  check('markdown: ingredient row carries qty, unit and its USDA food',
+        /\| 60 \| g \| fulgi de ov[ăa]z fini \| 2346396 \u00b7 227 kcal \u00b7 P 8\.1 \u00b7 C 41\.2 \u00b7 G 3\.5 \|/.test(md),
         (md.match(/\|.*fulgi.*\|/) || [''])[0]);
   check('markdown: method is an ordered list', /^1\. Toarn/m.test(md));
   check('markdown: day totals table', /^## Total pe zi/m.test(md) && /\*\*Total\*\*/.test(md));
+
+  /* ---- 3b. the nutrition pass ---- */
+  check('nutrition: a third numbered section, per meal',
+        /^### 3\. Valori nutri\u021bionale/m.test(md),
+        (md.match(/^###.*$/gm) || []).join(' / '));
+  check('nutrition: the table names the food and totals the meal',
+        /\| fulgi de ov[ăa]z fini \| Oats, whole grain, rolled, old fashioned \| 60 \| 227 \|/.test(md) &&
+        /\| \*\*Total\*\* \|\s*\|/.test(md),
+        (md.match(/\|.*Oats.*\|/) || [''])[0]);
+  check('nutrition: the day totals stub is filled in rather than empty',
+        /\| \*\*Total\*\* \| \d+ \| [\d.]+ \| [\d.]+ \| [\d.]+ \|/.test(md),
+        (md.match(/\| \*\*Total\*\*.*\|/g) || []).join(' / '));
+
+  const nut = await page.evaluate(() => {
+    const N = window.ScuLaRecipes.Nutrition;
+    const one = (qty, unit, item) => {
+      const v = N.forIngredient({ qty, unit, item, fdc: '' });
+      return { food: v.food, g: Math.round(v.g), kcal: Math.round(v.kcal), guess: v.guess };
+    };
+    return {
+      // a Romanian name, through the alias table
+      oats: one('60', 'g', 'fulgi de ovăz fini'),
+      // the longest phrase inside a name, not the first word of it
+      pb: one('20', 'g', 'unt de arahide (deasupra)'),
+      // the *earliest* phrase, so a row named after a carrot is a carrot
+      carrot: one('1', '', 'morcov ras o conservă de fasole albă'),
+      // a unit that is a thing, weighed by the food's own portion
+      slices: one('2', 'felii', 'de pâine integrală'),
+      eggs: one('2', '', 'ouă mărimea M'),
+      // English, through the words of the descriptions themselves
+      english: one('100', 'g', 'raw broccoli'),
+      // nothing at all rather than a wrong guess
+      nonsense: one('100', 'g', 'qwerty zzz'),
+      // every shape the quantity column is allowed to take
+      qty: ['60', '1,5', '1/2', '½', '1 ½', '2-3', ''].map(s => N.qtyValue(s)),
+      // a real zero is a zero; olive oil has no protein
+      oil: N.forIngredient({ qty: '10', unit: 'ml', item: 'ulei de măsline', fdc: '' })
+    };
+  });
+  check('nutrition: a Romanian name finds its USDA food',
+        nut.oats.food === 'Oats, whole grain, rolled, old fashioned' && nut.oats.kcal === 227,
+        JSON.stringify(nut.oats));
+  check('nutrition: the longest phrase wins over the shortest',
+        nut.pb.food === 'Peanut butter, creamy', JSON.stringify(nut.pb));
+  check('nutrition: the earliest phrase wins over the longest',
+        nut.carrot.food === 'Carrots, mature, raw', JSON.stringify(nut.carrot));
+  check('nutrition: a slice is weighed by the food it is a slice of',
+        nut.slices.g === 64 && /P[âa]ine integral/.test(nut.slices.food), JSON.stringify(nut.slices));
+  check('nutrition: no unit at all means pieces of the thing',
+        nut.eggs.g === 101, JSON.stringify(nut.eggs));
+  check('nutrition: an English name is matched on the descriptions',
+        /Broccoli/.test(nut.english.food), JSON.stringify(nut.english));
+  check('nutrition: a name nothing matches gets no food rather than a wrong one',
+        nut.nonsense.food === '', JSON.stringify(nut.nonsense));
+  check('nutrition: every quantity shape the parser writes',
+        JSON.stringify(nut.qty) === JSON.stringify([60, 1.5, 0.5, 0.5, 1.5, 2.5, 0]),
+        JSON.stringify(nut.qty));
+  check('nutrition: a measured zero is a zero, not a blank',
+        nut.oil.prot === 0 && nut.oil.fat > 9, JSON.stringify(nut.oil));
+
+  // The book is the whole point of reading a second plan: a name resolved
+  // once is answered from then on, and a hand-written entry is never
+  // written over.
+  const bk = await page.evaluate(() => {
+    const N = window.ScuLaRecipes.Nutrition;
+    const stats = N.stats();
+    const json = JSON.parse(N.toJSON());
+    N.fromJSON(JSON.stringify({ v: 1, updated: '2026-01-01', items: {
+      "qwerty zzz": { name: 'qwerty zzz', id: '', food: 'Ceva de-al casei',
+                      kcal: 100, prot: 10, fat: 1, carb: 2, hand: true }
+    } }));
+    const after = N.forIngredient({ qty: '200', unit: 'g', item: 'qwerty zzz', fdc: '' });
+    N.rematch();
+    const kept = N.forIngredient({ qty: '200', unit: 'g', item: 'qwerty zzz', fdc: '' });
+    return { stats, keys: Object.keys(json.items).length,
+             hasOats: !!json.items['fulgi de ovaz fini'],
+             after: { food: after.food, kcal: after.kcal },
+             kept: kept.food };
+  });
+  check('nutrition: reading a plan writes its ingredients into the book',
+        bk.stats.total > 0 && bk.keys === bk.stats.total && bk.hasOats,
+        JSON.stringify(bk.stats) + ' keys=' + bk.keys);
+  check('nutrition: a hand-written entry supplies the numbers itself',
+        bk.after.food === 'Ceva de-al casei' && bk.after.kcal === 200,
+        JSON.stringify(bk.after));
+  check('nutrition: looking the foods up again leaves hand-written entries alone',
+        bk.kept === 'Ceva de-al casei', bk.kept);
   check('markdown: preview rendered a table', await page.evaluate(() =>
     document.querySelectorAll('#mdPreview table').length >= 3));
 
@@ -1034,9 +1123,58 @@ function serve() {
   check('html: an ingredient cannot break out of the page',
         doc.indexOf('&lt;b&gt;ovăz&lt;/b&gt; &amp; &quot;co&quot;') > 0 &&
         doc.indexOf('<b>ovăz</b>') < 0);
-  check('html: nothing to run and nothing to fetch',
-        !/<script/i.test(doc) && !/\ssrc=/i.test(doc) && !/https?:\/\//i.test(doc) &&
-        !/@import/i.test(doc));
+  // The file now carries exactly one script — the totals follow an edited
+  // quantity — and still nothing to fetch, which is the invariant that
+  // makes it openable out of an e-mail on a plane.
+  check('html: one script of its own and nothing to fetch',
+        (doc.match(/<script/gi) || []).length === 1 && !/\ssrc=/i.test(doc) &&
+        !/https?:\/\//i.test(doc) && !/@import/i.test(doc));
+  check('html: a nutrition table under every meal, and one for the day',
+        (doc.match(/<table class="nutri">/g) || []).length === 3 &&
+        /<table class="nutri dtot">/.test(doc),
+        String((doc.match(/<table class="nutri">/g) || []).length));
+  check('html: the quantity is a field carrying its own numbers',
+        /<input class="qty"[^>]*data-g="[\d.]+"[^>]*data-k="[\d.]+"/.test(doc),
+        (doc.match(/<input class="qty"[^>]*>/) || [''])[0]);
+
+  /* The point of that script, driven in the file it ships in: the page is
+     opened on its own, off disk, with nothing else around it. */
+  const exported = path.join(tmp, 'exported.html');
+  fs.writeFileSync(exported, doc);
+  const sheet = await browser.newPage();
+  const sheetErrors = [];
+  sheet.on('pageerror', e => sheetErrors.push(String(e)));
+  sheet.on('console', m => { if (m.type() === 'error') sheetErrors.push(m.text()); });
+  await sheet.goto('file://' + exported);
+  const live = await sheet.evaluate(() => {
+    const read = () => {
+      const sec = document.querySelector('section.meal');
+      const foot = sec.querySelector('tfoot tr');
+      const row = sec.querySelector('tbody tr[data-r="0"]');
+      return { rowG: row.querySelector('.g').textContent,
+               rowKc: row.querySelector('.kc').textContent,
+               mealKc: foot.querySelector('.kc').textContent,
+               dayKc: document.querySelector('table.dtot tfoot .kc').textContent };
+    };
+    const before = read();
+    const el = document.querySelector('section.meal input.qty');
+    el.value = String(parseFloat(el.value) * 2);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return { before, after: read(), was: el.value };
+  });
+  // Within one, because both ends are rounded for display and 227.4
+  // doubles to 455, not to 454.
+  const near = (a, b) => Math.abs(Number(a) - Number(b)) <= 1;
+  check('html: doubling a quantity doubles that row',
+        Number(live.after.rowG) === Number(live.before.rowG) * 2 &&
+        near(live.after.rowKc, Number(live.before.rowKc) * 2),
+        JSON.stringify(live));
+  check('html: the meal total and the day total both follow',
+        near(Number(live.after.mealKc) - Number(live.before.mealKc), live.before.rowKc) &&
+        near(Number(live.after.dayKc) - Number(live.before.dayKc), live.before.rowKc),
+        JSON.stringify(live));
+  check('html: nothing threw in the exported page', sheetErrors.length === 0, sheetErrors.join('\n'));
+  await sheet.close();
   check('html: it is a whole document, in the interface language',
         /^<!doctype html>/.test(doc) && /<html lang="ro">/.test(doc) &&
         /Metoda de preparare/.test(doc));

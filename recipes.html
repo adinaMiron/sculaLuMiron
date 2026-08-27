@@ -180,6 +180,25 @@
   .ing{display:grid;grid-template-columns:4.2rem 4.2rem minmax(0,1fr) auto;gap:.35rem;margin:0 0 .35rem;align-items:center}
   .ing input{background:var(--surface-2);padding:.4rem .5rem;font-size:.85rem}
   .ing .acts{display:flex;gap:.25rem}
+  /* What the USDA table made of this row, under the row it belongs to: the
+     food it was matched to (editable, against one datalist for the whole
+     page) and what the quantity above comes to. Indented to the third
+     column so it reads as a note on the ingredient, not another one. */
+  .ing + .nut{display:grid;grid-template-columns:8.75rem minmax(0,1fr);gap:.35rem;
+    align-items:center;margin:-.1rem 0 .5rem}
+  .ing + .nut > .macros{
+    grid-column:2;font-size:.74rem;color:var(--text-3);
+    font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:.15rem .6rem;align-items:baseline}
+  .ing + .nut input.food{grid-column:2;background:transparent;border-style:dashed;
+    padding:.25rem .45rem;font-size:.76rem;color:var(--text-2)}
+  .ing + .nut input.food:focus{background:var(--surface-2);border-style:solid}
+  .ing + .nut .kcal{color:var(--accent-2);font-weight:600}
+  .ing + .nut .warn{color:var(--danger)}
+  .ing + .nut .flag{cursor:help}
+  @media (max-width:520px){
+    .ing + .nut{grid-template-columns:minmax(0,1fr)}
+    .ing + .nut > .macros, .ing + .nut input.food{grid-column:1}
+  }
   .iconbtn{
     background:transparent;border:1px solid var(--border);color:var(--text-2);
     border-radius:.5rem;width:1.9rem;height:1.9rem;line-height:1;
@@ -997,9 +1016,10 @@
             <button type="button" class="btn ghost" id="btnMd" data-i="importMd">Importă .md</button>
           </div>
         </div>
-        <input type="file" id="file" accept=".pdf,.txt,.md,image/*,application/pdf" multiple>
+        <input type="file" id="file" accept=".pdf,.txt,.md,.json,image/*,application/pdf" multiple>
         <input type="file" id="cam" accept="image/*" capture="environment" multiple>
         <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown" multiple>
+        <input type="file" id="bookFile" accept=".json,application/json">
         <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span><button type="button" class="btn mini ghost" id="btnStop" hidden data-i="stopOcr">Oprește</button></div>
         <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.</p>
         <p class="hint" data-i="importMdHint">„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.</p>
@@ -1080,11 +1100,27 @@
             <input type="checkbox" id="optTotals" checked>
             <span data-i="optTotals">Tabel de totaluri (pentru USDA)</span>
           </label>
+          <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)">
+            <input type="checkbox" id="optNutri" checked>
+            <span data-i="optNutri">Valori nutriționale (USDA)</span>
+          </label>
           <label class="row" style="gap:.35rem;font-size:.82rem;color:var(--text-2)" id="onlyShownBox" hidden>
             <input type="checkbox" id="optOnlyShown">
             <span data-i="onlyShown">Doar rețetele afișate</span>
           </label>
         </div>
+
+        <details class="more" id="nutriBox">
+          <summary data-i="nutriTitle">Ingrediente și valori nutriționale (USDA)</summary>
+          <p class="hint" data-i="nutriIntro">Fiecare ingredient este căutat într-o copie a tabelului USDA FoodData Central care stă chiar în pagină — nimic nu se cere de pe internet. Numele găsite se scriu într-o bază de ingrediente care crește la fiecare fișier citit, așa că a doua carte pornește de la ce s-a învățat din prima.</p>
+          <p class="found" id="nutriStats"></p>
+          <div class="row" style="margin-top:.6rem">
+            <button type="button" class="btn mini" id="btnNutriRescan" data-i="nutriRescan">Caută din nou alimentele</button>
+            <button type="button" class="btn mini ghost" id="btnBookSave" data-i="nutriSave">Salvează baza (.json)</button>
+            <button type="button" class="btn mini ghost" id="btnBookPick" data-i="nutriPick">Citește o bază (.json)</button>
+          </div>
+          <p class="hint" data-i="nutriHint">Baza pleacă și vine ca un fișier .json obișnuit. O intrare pe care o corectezi de mână (pune-i „hand”: true) nu mai e rescrisă niciodată.</p>
+        </details>
         <div class="row">
           <button type="button" class="btn primary" id="btnWorkbook" data-i="toWorkbook">Adaugă în caiet</button>
           <button type="button" class="btn" id="btnSaveMd" data-i="saveMd">Salvează .md</button>
@@ -1132,10 +1168,12 @@
     </div>
     <details class="more" id="htmlBox">
       <summary data-i="htmlPreviewLabel">Previzualizare</summary>
-      <iframe id="htmlFrame" sandbox="" title="" data-i-title="htmlPreviewLabel"></iframe>
+      <iframe id="htmlFrame" sandbox="allow-scripts" title="" data-i-title="htmlPreviewLabel"></iframe>
     </details>
   </div>
 </div>
+
+<datalist id="usdaList"></datalist>
 
 <script>
 /* ============================================================
@@ -1199,6 +1237,7 @@ const I18N = {
     workbookName:"Caietul în care se adaugă zilele",
     optSource:"Notează sursa",
     optTotals:"Tabel de totaluri (pentru USDA)",
+    optNutri:"Valori nutriționale (USDA)",
     toWorkbook:"Adaugă în caiet",
     saveMd:"Salvează .md",
     copyMd:"Copiază",
@@ -1220,6 +1259,10 @@ const I18N = {
     delIng:"Șterge ingredientul",
     toMethod:"Mută la metoda de preparare",
     colQty:"Cant.", colUnit:"Unit.", colItem:"Ingredient",
+    colFood:"Aliment USDA — scrie ca să cauți",
+    nUnknown:"Nerecunoscut. Scrie un aliment din tabel ca să-l legi.",
+    nGuess:"Greutate presupusă: tabelul nu știe cât cântărește o bucată.",
+    nLocal:"Aliment local, nu din FoodData Central.",
     stepsPlaceholder:"Un pas pe linie…",
     mealsCount:n => n === 1 ? "1 masă" : n + " mese",
 
@@ -1249,11 +1292,32 @@ const I18N = {
     mdTotals:"Total pe zi",
     mdColMeal:"Masă", mdColKcal:"kcal", mdColProt:"Proteine (g)",
     mdColCarb:"Carbohidrați (g)", mdColFat:"Grăsimi (g)", mdTotalRow:"Total",
+    mdNutrition:"3. Valori nutriționale",
+    mdColFood:"Aliment USDA", mdColGrams:"Cantitate (g)",
     mdSource:s => "Sursă: " + s,
     mdDay:n => "Ziua " + n,
 
     /* importul unui .md și pagina de trimis mai departe */
     importMd:"Importă .md",
+    nutriTitle:"Ingrediente și valori nutriționale (USDA)",
+    nutriIntro:"Fiecare ingredient este căutat într-o copie a tabelului USDA FoodData Central care stă chiar în pagină — nimic nu se cere de pe internet. Numele găsite se scriu într-o bază de ingrediente care crește la fiecare fișier citit, așa că a doua carte pornește de la ce s-a învățat din prima.",
+    nutriStats:(known, total) => total
+      ? known + " din " + total + " ingrediente au un aliment. " + (total - known) + " încă nu."
+      : "Încă niciun ingredient în bază.",
+    nutriUpdated:d => "Ultima adăugire: " + d + ".",
+    nutriSave:"Salvează baza (.json)",
+    nutriPick:"Citește o bază (.json)",
+    nutriRescan:"Caută din nou alimentele",
+    nutriHint:"Baza pleacă și vine ca un fișier .json obișnuit. O intrare pe care o corectezi de mână (pune-i „hand”: true) nu mai e rescrisă niciodată.",
+    stBookSaved:"Baza de ingrediente a fost salvată.",
+    stBookRead:(a, n) => a === 1
+      ? "Un ingredient nou în bază — " + n + " în total."
+      : a + " ingrediente noi în bază — " + n + " în total.",
+    stBookFailed:"Fișierul nu e o bază de ingrediente scrisă de pagina asta.",
+    stLearned:(a, n) => a
+      ? (a === 1 ? "Un ingredient nou învățat — " + n + " în bază."
+                 : a + " ingrediente noi învățate — " + n + " în bază.")
+      : "Nimic nou de învățat — " + n + " ingrediente în bază.",
     importMdHint:"„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.",
     stepHtml:"Pagina HTML",
     htmlHint:"Aceleași rețete, așezate ca să fie citite: un singur fișier .html, fără script și fără nimic de adus de pe internet. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.",
@@ -1265,6 +1329,9 @@ const I18N = {
     /* textul din pagina exportată */
     hIngredients:"Ingrediente",
     hMethod:"Metoda de preparare",
+    hNutrition:"Valori nutriționale",
+    docNutriHint:"Schimbă o cantitate în lista de ingrediente și tabelul se recalculează.",
+    docNutriNote:"Valori din USDA FoodData Central (Foundation Foods), la cantitatea folosită. Rândurile fără aliment recunoscut nu intră în total.",
     docContents:"Cuprins",
     docDays:n => n === 1 ? "o zi" : n + " zile",
     docRecipes:n => n === 1 ? "o rețetă" : n + " rețete",
@@ -1344,6 +1411,7 @@ const I18N = {
     workbookName:"Workbook the days are added to",
     optSource:"Note the source",
     optTotals:"Totals table (for USDA)",
+    optNutri:"Nutrition values (USDA)",
     toWorkbook:"Add to workbook",
     saveMd:"Save .md",
     copyMd:"Copy",
@@ -1363,6 +1431,10 @@ const I18N = {
     delIng:"Delete the ingredient",
     toMethod:"Move to the method",
     colQty:"Qty", colUnit:"Unit", colItem:"Ingredient",
+    colFood:"USDA food — type to search",
+    nUnknown:"No food yet. Type one from the table to link it.",
+    nGuess:"Weight assumed: the table does not know what one of these weighs.",
+    nLocal:"A local food, not from FoodData Central.",
     stepsPlaceholder:"One step per line…",
     mealsCount:n => n === 1 ? "1 meal" : n + " meals",
 
@@ -1390,11 +1462,32 @@ const I18N = {
     mdTotals:"Day total",
     mdColMeal:"Meal", mdColKcal:"kcal", mdColProt:"Protein (g)",
     mdColCarb:"Carbs (g)", mdColFat:"Fat (g)", mdTotalRow:"Total",
+    mdNutrition:"3. Nutrition",
+    mdColFood:"USDA food", mdColGrams:"Amount (g)",
     mdSource:s => "Source: " + s,
     mdDay:n => "Day " + n,
 
     /* importing a .md, and the page to pass on */
     importMd:"Import .md",
+    nutriTitle:"Ingredients and nutrition values (USDA)",
+    nutriIntro:"Every ingredient is looked up in a copy of the USDA FoodData Central table that sits in this page — nothing is fetched from the internet. What is found is written into an ingredient book that grows with every file read, so the second book starts from what the first one taught it.",
+    nutriStats:(known, total) => total
+      ? known + " of " + total + " ingredients have a food. " + (total - known) + " do not yet."
+      : "No ingredients in the book yet.",
+    nutriUpdated:d => "Last added: " + d + ".",
+    nutriSave:"Save the book (.json)",
+    nutriPick:"Read a book (.json)",
+    nutriRescan:"Look the foods up again",
+    nutriHint:"The book goes out and comes back as an ordinary .json file. An entry you correct by hand (give it \u0022hand\u0022: true) is never written over again.",
+    stBookSaved:"The ingredient book has been saved.",
+    stBookRead:(a, n) => a === 1
+      ? "One new ingredient in the book — " + n + " in all."
+      : a + " new ingredients in the book — " + n + " in all.",
+    stBookFailed:"That file is not an ingredient book written by this page.",
+    stLearned:(a, n) => a
+      ? (a === 1 ? "One new ingredient learned — " + n + " in the book."
+                 : a + " new ingredients learned — " + n + " in the book.")
+      : "Nothing new to learn — " + n + " ingredients in the book.",
     importMdHint:"“Import .md” reads back a file this page wrote — or one edited since in the Markdown editor: the days, the meals, the ingredients and the steps all come back whole, ready to correct, to save again, or to send on as an HTML page.",
     stepHtml:"HTML page",
     htmlHint:"The same recipes, laid out to be read: one .html file, with no script in it and nothing to fetch from the internet. It opens from an e-mail, on a phone, and out of a printer.",
@@ -1406,6 +1499,9 @@ const I18N = {
     /* the words inside the exported page */
     hIngredients:"Ingredients",
     hMethod:"Method",
+    hNutrition:"Nutrition",
+    docNutriHint:"Change an amount in the ingredient list and the table works itself out again.",
+    docNutriNote:"Values from USDA FoodData Central (Foundation Foods), at the amount used. Rows with no food matched are left out of the total.",
     docContents:"Contents",
     docDays:n => n === 1 ? "one day" : n + " days",
     docRecipes:n => n === 1 ? "one recipe" : n + " recipes",
@@ -3875,7 +3971,7 @@ const Recipes = (function(){
   }
 
   /* ---------- reading the contract back ----------
-     The inverse of buildDayMarkdown() in section 6 — docs/RECIPES.md § C.
+     The inverse of buildDayMarkdown() in section 7 — docs/RECIPES.md § C.
      A file this page wrote (or one edited since in markdown-editor.html)
      comes back as the model it was built from, so the day cards, the
      search, the workbook and the HTML page all work on an imported plan
@@ -3892,8 +3988,13 @@ const Recipes = (function(){
   const MD_TOTALS = new RegExp("^(total pe zi|day total)\\s*$", "i");
   const MD_RULE   = /^([-*_])\1{2,}$/;
   const MD_SEP_ROW = /^\|[\s:|-]+\|$/;
+  const MD_FDC = /^\s*(L\d+|\d{3,})\b/;
+  function fdcOf(cellText){
+    const m = MD_FDC.exec(String(cellText || ""));
+    return m ? m[1] : "";
+  }
 
-  // Cells escape a literal pipe as `\|` (cell() in section 6) and escape
+  // Cells escape a literal pipe as `\|` (cell() in section 7) and escape
   // nothing else, so one walk over the characters is the whole reader.
   function mdCells(line){
     const inner = line.replace(/^\|/, "").replace(/\|\s*$/, "");
@@ -3965,7 +4066,12 @@ const Recipes = (function(){
         }
         if(level === 3 && meal){
           const num = title.match(/^\s*(\d)\s*[.)]/);
-          if(num) section = num[1] === "1" ? "ing" : "steps";
+          // 1. ingredients, 2. method, and 3. the nutrition table — which
+          // is written *out* of the two above it and so is read back out of
+          // nothing at all. Anything else numbered is left alone too, which
+          // is the only way a later section can be added without this
+          // reader quietly filing it under the method.
+          if(num) section = num[1] === "1" ? "ing" : num[1] === "2" ? "steps" : "";
           else if(SEC_ING.test(title)) section = "ing";
           else if(SEC_STEP.test(title)) section = "steps";
           sawSep = false;
@@ -3986,8 +4092,11 @@ const Recipes = (function(){
         if(!sawSep) return;                       // the header row it wrote
         const c = mdCells(line);
         if(!c.some(Boolean)) return;              // "|  |  |  |  |" — no ingredients
+        // The fourth cell leads with the id and may carry the numbers that
+        // were worked out from it; only the id is content, the rest is
+        // written again from the table on the way out.
         meal.ingredients.push({ qty:c[0] || "", unit:c[1] || "", item:c[2] || "",
-                                group:"", fdc:c[3] || "" });
+                                group:"", fdc:fdcOf(c[3]) });
         return;
       }
       if(section !== "steps") return;
@@ -4008,7 +4117,1022 @@ const Recipes = (function(){
 })();
 
 /* ============================================================
-   6. The app — state, review cards, markdown
+   6. Nutrition — the USDA table, and what a recipe adds up to
+
+   The markdown of section 5 was written so this step could be a
+   *reading* problem: quantity, unit and name are already three
+   columns, and the fourth is where the food this row is goes.
+   What was missing was the table to look it up in.
+
+   It is here rather than behind an API key because the whole point
+   of this repo is a page that works from file:// with nothing to
+   fetch — docs/RECIPES.md § E.
+   ============================================================ */
+const Nutrition = (function(){
+
+  /* ---------- the table ----------
+     FoodData Central's Foundation Foods set, reduced to the four numbers
+     a recipe needs plus the portion weights that turn "1 ou" or "2 felii"
+     into grams. Per 100 g:
+
+       [ id, description, kcal, protein, fat, carbohydrate,
+         one piece (g), one cup (g), one tablespoon (g) ]
+
+     The trailing three are dropped when the dataset offers no such
+     portion. Compiled from
+     FoodData_Central_foundation_food_json_2026-04-30.json with the
+     fallbacks documented in docs/RECIPES.md § E: a food with no Energy
+     row is 4/4/9 over its own macros, and a missing carbohydrate is 100
+     minus water, protein, fat and ash.
+
+     The rows whose id starts with "L" are *not* FoodData. They are the
+     staples a Romanian meal plan is made of that the Foundation set
+     simply does not contain — pâine, paste, miere, cașcaval, couscous.
+     Without them a plan reads as half-known, and a total that quietly
+     leaves out the bread is worse than no total at all. An "L" id cannot
+     be mistaken for an fdcId, the page says which is which, and the
+     ingredient book below is where a number that needs correcting gets
+     corrected. */
+const USDA_FOODS = [
+  [2262074,"Almond butter, creamy",603,20.8,53,21.2],
+  [2257045,"Almond milk, unsweetened, plain, refrigerated",19.3,0.66,1.56,0.67],
+  [1999631,"Almond milk, unsweetened, plain, shelf stable",14.6,0.56,1.22,0.34],
+  [2747652,"Anchovies, canned in olive oil, with salt, drained",206,26.9,9.85,2.41],
+  [2003590,"Apple juice, with added vitamin C, from concentrate, shelf stable",47.2,0.09,0.29,11.4],
+  [1750340,"Apples, fuji, with skin, raw",58.2,0.15,0.16,15.7],
+  [1750341,"Apples, gala, with skin, raw",54.9,0.13,0.15,14.8],
+  [1750342,"Apples, granny smith, with skin, raw",53,0.27,0.14,14.1],
+  [1750343,"Apples, honeycrisp, with skin, raw",54,0.1,0.1,14.7],
+  [1750339,"Apples, red delicious, with skin, raw",55.6,0.19,0.21,14.8],
+  [2346414,"Applesauce, unsweetened, with added vitamin C",46.4,0.27,0.16,12.3],
+  [2710815,"Apricot, with skin, raw",43.5,0.96,0.41,10.2],
+  [2710822,"Arugula, baby, raw",25.9,1.65,0.33,5.37],
+  [2710823,"Asparagus, green, raw",23.5,1.44,0.22,5.1],
+  [2710824,"Avocado, Hass, peeled, raw",206,1.81,20.3,8.32],
+  [1105073,"Bananas, overripe, raw",85,0.73,0.22,20.1,110],
+  [1105314,"Bananas, ripe and slightly ripe, raw",97,0.74,0.29,23,115],
+  [2644285,"Beans, black, canned, sodium added, drained and rinsed",115,6.91,1.27,19.8],
+  [2644287,"Beans, cannellini, canned, sodium added, drained and rinsed",112,7.41,1.17,18.8],
+  [2644281,"Beans, cannellini, dry",337,21.6,2.2,59.8],
+  [747444,"Beans, Dry, Black (0% moisture)",407.2,24.4,1.45,74.15],
+  [747433,"Beans, Dry, Brown (0% moisture)",405.6,25.6,1.12,73.28],
+  [747436,"Beans, Dry, Carioca (0% moisture)",407.2,25.2,1.44,73.36],
+  [747437,"Beans, Dry, Cranberry (0% moisture)",406.1,24.4,1.23,74.37],
+  [747440,"Beans, Dry, Dark Red Kidney (0% moisture)",406.6,25.9,1.31,72.79],
+  [747432,"Beans, Dry, Flor de Mayo (0% moisture)",404.3,23.3,0.86,75.84],
+  [747446,"Beans, Dry, Great Northern (0% moisture)",406.2,24.7,1.24,74.06],
+  [747438,"Beans, Dry, Light Red Kidney (0% moisture)",405.1,25,1.03,73.97],
+  [747435,"Beans, Dry, Light Tan (0% moisture)",406.4,24.6,1.28,74.12],
+  [747430,"Beans, Dry, Medium Red (0% moisture)",405.2,25.5,1.04,73.46],
+  [747441,"Beans, Dry, Navy (0% moisture)",407.6,24.1,1.51,74.39],
+  [747439,"Beans, Dry, Pink (0% moisture)",406,23.4,1.2,75.4],
+  [747445,"Beans, Dry, Pinto (0% moisture)",406.2,23.7,1.24,75.06],
+  [747431,"Beans, Dry, Red (0% moisture)",405.8,21.3,1.16,77.54],
+  [747443,"Beans, Dry, Small Red (0% moisture)",406.4,23.5,1.28,75.22],
+  [747442,"Beans, Dry, Small White (0% moisture)",406.6,24.5,1.32,74.18],
+  [747434,"Beans, Dry, Tan (0% moisture)",405.7,26.8,1.14,72.06],
+  [2644294,"Beans, great northern, canned, sodium added, drained and rinsed",114,7.03,1.27,19.3],
+  [2644289,"Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed",123,7.8,1.26,21],
+  [2644290,"Beans, kidney, light red, canned, sodium added, sugar added, drained and rinsed",124,7.31,1.3,21.4],
+  [2644286,"Beans, navy, canned, sodium added, drained and rinsed",116,6.57,1.4,20],
+  [2644292,"Beans, pinto, canned, sodium added, drained and rinsed",114,6.69,1.27,19.6],
+  [321611,"Beans, snap, green, canned, regular pack, drained solids",21,1.04,0.39,4.11,0,129],
+  [2346400,"Beans, snap, green, raw",33.6,1.97,0.28,7.41],
+  [2646174,"Beef, chuck, roast, boneless, choice, raw",237,18.4,17.8,0],
+  [2646175,"Beef, flank, steak, boneless, choice, raw",170,20.1,9.4,0],
+  [2514744,"Beef, ground, 80% lean meat / 20% fat, raw",248,17.5,19.4,0],
+  [2514743,"Beef, ground, 90% lean meat / 10% fat, raw",190,18.2,12.8,0],
+  [746758,"Beef, loin, tenderloin roast, separable lean only, boneless, trimmed to 0\" fat, select, cooked, roasted",176,27.7,6.36,0,462],
+  [746759,"Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8\" fat, choice, raw",155,22.8,6.39,0],
+  [2646172,"Beef, ribeye, steak, boneless, choice, raw",260,18.7,20,0],
+  [746760,"Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",122,23.4,2.48,0,690],
+  [746761,"Beef, round, top round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",123,23.7,2.41,0,788],
+  [2646173,"Beef, round, top round, boneless, choice, raw",146,21.5,5.7,0.85],
+  [2727572,"Beef, short loin (NY strip steak), raw",196,21.3,11.5,0.22],
+  [746762,"Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\" fat, select, raw",145,22.7,5.32,0,525],
+  [746763,"Beef, short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8\" fat, choice, cooked, grilled",219,27.3,11.4,0,360],
+  [2727574,"Beef, top sirloin steak, raw",146,22,5.71,0.22],
+  [2727573,"Beef, tenderloin steak, raw",149,21.1,6.46,0.18],
+  [2747653,"Beet greens, raw",26.4,1.61,0.14,4.66],
+  [2685576,"Beets, raw",41,1.69,0.3,8.79],
+  [2727571,"Bison, ground, raw",164,19.9,8.88,-0.15],
+  [2727581,"Blackberries, raw",52.7,1.53,0,11.65],
+  [2644293,"Blackeye pea, canned, sodium added, drained and rinsed",113,6.92,1.3,19.2],
+  [2644284,"Blackeye pea, dry",346,21.2,2.42,61.8],
+  [2346411,"Blueberries, raw",57.4,0.7,0.31,14.6],
+  [747447,"Broccoli, raw",31,2.57,0.34,6.27,0,76],
+  [2685575,"Brussels sprouts, raw",48.8,3.98,0.56,9.62],
+  [2512378,"Buckwheat, whole grain",332,11.1,3.04,71.1],
+  [2710820,"Bulgur, dry, raw",349,11.8,2.42,75.9],
+  [790508,"Butter, stick, salted",747.8,0,82.2,2],
+  [789828,"Butter, stick, unsalted",737.9,0,81.5,1.1],
+  [2259792,"Buttermilk, low fat",42.9,3.46,1.08,4.81],
+  [2685572,"Cabbage, bok choy, raw",17,1.02,0.23,3.51],
+  [2346407,"Cabbage, green, raw",27.9,0.96,0.23,6.38],
+  [2727583,"Cabbage, napa, leaf, destemmed, raw",21,1.06,0,4.18],
+  [2346408,"Cabbage, red, raw",29.9,1.24,0.21,6.79],
+  [2258587,"Carrots, baby, raw",38.3,0.81,0.14,9.08],
+  [746764,"Carrots, frozen, unprepared",37,0.81,0.47,7.92],
+  [2258586,"Carrots, mature, raw",45,0.94,0.35,10.3],
+  [2685573,"Cauliflower, raw",22.9,1.64,0.24,4.72],
+  [2346405,"Celery, raw",14.8,0.49,0.16,3.32],
+  [747429,"Cheese, American, restaurant",375,17.5,31.1,6.35],
+  [328637,"Cheese, cheddar",408,23.3,34,2.44,17,105],
+  [2647443,"Cheese, cotija, solid",352,23.8,27.2,2.72],
+  [328841,"Cheese, cottage, lowfat, 2% milkfat",84,11,2.3,4.31,0,220],
+  [746765,"Cheese, dry white, queso seco",326,24.5,24.3,2.07,0,97.3],
+  [2259796,"Cheese, feta, whole milk, crumbled",273,19.7,19.1,5.58],
+  [2647438,"Cheese, monterey jack, solid",391,22.6,32.6,1.9],
+  [329370,"Cheese, mozzarella, low moisture, part-skim",298,23.7,20.4,4.44],
+  [2647441,"Cheese, oaxaca, solid",298,22.1,22.1,2.4],
+  [325036,"Cheese, parmesan, grated",421,29.6,28,12.4,0,0,7.6],
+  [2259795,"Cheese, parmesan, grated, refrigerated",405,30.1,29.5,4.33],
+  [2647439,"Cheese, pasteurized process cheese food or product, American, singles",308,15.6,23.9,8.19],
+  [325198,"Cheese, pasteurized process, American, vitamin D fortified",366,18,30.6,5.27],
+  [2647440,"Cheese, provolone, sliced",357,23.5,28.1,2.45],
+  [2647442,"Cheese, queso fresco, solid",297,18.9,23.4,2.96],
+  [746766,"Cheese, ricotta, whole milk",157,7.81,11,6.86,0,323],
+  [746767,"Cheese, swiss",393,27,31,1.44,21.9],
+  [2346399,"Cherries, sweet, dark red, raw",63.3,1.04,0.19,16.2],
+  [2710819,"Chia seeds, dry, raw",490,17,32.9,38.3],
+  [2646170,"Chicken, breast, boneless, skinless, raw",112,22.5,1.93,0],
+  [2727569,"Chicken, breast, meat and skin, raw",133,21.4,4.78,-0.43],
+  [331960,"Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, braised",166,32.1,3.24,0,174],
+  [331897,"Chicken, broilers or fryers, drumstick, meat only, cooked, braised",156,23.9,5.95,0,104],
+  [2727566,"Chicken, drumstick, meat and skin, raw",130,18.4,5.94,-0.47],
+  [2514746,"Chicken, ground, with additives, raw",138,17.9,7.16,0],
+  [2646171,"Chicken, thigh, boneless, skinless, raw",149,18.6,7.92,0],
+  [2727567,"Chicken, thigh, meat and skin, raw",193,17.1,13.4,-0.17],
+  [2727568,"Chicken, wing, meat and skin, raw",173,18.4,10.6,-0.46],
+  [2644288,"Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed",133,7.02,3.1,20.3],
+  [2644282,"Chickpeas, (garbanzo beans, bengal gram), dry",372,21.3,6.27,60.4],
+  [2747654,"Cod, Pacific or Alaskan, frozen, wild caught",60.8,14.2,0.22,0.52],
+  [2685574,"Collards, raw",38.8,2.97,0.77,7.02],
+  [333008,"Cookies, oatmeal, soft, with raisins",430,5.79,14.3,69.6,27],
+  [2710835,"Corn flour, masa harina, white or yellow, dry, raw",366,7.56,4.34,76.7],
+  [2710826,"Corn, sweet, yellow and white kernels, fresh, raw",72.9,2.79,1.63,14.7],
+  [2346384,"Cottage cheese, full fat, large or small curd",105,11.6,4.22,4.6],
+  [2003594,"Cranberry juice, not fortified, from concentrate, shelf stable",31.3,0,0.34,7.26],
+  [2346385,"Cream cheese, full fat, block",337,5.79,33.5,4.56],
+  [2346386,"Cream, heavy",336,2.02,35.6,3.8],
+  [2346387,"Cream, sour, full fat",193,3.07,18,5.56],
+  [2684446,"Crustaceans, crab, blue swimming, lump, pasteurized, refrigerated",86,18.6,0.81,0],
+  [2684443,"Crustaceans, shrimp, farm raised, raw",75.7,15.6,0.8,0.48],
+  [2346406,"Cucumber, with peel, raw",13.9,0.62,0.18,2.95],
+  [323793,"Egg, white, dried",376,79.9,0.65,6.02,0,107,7],
+  [323697,"Egg, white, raw, frozen, pasteurized",48,10.1,0.16,0.74],
+  [329490,"Egg, whole, dried",575,48.1,39.8,1.87,0,85,5],
+  [323604,"Egg, whole, raw, frozen, pasteurized",150,12.3,10.3,0.91],
+  [329716,"Egg, yolk, dried",654,34.2,55.5,1.07,0,67,4],
+  [329596,"Egg, yolk, raw, frozen, pasteurized",296,15.6,25.1,0.59],
+  [2685577,"Eggplant, raw",22.4,0.85,0.12,5.4],
+  [747997,"Eggs, Grade A, Large, egg white",55,10.7,0,2.36,34],
+  [748967,"Eggs, Grade A, Large, egg whole",148,12.4,9.96,0.96,50.3],
+  [748236,"Eggs, Grade A, Large, egg yolk",334,16.2,28.8,1.02,17],
+  [2710827,"Einkorn, grain, dry, raw",346,15.1,3.81,68.7],
+  [2710828,"Farro, pearled, dry, raw",344,12.6,3.1,72.1],
+  [2747655,"Fennel, bulb, raw",26.9,0.92,0.14,5.49],
+  [746768,"Figs, dried, uncooked",249,3.3,0.92,63.9,8.4,149],
+  [2684445,"Fish, catfish, farm raised, raw",134,16.5,7.31,0],
+  [2684444,"Fish, cod, Atlantic, wild caught, raw",70.5,16.1,0.67,0],
+  [333374,"Fish, haddock, raw",74,16.3,0.45,0,176],
+  [333476,"Fish, pollock, raw",56,12.3,0.41,0,177],
+  [2684441,"Fish, salmon, Atlantic, farm raised, raw",203,20.3,13.1,0],
+  [2684440,"Fish, salmon, sockeye, wild caught, raw",136,22.3,4.94,0],
+  [2684442,"Fish, tilapia, farm raised, raw",100,19,2.48,0],
+  [334194,"Fish, tuna, light, canned in water, drained solids",90,19,0.94,0.08],
+  [2262075,"Flaxseed, ground",514,18,37.3,34.4],
+  [2003586,"Flour, 00",366,11.4,1.52,74.4],
+  [2261420,"Flour, almond",578,26.2,50.2,16.2],
+  [2512371,"Flour, amaranth",378,13.2,6.24,68.8],
+  [2512376,"Flour, barley",357,8.72,2.45,77.4],
+  [790146,"Flour, bread, white, enriched, unbleached",363,14.3,1.65,72.8],
+  [2512374,"Flour, buckwheat",334,8.88,2.48,75],
+  [2512377,"Flour, cassava",359,0.92,0.49,87.3],
+  [2515377,"Flour, chestnut",385,5.29,4.64,80.5],
+  [2515382,"Flour, coconut",424,16.1,15.3,58.9],
+  [790276,"Flour, corn, yellow, fine meal, enriched",364,6.2,1.74,80.8],
+  [2261421,"Flour, oat, whole grain",386,13.2,6.31,69.9],
+  [1104913,"Flour, pastry, unenriched, unbleached",358,8.75,1.64,77.2],
+  [2261422,"Flour, potato",353,8.11,0.95,79.9],
+  [2512372,"Flour, quinoa",378,11.9,6.6,69.5],
+  [1104812,"Flour, rice, brown",365,7.19,3.85,75.5],
+  [1104867,"Flour, rice, glutinous",358,6.69,1.16,80.1],
+  [790214,"Flour, rice, white, unenriched",359,6.94,1.3,79.8],
+  [2512375,"Flour, rye",351,8.4,1.91,77.2],
+  [2003588,"Flour, semolina, coarse and semi-coarse",365,11.7,1.6,73.8],
+  [2003589,"Flour, semolina, fine",366,13.3,1.84,72],
+  [2512373,"Flour, sorghum",364,8.27,3.59,77.4],
+  [1104705,"Flour, soy, defatted",366,51.1,3.33,32.9],
+  [1104766,"Flour, soy, full-fat",452,38.6,20.7,27.9],
+  [2003587,"Flour, spelt, whole grain",341,14.5,2.54,70.7],
+  [789890,"Flour, wheat, all-purpose, enriched, bleached",366,10.9,1.48,77.3],
+  [789951,"Flour, wheat, all-purpose, enriched, unbleached",358,13.1,1.48,73.2],
+  [790018,"Flour, wheat, all-purpose, unenriched, unbleached",362,12,1.7,74.6],
+  [790085,"Flour, whole wheat, unenriched",370,15.1,2.73,71.2],
+  [2710829,"Fonio, grain, dry, raw",377,7.17,1.69,81.3],
+  [323121,"Frankfurter, beef, unheated",314,11.7,28,2.89,48.6],
+  [1104647,"Garlic, raw",143,6.62,0.38,28.2],
+  [2003592,"Grape juice, purple, with added vitamin C, from concentrate, shelf stable",64.5,0.26,0.29,15.6],
+  [2003593,"Grape juice, white, with added vitamin C, from concentrate, shelf stable",64.6,0.09,0.27,15.8],
+  [2003595,"Grapefruit juice, red, not fortified, not from concentrate, refrigerated",39.8,0.57,0.27,9.1],
+  [325287,"Grapefruit juice, white, canned or bottled, unsweetened",37,0.55,0.7,7.59,0,257],
+  [2346413,"Grapes, green, seedless, raw",71.9,0.9,0.23,18.6],
+  [2346412,"Grapes, red, seedless, raw",77.2,0.91,0.16,20.2],
+  [2727585,"Green onion, (scallion), bulb and greens, root removed, raw",30.7,0.67,0,7],
+  [2747656,"Halibut, frozen, wild caught",81.3,19.1,0.59,-0.06],
+  [332397,"Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",106,16.7,3.73,0.27,13.5],
+  [746952,"Ham, sliced, restaurant",121,19.6,3.68,2.36,16.2],
+  [321358,"Hummus, commercial",229,7.35,17.1,14.9,0,0,16.9],
+  [2727588,"Juice, pomegranate, from concentrate, shelf-stable",62,0,0,15.5],
+  [2727587,"Juice, prune, shelf-stable",73,0.42,0,17.82],
+  [2727589,"Juice, tart cherry, from concentrate, shelf-stable",55.5,0.15,0,13.73],
+  [326196,"Kale, frozen, cooked, boiled, drained, without salt",36,2.94,1.21,5.3,0,118],
+  [323505,"Kale, raw",35,2.92,1.49,4.42,0,20.6],
+  [747693,"Ketchup, restaurant",117,1.11,0.55,26.8],
+  [2710830,"Khorasan, grain, dry, raw",348,14.8,2.8,71.8],
+  [2710831,"Kiwifruit (kiwi), green, peeled, raw",58.5,1.01,0.64,13.8],
+  [327046,"Kiwifruit, green, raw",58,1.06,0.44,14],
+  [2727570,"Lamb, ground, raw",242,17.5,18.6,-0.25],
+  [2727584,"Leeks, bulb and greens, root removed, raw",47.1,1.47,0,10.31],
+  [2644283,"Lentils, dry",351,23.6,1.92,62.2],
+  [746769,"Lettuce, cos or romaine, raw",17,1.24,0.26,3.24],
+  [2346388,"Lettuce, iceberg, raw",14.5,0.74,0.07,3.37],
+  [2346391,"Lettuce, leaf, green, raw",18.5,1.09,0.16,4.07],
+  [2346390,"Lettuce, leaf, red, raw",14.7,0.88,0.11,3.26],
+  [2346389,"Lettuce, romaine, green, raw",17.5,0.98,0.07,4.06],
+  [2747657,"Lobster, tail only, frozen, wild caught",58.8,13,0.37,0.89],
+  [2747658,"Mahi mahi, frozen, wild caught",83.7,19.8,0.38,0.29],
+  [2710832,"Mandarin, seedless, peeled, raw",55.6,1.04,0.46,13.4],
+  [2710834,"Mango, Ataulfo, peeled, raw",70.6,0.69,0.68,17.4],
+  [2710833,"Mango, Tommy Atkins, peeled, raw",61.6,0.56,0.57,15.3],
+  [746770,"Melons, cantaloupe, raw",34,0.82,0.18,8.16,69,160],
+  [2710816,"Melons, honeydew, raw",32.9,0.53,0.22,8.15],
+  [746772,"Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",43,3.38,0.95,5.18,0,246],
+  [746776,"Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",34,3.43,0.08,4.92,0,246],
+  [746778,"Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",50,3.36,1.9,4.9,0,245],
+  [746782,"Milk, whole, 3.25% milkfat, with added vitamin D",60,3.27,3.2,4.63,0,249],
+  [2512379,"Millet, whole grain",381,10,4.19,74.4],
+  [2003603,"Mushroom, beech",33,2.18,0.45,6.76],
+  [2003601,"Mushroom, crimini",23.7,3.09,0.2,4.01],
+  [2003600,"Mushroom, enoki",36.7,2.42,0.24,8.14],
+  [2003599,"Mushroom, king oyster",38.5,2.41,0.31,8.5],
+  [1999626,"Mushroom, lion's mane",35.1,2.5,0.26,7.59],
+  [2003602,"Mushroom, maitake",31,2.2,0.27,6.6],
+  [1999627,"Mushroom, oyster",33.3,2.9,0.19,6.94],
+  [2003604,"Mushroom, pioppini",31.2,3.5,0.24,5.76],
+  [2003598,"Mushroom, portabella",26,2.75,0.31,4.66],
+  [1999628,"Mushrooms, shiitake",36.4,2.41,0.2,8.17],
+  [1999629,"Mushrooms, white button",24.9,2.89,0.37,4.08],
+  [326698,"Mustard, prepared, yellow",61,4.25,3.38,5.3,0,249],
+  [327357,"Nectarines, raw",39,1.06,0.28,9.18,129,143],
+  [323294,"Nuts, almonds, dry roasted, with salt added",620,20.4,57.8,16.2,0,135],
+  [2346393,"Nuts, almonds, whole, raw",584,21.5,51.1,20],
+  [2515373,"Nuts, brazilnuts, raw",621,15,57.4,21.6],
+  [2515374,"Nuts, cashew nuts, raw",533,17.4,38.9,36.3],
+  [2515375,"Nuts, hazelnuts or filberts, raw",602,13.5,53.5,26.5],
+  [2515378,"Nuts, macadamia nuts, raw",669,7.79,64.9,24.1],
+  [2346395,"Nuts, pecans, halves, raw",700,9.96,73.3,12.7],
+  [2346392,"Nuts, pine nuts, raw",643,15.7,61.3,18.6],
+  [2515379,"Nuts, pistachio nuts, raw",561,20.5,45,27.7],
+  [2346394,"Nuts, walnuts, English, halves, raw",679,14.6,69.7,10.9],
+  [2257046,"Oat milk, unsweetened, plain, refrigerated",48.3,0.8,2.75,5.1],
+  [2346396,"Oats, whole grain, rolled, old fashioned",379,13.5,5.89,68.7],
+  [2346397,"Oats, whole grain, steel cut",379,12.5,5.8,69.8],
+  [748278,"Oil, canola",850.5,0,94.5,0],
+  [330458,"Oil, coconut",833,0,99.1,0.84,0,0,11.6],
+  [748323,"Oil, corn",846,0,94,0],
+  [1750351,"Oil, olive, extra light",836.1,0,92.9,0],
+  [748608,"Oil, olive, extra virgin",843.3,0,93.7,0],
+  [1750348,"Oil, peanut",840.6,0,93.4,0],
+  [1750350,"Oil, safflower",838.8,0,93.2,0],
+  [748366,"Oil, soybean",851.4,0,94.6,0],
+  [1750349,"Oil, sunflower",838.8,0,93.2,0],
+  [332791,"Olives, green, Manzanilla, stuffed with pimiento",130,1.15,12.9,4.96,3.2],
+  [324317,"Onion rings, breaded, par fried, frozen, prepared, heated in oven",288,4.52,14.4,36.3,20.2],
+  [790577,"Onions, red, raw",44,0.94,0.1,9.93,197],
+  [1104962,"Onions, white, raw",35,0.89,0.13,7.68],
+  [790646,"Onions, yellow, raw",38,0.83,0.05,8.61,143],
+  [2003591,"Orange juice, no pulp, not fortified, from concentrate, refrigerated",45.7,0.73,0.33,10.3],
+  [2003597,"Orange juice, no pulp, not fortified, not from concentrate, refrigerated",45,0.81,0.36,10],
+  [746771,"Oranges, raw, navels",47,0.91,0.15,11.8,140,165],
+  [2747659,"Parsnips, raw",87.1,1.27,0.54,19.3],
+  [2727577,"Pawpaw, peeled, seeded, raw",93.3,1.15,0,22.17],
+  [325430,"Peaches, yellow, raw",42,0.91,0.27,10.1,147,154],
+  [2262072,"Peanut butter, creamy",589,24,49.4,22.7],
+  [2515376,"Peanuts, raw",551,23.2,43.3,26.5],
+  [2710836,"Pear, Anjou, green, with skin, raw",57.3,0.31,0.37,14.8],
+  [746773,"Pears, raw, bartlett",57,0.38,0.16,15.1,178,140],
+  [2644291,"Peas, green, sweet, canned, sodium added, sugar added, drained and rinsed",77.8,4.73,1.15,12.7],
+  [2747660,"Peppers, banana or Hungarian wax, seeded, raw",23.9,0.72,0.13,4.97],
+  [2258588,"Peppers, bell, green, raw",19.7,0.71,0.11,4.78],
+  [2258591,"Peppers, bell, orange, raw",27.4,0.88,0.16,6.7],
+  [2258590,"Peppers, bell, red, raw",27,0.9,0.13,6.65],
+  [2258589,"Peppers, bell, yellow, raw",26.6,0.82,0.12,6.6],
+  [2747661,"Peppers, jalapeno, seeded, raw",24.1,0.62,0.15,5.08],
+  [2747662,"Peppers, poblano, seeded, raw",28,1.43,0.19,5.14],
+  [2747663,"Peppers, serrano, seeded, raw",29.2,0.86,0.14,6.14],
+  [324653,"Pickles, cucumber, dill or kosher dill",12,0.48,0.43,1.99,40.4],
+  [2346398,"Pineapple, raw",54,0.46,0.21,14.1],
+  [2710843,"Plantains, overripe, raw",117,1.17,0.99,29.2],
+  [2710817,"Plantains, ripe, raw",123,1.16,0.89,31],
+  [2710818,"Plantains, underripe, raw",145,1.23,0.69,33.6],
+  [2710837,"Plum, black, with skin, raw",52.7,0.58,0.28,13.5],
+  [2727576,"Pork, belly, with skin, raw",385,15.2,35.8,-0.7],
+  [2727575,"Pork, chop, center cut, raw",145,22.8,5.48,-0.56],
+  [749420,"Pork, cured, bacon, cooked, restaurant",500,40.9,36.5,2.1],
+  [2514745,"Pork, ground, raw",233,17.8,17.5,0],
+  [2646168,"Pork, loin, boneless, raw",174,21.1,9.47,0],
+  [2646169,"Pork, loin, tenderloin, boneless, raw",125,21.6,3.9,0],
+  [2346403,"Potatoes, gold, without skin, raw",71.6,1.81,0.26,16],
+  [2346402,"Potatoes, red, without skin, raw",73.4,2.06,0.25,16.3],
+  [2346401,"Potatoes, russet, without skin, raw",81,2.27,0.36,17.8],
+  [2747664,"Radicchio, raw",26.4,1.31,0.14,4.96],
+  [2747665,"Radishes, red, raw",19.6,0.66,0.08,4.06],
+  [2346410,"Raspberries, raw",51.4,1.01,0.19,12.9],
+  [334536,"Restaurant, Chinese, fried rice, without meat",174,3.84,3.19,32.5,0,133],
+  [746774,"Restaurant, Chinese, sweet and sour pork",260,8.88,13.6,25.5,13.9],
+  [334720,"Restaurant, Latino, pupusas con frijoles (pupusas, bean)",229,5.59,9.01,31.5,126],
+  [334628,"Restaurant, Latino, tamale, pork",174,7.38,9.04,15.8,142],
+  [2710825,"Rice, black, unenriched, raw",361,7.57,3.44,77.2],
+  [2512380,"Rice, brown, long grain, unenriched, raw",368,7.25,3.31,76.7],
+  [2710838,"Rice, red, unenriched, dry, raw",360,8.56,3.44,76.2],
+  [2512381,"Rice, white, long grain, unenriched, raw",370,7.04,1.03,80.3],
+  [2727580,"Rutabaga, peeled, raw",43.1,0.89,0,9.88],
+  [746775,"Salt, table, iodized",2.3,0,0,0.58],
+  [332282,"Sauce, pasta, spaghetti/marinara, ready-to-serve",45,1.41,1.48,8.05],
+  [746777,"Sauce, salsa, ready-to-serve",29,1.44,0.19,6.74,0,0,17.9],
+  [746779,"Sausage, breakfast sausage, beef, pre-cooked, unprepared",328,13.3,28.7,3.37,18.6],
+  [746780,"Sausage, Italian, pork, mild, cooked, pan-fried",322,18.2,26.2,2.15,86.6],
+  [746781,"Sausage, pork, chorizo, link or ground, cooked, pan-fried",346,19.3,28.1,2.63,186,185],
+  [746783,"Sausage, turkey, breakfast links, mild, raw",169,16.7,10.4,0.93,27.9],
+  [2747666,"Scallops, bay, Patagonian, frozen, wild caught",78.5,16.4,0.42,2.28],
+  [2747667,"Scallops, sea, frozen, wild caught",66.4,13.5,0.49,1.97],
+  [2747668,"Sea bass, Chilean, frozen, wild caught",209,14.9,16.6,0.14],
+  [2515380,"Seeds, pumpkin seeds (pepitas), raw",515,29.9,40,18.7],
+  [325524,"Seeds, sunflower seed kernels, dry roasted, with salt added",612,21,56.1,17.1,0,127],
+  [2515381,"Seeds, sunflower seed, kernel, raw",571,18.9,48.4,24.5],
+  [2262073,"Sesame butter, creamy",648,19.7,62.4,14.2],
+  [2727586,"Shallots, bulb, peeled, root removed, raw",63.5,1.38,0,14.49],
+  [2747669,"Snapper, frozen, wild caught",89.5,20.7,0.57,0.44],
+  [2747670,"Snow crab, legs only, frozen",69.2,15.5,0.29,1.11],
+  [2710839,"Sorghum bran, white, unenriched, dry, raw",365,11.2,9.26,68.7],
+  [2710840,"Sorghum flour, white, pearled, unenriched, dry, raw",350,10.2,3.24,73.5],
+  [2710841,"Sorghum grain, white, pearled, unenriched, dry, raw",338,10.2,3.26,74.9],
+  [2710842,"Sorghum, whole grain, white, dry, raw",341,10.1,4.22,73.6],
+  [2257044,"Soy milk, sweetened, plain, refrigerated",40.7,2.78,1.96,3],
+  [1999630,"Soy milk, unsweetened, plain, shelf stable",38.5,3.55,2.12,1.29],
+  [1999632,"Spinach, baby",20.7,2.85,0.62,2.41],
+  [1999633,"Spinach, mature",21.6,2.91,0.6,2.64],
+  [2727578,"Squash, pie pumpkin, peeled, seeded, raw",33.7,0.85,0,7.57],
+  [2727579,"Squash, spaghetti, peeled, seeded, raw",26.4,0.79,0,5.82],
+  [2685568,"Squash, summer, green, zucchini, includes skin, raw",16,0.98,0.2,3.27],
+  [2685569,"Squash, summer, yellow, includes skin, raw",19,0.89,0.14,4.39],
+  [2685571,"Squash, winter, acorn, raw",42,1.25,0.18,10.5],
+  [2685570,"Squash, winter, butternut, raw",41.7,1.15,0.17,10.5],
+  [2747671,"Squid (calamari), frozen, tubes only",43.9,8.81,0.55,0.93],
+  [2346409,"Strawberries, raw",32.7,0.64,0.22,7.96],
+  [746784,"Sugars, granulated",385,0,0.32,99.6,0,188],
+  [2346404,"Sweet potatoes, orange flesh, without skin, raw",77.4,1.58,0.38,17.3],
+  [2747672,"Swordfish, frozen, wild caught",152,19.2,8.12,0.45],
+  [2727582,"Tomatillos, dehusked, raw",27.6,1.06,0,5.84],
+  [2003596,"Tomato juice, with added ingredients, from concentrate, shelf stable",19.9,0.86,0.29,4.32],
+  [2685580,"Tomato, paste, canned, without salt added",88.5,4.23,0.73,20.2],
+  [2685582,"Tomato, puree, canned",34.8,1.58,0.27,8.04],
+  [1999634,"Tomato, roma",19,0.7,0.42,3.84],
+  [2685579,"Tomato, sauce, canned, with salt added",29.1,1.35,0.38,6.33],
+  [333281,"Tomatoes, canned, red, ripe, diced",18,0.84,0.5,3.32,0,245],
+  [2685581,"Tomatoes, crushed, canned",32.3,1.44,0.4,7.14],
+  [321360,"Tomatoes, grape, raw",27,0.83,0.63,5.51,9.9,152],
+  [2685578,"Tomatoes, whole, canned, solids and liquids, with salt added",19.1,0.87,0.21,4.29],
+  [2747673,"Tuna, ahi or yellowfin, frozen, wild caught",102,24.7,0.39,-0.1],
+  [746785,"Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",220,27.1,11.6,0],
+  [2514747,"Turkey, ground, 93% lean/ 7% fat, raw",158,17.3,9.59,0],
+  [2747674,"Turnips, raw",34,0.95,0.12,7.27],
+  [2747675,"Watermelon, seedless, flesh only, raw",35.3,0.87,0,7.96],
+  [2747676,"Watermelon, seedless, rind only, raw",19.4,0.53,0.07,4.17],
+  [2710821,"Wild rice, dry, raw",359,12.8,1.7,75.7],
+  [330137,"Yogurt, Greek, plain, nonfat",61,10.3,0.37,3.64],
+  [2259794,"Yogurt, Greek, plain, whole milk",94.5,8.78,4.39,4.75],
+  [330415,"Yogurt, Greek, strawberry, nonfat",83,8.06,0.15,12.2],
+  [2647437,"Yogurt, plain, nonfat",50.1,4.23,0.09,8.08],
+  [2259793,"Yogurt, plain, whole milk",77.3,3.82,4.48,5.57],
+  ["L01","Pâine integrală (grâu)",254,13.4,3.5,43.1,32],
+  ["L02","Pâine albă",266,9,3.3,49,25],
+  ["L03","Pâine de secară",259,8.5,3.3,48.3,32],
+  ["L04","Paste făinoase, uscate",371,13,1.5,74.7],
+  ["L05","Paste integrale, uscate",348,14.6,2.5,71.2],
+  ["L06","Couscous, uscat",376,12.8,0.6,77.4,0,173],
+  ["L07","Mămăligă (gătită)",70,1.6,0.3,15.1],
+  ["L08","Cașcaval",356,24.5,27.9,1.4],
+  ["L09","Miere",304,0.3,0,82.4,0,339,21],
+  ["L10","Gem / dulceață",278,0.4,0.1,68.9,0,0,20],
+  ["L11","Oțet",21,0,0,0.9,0,239,15],
+  ["L12","Oțet balsamic",88,0.5,0,17,0,255,16],
+  ["L13","Boia de ardei (paprika)",282,14.1,12.9,54,0,0,6.8],
+  ["L14","Piper negru",251,10.4,3.3,63.9,0,0,6.9],
+  ["L15","Scorțișoară",247,4,1.2,80.6,0,0,7.8],
+  ["L16","Oregano uscat",265,9,4.3,68.9,0,0,3],
+  ["L17","Cimbru uscat",276,9.1,7.4,63.9,0,0,4.3],
+  ["L18","Fulgi de chili",282,12,14.3,49.7,0,0,5.3],
+  ["L19","Ghimbir proaspăt",80,1.8,0.8,17.8,0,96,6],
+  ["L20","Pudră proteică (whey)",380,78,5,8,30],
+  ["L21","Lipie / tortilla de grâu",306,8.2,7.7,51.4,45],
+  ["L22","Crutoane",407,11.9,6.6,73.5],
+  ["L23","Pesmet",395,13.4,5.3,71.9,0,108],
+  ["L24","Sos de soia",53,8.1,0.6,4.9,0,255,16],
+  ["L25","Zeamă de lămâie",22,0.4,0.2,6.9,0,244,15],
+  ["L26","Lămâie",29,1.1,0.3,9.3,84],
+  ["L27","Măsline negre",115,0.8,10.7,6.3,4],
+  ["L28","Porumb dulce, conservă",81,2.6,0.6,17.7,0,164],
+  ["L29","Pătrunjel proaspăt",36,3,0.8,6.3,0,60,4],
+  ["L30","Mărar proaspăt",43,3.5,1.1,7,0,9],
+  ["L31","Stafide",299,3.1,0.5,79.2,0,165,10],
+  ["L32","Curmale",282,2.5,0.4,75,7],
+  ["L33","Ciocolată neagră",546,4.9,31.3,61.2],
+  ["L34","Cacao pudră",228,19.6,13.7,57.9,0,86,5.4],
+  ["L35","Rondele de orez",387,8.2,2.8,81.5,9],
+  ["L36","Maioneză",680,1,75,0.6,0,220,14],
+  ["L37","Margarină",717,0.2,80.7,0.7,0,227,14],
+  ["L38","Praf de copt",53,0,0,27.7,0,0,13.8],
+  ["L39","Drojdie uscată",325,40.4,7.6,41.2,0,0,8],
+  ["L40","Tofu",76,8.1,4.8,1.9,0,248],
+  ["L41","Macrou",205,18.6,13.9,0],
+  ["L42","Păstrăv",148,20.8,6.6,0],
+  ["L43","Hering",158,18,9,0],
+  ["L44","Sardine, conservă",208,24.6,11.5,0],
+  ["L45","Supă de legume (bulion clar)",12,0.5,0.4,1.5,0,240],
+  ["L46","Cafea (fără zahăr)",1,0.1,0,0,0,237],
+  ["L47","Apă",0,0,0,0,0,240],
+  ["L48","Brânză de capră",364,21.6,29.8,2.5],
+  ["L49","Lapte de cocos (conservă)",230,2.3,23.8,5.5,0,226,15],
+  ["L50","Granola",471,10.1,20.3,64.4,0,112],
+  ["L51","Capere",23,2.4,0.9,4.9,0,0,8.6],
+  ["L52","Chimen",375,17.8,22.3,44.2,0,0,6],
+  ["L53","Curry pudră",325,14.3,14,58.2,0,0,6.3],
+  ["L54","Mentă uscată",285,19.9,6,52,0,0,1.6],
+  ["L55","Borș",8,0.3,0,1.6,0,240],
+  ["L56","Bame",33,1.9,0.2,7.5,0,100],
+  ["L57","Foi de dafin",313,7.6,8.4,75,0,0,1.8],
+  ["L58","Soia boabe",446,36.5,19.9,30.2,0,186],
+  ["L59","Busuioc uscat",233,22.9,4,47.8,0,0,1.4],
+  ["L60","Rozmarin / ierburi uscate",331,4.9,15.2,64.1,0,0,1.2],
+  ["L61","Crackers integrali",418,9.1,16.4,60.6],
+  ["L62","Gorgonzola / brânză albastră",353,21.4,28.7,2.3],
+];
+
+  /* ---------- Romanian names ----------
+     The table is in English and an ingredient is written the way a person
+     writes one. This is the bridge, and it is a *table* rather than a
+     cleverness on purpose: a wrong food is worse than no food, because a
+     wrong one is silent. Keys are written already folded — lowercase, no
+     diacritics — because that is the shape nfold() puts a name in before
+     looking here. */
+const RO_ALIAS = {
+  "piept de pui la gratar":2646170,"branza de vaci slaba":328841,
+  "carnati de pui curcan":746783,"carne de pui tocata":2514746,"carne de vita slaba":2646173,
+  "carne tocata de curcan":2514747,"carne tocata de porc":2514745,
+  "carne tocata de pui":2514746,"carne tocata de vita":2514743,
+  "crema de branza light":2346385,"faina de grau integral":790085,
+  "orez cu bob rotund":2512381,"piept de pui tocat":2514746,"pulpa de pui dezosata":2646171,
+  "pulpe de pui dezosate":2646171,"seminte de floarea soarelui":2515381,
+  "sunca de pui curcan":332397,"ton in suc propriu":334194,"ulei de floarea soarelui":1750349,
+  "ulei de masline extravirgin":748608,"albus de ou":747997,"alune de padure":2515375,
+  "ardei gras rosu":2258590,"aripioare de pui":2727568,"banana foarte coapta":1105073,
+  "biban de mare":2747668,"boabe de soia":"L58","branza cottage light":328841,
+  "branza de capra":"L48","branza de vaci":2346384,"carnati de curcan":746783,
+  "carnati de pui":746783,"carne de miel":2727570,"carne de porc":2646168,
+  "carne de pui":2646170,"carne de vita":2646173,"catel de usturoi":1104647,
+  "compot de mere":2346414,"cotlet de porc":2727575,"crema de branza":2346385,
+  "cupa de proteine":"L20","faina de amarant":2512371,"faina de cartofi":2261422,
+  "faina de castane":2515377,"faina de cocos":2515382,"faina de grau":789951,
+  "faina de hrisca":2512374,"faina de manioc":2512377,"faina de migdale":2261420,
+  "faina de orez":790214,"faina de orz":2512376,"faina de ovaz":2261421,
+  "faina de porumb":790276,"faina de quinoa":2512372,"faina de secara":2512375,
+  "faina de soia":1104766,"fasole rosie conserva":2644289,"felie de paine":"L02",
+  "file de somon":2684441,"foaie de dafin":"L57","foi de dafin":"L57",
+  "fructe de padure":2346411,"fulgi de chili":"L18","fulgi de migdale":2346393,
+  "fulgi de ovaz":2346396,"galbenus de ou":748236,"iaurt grecesc 0%":330137,
+  "iaurt grecesc 2%":2259794,"ierburi de provence":"L60","lapte de cocos":"L49",
+  "lapte de migdale":2257045,"lapte de ovaz":2257046,"lapte de soia":1999630,
+  "lapte fara grasime":746776,"miez de nuca":2346394,"mix clatite proteice":"L20",
+  "mujdei de usturoi":1104647,"muschi de vita":2646172,"muschiulet de porc":2646169,
+  "muschiulet de vita":2646173,"nuca de dovleac":2685570,"nuci de pin":2346392,
+  "paine de secara":"L03","pasta de susan":2262073,"pasta de tomate":2685580,
+  "perle de branza":2259796,"piept de curcan":2514747,"piept de pui":2646170,
+  "piure de cartofi":2346403,"piure de mere":2346414,"praf de copt":"L38",
+  "pulpa de pui":2646171,"pulpe de pui":2646171,"rondele de orez":"L35",
+  "rosii cuburi conserva":333281,"salata de varza":2346407,"seminte de chia":2710819,
+  "seminte de dovleac":2515380,"seminte de in":2262075,"seminte de pin":2346392,
+  "seminte de susan":2262073,"smantana pentru frisca":2346386,"sos de paste":332282,
+  "sos de rosii":2685579,"sos de soia":"L24","suc de grepfrut":2003595,"suc de mere":2003590,
+  "suc de merisoare":2003594,"suc de portocale":2003591,"suc de prune":2727587,
+  "suc de rodie":2727588,"suc de rosii":2003596,"suc de struguri":2003592,
+  "sunca de curcan":332397,"sunca de pui":332397,"supa de legume":"L45",
+  "ulei de arahide":1750348,"ulei de canola":748278,"ulei de cocos":330458,
+  "ulei de masline":748608,"ulei de porumb":748323,"ulei de rapita":748278,
+  "ulei de sofranel":1750350,"ulei de soia":748366,"ulei de susan":1750348,
+  "unt de arahide":2262072,"unt de migdale":2262074,"varza de bruxelles":2685575,
+  "whole wheat bread":"L01","whole wheat flour":790085,"zeama de lamaie":"L25",
+  "almond milk":2257045,"apa calda":"L47","apa fierbinte":"L47","apple juice":2003590,
+  "ardei copt":2258590,"ardei galben":2258589,"ardei gras":2258590,"ardei iute":2747661,
+  "ardei rosu":2258590,"ardei verde":2258588,"banana coapta":1105073,"banana medie":1105314,
+  "banane coapte":1105073,"bell pepper":2258590,"boia dulce":"L13","branza albastra":"L62",
+  "branza cottage":328841,"branza elvetiana":746767,"branza feta":2259796,
+  "branza sarata":2259796,"branza topita":325198,"brown rice":2512380,"cartof dulce":2346404,
+  "cartofi albi":2346403,"cartofi dulci":2346404,"cartofi natur":2346403,
+  "cartofi noi":2346402,"cartofi piure":2346403,"cascaval light":"L08","cascaval ras":"L08",
+  "castraveti murati":324653,"ceapa alba":1104962,"ceapa galbena":790646,
+  "ceapa prajita":324317,"ceapa rosie":790577,"ceapa verde":2727585,"cepe mari":790646,
+  "chicken breast":2646170,"chicken thigh":2646171,"chifla integrala":"L01",
+  "ciocolata neagra":"L33","ciuperci pleurotus":1999627,"cottage cheese":2346384,
+  "cream cheese":2346385,"cupa proteina":"L20","egg white":747997,"egg yolk":748236,
+  "faina alba":789951,"faina integrala":790085,"fasole alba":2644281,"fasole boabe":2644281,
+  "fasole neagra":2644285,"fasole pinto":2644292,"fasole rosie":2644289,
+  "fasole verde":2346400,"greek yogurt":2259794,"green beans":2346400,"green onion":2727585,
+  "ground beef":2514743,"heavy cream":2346386,"hummus simplu":321358,"iaurt degresat":2647437,
+  "iaurt grecesc":2259794,"iaurt natural":2259793,"iaurt slab":2647437,
+  "ierburi aromatice":"L60","in macinat":2262075,"lapte 1%":746772,"lapte 1.5%":746778,
+  "lapte 2%":746778,"lapte batut":2259792,"lapte degresat":746776,"lapte integral":746782,
+  "lapte semidegresat":746778,"linte rosie":2644283,"lipie integrala":"L21",
+  "mahi mahi":2747658,"mar mediu":1750341,"mar rosu":1750339,"mar verde":1750342,
+  "masline negre":"L27","masline verzi":332791,"mazare fiarta":2644291,
+  "monterey jack":2647438,"mozzarella light":329370,"naut conserva":2644288,
+  "nuca romaneasca":2346394,"nuci braziliene":2515373,"nuci pecan":2346395,"oat milk":2257046,
+  "olive oil":748608,"orange juice":2003591,"orez alb":2512381,"orez basmati":2512381,
+  "orez brun":2512380,"orez integral":2512380,"orez negru":2710825,"orez rosu":2710838,
+  "orez salbatic":2710821,"otet balsamic":"L12","ou intreg":748967,"ovaz integral":2346396,
+  "ovaz macinat":2261421,"paine alba":"L02","paine graham":"L01","paine integrala":"L01",
+  "paste fainoase":"L04","paste integrale":"L05","paste scurte":"L04","peanut butter":2262072,
+  "pepene galben":2710816,"pepene rosu":2747675,"peste alb":2684444,"peste gras":2684441,
+  "porumb conserva":"L28","porumb dulce":2710826,"pudra proteica":"L20","pui tocat":2514746,
+  "pumpkin seeds":2515380,"queso fresco":2647442,"rolled oats":2346396,"rosii cherry":321360,
+  "rosii conserva":333281,"rosii cuburi":333281,"rosii decojite":2685578,"rosii mici":321360,
+  "rosii pasate":2685582,"salata iceberg":2346388,"salata romana":2346389,
+  "salata verde":2346391,"somon salbatic":2684440,"sos marinara":332282,"sos salsa":746777,
+  "sour cream":2346387,"soy milk":1999630,"spaghete integrale":"L05",
+  "spanac proaspat":1999632,"struguri albi":2346413,"sunca presata":332397,
+  "sunflower seeds":2515381,"supa crema":"L45","sweet potato":2346404,
+  "telina radacina":2747659,"ton conserva":334194,"unt nesarat":789828,"unt sarat":790508,
+  "usturoi granulat":1104647,"varza kale":323505,"varza rosie":2346408,"white fish":2684444,
+  "afine":2346411,"alac":2003587,"albus":747997,"almonds":2346393,"alune":2515376,
+  "ananas":2346398,"ansoa":2747652,"antricot":2646172,"apa":"L47","apple":1750341,
+  "applesauce":2346414,"apricot":2710815,"arahide":2515376,"ardei":2258590,"arugula":2710822,
+  "asparagus":2710823,"aubergine":2685577,"avocado":2710824,"bacon":749420,"bame":"L56",
+  "banana":1105314,"banane":1105314,"beans":2644281,"beef":2646173,"beets":2685576,
+  "berries":2346411,"bizon":2727571,"blackberries":2727581,"blueberries":2346411,"boia":"L13",
+  "bors":"L55","bread":"L02","broccoli":747447,"bulgur":2710820,"bulion":2685580,
+  "busuioc":"L59","butter":789828,"buttermilk":2259792,"cabbage":2346407,"cacao":"L34",
+  "cafea":"L46","caisa":2710815,"caise":2710815,"caju":2515374,"calamar":2747671,
+  "calcan":2747656,"capere":"L51","capsuni":2346409,"carnat":746780,"carnati":746780,
+  "carrot":2258586,"carrots":2258586,"cartof":2346403,"cartofi":2346403,"cascaval":"L08",
+  "cashew":2515374,"castravete":2346406,"castraveti":2346406,"cauliflower":2685573,
+  "ceapa":790646,"celery":2346405,"cepe":790646,"champignon":1999629,"cheddar":328637,
+  "cherries":2346399,"chia":2710819,"chickpeas":2644282,"chifla":"L01","chili":"L18",
+  "chimen":"L52","cimbru":"L17","cirese":2346399,"ciuperca":1999629,"ciuperci":1999629,
+  "cod":2684444,"conopida":2685573,"copane":2727566,"corn":2710826,"cornmeal":790276,
+  "couscous":"L06","crab":2684446,"crackers":"L61","crenvursti":323121,"creveti":2684443,
+  "crutoane":"L22","cucumber":2346406,"curcan":2514747,"curmale":"L32","curry":"L53",
+  "cuscus":"L06","dafin":"L57","dorada":2747669,"dovleac":2727578,"dovlecei":2685568,
+  "dovlecel":2685568,"drojdie":"L39","dulceata":"L10","egg":748967,"eggplant":2685577,
+  "eggs":748967,"eglefin":333374,"emmentaler":746767,"faina":789951,"farro":2710828,
+  "fasole":2644281,"fenicul":2747655,"feta":2259796,"fidea":"L04","figs":746768,
+  "fistic":2515379,"flaxseed":2262075,"flour":789951,"frisca":2346386,"galbenus":748236,
+  "garlic":1104647,"gem":"L10","ghimbir":"L19","gorgonzola":"L62","granola":"L50",
+  "grapes":2346412,"gris":2003589,"gulie":2727580,"halibut":2747656,"ham":332397,
+  "hamsii":2747652,"hazelnuts":2515375,"hering":"L43","homar":2747657,"hrisca":2512378,
+  "hummus":321358,"humus":321358,"iaurt":2259793,"jalapeno":2747661,"jamon":332397,
+  "kaizer":749420,"kale":323505,"ketchup":747693,"kiwi":327046,"lamaie":"L26","lapte":746782,
+  "leeks":2727584,"lentils":2644283,"lettuce":2346391,"linte":2644283,"lipie":"L21",
+  "macadamia":2515378,"macaroane":"L04","macrou":"L41","maioneza":"L36","malai":790276,
+  "mamaliga":"L07","mandarina":2710832,"mandarine":2710832,"mango":2710833,"mar":1750341,
+  "marar":"L30","margarina":"L37","masline":332791,"mazare":2644291,"mei":2512379,
+  "menta":"L54","mere":1750341,"merluciu":2684444,"midii":2747667,"miel":2727570,
+  "miere":"L09","migdale":2346393,"milk":746782,"morcov":2258586,"morcovi":2258586,
+  "mozzarella":329370,"mujdei":1104647,"murati":324653,"muraturi":324653,"mure":2727581,
+  "mushrooms":1999629,"mustar":326698,"mustard":326698,"nap":2747674,"naut":2644282,
+  "nectarine":327357,"nuca":2346394,"nuci":2346394,"oats":2346396,"oil":1750349,
+  "olives":332791,"onion":790646,"orange":746771,"oregano":"L16","orez":2512381,"otet":"L11",
+  "ou":748967,"oua":748967,"ovaz":2346396,"paine":"L02","paprika":"L13","para":746773,
+  "parizer":332397,"parmesan":325036,"parmezan":325036,"parsnips":2747659,"passata":2685582,
+  "pasta":"L04","pastai":2346400,"pastarnac":2747659,"paste":"L04","pastrav":"L42",
+  "patrunjel":"L29","peach":325430,"peanuts":2515376,"pear":746773,"peas":2644291,
+  "pecans":2346395,"pere":746773,"pesmet":"L23","piersica":325430,"piersici":325430,
+  "pineapple":2346398,"piper":"L14","pistachio":2515379,"platane":2710817,"plum":2710837,
+  "polac":333476,"polenta":"L07","porc":2646168,"pork":2646168,"portobello":2003598,
+  "portocala":746771,"portocale":746771,"porumb":2710826,"potato":2346403,"potatoes":2346403,
+  "praz":2727584,"prosciutto":332397,"proteina":"L20","provolone":2647440,"pruna":2710837,
+  "prune":2710837,"pui":2646170,"pumpkin":2727578,"quinoa":2512372,"radicchio":2747664,
+  "radishes":2747665,"raspberries":2346410,"rice":2512381,"ricotta":746766,"ridichi":2747665,
+  "rosie":1999634,"rosii":1999634,"rozmarin":"L60","rucola":2710822,"salata":2346391,
+  "salau":2684444,"salmon":2684441,"salota":2727586,"salsa":746777,"salt":746775,
+  "sardine":"L44","sare":746775,"sausage":746780,"scoici":2747667,"scortisoara":"L15",
+  "seminte":2515381,"semolina":2003589,"sfecla":2685576,"shiitake":1999628,"shrimp":2684443,
+  "slanina":2727576,"smantana":2346387,"smochina":746768,"smochine":746768,"soia":"L58",
+  "somn":2684445,"somon":2684441,"sorg":2710842,"spaghete":"L04","spanac":1999633,
+  "sparanghel":2710823,"spelta":2003587,"spinach":1999633,"stafide":"L31",
+  "strawberries":2346409,"struguri":2346412,"sugar":746784,"sunca":332397,"susan":2262073,
+  "svaiter":746767,"tahini":2262073,"tapioca":2512377,"telemea":2259796,"telina":2346405,
+  "tilapia":2684442,"toast":"L02","tofu":"L40","tomatillos":2727582,"tomato":1999634,
+  "tomatoes":1999634,"ton":334194,"tortilla":"L21","tuna":334194,"ulei":1750349,"unt":789828,
+  "urda":746766,"usturoi":1104647,"vanata":2685577,"varza":2346407,"vinete":2685577,
+  "visine":2346399,"vita":2646173,"vrabioara":2727572,"walnuts":2346394,"water":"L47",
+  "watermelon":2747675,"whey":"L20","wrap":"L21","yogurt":2259793,"zahar":746784,
+  "zmeura":2346410,"zucchini":2685568,
+};
+
+  /* ---------- folding ----------
+     Nobody writes an ingredient twice the same way, so everything here
+     happens on a folded name: lowercase, no diacritics, punctuation
+     turned to spaces. `%` and `.` survive because "lapte 1.5%" is a real
+     ingredient and the difference matters.
+
+     The cedilla forms are escapes on purpose — they are the wrong way to
+     spell Romanian and must not appear as literal characters anywhere in
+     this file (tests/recipes.js checks) — but real documents are full of
+     them, so a name still has to fold. */
+  const S_CEDILLA = "\u015F", T_CEDILLA = "\u0163";
+  const N_MAP = { "ă":"a","â":"a","î":"i","ș":"s","ț":"t",
+                  "á":"a","à":"a","é":"e","è":"e","í":"i","ó":"o","ú":"u","ü":"u","ö":"o" };
+  N_MAP[S_CEDILLA] = "s";
+  N_MAP[T_CEDILLA] = "t";
+  const N_RE = new RegExp("[ăâîșț" + S_CEDILLA + T_CEDILLA + "áàéèíóúüö]", "g");
+  function nfold(s){
+    return String(s == null ? "" : s).toLowerCase()
+      .replace(N_RE, c => N_MAP[c] || c)
+      .replace(/[^a-z0-9%.]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // The table, as objects, indexed by id. A string id is one of the local
+  // staples; a number is a real FoodData Central fdcId.
+  const FOODS = USDA_FOODS.map(r => ({
+    id: String(r[0]), desc: r[1],
+    kcal: r[2], prot: r[3], fat: r[4], carb: r[5],
+    piece: r[6] || 0, cup: r[7] || 0, tbsp: r[8] || 0,
+    local: typeof r[0] === "string"
+  }));
+  const BY_ID = new Map();
+  const BY_DESC = new Map();
+  FOODS.forEach(f => { BY_ID.set(f.id, f); BY_DESC.set(f.desc, f); });
+
+  function food(id){ return BY_ID.get(String(id == null ? "" : id).trim()) || null; }
+  function byDesc(d){ return BY_DESC.get(String(d == null ? "" : d).trim()) || null; }
+  function foods(){ return FOODS; }
+
+  /* ---------- name → food ----------
+     Three passes, in the order of how far each can be trusted. The alias
+     table on the whole name; then the longest alias phrase *inside* it,
+     so "unt de arahide" is found before "unt" and "cartof dulce" before
+     "cartof"; and only then the English words of the descriptions
+     themselves, which is what makes an English plan work at all.
+
+     Below a floor the third pass returns nothing rather than its best
+     guess. An ingredient with no food is visibly unmatched and someone
+     can fix it; an ingredient matched to the wrong food is a number that
+     looks right and is not. */
+  const PHRASES = Object.keys(RO_ALIAS);
+
+  // Where a phrase starts, or -1. It only counts at a word boundary: "ou"
+  // must not be found inside "oua", nor "mar" inside "marar".
+  function phraseAt(hay, needle){
+    let at = hay.indexOf(needle);
+    while(at >= 0){
+      const before = at === 0 ? " " : hay.charAt(at - 1);
+      const after = hay.charAt(at + needle.length) || " ";
+      if(!/[a-z0-9]/.test(before) && !/[a-z0-9]/.test(after)) return at;
+      at = hay.indexOf(needle, at + 1);
+    }
+    return -1;
+  }
+
+  /* What is left of an ingredient once the notes are taken off. A
+     parenthesis is always a note ("(cântărite negătite)", "(aprox. 90g)");
+     a `+` or an " sau " is the parser having failed to split two
+     ingredients, and the first is the one this row is named after; and a
+     leading "de " is what "2 felii de pâine" leaves behind once the
+     quantity and the unit have been taken into their own columns. */
+  function head(name){
+    let s = String(name == null ? "" : name).replace(/\([^)]*\)/g, " ");
+    s = s.split(/\s*\+\s*|\s*,\s*|\s+sau\s+|\s+or\s+|\s*\/\s*/i)[0];
+    return nfold(s).replace(/^de\s+/, "");
+  }
+
+  const STOP = /^(and|with|or|the|raw|fresh|dry|added|without|from|for|plain|whole|de|la|cu|si)$/;
+  const WORDS = FOODS.map(f => ({
+    f: f,
+    w: nfold(f.desc).split(" ").filter(w => w.length > 2 && !STOP.test(w))
+  }));
+
+  function byWords(n){
+    const want = n.split(" ").filter(w => w.length > 2 && !STOP.test(w));
+    if(!want.length) return null;
+    let best = null, bestScore = 0;
+    WORDS.forEach(e => {
+      if(!e.w.length) return;
+      let hit = 0;
+      // FoodData writes the food first and the qualifiers after —
+      // "Oats, whole grain, rolled" — so the first word is worth two.
+      e.w.forEach((w, i) => { if(want.indexOf(w) >= 0) hit += (i === 0 ? 2 : 1); });
+      if(!hit) return;
+      const score = hit / (e.w.length + want.length);
+      if(score > bestScore){ bestScore = score; best = e.f; }
+    });
+    return bestScore >= 0.34 ? best : null;
+  }
+
+  /* The phrase that starts *earliest* wins, and the longest of those when
+     two start together. Earliest, because Romanian puts the food first and
+     the qualifiers after it — "morcov ras o conservă de fasole albă" is a
+     row about the carrot, and longest-first would call it beans. Longest
+     on a tie, because "unt" and "unt de arahide" both start at nought and
+     only one of them is what this row says. */
+  function match(name){
+    const n = head(name);
+    if(!n) return null;
+    if(Object.prototype.hasOwnProperty.call(RO_ALIAS, n)) return food(RO_ALIAS[n]);
+    let bestAt = -1, bestLen = 0, hit = "";
+    for(let i = 0; i < PHRASES.length; i++){
+      const p = PHRASES[i];
+      const at = phraseAt(n, p);
+      if(at < 0) continue;
+      if(hit === "" || at < bestAt || (at === bestAt && p.length > bestLen)){
+        bestAt = at; bestLen = p.length; hit = p;
+      }
+    }
+    if(hit) return food(RO_ALIAS[hit]);
+    return byWords(n);
+  }
+
+  /* ---------- quantity → grams ----------
+     A quantity is only half a weight; the unit is the other half. `g` and
+     `ml` need nothing (water's density, which is close enough for
+     everything but oil and honey). The rest need a number, and the ones
+     that name a *thing* rather than a measure — a slice, a piece, a cup —
+     take the food's own portion weight when the table has one, because
+     one slice of bread and one slice of lemon are not the same slice. */
+  const UNIT_G = {
+    g:1, gr:1, gram:1, grame:1, kg:1000, mg:0.001,
+    ml:1, cl:10, dl:100, l:1000, litru:1000, litri:1000,
+    lingura:15, linguri:15, tbsp:15, tbs:15, tblsp:15,
+    lingurita:5, lingurite:5, tsp:5,
+    cana:240, cani:240, cup:240, cups:240, ceasca:200, cesti:200, pahar:200, pahare:200,
+    felie:30, felii:30, slice:30, slices:30,
+    buc:100, bucata:100, bucati:100, piece:100, pieces:100,
+    catel:3, catei:3, clove:3, cloves:3,
+    plic:7, praf:0.5, varf:0.5, pinch:0.36,
+    cutie:150, cutii:150, conserva:150, can:150, cans:150,
+    scoop:30, scoops:30, oz:28.35, lb:453.6, lbs:453.6
+  };
+  // A can and a slice are things, not measures, and go the same way.
+  const PIECE_UNIT = new RegExp("^(buc|bucata|bucati|piece|pieces|felie|felii|slice|" +
+                               "slices|cutie|cutii|conserva|can|cans)$");
+  const CUP_UNIT   = /^(cana|cani|cup|cups|ceasca|cesti|pahar|pahare)$/;
+  const TBSP_UNIT  = /^(lingura|linguri|tbsp|tbs|tblsp)$/;
+  const PIECE_ANY  = 100;      // "1 mozzarella light" — a thing of no known weight
+
+  const FRACTION = { "½":0.5, "¼":0.25, "¾":0.75, "⅓":1/3, "⅔":2/3, "⅛":0.125 };
+
+  /* "60", "1,5", "1/2", "½", "1 ½", "2-3" — every shape the parser is
+     allowed to put in that column. A range is a number somebody has to
+     pick out of it, and the middle is the only honest choice. */
+  function qtyValue(raw){
+    let s = String(raw == null ? "" : raw).trim().replace(/,/g, ".");
+    if(!s) return 0;
+    const range = s.match(/^(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)$/);
+    if(range) return (parseFloat(range[1]) + parseFloat(range[2])) / 2;
+    let whole = 0;
+    const lead = s.match(/^(\d+(?:\.\d+)?)\s*/);
+    if(lead){ whole = parseFloat(lead[1]) || 0; s = s.slice(lead[0].length); }
+    const vulgar = s.match(/^([½¼¾⅓⅔⅛])/);
+    if(vulgar) return whole + FRACTION[vulgar[1]];
+    const frac = s.match(/^\/\s*(\d+(?:\.\d+)?)/);
+    if(frac && parseFloat(frac[1])) return whole / parseFloat(frac[1]);
+    return whole;
+  }
+
+  // `guess` is true when the grams are a default rather than a weight
+  // this table actually knows — the page marks those, so a total nobody
+  // should trust says so instead of looking like the others.
+  function grams(qty, unit, f){
+    const n = qtyValue(qty);
+    if(!n) return { g:0, guess:false };
+    const u = nfold(unit).replace(/\.$/, "");
+    if(!u){
+      // No unit at all is how "1 banană" and "2 ouă" are written.
+      const p = f && f.piece;
+      return { g: n * (p || PIECE_ANY), guess: !p };
+    }
+    if(PIECE_UNIT.test(u)){ const p = f && f.piece; return { g:n * (p || UNIT_G[u]), guess:!p }; }
+    if(CUP_UNIT.test(u)){ const c = f && f.cup; return { g:n * (c || UNIT_G[u]), guess:!c }; }
+    if(TBSP_UNIT.test(u)){ const b = f && f.tbsp; return { g:n * (b || UNIT_G[u]), guess:!b }; }
+    if(Object.prototype.hasOwnProperty.call(UNIT_G, u)) return { g:n * UNIT_G[u], guess:false };
+    return { g:0, guess:true };                  // a unit nothing here knows
+  }
+
+  /* ---------- the ingredient book ----------
+     A recipe book is read once, and then the same forty ingredients come
+     back in every plan after it. So a name is resolved once and written
+     down: the book is a plain JSON document, keyed by the folded
+     ingredient name, that grows every time a file is read and never
+     shrinks on its own.
+
+     It is also the only place a number can be *corrected*. An entry
+     someone has edited by hand is marked `hand` and is never written over
+     by a later scan — that is what makes the book worth keeping rather
+     than rebuilding, and what lets a plan use an ingredient this table
+     has never heard of.
+
+     It lives in the settings store, and goes out as a .json file through
+     ScuLaFolder like everything else here (docs/RECIPES.md § E). */
+  const book = { v:1, updated:"", items:{} };
+
+  function bookKey(name){ return head(name); }
+
+  // What one entry says, ready to be written into a file or read out of
+  // one. Numbers come from the table unless the entry carries its own.
+  function entryFood(e){
+    if(!e) return null;
+    if(e.hand){
+      return { id:e.id || "", desc:e.food || e.name || "", local:true,
+               kcal:+e.kcal || 0, prot:+e.prot || 0, fat:+e.fat || 0, carb:+e.carb || 0,
+               piece:+e.piece || 0, cup:+e.cup || 0, tbsp:+e.tbsp || 0 };
+    }
+    return e.id ? food(e.id) : null;
+  }
+
+  /* Reading a file is what grows the book: every ingredient in it is
+     looked up once, the ones already known only have their count bumped,
+     and the new ones are resolved and written down. Returns what changed,
+     which is what the page reports. */
+  function learn(days){
+    let added = 0, known = 0, unknown = 0;
+    (days || []).forEach(day => (day.meals || []).forEach(meal => {
+      (meal.ingredients || []).forEach(ing => {
+        const key = bookKey(ing.item);
+        if(!key) return;
+        let e = book.items[key];
+        if(!e){
+          const f = (ing.fdc && food(ing.fdc)) || match(ing.item);
+          e = book.items[key] = {
+            name: String(ing.item || "").trim(),
+            id: f ? f.id : "",
+            food: f ? f.desc : "",
+            kcal: f ? f.kcal : null, prot: f ? f.prot : null,
+            fat: f ? f.fat : null, carb: f ? f.carb : null,
+            n: 0
+          };
+          added++;
+        }
+        e.n = (e.n || 0) + 1;
+        if(entryFood(e) || e.id) known++; else unknown++;
+      });
+    }));
+    if(added) book.updated = new Date().toISOString();
+    return { added, known, unknown, total: known + unknown };
+  }
+
+  function toJSON(){
+    return JSON.stringify({
+      v: book.v,
+      updated: book.updated || new Date().toISOString(),
+      note: "Rețete — baza de ingrediente. Cheia e numele ingredientului, " +
+            "fără diacritice. `id` e un fdcId din FoodData Central, sau un " +
+            "cod local „L…”. Pune `hand: true` pe o intrare pe care o " +
+            "corectezi de mână și nu va mai fi rescrisă.",
+      items: book.items
+    }, null, 2) + "\n";
+  }
+
+  // Reading a book back merges rather than replaces: a device that has
+  // read two plans should not lose the first one to a file from the
+  // second. A hand-corrected entry always wins.
+  function fromJSON(text){
+    let d = null;
+    try{ d = JSON.parse(text); }catch(e){ return { ok:false, added:0, total:0 }; }
+    if(!d || typeof d !== "object" || !d.items || typeof d.items !== "object"){
+      return { ok:false, added:0, total:0 };
+    }
+    let added = 0;
+    Object.keys(d.items).forEach(k => {
+      const e = d.items[k];
+      if(!e || typeof e !== "object") return;
+      const key = bookKey(k) || k;
+      if(!book.items[key] || e.hand){ if(!book.items[key]) added++; book.items[key] = e; }
+    });
+    if(d.updated) book.updated = String(d.updated);
+    return { ok:true, added, total:Object.keys(book.items).length };
+  }
+
+  /* A food chosen by hand is an answer rather than a guess, so it goes
+     into the book under that name and nothing asks again — on this plan or
+     the next one. It clears `hand`: the numbers now come from the table
+     row that was picked, which is the point of picking it. */
+  function remember(name, id){
+    const key = bookKey(name);
+    if(!key) return;
+    const f = food(id);
+    const e = book.items[key] || (book.items[key] = { name:String(name || "").trim(), n:1 });
+    if(!e.name) e.name = String(name || "").trim();
+    e.id = f ? f.id : "";
+    e.food = f ? f.desc : "";
+    e.kcal = f ? f.kcal : null; e.prot = f ? f.prot : null;
+    e.fat = f ? f.fat : null; e.carb = f ? f.carb : null;
+    delete e.hand;
+    book.updated = new Date().toISOString();
+  }
+
+  /* Everything that was not written down by a person, resolved again.
+     For after the book has been hand-edited, and for after this table has
+     learned a name it did not know the first time round \u2014 an entry
+     that once found nothing would otherwise stay empty forever. */
+  function rematch(){
+    Object.keys(book.items).forEach(k => {
+      const e = book.items[k];
+      if(!e || e.hand) return;
+      const f = match(e.name || k);
+      e.id = f ? f.id : "";
+      e.food = f ? f.desc : "";
+      e.kcal = f ? f.kcal : null; e.prot = f ? f.prot : null;
+      e.fat = f ? f.fat : null; e.carb = f ? f.carb : null;
+    });
+    book.updated = new Date().toISOString();
+  }
+
+  function stats(){
+    const keys = Object.keys(book.items);
+    let known = 0;
+    keys.forEach(k => { if(entryFood(book.items[k])) known++; });
+    return { total:keys.length, known, unknown:keys.length - known, updated:book.updated };
+  }
+
+  function setBook(d){ book.items = (d && d.items) || {}; book.updated = (d && d.updated) || ""; }
+  function rawBook(){ return { v:book.v, updated:book.updated, items:book.items }; }
+
+  /* An ingredient's own choice beats the book, and the book beats the
+     matcher: the fdcId written in the file is the one thing a person
+     put there on purpose, and it travels with the markdown to any
+     device — which is the whole reason that column exists. */
+  function foodFor(ing){
+    const chosen = ing && ing.fdc ? food(ing.fdc) : null;
+    if(chosen) return chosen;
+    const e = ing ? book.items[bookKey(ing.item)] : null;
+    return entryFood(e) || (ing ? match(ing.item) : null);
+  }
+
+  /* ---------- what one row is worth ---------- */
+  function forIngredient(ing){
+    const f = foodFor(ing);
+    const w = grams(ing && ing.qty, ing && ing.unit, f);
+    const k = w.g / 100;
+    return {
+      id: f ? f.id : "", food: f ? f.desc : "", local: !!(f && f.local),
+      g: w.g, guess: w.guess, ok: !!f && w.g > 0,
+      kcal: f ? f.kcal * k : 0, prot: f ? f.prot * k : 0,
+      fat: f ? f.fat * k : 0, carb: f ? f.carb * k : 0
+    };
+  }
+
+  function blank(){ return { kcal:0, prot:0, fat:0, carb:0, g:0, known:0, total:0, guess:false }; }
+  function add(sum, row){
+    sum.kcal += row.kcal; sum.prot += row.prot; sum.fat += row.fat; sum.carb += row.carb;
+    sum.g += row.g; sum.total++;
+    if(row.ok) sum.known++;
+    if(row.guess) sum.guess = true;
+    return sum;
+  }
+  function forMeal(meal){
+    const rows = (meal && meal.ingredients || []).map(forIngredient);
+    const sum = rows.reduce(add, blank());
+    return { rows, sum };
+  }
+  function forDay(day, only){
+    const meals = only ? only.map(i => day.meals[i]).filter(Boolean) : (day && day.meals || []);
+    const per = meals.map(m => ({ meal:m, sum:forMeal(m).sum }));
+    const sum = per.reduce((a, p) => {
+      a.kcal += p.sum.kcal; a.prot += p.sum.prot; a.fat += p.sum.fat; a.carb += p.sum.carb;
+      a.g += p.sum.g; a.known += p.sum.known; a.total += p.sum.total;
+      if(p.sum.guess) a.guess = true;
+      return a;
+    }, blank());
+    return { per, sum };
+  }
+
+  // One rounding rule for the whole feature, so the markdown, the page and
+  // the review cards never disagree about what 68.7499 is.
+  function num(v, dp){
+    const n = Math.round((Number(v) || 0) * Math.pow(10, dp || 0)) / Math.pow(10, dp || 0);
+    return String(n);
+  }
+
+  return { foods, food, byDesc, match, nfold, head, qtyValue, grams,
+           forIngredient, forMeal, forDay, num,
+           learn, remember, rematch, toJSON, fromJSON, stats, setBook, rawBook, book };
+})();
+
+/* ============================================================
+   7. The app — state, review cards, markdown
    ============================================================ */
 var booted = false;                       // var: applyUILang() reads it early
 const model = { days: [], source: "" };
@@ -4024,7 +5148,10 @@ const els = {
   found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
   tabPreview:$("tabPreview"), tabSource:$("tabSource"),
-  wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"),
+  wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"), optNutri:$("optNutri"),
+  nutriBox:$("nutriBox"), nutriStats:$("nutriStats"), bookFile:$("bookFile"),
+  btnNutriRescan:$("btnNutriRescan"), btnBookSave:$("btnBookSave"), btnBookPick:$("btnBookPick"),
+  usdaList:$("usdaList"),
   btnWorkbook:$("btnWorkbook"), btnSaveMd:$("btnSaveMd"), btnCopy:$("btnCopy"),
   htmlCard:$("htmlCard"), htmlTitle:$("htmlTitle"), htmlBox:$("htmlBox"), htmlFrame:$("htmlFrame"),
   btnHtmlSave:$("btnHtmlSave"), btnHtmlOpen:$("btnHtmlOpen"),
@@ -4072,6 +5199,61 @@ function iconBtn(glyph, titleKey, onClick, danger){
   b.addEventListener("click", onClick);
   return b;
 }
+/* ---------- what the USDA table made of one ingredient ----------
+   Under every ingredient row: the food it was matched to, and what the
+   quantity above it comes to. The food is an ordinary text input against
+   one datalist for the whole page — a <select> of 425 options per
+   ingredient would be tens of thousands of nodes on a book of a hundred
+   days, and this way it is also searchable by typing.
+
+   Choosing a food writes the id into the row (which is what travels with
+   the markdown) *and* into the ingredient book, so the same name is
+   already answered the next time any plan uses it. */
+function nutRow(ing){
+  const wrap = document.createElement("div");
+  wrap.className = "nut";
+
+  const v = Nutrition.forIngredient(ing);
+  const pick = document.createElement("input");
+  pick.type = "text";
+  pick.className = "food";
+  pick.setAttribute("list", "usdaList");
+  pick.value = v.food || "";
+  pick.placeholder = t("colFood");
+  pick.spellcheck = false;
+  pick.addEventListener("change", () => {
+    const f = Nutrition.byDesc(pick.value);
+    ing.fdc = f ? f.id : "";
+    Nutrition.remember(ing.item, ing.fdc);
+    saveBook();
+    renderDays(); renderMarkdown();
+  });
+  wrap.appendChild(pick);
+
+  const macros = document.createElement("div");
+  macros.className = "macros";
+  const chip = (text, cls, title) => {
+    const s = document.createElement("span");
+    s.textContent = text;
+    if(cls) s.className = cls;
+    if(title){ s.title = title; s.classList.add("flag"); }
+    macros.appendChild(s);
+  };
+  if(!v.food){
+    chip("?", "warn", t("nUnknown"));
+  }else{
+    if(v.local) chip("L", "flag", t("nLocal"));
+    chip(Nutrition.num(v.g, 0) + " g" + (v.guess ? " ~" : ""), v.guess ? "flag" : "",
+         v.guess ? t("nGuess") : "");
+    chip(Nutrition.num(v.kcal, 0) + " kcal", "kcal");
+    chip("P " + Nutrition.num(v.prot, 1));
+    chip("C " + Nutrition.num(v.carb, 1));
+    chip("G " + Nutrition.num(v.fat, 1));
+  }
+  wrap.appendChild(macros);
+  return wrap;
+}
+
 function textInput(value, placeholder, onInput, cls){
   const el = document.createElement("input");
   el.type = "text";
@@ -4448,6 +5630,7 @@ function renderDays(){
         }, true));
         row.appendChild(acts);
         box.appendChild(row);
+        box.appendChild(nutRow(ing));
       });
 
       const add = document.createElement("button");
@@ -4498,6 +5681,28 @@ function renderDays(){
    docs/RECIPES.md § "The markdown contract". Keep both in step. */
 function cell(v){ return String(v == null ? "" : v).replace(/\|/g, "\\|").replace(/\n/g, " ").trim(); }
 
+/* A number in a table cell, or an empty cell when there is nothing known
+   to put there. The distinction is the whole point: olive oil really does
+   have no protein and that cell should say 0, while an ingredient nobody
+   matched has no protein *number* and that cell must stay empty. So the
+   caller says whether anything is known, and only a `false` blanks it. */
+function macro(v, dp, known){
+  if(known === false) return "";
+  if(known === undefined && (v === null || v === undefined || !isFinite(v) || v === 0)) return "";
+  return Nutrition.num(v || 0, dp);
+}
+
+/* The fourth column of the ingredient table. The id comes first and alone
+   is what a reader needs — everything after the middle dot is derived from
+   it and the quantity beside it, so the file can be read back, written out
+   again, and come out the same (docs/RECIPES.md § C). */
+function fdcCell(v){
+  if(!v || !v.id) return "";
+  if(!v.g) return v.id;
+  return [v.id, Nutrition.num(v.kcal, 0) + " kcal", "P " + Nutrition.num(v.prot, 1),
+          "C " + Nutrition.num(v.carb, 1), "G " + Nutrition.num(v.fat, 1)].join(" \u00B7 ");
+}
+
 // `only`, when given, is the list of meal indices to write — that is how
 // "only the recipes shown" narrows a day to what the search matched.
 function buildDayMarkdown(day, di, only){
@@ -4518,8 +5723,9 @@ function buildDayMarkdown(day, di, only){
     L.push("| " + [t("mdColQty"), t("mdColUnit"), t("mdColItem"), t("mdColFdc")].join(" | ") + " |");
     L.push("| --- | --- | --- | --- |");
     if(!meal.ingredients.length) L.push("|  |  |  |  |");
-    meal.ingredients.forEach(ing => {
-      L.push("| " + [cell(ing.qty), cell(ing.unit), cell(ing.item), cell(ing.fdc)].join(" | ") + " |");
+    const nut = Nutrition.forMeal(meal);
+    meal.ingredients.forEach((ing, ii) => {
+      L.push("| " + [cell(ing.qty), cell(ing.unit), cell(ing.item), cell(fdcCell(nut.rows[ii]))].join(" | ") + " |");
     });
     L.push("");
     L.push("### " + t("mdMethod"));
@@ -4527,17 +5733,46 @@ function buildDayMarkdown(day, di, only){
     if(meal.steps.length) meal.steps.forEach((s, i) => L.push((i + 1) + ". " + s));
     else L.push("1. ");
     L.push("");
+    if(els.optNutri.checked && meal.ingredients.length){
+      L.push("### " + t("mdNutrition"));
+      L.push("");
+      L.push("| " + [t("mdColItem"), t("mdColFood"), t("mdColGrams"), t("mdColKcal"),
+                     t("mdColProt"), t("mdColCarb"), t("mdColFat")].join(" | ") + " |");
+      L.push("| --- | --- | --- | --- | --- | --- | --- |");
+      meal.ingredients.forEach((ing, ii) => {
+        const v = nut.rows[ii], has = !!v.food;
+        L.push("| " + [cell(ing.item), cell(v.food), macro(v.g, 0, v.g > 0), macro(v.kcal, 0, has),
+                       macro(v.prot, 1, has), macro(v.carb, 1, has), macro(v.fat, 1, has)].join(" | ") + " |");
+      });
+      const any = nut.sum.known > 0;
+      L.push("| **" + t("mdTotalRow") + "** |  | " +
+             [macro(nut.sum.g, 0, nut.sum.g > 0), macro(nut.sum.kcal, 0, any),
+              macro(nut.sum.prot, 1, any), macro(nut.sum.carb, 1, any),
+              macro(nut.sum.fat, 1, any)].join(" | ") + " |");
+      L.push("");
+    }
   });
   if(els.optTotals.checked){
+    // Once there is a table to read the numbers out of, this stops being a
+    // stub and starts being the answer — but it stays the same five columns
+    // in the same order, so a file written before this existed still reads.
+    const day = Nutrition.forDay({ meals: meals });
     L.push("## " + t("mdTotals"));
     L.push("");
     L.push("| " + [t("mdColMeal"), t("mdColKcal"), t("mdColProt"), t("mdColCarb"), t("mdColFat")].join(" | ") + " |");
     L.push("| --- | --- | --- | --- | --- |");
-    meals.forEach(meal => {
+    meals.forEach((meal, mi) => {
       const name = (meal.name || "").trim();
-      L.push("| " + cell(mealLabel(meal) + (name ? ": " + name : "")) + " |  |  |  |  |");
+      const s = day.per[mi] ? day.per[mi].sum : null;
+      const has = !!(s && s.known);
+      L.push("| " + cell(mealLabel(meal) + (name ? ": " + name : "")) + " | " +
+             [macro(s && s.kcal, 0, has), macro(s && s.prot, 1, has),
+              macro(s && s.carb, 1, has), macro(s && s.fat, 1, has)].join(" | ") + " |");
     });
-    L.push("| **" + t("mdTotalRow") + "** |  |  |  |  |");
+    const dayAny = day.sum.known > 0;
+    L.push("| **" + t("mdTotalRow") + "** | " +
+           [macro(day.sum.kcal, 0, dayAny), macro(day.sum.prot, 1, dayAny),
+            macro(day.sum.carb, 1, dayAny), macro(day.sum.fat, 1, dayAny)].join(" | ") + " |");
     L.push("");
   }
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
@@ -4589,6 +5824,42 @@ function renderPreview(md){
   });
   flushTable(); closeOl();
   return out.join("\n");
+}
+
+/* ---- the ingredient book, on screen ----
+   One list of foods for the whole page rather than one per ingredient
+   row: a <select> of 425 options under each of a hundred days\u2019 worth
+   of ingredients would be tens of thousands of nodes nobody opens. */
+function fillUsdaList(){
+  if(!els.usdaList || els.usdaList.childElementCount) return;
+  const frag = document.createDocumentFragment();
+  Nutrition.foods().forEach(f => {
+    const o = document.createElement("option");
+    o.value = f.desc;
+    frag.appendChild(o);
+  });
+  els.usdaList.appendChild(frag);
+}
+
+function paintNutri(){
+  if(!els.nutriStats) return;
+  const s = Nutrition.stats();
+  const parts = [t("nutriStats", s.known, s.total)];
+  if(s.updated) parts.push(t("nutriUpdated", s.updated.slice(0, 10)));
+  els.nutriStats.textContent = parts.join(" ");
+  els.nutriStats.hidden = false;
+}
+
+// Reading a file is what grows the book. It happens on every route in --
+// a PDF, a photo, a paste, an imported .md -- because they all end at
+// analyse(), and the point of the book is that a name is only ever
+// resolved once.
+async function learnFrom(days, quiet){
+  const res = Nutrition.learn(days);
+  await saveBook();
+  paintNutri();
+  if(!quiet && res.added) say(t("stLearned", res.added, Nutrition.stats().total));
+  return res;
 }
 
 // The "only the recipes shown" choice means nothing while nothing is
@@ -4693,6 +5964,35 @@ const DOC_CSS = [
   "p.none{margin:0;color:var(--text-3);font-size:.9rem}",
   "footer.book{border-top:1px solid var(--border);margin:2.5rem 0 0;padding:.9rem 0 0;",
   "  color:var(--text-3);font-size:.78rem}",
+  "/* The nutrition tables. Wide ones scroll inside their own box rather",
+  "   than pushing the page sideways, which on a phone is the difference",
+  "   between a readable recipe and a broken one. */",
+  ".nwrap{overflow-x:auto;margin:1.1rem 0 0}",
+  "table.nutri{width:100%;border-collapse:collapse;font-size:.82rem;",
+  "  font-variant-numeric:tabular-nums;min-width:30rem}",
+  "table.nutri caption{caption-side:top;text-align:left;margin:0 0 .4rem;",
+  "  font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);font-weight:600}",
+  "table.nutri th,table.nutri td{padding:.34rem .45rem;text-align:right;",
+  "  border-bottom:1px solid var(--border)}",
+  "table.nutri thead th{font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;",
+  "  color:var(--text-3);font-weight:600;white-space:nowrap}",
+  "table.nutri th:first-child,table.nutri td:first-child,table.nutri td.food,",
+  "/* the food column, which only the per-meal table has */",
+  "table.nutri:not(.dtot) thead th:nth-child(2){text-align:left}",
+  "table.nutri tbody th{font-weight:400}",
+  "table.nutri td.food{color:var(--text-3);font-size:.74rem}",
+  "table.nutri td.kc{color:var(--accent-2);font-weight:600}",
+  "table.nutri tr.miss th,table.nutri tr.miss td{color:var(--text-3)}",
+  "table.nutri tfoot th,table.nutri tfoot td{font-weight:700;border-bottom:0;",
+  "  border-top:2px solid var(--accent)}",
+  "p.nnote{margin:.5rem 0 0;color:var(--text-3);font-size:.72rem}",
+  "/* The quantity is the one thing on this page anybody edits, so it looks",
+  "   like what it is — a field — without turning the list into a form. */",
+  "input.qty{font:inherit;color:var(--accent-2);font-weight:600;background:transparent;",
+  "  border:0;border-bottom:1px dashed var(--border);border-radius:0;padding:0 .1rem;",
+  "  text-align:right;font-variant-numeric:tabular-nums}",
+  "input.qty:focus{outline:none;background:var(--surface-2);border-bottom-color:var(--accent)}",
+  "@media (pointer:coarse){input.qty{min-height:24px}}",
   "/* On paper the page is ink, one day per sheet, and the links are dead weight. */",
   "@page{margin:16mm}",
   "@media print{",
@@ -4706,7 +6006,107 @@ const DOC_CSS = [
   "  article.day:first-of-type{break-before:auto;page-break-before:auto}",
   "  section.meal{border-color:var(--border)}",
   "  a{color:inherit;text-decoration:none}",
+  "  input.qty{border-bottom:0;color:inherit}",
+  "  .nwrap{overflow-x:visible}",
+  "  table.nutri{min-width:0;font-size:9pt}",
   "}"
+].join("\n");
+
+/* The one script the page carries, and the reason the sandbox around the
+   preview had to be opened a crack. It is here rather than the totals
+   being baked in because a recipe is something people scale: change 60 to
+   90 in the ingredient list and the table under it has to follow, or the
+   numbers on the page are a lie the moment anybody cooks for two.
+
+   Everything it needs is already on the elements — grams per unit and the
+   four values per 100 g, as data attributes — so there is no table to
+   embed a second time and nothing to fetch. It is written in the plain
+   ES5 shape the rest of a shareable file is: this document may be opened
+   years from now, on whatever a phone has by then. */
+const DOC_JS = [
+  "(function(){",
+  '  var FRAC={"\u00BD":0.5,"\u00BC":0.25,"\u00BE":0.75,"\u2153":1/3,"\u2154":2/3,"\u215B":0.125};',
+  "  // The same shapes the page that wrote this file accepts in that column:",
+  '  // "60", "1,5", "1/2", "\u00BD", "1 \u00BD", "2-3".',
+  "  function qty(raw){",
+  "    var s = String(raw == null ? '' : raw).trim().replace(/,/g, '.');",
+  "    if(!s) return 0;",
+  "    var r = s.match(/^(\\d+(?:\\.\\d+)?)\\s*[-\u2013\u2014]\\s*(\\d+(?:\\.\\d+)?)$/);",
+  "    if(r) return (parseFloat(r[1]) + parseFloat(r[2])) / 2;",
+  "    var w = 0, m = s.match(/^(\\d+(?:\\.\\d+)?)\\s*/);",
+  "    if(m){ w = parseFloat(m[1]) || 0; s = s.slice(m[0].length); }",
+  "    var v = s.match(/^([\u00BD\u00BC\u00BE\u2153\u2154\u215B])/);",
+  "    if(v) return w + FRAC[v[1]];",
+  "    var f = s.match(/^\\/\\s*(\\d+(?:\\.\\d+)?)/);",
+  "    if(f && parseFloat(f[1])) return w / parseFloat(f[1]);",
+  "    return w;",
+  "  }",
+  "  function num(v, dp){",
+  "    var p = Math.pow(10, dp), n = Math.round((v || 0) * p) / p;",
+  "    return String(n);",
+  "  }",
+  "  function put(tr, cls, text){",
+  "    var el = tr && tr.querySelector('.' + cls);",
+  "    if(el) el.textContent = text;",
+  "  }",
+  "  var DASH = '\u2014';",
+  "  // One meal: every quantity field in it, into the row it belongs to,",
+  "  // and the four sums into the foot. A row with no food matched keeps",
+  "  // its grams and stays out of the total \u2014 counting it as nought",
+  "  // would make the total look complete when it is not.",
+  "  function calcMeal(sec){",
+  "    var tot = { g:0, k:0, p:0, c:0, f:0 };",
+  "    var ins = sec.querySelectorAll('input.qty'), i;",
+  "    for(i = 0; i < ins.length; i++){",
+  "      var el = ins[i], r = el.getAttribute('data-r');",
+  "      var tr = sec.querySelector('tbody tr[data-r=\"' + r + '\"]');",
+  "      var g = qty(el.value) * (parseFloat(el.getAttribute('data-g')) || 0);",
+  "      var known = el.getAttribute('data-k') !== null;",
+  "      put(tr, 'g', g ? num(g, 0) : DASH);",
+  "      if(!known) continue;",
+  "      var f = g / 100;",
+  "      var k = (parseFloat(el.getAttribute('data-k')) || 0) * f;",
+  "      var pr = (parseFloat(el.getAttribute('data-p')) || 0) * f;",
+  "      var ca = (parseFloat(el.getAttribute('data-c')) || 0) * f;",
+  "      var fa = (parseFloat(el.getAttribute('data-f')) || 0) * f;",
+  "      put(tr, 'kc', num(k, 0)); put(tr, 'pr', num(pr, 1));",
+  "      put(tr, 'ca', num(ca, 1)); put(tr, 'fa', num(fa, 1));",
+  "      tot.g += g; tot.k += k; tot.p += pr; tot.c += ca; tot.f += fa;",
+  "    }",
+  "    var foot = sec.querySelector('tfoot tr');",
+  "    put(foot, 'g', num(tot.g, 0)); put(foot, 'kc', num(tot.k, 0));",
+  "    put(foot, 'pr', num(tot.p, 1)); put(foot, 'ca', num(tot.c, 1));",
+  "    put(foot, 'fa', num(tot.f, 1));",
+  "    return tot;",
+  "  }",
+  "  // A day is the meals on it added up, so it is recomputed from them",
+  "  // rather than from the fields a second time.",
+  "  function calcDay(day){",
+  "    var secs = day.querySelectorAll('section.meal'), i;",
+  "    var tot = { g:0, k:0, p:0, c:0, f:0 };",
+  "    for(i = 0; i < secs.length; i++){",
+  "      var s = calcMeal(secs[i]);",
+  "      var tr = day.querySelector('table.dtot tbody tr[data-m=\"' + i + '\"]');",
+  "      put(tr, 'kc', num(s.k, 0)); put(tr, 'pr', num(s.p, 1));",
+  "      put(tr, 'ca', num(s.c, 1)); put(tr, 'fa', num(s.f, 1));",
+  "      tot.k += s.k; tot.p += s.p; tot.c += s.c; tot.f += s.f;",
+  "    }",
+  "    var foot = day.querySelector('table.dtot tfoot tr');",
+  "    put(foot, 'kc', num(tot.k, 0)); put(foot, 'pr', num(tot.p, 1));",
+  "    put(foot, 'ca', num(tot.c, 1)); put(foot, 'fa', num(tot.f, 1));",
+  "  }",
+  "  function all(){",
+  "    var days = document.querySelectorAll('article.day'), i;",
+  "    for(i = 0; i < days.length; i++) calcDay(days[i]);",
+  "  }",
+  "  document.addEventListener('input', function(e){",
+  "    var el = e.target;",
+  "    if(!el || !el.className || String(el.className).indexOf('qty') < 0) return;",
+  "    var day = el.closest ? el.closest('article.day') : null;",
+  "    if(day) calcDay(day); else all();",
+  "  });",
+  "  all();",
+  "})();"
 ].join("\n");
 
 function escHtml(s){
@@ -4725,8 +6125,71 @@ function htmlTitle(){
   return t("title");
 }
 
+/* The quantity, as a field rather than as text. What the script needs to
+   turn a new number into new totals rides along on the element: how many
+   grams one of this unit is, and the four values per 100 g. An ingredient
+   with no food gets the field anyway — somebody may still want to change
+   it — but no `data-k`, which is what keeps it out of the total. */
+function qtyHtml(ing, v, i){
+  const raw = String(ing.qty == null ? "" : ing.qty).trim();
+  const unit = String(ing.unit == null ? "" : ing.unit).trim();
+  const per = Nutrition.qtyValue(raw) ? v.g / Nutrition.qtyValue(raw) : 0;
+  const a = ['class="qty"', 'type="text"', 'inputmode="decimal"',
+             'value="' + escHtml(raw) + '"',
+             'size="' + Math.max(2, Math.min(6, raw.length || 2)) + '"',
+             'data-r="' + i + '"', 'data-g="' + Nutrition.num(per, 3) + '"',
+             'aria-label="' + escHtml(t("mdColQty") + " — " + ing.item) + '"'];
+  if(v.food){
+    const f = Nutrition.food(v.id);
+    if(f) a.push('data-k="' + f.kcal + '"', 'data-p="' + f.prot + '"',
+                 'data-c="' + f.carb + '"', 'data-f="' + f.fat + '"');
+  }
+  return '<span class="q"><input ' + a.join(" ") + ">" +
+         (unit ? " " + escHtml(unit) : "") + "</span>";
+}
+
+// One meal's table: a row per ingredient and a foot that adds them up.
+// The numbers written here are the ones the script would work out from an
+// untouched field, so a page opened with no script at all still shows the
+// right thing — it just stops following.
+function nutriHtml(meal, nut){
+  const L = [];
+  L.push('<div class="nwrap">');
+  L.push('<table class="nutri">');
+  L.push("<caption>" + escHtml(t("hNutrition")) + "</caption>");
+  L.push("<thead><tr>" +
+         ["mdColItem", "mdColFood", "mdColGrams", "mdColKcal", "mdColProt", "mdColCarb", "mdColFat"]
+           .map(k => "<th>" + escHtml(t(k)) + "</th>").join("") + "</tr></thead>");
+  L.push("<tbody>");
+  meal.ingredients.forEach((ing, i) => {
+    const v = nut.rows[i];
+    const dash = "\u2014";
+    L.push('<tr data-r="' + i + '"' + (v.food ? "" : ' class="miss"') + ">" +
+           "<th>" + escHtml(ing.item) + "</th>" +
+           '<td class="food">' + escHtml(v.food || dash) + "</td>" +
+           '<td class="g">' + (v.g ? Nutrition.num(v.g, 0) : dash) + "</td>" +
+           '<td class="kc">' + (v.food ? Nutrition.num(v.kcal, 0) : dash) + "</td>" +
+           '<td class="pr">' + (v.food ? Nutrition.num(v.prot, 1) : dash) + "</td>" +
+           '<td class="ca">' + (v.food ? Nutrition.num(v.carb, 1) : dash) + "</td>" +
+           '<td class="fa">' + (v.food ? Nutrition.num(v.fat, 1) : dash) + "</td></tr>");
+  });
+  L.push("</tbody>");
+  L.push("<tfoot><tr><th>" + escHtml(t("mdTotalRow")) + "</th><td></td>" +
+         '<td class="g">' + Nutrition.num(nut.sum.g, 0) + "</td>" +
+         '<td class="kc">' + Nutrition.num(nut.sum.kcal, 0) + "</td>" +
+         '<td class="pr">' + Nutrition.num(nut.sum.prot, 1) + "</td>" +
+         '<td class="ca">' + Nutrition.num(nut.sum.carb, 1) + "</td>" +
+         '<td class="fa">' + Nutrition.num(nut.sum.fat, 1) + "</td></tr></tfoot>");
+  L.push("</table>");
+  L.push("</div>");
+  L.push('<p class="nnote">' + escHtml(t("docNutriHint")) + " " + escHtml(t("docNutriNote")) + "</p>");
+  return L.join("\n");
+}
+
 function mealHtml(meal){
   const L = [];
+  const on = els.optNutri.checked && meal.ingredients.length > 0;
+  const nut = Nutrition.forMeal(meal);
   L.push('<section class="meal">');
   L.push('<h3><span class="kind">' + escHtml(mealLabel(meal)) + "</span>" +
          (meal.name ? '<span class="dish">' + escHtml(meal.name) + "</span>" : "") + "</h3>");
@@ -4735,11 +6198,15 @@ function mealHtml(meal){
   if(meal.ingredients.length){
     L.push('<ul class="ing">');
     let group = "";
-    meal.ingredients.forEach(ing => {
+    meal.ingredients.forEach((ing, i) => {
       const g = String(ing.group || "").trim();
       if(g !== group){ group = g; if(g) L.push('<li class="grp">' + escHtml(g) + "</li>"); }
-      const qty = [ing.qty, ing.unit].map(v => String(v == null ? "" : v).trim()).filter(Boolean).join(" ");
-      L.push('<li><span class="q">' + escHtml(qty) + '</span><span class="it">' + escHtml(ing.item) + "</span></li>");
+      const qty = on
+        ? qtyHtml(ing, nut.rows[i], i)
+        : '<span class="q">' +
+          escHtml([ing.qty, ing.unit].map(v => String(v == null ? "" : v).trim()).filter(Boolean).join(" ")) +
+          "</span>";
+      L.push("<li>" + qty + '<span class="it">' + escHtml(ing.item) + "</span></li>");
     });
     L.push("</ul>");
   }else L.push('<p class="none">—</p>');
@@ -4750,7 +6217,11 @@ function mealHtml(meal){
     meal.steps.forEach(step => L.push("<li>" + escHtml(step) + "</li>"));
     L.push("</ol>");
   }else L.push('<p class="none">—</p>');
-  L.push("</div></div></section>");
+  L.push("</div></div>");
+  // Under both halves, so it reads as what the recipe adds up to rather
+  // than as a third column of it.
+  if(on) L.push(nutriHtml(meal, nut));
+  L.push("</section>");
   return L.join("\n");
 }
 
@@ -4760,6 +6231,35 @@ function dayHtml(slice, i){
   L.push('<article class="day" id="zi-' + (i + 1) + '">');
   L.push("<h2>" + escHtml(dayTitle(slice.day, slice.di)) + "</h2>");
   meals.forEach(meal => L.push(mealHtml(meal)));
+  // The day, once its meals have numbers. This is the table the markdown
+  // has always had a place for and never had anything to put in.
+  if(els.optNutri.checked && meals.length){
+    const day = Nutrition.forDay({ meals: meals });
+    L.push('<div class="nwrap">');
+    L.push('<table class="nutri dtot">');
+    L.push("<caption>" + escHtml(t("mdTotals")) + "</caption>");
+    L.push("<thead><tr>" + ["mdColMeal", "mdColKcal", "mdColProt", "mdColCarb", "mdColFat"]
+             .map(k => "<th>" + escHtml(t(k)) + "</th>").join("") + "</tr></thead>");
+    L.push("<tbody>");
+    meals.forEach((meal, mi) => {
+      const s = day.per[mi].sum;
+      const name = (meal.name || "").trim();
+      L.push('<tr data-m="' + mi + '"><th>' +
+             escHtml(mealLabel(meal) + (name ? ": " + name : "")) + "</th>" +
+             '<td class="kc">' + Nutrition.num(s.kcal, 0) + "</td>" +
+             '<td class="pr">' + Nutrition.num(s.prot, 1) + "</td>" +
+             '<td class="ca">' + Nutrition.num(s.carb, 1) + "</td>" +
+             '<td class="fa">' + Nutrition.num(s.fat, 1) + "</td></tr>");
+    });
+    L.push("</tbody>");
+    L.push("<tfoot><tr><th>" + escHtml(t("mdTotalRow")) + "</th>" +
+           '<td class="kc">' + Nutrition.num(day.sum.kcal, 0) + "</td>" +
+           '<td class="pr">' + Nutrition.num(day.sum.prot, 1) + "</td>" +
+           '<td class="ca">' + Nutrition.num(day.sum.carb, 1) + "</td>" +
+           '<td class="fa">' + Nutrition.num(day.sum.fat, 1) + "</td></tr></tfoot>");
+    L.push("</table>");
+    L.push("</div>");
+  }
   L.push("</article>");
   return L.join("\n");
 }
@@ -4802,6 +6302,13 @@ function buildHtmlDoc(){
   out.forEach((s, i) => L.push(dayHtml(s, i)));
   L.push('<footer class="book">' + escHtml(t("docFooter")) + "</footer>");
   L.push("</div>");
+  // The only script in the file, and only when there is a table for it to
+  // keep up to date. Nothing to fetch: what it needs is on the elements.
+  if(els.optNutri.checked){
+    L.push("<script>");
+    L.push(DOC_JS);
+    L.push("</" + "script>");
+  }
   L.push("</body>");
   L.push("</html>");
   return L.join("\n") + "\n";
@@ -4825,7 +6332,7 @@ function paintHtml(){
 }
 
 /* ============================================================
-   7. Getting the text in
+   8. Getting the text in
    ============================================================ */
 function ingest(text, sourceName, forceAppend){
   const append = !!(forceAppend || (els.appendMode.checked && model.days.length > 0));
@@ -4852,6 +6359,9 @@ function analyse(append, only){
   // A file that names its own source knows better than the name it arrived
   // under: "Ziua-7.md" is a file name, the line inside it is the book.
   if(read.source) model.source = read.source;
+  // Before anything is drawn: the day cards and the markdown both ask the
+  // book what an ingredient is, so it has to know first.
+  learnFrom(read.days, true);
   renderDays();
   renderMarkdown();
   setStatus(model.days.length ? t(isMd ? "stMdFound" : "stFound", model.days.length)
@@ -4904,6 +6414,10 @@ async function handleFile(file, opts){
       const text = await ocrImage(file);
       if(text === null) return;                 // ocrImage said why
       ingest(text, file.name, o.append);
+      return;
+    }
+    if(/\.json$/i.test(file.name) || file.type === "application/json"){
+      await readBookFile(file);
       return;
     }
     ingest(await file.text(), file.name, o.append);
@@ -5188,7 +6702,7 @@ async function ocrPages(imgs){
 }
 
 /* ============================================================
-   8. Saving — a .md file, or a chapter in the Markdown workbook
+   9. Saving — a .md file, a .json ingredient book, or a chapter
    ============================================================ */
 // Same rules as wbSlug() in markdown-editor.html: Romanian diacritics are
 // legal file names and survive; only what a file system rejects is replaced.
@@ -5236,6 +6750,38 @@ function openHtml(){
   // Revoking straight away can beat the new tab to the file; a minute is
   // long past the point where it has been read.
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/* ---- the ingredient book ----
+   Two homes, and they are not the same thing. The settings store is where
+   it lives between visits on this device; the .json file is how it moves
+   to another one, or gets edited in a text editor and brought back. Both
+   go through Nutrition, which owns the merge rules (docs/RECIPES.md § E). */
+const BOOK_KEY = "scula:nutrition";
+
+async function saveBook(){
+  try{ await store.set(BOOK_KEY, JSON.stringify(Nutrition.rawBook())); }catch(e){}
+}
+async function loadBook(){
+  try{
+    const raw = await store.get(BOOK_KEY);
+    if(raw) Nutrition.setBook(JSON.parse(raw));
+  }catch(e){}
+}
+async function saveBookFile(){
+  const name = slug(t("nutriTitle"), "ingrediente") + ".json";
+  const r = await saveBlob(name, Nutrition.toJSON(), "application/json");
+  if(!r.message) say(t("stBookSaved"));
+  return r;
+}
+async function readBookFile(file){
+  if(!file) return;
+  const res = Nutrition.fromJSON(await file.text());
+  if(!res.ok){ say(t("stBookFailed"), "err"); return; }
+  await saveBook();
+  paintNutri();
+  renderDays(); renderMarkdown();
+  say(t("stBookRead", res.added, res.total));
 }
 
 /* ---- the Markdown editor's workbook store (docs/FEATURES.md § E) ----
@@ -5314,7 +6860,7 @@ async function toWorkbook(){
 }
 
 /* ============================================================
-   9. Wiring
+   10. Wiring
    ============================================================ */
 async function savePrefs(){
   try{
@@ -5328,7 +6874,8 @@ async function savePrefs(){
       warm: els.ocrWarm.checked,
       warmAsked: warmAsked,
       source: els.optSource.checked,
-      totals: els.optTotals.checked
+      totals: els.optTotals.checked,
+      nutri: els.optNutri.checked
     }));
   }catch(e){}
 }
@@ -5347,6 +6894,7 @@ async function loadPrefs(){
   if(p && p.wb) els.wbName.value = p.wb;
   if(p && typeof p.source === "boolean") els.optSource.checked = p.source;
   if(p && typeof p.totals === "boolean") els.optTotals.checked = p.totals;
+  if(p && typeof p.nutri === "boolean") els.optNutri.checked = p.nutri;
 }
 
 els.btnPick.addEventListener("click", () => els.file.click());
@@ -5445,6 +6993,24 @@ els.btnSaveMd.addEventListener("click", () => {
   return saveBlob(base + ".md", allMarkdown());
 });
 els.btnWorkbook.addEventListener("click", toWorkbook);
+/* ---- the ingredient book ----
+   "Look the foods up again" is for after a book has been edited by hand:
+   it forgets what was matched and matches everything once more, keeping
+   only the entries somebody marked `hand`. */
+els.btnNutriRescan.addEventListener("click", async () => {
+  const before = Nutrition.stats().total;
+  Nutrition.rematch();
+  await learnFrom(model.days, true);
+  renderDays(); renderMarkdown();
+  say(t("stLearned", Math.max(0, Nutrition.stats().total - before), Nutrition.stats().total));
+});
+els.btnBookSave.addEventListener("click", saveBookFile);
+els.btnBookPick.addEventListener("click", () => els.bookFile.click());
+els.bookFile.addEventListener("change", () => {
+  const f = els.bookFile.files && els.bookFile.files[0];
+  els.bookFile.value = "";
+  if(f) readBookFile(f);
+});
 els.btnHtmlSave.addEventListener("click", saveHtml);
 els.btnHtmlOpen.addEventListener("click", openHtml);
 // Opening the fold is what asks for the page to be built; closing it is
@@ -5468,7 +7034,8 @@ els.btnCopy.addEventListener("click", async () => {
 // Changing the languages leaves the running worker stale: the badge says so,
 // and the next picture rebuilds it.
 els.ocrLangs.addEventListener("change", () => { savePrefs(); paintOcrState(); });
-[els.optSource, els.optTotals].forEach(el => el.addEventListener("change", () => { savePrefs(); renderMarkdown(); }));
+[els.optSource, els.optTotals, els.optNutri].forEach(el =>
+  el.addEventListener("change", () => { savePrefs(); renderMarkdown(); }));
 
 window.addEventListener("scula-ui-lang", ev => {
   UI = (ev.detail === "en" || ev.detail === "ro") ? ev.detail : UI;
@@ -5479,9 +7046,12 @@ window.addEventListener("scula-ui-lang", ev => {
 (async function(){
   try{ UI = (await store.get(LANG_KEY)) === "en" ? "en" : "ro"; }catch(e){}
   await loadPrefs();
+  await loadBook();
   booted = true;
   applyUILang();
   paintOcrState();
+  fillUsdaList();
+  paintNutri();
   renderDays();
   setStatus("");
   // Prepared up front, the first photo of the day starts recognising the
@@ -5493,8 +7063,9 @@ window.addEventListener("scula-ui-lang", ev => {
 
 // The parser and the PDF reader are the two pieces worth testing on their
 // own — tests/recipes.js drives them through this handle.
-window.ScuLaRecipes = { Recipes, PdfText, Jpx, model, analyse, allMarkdown, buildDayMarkdown,
-                        buildHtmlDoc, renderDays, renderMarkdown, prepImage, OCR };
+window.ScuLaRecipes = { Recipes, PdfText, Jpx, Nutrition, model, analyse, allMarkdown,
+                        buildDayMarkdown, buildHtmlDoc, renderDays, renderMarkdown,
+                        prepImage, OCR, saveBookFile, readBookFile, learnFrom };
 
 })();
 </script>

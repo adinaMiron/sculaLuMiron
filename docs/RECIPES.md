@@ -3,7 +3,9 @@
 The fourth tool. It turns a meal plan you already have — a PDF, a
 screenshot, a page of text — into markdown a person can read and a program
 can parse: **one chapter per day**, each meal split into
-**1. Ingrediente** and **2. Metoda de preparare**.
+**1. Ingrediente**, **2. Metoda de preparare** and **3. Valori
+nutriționale** — the last worked out against a copy of USDA FoodData
+Central that lives in the page (§ E).
 
 Nothing is uploaded. The file is read in the browser, the markdown is
 written in the browser, and it leaves only through `ScuLaFolder.save()` or
@@ -11,7 +13,8 @@ into the Markdown editor's own workbook store.
 
 ```
 file ──► text ──► model ──► markdown ──► .md file  /  workbook chapter
-         │        │
+         │        │   │
+         │        │   └─ Nutrition: ingredient ▸ USDA food ▸ grams ▸ kcal/P/C/G
          │        └─ Recipes.parse(): days ▸ meals ▸ ingredients + steps
          └─ PdfText.extract() · PdfText.images() + OCR · pasted text
 ```
@@ -259,21 +262,30 @@ choice. One file per day:
 
 | Cantitate | Unitate | Ingredient | USDA FDC |
 | --- | --- | --- | --- |
-| 60 | g | fulgi de ovăz fini |  |
-| 30 | g | cupă proteină (aromă vanilie/ciocolată) |  |
-|  |  | Apă fierbinte cât este necesar |  |
+| 60 | g | fulgi de ovăz fini | 2346396 · 227 kcal · P 8.1 · C 41.2 · G 3.5 |
+| 30 | g | cupă proteină (aromă vanilie/ciocolată) | L20 · 114 kcal · P 23.4 · C 2.4 · G 1.5 |
+|  |  | Apă fierbinte cât este necesar | L47 |
 
 ### 2. Metoda de preparare
 
 1. Toarnă apa peste ovăz, lasă 2-3 min.
 2. Adaugă proteina, untul de arahide și banana.
 
+### 3. Valori nutriționale
+
+| Ingredient | Aliment USDA | Cantitate (g) | kcal | Proteine (g) | Carbohidrați (g) | Grăsimi (g) |
+| --- | --- | --- | --- | --- | --- | --- |
+| fulgi de ovăz fini | Oats, whole grain, rolled, old fashioned | 60 | 227 | 8.1 | 41.2 | 3.5 |
+| cupă proteină (aromă vanilie/ciocolată) | Pudră proteică (whey) | 30 | 114 | 23.4 | 2.4 | 1.5 |
+| Apă fierbinte cât este necesar | Apă |  |  |  |  |  |
+| **Total** |  | 90 | 341 | 31.5 | 43.6 | 5 |
+
 ## Total pe zi
 
 | Masă | kcal | Proteine (g) | Carbohidrați (g) | Grăsimi (g) |
 | --- | --- | --- | --- | --- |
-| Mic dejun: Terci de ovăz proteic |  |  |  |  |
-| **Total** |  |  |  |  |
+| Mic dejun: Terci de ovăz proteic | 341 | 31.5 | 43.6 | 5 |
+| **Total** | 341 | 31.5 | 43.6 | 5 |
 ```
 
 Fixed points:
@@ -282,16 +294,30 @@ Fixed points:
 - `##` is a meal: `<meal>: <dish>`, or just `<meal>` when the dish has no
   name of its own.
 - `###` sections are numbered and always in this order: **1.** ingredients,
-  **2.** method. In an English interface the same file says
-  `### 1. Ingredients` / `### 2. Method`, and `# Day 3` — a reader must
-  accept both languages, matching on the leading `1.` / `2.` rather than
-  on the word.
+  **2.** method, **3.** nutrition. In an English interface the same file
+  says `### 1. Ingredients` / `### 2. Method` / `### 3. Nutrition`, and
+  `# Day 3` — a reader must accept both languages, matching on the leading
+  digit rather than on the word.
 - The ingredient table always has those four columns in that order. The
-  fourth is **empty by design**: it is where a USDA FoodData Central ID
-  goes.
+  fourth holds the food this row was matched to: **the id first and
+  alone**, then what it comes to at this quantity. Everything after the
+  `·` is derived from the id and the quantity beside it, so a reader takes
+  the id and ignores the rest — which is what keeps the file
+  round-trippable. An id is either an FDC `fdcId` (digits) or a local
+  `L…` code (§ E).
 - The method is an ordered list, one step per item.
-- `## Total pe zi` / `## Day total` is a stub with one row per meal plus a
-  `**Total**` row — the place per-day numbers land. It can be turned off.
+- `### 3.` is **derived, never read**. It is written out of the two
+  sections above it, so `fromMarkdown` skips it rather than trying to take
+  it back in — as it does any `###` that is not `1.` or `2.` It can be
+  turned off.
+- `## Total pe zi` / `## Day total` has one row per meal plus a `**Total**`
+  row. It used to be an empty stub waiting for this pass; it now carries
+  the numbers. It can be turned off.
+- **An empty cell means "not known", not "zero".** Olive oil really does
+  have no protein and that cell says `0`; an ingredient nothing matched has
+  no protein *number* and its cells stay blank, and it is left out of the
+  totals rather than counted as nought. A total that quietly swallowed the
+  unmatched rows would look complete when it is not.
 - Only markdown the editor already renders is used (headings, tables,
   ordered lists, `*em*`). No HTML comments, no front matter: both would
   show up as literal text in `markdown-editor.html`'s preview.
@@ -311,8 +337,8 @@ workbook, the HTML page.
 |---|---|
 | `#` | a day. `Ziua 7` / `Day 7` with nothing after the number keeps `title` **empty**, so it goes on following the interface language, the way a day the parser found does. A heading with a name of its own keeps it |
 | `##` | a meal, `<label>: <dish>`. The label goes through `mealKind()`, so a Romanian file read by an English page still knows breakfast from dinner. `## Total pe zi` / `## Day total` is skipped: it is a section of the day, not a meal, and it is written again from the meals on the way out |
-| `###` | matched on the leading **`1.` / `2.`**, never on the word — the same file says *Ingrediente* or *Ingredients* depending on the language it was written in, and a reader has to take both. `Ingrediente:`-style headings are believed as a fallback |
-| table | header rows are the ones **above the `\| --- \|` row**; a row of four empty cells is how "no ingredients" is spelled and is dropped. `\|` inside a cell comes back as a pipe |
+| `###` | matched on the leading **digit**, never on the word — the same file says *Ingrediente* or *Ingredients* depending on the language it was written in, and a reader has to take both. `1.` is ingredients, `2.` is the method, and **anything else is skipped**, which is what stops `### 3. Valori nutriționale` from being read back as a fourth helping of steps. `Ingrediente:`-style headings are believed as a fallback |
+| table | header rows are the ones **above the `\| --- \|` row**; a row of four empty cells is how "no ingredients" is spelled and is dropped. `\|` inside a cell comes back as a pipe. The fourth cell is read down to its **leading id** (`fdcOf`) and no further |
 | method | `1. …`, `- …`, or a bare line. `1.` with nothing after it is the empty-method stub and adds no step — the `\s+` in the content match is deliberate: with `\s*`, a step opening `2.5 litri de apă` would lose its first two characters |
 | `---`, `*Sursă: …*` | the day separator is ignored; the source line is read and **beats the name of the file it arrived in** — `Ziua-7.md` is a file name, the line inside it is the book |
 
@@ -353,39 +379,180 @@ Stopping a long OCR batch keeps the pages already read. A hundred-page scan
 is minutes of work, and throwing away eighty finished pages because someone
 changed their mind about the last twenty would be rude.
 
-## E. The USDA step (not built yet)
+## E. The USDA step
 
-The format above exists so this stays a *reading* problem, never a
-re-parsing-free-text problem. A future `nutrition.html` (or a mode inside
-this page) would:
+The format of § C exists so this could stay a *reading* problem, never a
+re-parsing-free-text problem. It is built now, and it is `Nutrition` —
+section 6 of the file (`docs/MAP.md` for the line anchors).
 
-1. Read a chapter's markdown — from the workbook store (`scula-md`) or a
-   file — and walk it with the contract in § C: `#` → day, `##` → meal,
-   the table under a `### 1.` heading → ingredients.
-2. For each row with an empty fourth cell, look the name up in **USDA
-   FoodData Central** (`api.nal.usda.gov/fdc/v1/foods/search`, free API
-   key) and write the chosen `fdcId` back into that cell. Romanian names
-   need a translation or a synonym table — that mapping is worth storing
-   next to the workbook, keyed by the exact ingredient string, so a name is
-   only ever resolved once.
-3. Fetch `foods/{fdcId}` once per id, keep the per-100g nutrients
-   (energy 1008, protein 1003, carbohydrate 1005, fat 1004), and multiply
-   by the row's quantity — which is why quantity and unit are their own
-   columns. Non-metric units (`lingură`, `cană`, `buc`) need a
-   gram-equivalent table; `g`/`ml` need none.
-4. Add the numbers as extra columns on the ingredient table, fill the meal
-   rows and the `**Total**` row of the day table, and write the file back.
+```
+ingredient ──► head() ──► match() ──► a food ──┐
+   "2 felii de pâine integrală"                ├──► grams() ──► 4 numbers
+     ▲                                          │      ▲
+     └── the ingredient book answers first ─────┘      └── the food's own
+                                                          portion weights
+```
 
-Two things to keep true if that is built: the ingredient table must stay
-row-per-ingredient (never merge two foods into one row), and the FDC id
-must stay in the file rather than in a side database — the markdown has to
-survive being copied to another device on its own.
+### The table is in the page
 
-Offline is possible too: FoodData Central publishes the whole dataset as
-CSV. A stripped "foundation + SR legacy, four nutrients" table is a few
-hundred KB of JSON and could ship in the repo without any network at all.
+FoodData Central publishes a free API, and using it would have meant an
+API key, a network round trip per ingredient, and a page that does nothing
+on a train. So the table is compiled into the file instead, the same answer
+this repo gives every time (`CLAUDE.md` rule 3):
 
----
+| | |
+|---|---|
+| source | `FoodData_Central_foundation_food_json_2026-04-30.json`, the Foundation Foods set — 363 usable foods |
+| kept | per 100 g: **kcal, protein, fat, carbohydrate**, plus the gram weight of one piece, one cup and one tablespoon where the dataset gives them |
+| size | ~27 KB of the file, 425 rows |
+
+Three fallbacks, because the dataset is analytical rather than tidy:
+
+- **energy**: `1008 Energy` ▸ `2048 Atwater specific` ▸ `2047 Atwater
+  general` ▸ 4/4/9 over the food's own macros. Only 95 of 363 foods carry
+  1008, so without this most of the table would have no calories.
+- **fat**: `1004 Total lipid` ▸ `1085 Total fat (NLEA)`. Olive oil has only
+  the latter — which is why it reads 843 kcal per 100 g here rather than
+  the 884 a label would say. It is what the source says, and this table
+  does not invent numbers the source does not have.
+- **carbohydrate**: `1005 by difference` ▸ `1050 by summation` ▸ `100 −
+  water − protein − fat − ash − alcohol`. The dry beans and most of the
+  2026 produce rows need the third.
+
+A food the dataset gives no fat at all is read as **0 g of fat**, which is
+right for a juice and slightly low for a berry.
+
+### The 62 rows that are not FoodData
+
+Foundation Foods has 363 entries and no bread, no pasta, no honey, no
+cașcaval, no couscous — the things a Romanian meal plan is actually made
+of. On the 100-menu book that gap was about a third of every day, and a
+total that quietly leaves out the bread is worse than no total at all.
+
+So there are 62 more rows, from standard reference values, and they are
+marked as what they are: **their id is `L…`, never a number**, so nothing
+can mistake one for an fdcId, and the page shows an `L` beside them. The
+ingredient book (below) is where one gets corrected.
+
+### Romanian names
+
+The table is in English and an ingredient is written the way a person
+writes one — `brânză de vaci slabă`, `de pâine integrală (aprox. 90g)`,
+`roșii + castraveți`. Three passes, in the order of how far each can be
+trusted:
+
+1. **the alias table on the whole name.** 600 phrases, written already
+   folded (lowercase, no diacritics — the shape `nfold()` puts a name in).
+2. **the alias phrase inside it.** The one that starts **earliest** wins,
+   and the longest of those when two start together. Earliest, because
+   Romanian puts the food first and the qualifiers after it: `morcov ras o
+   conservă de fasole albă` is a row about the carrot, and a
+   longest-phrase-anywhere rule calls it beans. Longest on a tie, because
+   `unt` and `unt de arahide` both start at nought.
+3. **the English words of the descriptions themselves**, first word of a
+   description worth two (FoodData writes `Oats, whole grain, rolled` —
+   the food first). **Below a score of 0.34 it returns nothing**: a wrong
+   food is worse than none, because an unmatched row is visible and a
+   mismatched one is silent.
+
+Before any of that, `head()` takes the notes off: a `(…)` is a note, a `+`
+or a `,` or an ` sau ` is the parser having failed to split two
+ingredients and the first is the one the row is named after, and a leading
+`de ` is what `2 felii **de** pâine` leaves behind once the quantity and
+the unit have gone into their own columns.
+
+On the 100-menu book — 1,282 ingredient rows — this finds a food for
+**97.6%** of them. What is left is either genuinely vague (`mix de legume
+congelate`) or a line the parser put in the wrong half in the first place.
+
+### Quantity → grams
+
+`g` and `ml` need nothing (water's density, close enough for everything but
+oil and honey). The rest need a number, and the ones that name a **thing**
+rather than a measure — `felie`, `bucată`, `cană`, `lingură`, `conservă` —
+take the food's own portion weight from the dataset first, because one
+slice of bread and one slice of lemon are not the same slice. With no
+portion weight the unit's default is used and the row is flagged `guess`,
+which the page shows as `~`.
+
+An empty unit is how `1 banană` and `2 ouă` are written, and means pieces
+of the thing. The quantity column's six shapes — `60`, `1,5`, `1/2`, `½`,
+`1 ½`, `2-3` — all parse; a range becomes its middle, which is the only
+honest number to pick out of one.
+
+### The ingredient book
+
+A recipe book is read once and then the same forty ingredients come back in
+every plan after it, so a name is resolved once and written down. The book
+is a plain JSON document keyed by the folded ingredient name:
+
+```json
+{
+  "v": 1,
+  "updated": "2026-08-27T00:46:42.509Z",
+  "items": {
+    "fulgi de ovaz fini": {
+      "name": "fulgi de ovăz fini", "id": "2346396",
+      "food": "Oats, whole grain, rolled, old fashioned",
+      "kcal": 379, "prot": 13.5, "fat": 5.89, "carb": 68.7, "n": 5
+    }
+  }
+}
+```
+
+- It **grows on every route in** — a PDF, a photo, a paste, an imported
+  `.md` — because they all end at `analyse()`. New names are resolved and
+  added; names already in it only have their `n` bumped.
+- It lives in the settings store (`scula:nutrition`) between visits, and
+  moves between devices as a `.json` file through `ScuLaFolder` like
+  everything else here. A `.json` picked or dropped on the page goes to the
+  book rather than to the parser.
+- Reading one back **merges**: a device that has read two plans should not
+  lose the first to a file from the second.
+- **`"hand": true` is the escape hatch.** An entry marked that way supplies
+  its own four numbers and is never written over — not by a later scan, not
+  by *Caută din nou alimentele*. That is how a plan uses an ingredient this
+  table has never heard of, and how a number that is wrong gets fixed.
+
+Picking a food by hand in the review cards writes it into the book too, so
+the same name is already answered the next time any plan uses it.
+
+### What the reader sees
+
+| Where | What |
+|---|---|
+| review cards | a line under every ingredient: the food it matched — an `<input list="usdaList">`, so it is searchable by typing and changeable — and `120 g · 168 kcal · P 33.8 · C 0 · G 2.9`. A `?` where nothing matched, an `L` for a local food, a `~` on a guessed weight |
+| the markdown | the fourth column of the ingredient table, `### 3. Valori nutriționale` per meal, and `## Total pe zi` filled in (§ C) |
+| the shareable page | the same table under each method, **and the quantities are fields** |
+
+### The one script the shareable page carries
+
+§ G used to be able to say the file had nothing to run. It now has exactly
+one thing, and it is the reason: **a recipe is something people scale.**
+Change 60 to 90 in the ingredient list and the table under it has to
+follow, or the numbers on the page are a lie the moment anybody cooks for
+two.
+
+It stays honest about the rest. Everything the script needs is already on
+the elements — grams per unit and the four values per 100 g, as `data-`
+attributes — so there is no table embedded a second time and **still
+nothing to fetch**: no `src`, no `http`, no `@import`. The numbers written
+into the file are the ones an untouched field would produce, so a page
+opened with scripting off still shows the right thing; it just stops
+following. It is plain ES5, because this document may be opened years from
+now on whatever a phone has by then.
+
+The preview iframe in card 5 is `sandbox="allow-scripts"` for the same
+reason. There is no `allow-same-origin`, so the frame keeps its opaque
+origin either way.
+
+### Two things kept true from the original plan
+
+- The ingredient table stays **row-per-ingredient** — never two foods
+  merged into one row.
+- The id stays **in the file** rather than in a side database. The book is
+  a convenience, not the record: markdown copied to another device on its
+  own still knows what its ingredients are.
 
 ## F. Where the output goes
 
@@ -394,6 +561,7 @@ Two buttons, both local:
 | Button | Does |
 |---|---|
 | **Salvează .md** | one day → `<Ziua N>.md`; several days → one file named after the source. Always through `ScuLaFolder.save()` — folder on desktop, OS share sheet on a phone, download otherwise (`docs/FEATURES.md` § D). The page's subfolder is `retete` |
+| **Salvează baza (.json)** | the ingredient book (§ E), same route. *Citește o bază* reads one back and merges it |
 | **Adaugă în caiet** | writes one **chapter per day** into the Markdown editor's workbook store (`scula-md`), creating the workbook — *Rețete* by default — if it is missing. Same records, same fields as `markdown-editor.html` writes (`docs/FEATURES.md` § E), so the chapters simply appear there on its next load |
 
 The workbook route deliberately does **not** write the disk mirror: that
@@ -411,8 +579,12 @@ rather than overwriting anything.
 
 The markdown is the format a *program* reads. `Exportă .html` is the one a
 person does: the same days, laid out to be read, as **one self-contained
-file** — no script in it, no stylesheet, no font, nothing to fetch. It
-opens out of an e-mail attachment, off a phone, and out of a printer.
+file** — no stylesheet, no font, nothing to fetch. It opens out of an
+e-mail attachment, off a phone, and out of a printer.
+
+It carries exactly one script, and only when the nutrition tables are on:
+the quantities are fields and the totals follow them. Why that was worth
+breaking "nothing to run" for, and what is still true, is § E.
 
 ```
 model ──► buildHtmlDoc() ──► one string ──┬─► <iframe srcdoc>   (card 5)
@@ -426,8 +598,8 @@ gets saved**, so there is no second renderer to keep in step with the first.
 | Decision | Why |
 |---|---|
 | built from the **model**, not from the markdown | an ingredient group (`Sos`, `Topping`) has no column in the table, and on a page it can simply be a subheading |
-| **no totals stub** | in the markdown, `## Total pe zi` is a place for the USDA pass to write (§ E). In a file meant for reading, five empty columns are furniture |
-| previewed in an **iframe**, `sandbox=""` | the file carries a whole document's worth of CSS — page background, print rules, its own type — and none of it may leak into `recipes.html` or be overwritten by it. The sandbox gives it an opaque origin and no scripts; it has none to run |
+| **totals only when there are totals** | when the USDA pass is off there is no totals table on the page: in a file meant for reading, five empty columns are furniture. When it is on, the day roll-up is there and so is a table under every method |
+| previewed in an **iframe**, `sandbox="allow-scripts"` | the file carries a whole document's worth of CSS — page background, print rules, its own type — and none of it may leak into `recipes.html` or be overwritten by it. The sandbox gives it an opaque origin; **no `allow-same-origin`**, so it keeps that origin even with scripts allowed, and the one script it has is the one this page wrote (§ E) |
 | the preview is a **fold** | building a second document the size of the page on every keystroke is not free. It is rebuilt only while the fold is open, and only after the typing stops (250 ms). The fold opens itself for eight days or fewer and stays shut for a book — the same size heuristic the day view uses |
 | the contents list is a `<details>` | a hundred days is a hundred links: on a phone that is three screens of contents before the first recipe. `<details>` folds it with no script, which is what keeps the file inert. Open at 24 days or fewer |
 | ingredients are a **grid**, not a row each | one quantity column per list, as wide as the widest quantity in it. A fixed column is fine until a row says `1 conservă` and the unit spills over the name beside it |
@@ -479,12 +651,28 @@ corners — an English file read by a Romanian page, `## Day total` not
 becoming a fourth meal, an escaped pipe inside a cell, and `1.` with
 nothing after it staying an empty method. The shareable page is checked for
 what it must contain (one article per day, one section per meal, the dish,
-an ingredient, a step, both languages, `@media print`), for what it must
-**not** (a `<script`, an `src=`, an `http` URL, an unescaped `<b>` from an
-ingredient name), and for the two things that make it trustworthy: the
-preview iframe holds the very string the export saves, and the export goes
-out through `ScuLaFolder.save` as `text/html` under a diacritic-keeping
-file name.
+an ingredient, a step, both languages, `@media print`, a nutrition table
+per meal and one per day), for what it must **not** (more than its own one
+script, an `src=`, an `http` URL, an unescaped `<b>` from an ingredient
+name), and for the two things that make it trustworthy: the preview iframe
+holds the very string the export saves, and the export goes out through
+`ScuLaFolder.save` as `text/html` under a diacritic-keeping file name.
+
+**Then the exported file is opened on its own and driven**, off disk with
+nothing around it: doubling a quantity has to double that row, and the meal
+total and the day total have to move by the same amount. That is the check
+that the one script in it actually earns its place.
+
+**The USDA pass is checked from the name inwards.** A Romanian name
+finding its food; the longest phrase beating the shortest (`unt de
+arahide`, not `unt`); the earliest beating the longest (`morcov ras o
+conservă de fasole albă` is a carrot); a `felie` weighed by the food it is
+a slice of; no unit at all meaning pieces; an English name matched on the
+descriptions; a name nothing matches getting **no** food rather than a
+wrong one; all six shapes of the quantity column; and a measured zero
+staying `0` where an unknown stays blank. The book gets its own: reading a
+plan writes its ingredients into it, a `"hand": true` entry supplies its
+own numbers, and *Caută din nou alimentele* leaves that entry alone.
 
 The parser rules the book needed each have a check of their own
 (`Sos:` staying inside its meal, word quantities, `Ingrediente:` headings,
