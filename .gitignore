@@ -19,3 +19,4 @@ tests/package-lock.json
 # ~45 MB of wasm and language data: it is fetched, never committed.
 /ocr/
 100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf
+100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.md
