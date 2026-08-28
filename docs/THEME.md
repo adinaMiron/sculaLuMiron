@@ -297,6 +297,6 @@ This section describes the intended next step, not current behaviour.
 - [ ] `rgba()` literals → tokens or `color-mix()`
 - [ ] canvas/JS colours read via `getComputedStyle`, once per pass
 - [ ] `PALETTE` and the export template left as literal hex — verify
-- [ ] nav still matches the other two files (see CLAUDE.md diff snippet)
+- [ ] `/verify` clean (JS parses, nav in sync, diacritics OK)
 - [ ] contrast checked: body text ≥ 4.5:1, large text ≥ 3:1
 - [ ] update the palette tables in this doc

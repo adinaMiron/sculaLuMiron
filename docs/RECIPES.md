@@ -798,7 +798,5 @@ works. For that, serve the four npm packages listed above from a local
 `./ocr/`, point the field at it, and drop a photo — the numbers in § A were
 measured that way.
 
-```bash
-cd tests && npm install
-PW_CHROME_PATH=/path/to/chrome node recipes.js
-```
+Run: `/apptest recipes`. (Testing conventions: `HANDOFF.md` § "Testing
+approach used throughout".)

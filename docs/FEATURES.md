@@ -9,13 +9,15 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 
 1. **Copy the closest existing app** as the skeleton. Keep it single-file:
    `<style>` → markup → `<script>`. No build step, no framework, no npm.
-2. **Paste the shared nav** verbatim from `index.html:226-881`.
+2. **Paste the shared nav** verbatim — from the `<nav id="site-nav">` line
+   through the `<!-- ===== end toolbar nav ===== -->` marker in any app file
+   (line numbers drift; the markers don't).
 3. **Add the new link to every nav copy** — the existing app files plus
    the new one. They must stay byte-identical:
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
-   Verify with the diff snippet in `CLAUDE.md`.
+   Verify with `/verify` (parses all four + diffs the nav block).
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
    get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
@@ -630,9 +632,8 @@ resolution, the `[[` suggester, both languages, the export fallback, and the
 same graph on a phone with a real touch drag. Canvas is asserted on pixels
 (`getImageData`), never a screenshot.
 
-```bash
-cd tests && npm install && node graph.js
-```
+Run: `/apptest graph`. (Testing conventions: `HANDOFF.md` § "Testing
+approach used throughout".)
 
 ---
 
@@ -732,9 +733,7 @@ opening another chapter and landing selected, a hit below the fold scrolling
 to itself through wrapped lines, a line of literal HTML shown rather than
 run, both languages, `Ctrl+4`.
 
-```bash
-cd tests && npm install && node find.js
-```
+Run: `/apptest find`.
 
 ---
 
@@ -760,9 +759,7 @@ blocks, `px` is deliberate — `rem` collapses to ~34px tall buttons there
 because the root font-size floors at 14px on narrow phones, below the
 44px touch-target floor. Don't "fix" those to `rem`.
 
-**Testing:** no framework. Ad-hoc Playwright (Python) per feature, with
-pixel assertions via `getImageData()`/`toDataURL()` → PIL rather than
-trusting screenshots. Anything using `getDisplayMedia` (screenshot,
-recording) needs a **headed** browser under Xvfb — headless Chromium
-cannot decode media streams at all, so an emulator "passing" proves
-nothing there.
+**Testing:** see `HANDOFF.md` § "Testing approach used throughout" (the
+canonical description). In short: no framework, ad-hoc Playwright per
+feature, pixel assertions not screenshots, `getDisplayMedia` needs a headed
+browser under Xvfb. Run scripts with `/apptest <name>`.

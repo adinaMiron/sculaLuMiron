@@ -591,17 +591,30 @@ on a selected rect).
 
 ## Testing approach used throughout
 
-No test framework — ad hoc Playwright scripts per feature (the accumulated
-ones live in `tests/`, Node; earlier ones were Python),
-plus pixel-level assertions (read canvas via
-`canvas.getContext('2d').getImageData()` or `toDataURL()` → PIL) rather
-than trusting visual screenshots alone. For anything touching
-screen-capture/recording, launch **headed** (`headless=False`) under Xvfb
-(`Xvfb :99 -screen 0 1280x900x24`, `DISPLAY=:99`) since headless Chromium
-can't decode media streams. Recorded video output was validated with
-`ffprobe`/`ffmpeg` (codec, duration, extracted frames) and Python's
-`zipfile` module (CRC integrity) for the zip export — not just "did a
-file download."
+*Canonical description — other docs point here.*
+
+No test framework — ad hoc Playwright scripts per feature, one per concern,
+in `tests/` (Node; a few early ones were Python). **Run them with
+`/apptest <name>`** (or `/apptest all`); it supplies `PW_CHROME_PATH` —
+this machine has no bundled Playwright browser, only system Chrome at
+`/usr/bin/google-chrome-stable`.
+
+Rules that hold for every script:
+
+- **Pixel assertions, not screenshots** — read canvas via
+  `getImageData()` / `toDataURL()` (→ PIL in the Python ones) and assert on
+  values. A screenshot "looking right" proves nothing.
+- **Screen-capture / recording needs a headed browser under Xvfb**
+  (`headless:false`; `Xvfb :99 -screen 0 1280x900x24`, `DISPLAY=:99`).
+  Headless Chromium cannot decode `getDisplayMedia`/`<video>` streams at
+  all — an emulator "passing" there is meaningless.
+- Recorded video was validated with `ffprobe`/`ffmpeg` (codec, duration,
+  frames) and the zip export with Python's `zipfile` CRC check — not "did a
+  file download."
+
+Before calling any HTML change done, run **`/verify`** (JS parse-check of
+all four files + nav-block sync diff). A PostToolUse hook parse-checks the
+file you just edited on every save.
 
 ## Not yet implemented / possible next asks
 

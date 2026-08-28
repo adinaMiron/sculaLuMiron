@@ -28,6 +28,11 @@ node flow.js                 # one file at a time, or:
 npm test                     # every script, stops at the first failure
 ```
 
+**From a Claude Code session, use `/apptest <name>` (or `/apptest all`)** —
+it runs the install check and sets `PW_CHROME_PATH` to the system Chrome.
+This repo's dev machine has no Playwright-managed browser (see the env var
+note below).
+
 Playwright needs a Chromium build. `npm install` fetches Playwright's own
 managed browser and `chromium.launch()` uses it automatically — nothing else
 to configure on a normal machine or in CI. Two environment variables exist

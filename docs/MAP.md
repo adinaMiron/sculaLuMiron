@@ -4,6 +4,11 @@ Line anchors so you can `sed -n 'A,Bp' file` instead of scanning. Numbers
 drift by a few lines after edits; **search by the name in the right-hand
 column** if a range looks wrong. Re-verify with `grep -n` when in doubt.
 
+**When a range in here is off by more than a few lines, fix it in the same
+change** — a stale anchor costs the next session a wasted read. Same for any
+flow you find yourself repeating: promote it to a `/command`, a skill, or a
+hook rather than re-typing it (see `CLAUDE.md` § "Keep this current").
+
 Shared shape of all four files:
 
 ```
@@ -16,8 +21,10 @@ Shared shape of all four files:
 
 ## The shared block (byte-identical in all four files)
 
-`index.html:226-881` · `editor.html:422-1077` ·
-`markdown-editor.html:1402-2057` · `recipes.html:408-1063`
+From the `<nav id="site-nav">` line through `<!-- ===== end toolbar nav ===== -->`
+(~650 lines). Rough starts: `index.html:226` · `editor.html:427` ·
+`markdown-editor.html:1402` · `recipes.html:408` — these drift; grep the
+`<nav id="site-nav"` line.
 
 Two features share it, because both must exist before any app script runs:
 
@@ -40,8 +47,8 @@ strings) · `supported`/`canShareFiles`/`currentMode` · toast ·
 set), `"share"` (no directory picker but `navigator.canShare({files})`,
 i.e. every phone), `"download"`. Read it before assuming what a save does.
 
-Any edit here goes into **all four** files — see the diff snippet in
-`CLAUDE.md`.
+Any edit here goes into **all four** files — run `/verify` to confirm they
+stayed identical.
 
 ---
 
@@ -709,6 +716,6 @@ grep -n "#[0-9a-fA-F]\{3,8\}\b" editor.html | sed -n '20,$p'
 # every user-visible string in markup
 grep -n "placeholder=\"\|title=\"\|aria-label=\"" markdown-editor.html
 
-# confirm nav still in sync (see CLAUDE.md for the full diff snippet)
-grep -n "site-nav" *.html
+# confirm nav still in sync + JS still parses — one command
+/verify
 ```

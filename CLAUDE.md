@@ -11,6 +11,17 @@ file). Open in a browser; that's the whole toolchain.
 | `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
+**What the user calls each page** — requests come in as "work on the X page":
+"markdown page" → `markdown-editor.html` · "retete" / "rețete" →
+`recipes.html` · "index" / "voice" / "caiet vocal" → `index.html` ·
+"editor.html" / "mazgaleste" / "drawing page" → `editor.html`. The nav order
+is Markdown, Caiet vocal, Rețete, Mazgaleste, and the old "Editor" label is
+now "Mazgaleste".
+
+For a feature/fix/styling change inside one app file, the **`app-change`
+skill** is the repeatable loop (locate → narrow read → edit → `/verify` →
+sync docs).
+
 ## Rule 1: never read a whole HTML file
 
 Reading all four costs ~200k tokens; `recipes.html` alone is 84k and
@@ -44,19 +55,16 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all four files (`index.html:226-881`, `editor.html:422-1077`,
-`markdown-editor.html:1402-2057`, `recipes.html:408-1063`). It carries the nav
-links, the UI-language toggle, **and `window.ScuLaFolder`** — which decides
-where every saved file goes (see `docs/FEATURES.md` § D). Any change to it
-must be applied to **all four** or they drift. Verify with:
+in all four files — from the `<nav id="site-nav">` line through the
+`<!-- ===== end toolbar nav ===== -->` marker (~650 lines; starts near
+`index.html:226`, `editor.html:427`, `markdown-editor.html:1402`,
+`recipes.html:408`, but these **drift** — grep the `<nav` line). It carries
+the nav links, the UI-language toggle, **and `window.ScuLaFolder`** — which
+decides where every saved file goes (see `docs/FEATURES.md` § D). Any change
+to it must be applied to **all four** or they drift.
 
-```bash
-sed -n '226,881p' index.html             > /tmp/n1
-sed -n '422,1077p' editor.html           > /tmp/n2
-sed -n '1402,2057p' markdown-editor.html > /tmp/n3
-sed -n '408,1063p' recipes.html          > /tmp/n4
-diff /tmp/n1 /tmp/n2 && diff /tmp/n1 /tmp/n3 && diff /tmp/n1 /tmp/n4 && echo "nav in sync"
-```
+**Verify with `/verify`** — it extracts the block by those two anchors (no
+line numbers) and diffs all four.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -99,11 +107,17 @@ block's `SUBDIR` map, so the new page gets its own folder.
 1. Read `docs/MAP.md` → find line range.
 2. Read only that range.
 3. Edit with `str_replace` (never rewrite a whole file).
-4. Verify — see below.
+4. Verify — run `/verify` (see below).
 5. If the change touched theme tokens, i18n keys, or the nav, update the
    matching doc in the same commit.
+6. If a `docs/MAP.md` anchor was off by more than a few lines, fix it too.
 
 ## Verification (no test framework exists)
+
+Run **`/verify`** — it does both the JS parse-check and the nav-sync diff.
+A PostToolUse hook (`.claude/hooks/check-html-js.sh`) already parse-checks
+the file you just edited on every save and blocks on a syntax error; `/verify`
+is the before-done check across all four.
 
 ```bash
 # JS in every <script> block still parses (verified working on all 4 files)
@@ -117,11 +131,11 @@ Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
 in `markdown-editor.html:1380` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
-For behaviour, ad-hoc Playwright scripts are the established approach —
-see `HANDOFF.md` § "Testing approach" and `tests/README.md`. Canvas work
-needs pixel assertions (`getImageData`), not screenshots. Anything using
-`getDisplayMedia` (screenshot/record in `editor.html`) needs a **headed**
-browser under Xvfb; headless Chromium cannot decode media streams at all.
+For behaviour, ad-hoc Playwright scripts are the established approach. The
+canonical description of how they work (pixel assertions not screenshots,
+`getDisplayMedia` needs a headed browser under Xvfb, …) is in `HANDOFF.md`
+§ "Testing approach used throughout" — don't restate it elsewhere, link it.
+Run them with **`/apptest <name>`**.
 
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
 pan, gestures, undo/redo, every tool, and — in `infinite.js` — the infinite
@@ -140,6 +154,36 @@ Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
+
+**On this machine there is no `chromium`** — Playwright's bundled browser is
+not installed. Every test run must point at the system Chrome:
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node <name>.js` (the var is read
+by `tests/lib.js`). Use **`/apptest <name>`** — it handles the install check
+and the Chrome path.
+
+## Keep this current (learn as the project goes)
+
+These files are the project's memory. Improve them as you work — in the same
+change, not "later":
+
+- **Repeated a flow?** If you run the same multi-step sequence twice, promote
+  it: a shell recipe → `.claude/commands/<name>.md`; a judgement-carrying
+  procedure → a skill under `.claude/skills/`; something that must happen
+  *every* time deterministically → a hook in `.claude/settings.json`. Then
+  replace the prose in the docs with a one-line reference to it.
+- **Corrected twice?** If the user corrects the same thing more than once, it
+  belongs in a doc (or a memory file) — write it down so it isn't corrected a
+  third time.
+- **Stale anchor / drifted line range / dead reference?** Fix it when you
+  notice it. A wrong number in `docs/MAP.md` costs the next session a wasted
+  file read.
+- **One source of truth.** When two docs explain the same thing, keep the
+  fuller one and make the other link it. Don't paste command blocks that a
+  `/command` already encodes.
+- Existing automation: `/verify` (parse + nav + diacritics), `/apptest`
+  (Playwright), `app-change` skill (the per-app edit loop), and a PostToolUse
+  hook that parse-checks edited HTML. Prefer extending these over adding new
+  ones.
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
