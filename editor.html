@@ -92,9 +92,14 @@
   #boldBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   button.action.danger:hover{ background:color-mix(in srgb, var(--danger) 18%, var(--surface)); border-color:var(--danger); color:var(--danger); }
   #toolbar label{ font-size:0.786rem; color:var(--text-2); margin-right:0.286rem; }
-  select, input[type=number]{
-    border:1px solid var(--border); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:var(--surface);
+  select, input[type=number], input[type=text]{
+    border:1px solid var(--border); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:var(--surface); color:var(--text);
   }
+  #colorTools{ display:flex; flex-direction:column; gap:0.286rem; margin-top:0.429rem; width:100%; }
+  #colorTools .ctRow{ display:flex; align-items:center; gap:0.286rem; flex-wrap:wrap; }
+  #colorTools .ctLab{ font-size:0.786rem; color:var(--text-2); }
+  #hexIn{ width:6.5rem; font-family:'Noto Mono', ui-monospace, monospace; }
+  #hslOut{ flex:1; min-width:8rem; font-family:'Noto Mono', ui-monospace, monospace; font-size:0.786rem; opacity:0.9; }
   input[type=range]{ width:5.714rem; }
   .swatch{
     width:1.429rem; height:1.429rem; border-radius:50%; border:0.143rem solid var(--surface);
@@ -1192,6 +1197,14 @@
         <div class="rctl">
           <div id="palette"></div>
           <input type="color" id="customColor" value="#1e1d1c" data-i-title="customColorTip" title="Custom color">
+          <button class="action" id="eyedropBtn" data-i-title="eyedropTip" title="Pick a color from the page" aria-label="Pick color from page">💧</button>
+        </div>
+        <div id="colorTools">
+          <div class="ctRow">
+            <span class="ctLab" data-i="lblHexToHsl">HEX → HSL</span>
+            <input type="text" id="hexIn" value="#C7B84A" spellcheck="false" autocapitalize="off" autocomplete="off">
+            <input type="text" id="hslOut" readonly tabindex="-1">
+          </div>
         </div>
       </div>
 
@@ -1423,6 +1436,8 @@ const I18N = {
     lblFont:"Font", lblFontSize:"Dimensiune", boldTip:"Text îngroșat",
     lblHighlightSize:"Grosime",
     lblColor:"Culoare", customColorTip:"Culoare personalizată",
+    lblHexToHsl:"HEX → HSL", eyedropTip:"Alege o culoare din pagină",
+    eyedropUnsupported:"Browserul nu permite alegerea culorii din pagină",
     lblFill:"Umplere", fillCustomColorTip:"Culoare de umplere personalizată", noFillTip:"Fără umplere",
     lblStroke:"Contur", lblCornerRadius:"Rază colț", lblHeadSize:"Dimensiune vârf",
     lblCurve:"Curbură", lblPoints:"Puncte",
@@ -1500,6 +1515,8 @@ const I18N = {
     lblFont:"Font", lblFontSize:"Size", boldTip:"Bold text",
     lblHighlightSize:"Thickness",
     lblColor:"Color", customColorTip:"Custom color",
+    lblHexToHsl:"HEX → HSL", eyedropTip:"Pick a color from the page",
+    eyedropUnsupported:"Your browser can't pick a color from the page",
     lblFill:"Fill", fillCustomColorTip:"Custom fill color", noFillTip:"No fill",
     lblStroke:"Stroke", lblCornerRadius:"Corner radius", lblHeadSize:"Head size",
     lblCurve:"Curve", lblPoints:"Points",
@@ -3447,6 +3464,56 @@ document.getElementById('customColor').addEventListener('input', (e) => {
   paletteEl.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
   applyColorToSelection(state.color);
 });
+
+/* Culoare tools: HEX -> HSL converter, and an eyedropper that picks any
+   colour visible on the page (native EyeDropper API where the browser has it). */
+function hexToHsl(str){
+  const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(String(str).trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const r = parseInt(h.slice(0,2),16)/255,
+        g = parseInt(h.slice(2,4),16)/255,
+        b = parseInt(h.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  let H = 0;
+  if (d){
+    if (max === r) H = ((g - b) / d) % 6;
+    else if (max === g) H = (b - r) / d + 2;
+    else H = (r - g) / d + 4;
+    H = Math.round(H * 60); if (H < 0) H += 360;
+  }
+  const L = (max + min) / 2;
+  const S = d ? d / (1 - Math.abs(2 * L - 1)) : 0;
+  return { h: H, s: Math.round(S * 100), l: Math.round(L * 100) };
+}
+(function(){
+  const hexIn = document.getElementById('hexIn');
+  const hslOut = document.getElementById('hslOut');
+  const eyedropBtn = document.getElementById('eyedropBtn');
+  function refresh(){
+    const c = hexToHsl(hexIn.value);
+    hslOut.value = c ? `hsl(${c.h}, ${c.s}%, ${c.l}%)` : '—';
+  }
+  hexIn.addEventListener('input', refresh);
+  refresh();
+  if (window.EyeDropper){
+    eyedropBtn.addEventListener('click', async () => {
+      try {
+        const { sRGBHex } = await new EyeDropper().open();
+        hexIn.value = sRGBHex;
+        refresh();
+        document.getElementById('customColor').value = sRGBHex;
+        state.color = sRGBHex;
+        paletteEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+        applyColorToSelection(sRGBHex);
+      } catch (e) { /* the person pressed Esc - nothing to do */ }
+    });
+  } else {
+    eyedropBtn.disabled = true;
+    eyedropBtn.title = t('eyedropUnsupported');
+  }
+})();
 
 // Fill palette: same swatches as stroke color, plus a "no fill" option first
 // (selected by default) since shapes have no fill until the person opts in.
