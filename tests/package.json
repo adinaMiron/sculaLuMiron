@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Ad-hoc Playwright checks for editor.html, recipes.html, markdown-editor.html and index.html (see README.md). Not part of the apps themselves - see the root CLAUDE.md for why the apps stay dependency-free.",
   "scripts": {
-    "test": "for f in flow stuck gestures stress regression desktop extras withimage infinite undoredo spline spline-touch polyline recipes graph find nav wbrename paste voice; do node $f.js || exit 1; done"
+    "test": "for f in flow stuck gestures stress regression desktop extras withimage infinite undoredo spline spline-touch polyline recipes graph find nav wbrename paste voice dictate; do node $f.js || exit 1; done"
   },
   "dependencies": {
     "playwright": "^1.62.1"

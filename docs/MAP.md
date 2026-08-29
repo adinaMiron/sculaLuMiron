@@ -291,6 +291,7 @@ a `polyline`, whose vertices are all corners already.
 | 6275–6380 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
 | 6382–6400 | Link modal: `openLinkModal`, `insertLink` |
 | 6402–6441 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**) |
+| **~6820–7110** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` ~L2146, status pill `#dictate-pill` ~L2279, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `index.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
 | 6443–6481 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
 ### Workbooks (3806–4392) — `docs/FEATURES.md` § E
