@@ -430,6 +430,7 @@
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button onclick="connectGoogleDrive()">Connect Google Drive & Select Folder</button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
@@ -578,6 +579,7 @@
     font:inherit; cursor:pointer; min-height:44px;
   }
 </style>
+<script type="module" src="https://apis.google.com/js/api.js"></script>
 <script>
 (function(){
   var here = location.pathname.split("/").pop() || "index.html";
@@ -1398,6 +1400,99 @@
 <script>
 (function(){
 "use strict";
+
+// Adina: code to add a button for using google drive to handle files
+const CONFIG = {
+    CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
+    WORKER_URL: "https://oauth-proxy-api.mironadinas.workers.dev",
+    REDIRECT_URI: window.location.href.split('#')[0].split('?')[0],
+    APP_ID: "766100323605",
+    SCOPE: "https://www.googleapis.com/auth/drive.file"
+  };
+
+  let accessToken = null;
+
+// 1. Worker Token Exchange Function
+async function exchangeCodeForToken(authCode) {
+  const response = await fetch(CONFIG.WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: authCode,
+      redirect_uri: CONFIG.REDIRECT_URI
+    })
+  });
+
+  const tokens = await response.json();
+  if (tokens.access_token) {
+    accessToken = tokens.access_token;
+    localStorage.setItem("gdrive_token", accessToken);
+    openFolderPicker();
+  } else {
+    console.error("Token exchange failed:", tokens);
+  }
+}
+
+// 2. Trigger Google OAuth Flow on Button Click
+function connectGoogleDrive() {
+  const oauth2Endpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+  
+  const params = {
+    client_id: CONFIG.CLIENT_ID,
+    redirect_uri: CONFIG.REDIRECT_URI,
+    response_type: "code",
+    scope: CONFIG.SCOPE,
+    access_type: "offline",
+    prompt: "consent"
+  };
+
+  const urlParams = new URLSearchParams(params).toString();
+  window.location.href = `${oauth2Endpoint}?${urlParams}`;
+}
+
+// 3. Handle OAuth Redirect Code on Page Load
+window.addEventListener("DOMContentLoaded", () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const authCode = urlParams.get("code");
+
+  if (authCode) {
+    // Clean URL query parameters without refreshing
+    window.history.replaceState({}, document.title, window.location.pathname);
+    exchangeCodeForToken(authCode);
+  }
+});
+
+// 4. Open Google Drive Folder Picker
+function openFolderPicker() {
+  gapi.load("picker", () => {
+    const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+      .setMimeTypes("application/vnd.google-apps.folder")
+      .setSelectFolderEnabled(true);
+
+    const picker = new google.picker.PickerBuilder()
+      .setAppId(CONFIG.APP_ID)
+      .setOAuthToken(accessToken)
+      .addView(view)
+      .setCallback(pickerCallback)
+      .build();
+
+    picker.setVisible(true);
+  });
+}
+
+// 5. Handle Selected Folder
+function pickerCallback(data) {
+  if (data.action === google.picker.Action.PICKED) {
+    const folder = data.docs[0];
+    const folderId = folder.id;
+    const folderName = folder.name;
+    
+    console.log(`Selected Folder: ${folderName} (ID: ${folderId})`);
+    // Save folderId to your app state or localStorage for file uploads
+    localStorage.setItem("gdrive_folder_id", folderId);
+  }
+}
+
 
 /* ============================================================
    1. i18n — pattern copied from index.html, see docs/I18N.md
