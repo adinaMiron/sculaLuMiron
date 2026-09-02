@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 7537 | 65k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `index.html` | 7788 | 67k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
@@ -28,7 +28,7 @@ sync docs).
 ## Rule 1: never read a whole HTML file
 
 Reading all four costs ~200k tokens; `recipes.html` alone is 84k and
-`index.html` 58k. **Never `view` an entire app file.** Locate
+`index.html` 67k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
 ```bash
@@ -53,6 +53,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
+| The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
 
 Do not read a doc the task doesn't touch.
 
@@ -154,8 +155,10 @@ all three save routes), and for
 filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
-the TODO-workbook chapter filter (`wbtodo.js`) and the
-`!nice`/`!important`/`!vital` importance markers (`importance.js`), and for
+the TODO-workbook chapter filter (`wbtodo.js`), the
+`!nice`/`!important`/`!vital` importance markers (`importance.js`) and the
+💡 quick idea capture with its chapter matching and its `Idei` fallback
+(`idea.js`), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only

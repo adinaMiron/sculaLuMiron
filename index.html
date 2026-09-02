@@ -520,7 +520,7 @@
   }
   .modal-title { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; color: var(--text); }
   .field label { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
-  .field input, .field select {
+  .field input, .field select, .field textarea {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -532,7 +532,9 @@
     outline: none;
     transition: border-color 0.15s;
   }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  /* Quick idea capture — one textarea, deliberately the whole modal */
+  #idea-text { min-height: 108px; resize: vertical; line-height: 1.55; }
   .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .local-pick { display: flex; align-items: center; gap: 10px; }
@@ -1063,7 +1065,7 @@
       gap: 11px;
     }
     .modal-title { font-size: 13px; }
-    .field input { padding: 10px 12px; font-size: 14px; }  /* ≥16px-ish avoids iOS zoom quirks */
+    .field input, .field textarea { padding: 10px 12px; font-size: 14px; }  /* ≥16px-ish avoids iOS zoom quirks */
     .modal-actions .btn { flex: 1; padding: 10px; }
     #table-preview-grid { max-height: 44vh; }
     .tbl-builder input { min-width: 62px; font-size: 12px; }
@@ -2165,6 +2167,7 @@
     <span class="wb-crumb" id="wb-crumb" hidden></span>
     <span class="file-name" id="current-file">untitled.md</span>
     <button class="btn" onclick="newFile()" data-i="newFileBtn">New</button>
+    <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
@@ -2437,6 +2440,25 @@ Use the toolbar above to insert formatting.
     <div class="modal-actions">
       <button class="btn" onclick="closeWorkbookModal()" data-i="cancelBtn">Cancel</button>
       <button class="btn btn-primary" onclick="confirmSaveToWorkbook()" data-i="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick idea capture — docs/FEATURES.md § J.
+     One textarea. The first line's "Chapter: " prefix says where the rest
+     goes; anything unmatched lands in the "Idei" workbook under today's
+     date. Ctrl+Alt+I opens it, Ctrl+Enter files it. -->
+<div class="image-modal" id="idea-modal">
+  <div class="modal-box">
+    <div class="modal-title" data-i="modalTitleIdea">Quick idea</div>
+    <div class="field">
+      <label data-i="lblIdea">Idea</label>
+      <textarea id="idea-text" rows="5" oninput="ideaPaintHint()" data-i-placeholder="ideaPlaceholder" placeholder="Editor: - [ ] write code to …"></textarea>
+    </div>
+    <div class="field-hint" id="idea-hint"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeIdeaModal()" data-i="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" onclick="saveIdea()" data-i="ideaSaveBtn" data-i-title="ideaSaveTip" title="File this idea (Ctrl+Enter)">Save idea</button>
     </div>
   </div>
 </div>
@@ -2780,7 +2802,21 @@ const I18N = {
     findLineNo:n=>`linia ${n}`,
     findOpenNoteTip:"Deschide capitolul",
     findFoot:o=>`${o.m===1?'o potrivire':o.m+' potriviri'} în ${o.n===1?'un capitol':o.n+' capitole'}`,
-    findFootNotes:o=>`${o.n===1?'un capitol':o.n+' capitole'}`
+    findFootNotes:o=>`${o.n===1?'un capitol':o.n+' capitole'}`,
+
+    /* Idee rapidă (Ctrl+Alt+I) — docs/FEATURES.md § J */
+    ideaBtn:"💡 Idee", ideaTip:"Notează o idee direct în capitolul ei (Ctrl+Alt+I)",
+    modalTitleIdea:"Idee rapidă", lblIdea:"Idee",
+    ideaPlaceholder:"Editor: - [ ] scrie cod care să…",
+    ideaSaveBtn:"Trimite ideea", ideaSaveTip:"Trimite ideea (Ctrl+Enter)",
+    ideaHintIdle:"Începe cu numele capitolului urmat de „:”. Fără el, ideea ajunge în Idei.",
+    ideaHintTo:o=>`Ajunge în ${o.book} / ${o.chapter}`,
+    ideaHintNew:o=>`Se creează ${o.book} / ${o.chapter}`,
+    ideaHintFallback:o=>`Niciun capitol „${o.name}” — ideea ajunge în ${o.book} / ${o.chapter}`,
+    ideaEmpty:"Scrie ideea mai întâi.",
+    ideaSaved:o=>`Idee trimisă în ${o.book} / ${o.chapter}`,
+    ideaSavedTo:o=>`Idee trimisă în ${o.book} / ${o.chapter} → ${o.path}`,
+    ideaFailed:"Nu am putut salva ideea."
   },
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
@@ -2938,7 +2974,21 @@ const I18N = {
     findLineNo:n=>`line ${n}`,
     findOpenNoteTip:"Open this chapter",
     findFoot:o=>`${o.m} match${o.m!==1?'es':''} in ${o.n} chapter${o.n!==1?'s':''}`,
-    findFootNotes:o=>`${o.n} chapter${o.n!==1?'s':''}`
+    findFootNotes:o=>`${o.n} chapter${o.n!==1?'s':''}`,
+
+    /* Quick idea capture (Ctrl+Alt+I) — docs/FEATURES.md § J */
+    ideaBtn:"💡 Idea", ideaTip:"Capture an idea straight into its chapter (Ctrl+Alt+I)",
+    modalTitleIdea:"Quick idea", lblIdea:"Idea",
+    ideaPlaceholder:"Editor: - [ ] write code to …",
+    ideaSaveBtn:"Send idea", ideaSaveTip:"File this idea (Ctrl+Enter)",
+    ideaHintIdle:"Start with the chapter name followed by \":\". Without one, the idea goes to Idei.",
+    ideaHintTo:o=>`Goes to ${o.book} / ${o.chapter}`,
+    ideaHintNew:o=>`Will create ${o.book} / ${o.chapter}`,
+    ideaHintFallback:o=>`No chapter called \u201c${o.name}\u201d \u2014 the idea goes to ${o.book} / ${o.chapter}`,
+    ideaEmpty:"Write the idea first.",
+    ideaSaved:o=>`Idea filed in ${o.book} / ${o.chapter}`,
+    ideaSavedTo:o=>`Idea filed in ${o.book} / ${o.chapter} → ${o.path}`,
+    ideaFailed:"Could not save the idea."
   }
 };
 let UI = "ro";
@@ -5067,6 +5117,187 @@ async function confirmSaveToWorkbook() {
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
 }
 
+/* ============================================================
+   QUICK IDEA CAPTURE  (💡 button, Ctrl+Alt+I)
+   One textarea for a thought you don't want to lose. The first
+   line may name the chapter it belongs to — not the workbook:
+
+       Editor: - [ ] write code to bla bla bla
+
+   Everything after that first ":" is appended verbatim to the
+   chapter called "Editor", wherever it lives, and that chapter is
+   written to its .md file exactly as Ctrl+S would write it.
+   No chapter of that name anywhere? The text is kept whole and
+   filed in the "Idei" workbook, under a chapter named for today —
+   both created on the spot if they are not there yet.
+   Full description: docs/FEATURES.md § J.
+   ============================================================ */
+const IDEA_BOOK = 'Idei';
+
+/* "Editor: - [ ] write the code" → { name:'Editor', body:'- [ ] write the code' }.
+   Only the first line is inspected, and only its first ":" — a chapter name
+   with a colon in it is not something anyone types into this box, while an
+   idea full of colons is ordinary. A name longer than this is prose, not a
+   name, so it is left as part of the idea. */
+const IDEA_NAME_MAX = 80;
+function ideaSplit(raw) {
+  const text = String(raw || '').replace(/\r\n?/g, '\n').trim();
+  if (!text) return { name: '', body: '', text: '' };
+  const nl = text.indexOf('\n');
+  const first = nl === -1 ? text : text.slice(0, nl);
+  const colon = first.indexOf(':');
+  if (colon === -1) return { name: '', body: text, text };
+  const name = first.slice(0, colon).trim();
+  const rest = (first.slice(colon + 1) + (nl === -1 ? '' : text.slice(nl))).trim();
+  if (!name || name.length > IDEA_NAME_MAX || !rest) return { name: '', body: text, text };
+  return { name, body: rest, text };
+}
+
+/* The chapter a name points at, or null. resolveWiki() is the app's one
+   name→note resolver — the same one [[links]] go through — so an idea
+   addresses a chapter exactly the way a wikilink does: path, Workbook/Title,
+   title, file name, nearest workbook wins. Only the passes after it are new:
+   an idea is typed in a hurry, so case and diacritics are ignored, and a
+   prefix or fragment that fits exactly one chapter is enough. */
+function ideaFold(v) { return fdFold(String(v || '')).toLowerCase(); }
+function ideaFindChapter(name) {
+  if (!name) return null;
+  const direct = resolveWiki(name, wbCurrentId);
+  if (direct && direct.chapterId) return wbChapter(direct.chapterId);
+  const notes = wikiNotes().filter(n => n.chapterId);
+  if (!notes.length) return null;
+  const want = ideaFold(name);
+  const keys = n => [n.title, n.base, n.file, n.bookName ? n.bookName + '/' + n.title : '']
+    .filter(Boolean).map(ideaFold);
+  const nearest = hits => {
+    const from = wbCurrentId ? wbChapter(wbCurrentId) : null;
+    const near = from && hits.find(n => n.bookId === from.workbookId);
+    return wbChapter((near || hits[0]).chapterId);
+  };
+  const exact = notes.filter(n => keys(n).includes(want));
+  if (exact.length) return nearest(exact);
+  const starts = notes.filter(n => keys(n).some(k => k.startsWith(want)));
+  if (starts.length === 1) return nearest(starts);
+  const inside = notes.filter(n => keys(n).some(k => k.includes(want)));
+  return inside.length === 1 ? nearest(inside) : null;
+}
+
+/* Local date, never toISOString() — that is UTC, and an idea jotted down at
+   one in the morning would be filed under yesterday. */
+function ideaToday() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function ideaFallbackBook() {
+  const want = ideaFold(IDEA_BOOK);
+  return wbBooks.find(b => ideaFold(b.name) === want) || null;
+}
+async function ideaEnsureBook() {
+  const found = ideaFallbackBook();
+  if (found) return found;
+  const book = {
+    id: wbNewId('wb_'), name: IDEA_BOOK, folder: wbUniqueFolder(IDEA_BOOK),
+    created: Date.now(), updated: Date.now(), order: wbBooks.length
+  };
+  wbBooks.push(book);
+  if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); return null; }
+  invalidateWikiIndex();
+  return book;
+}
+async function ideaEnsureChapter(book, title) {
+  const want = ideaFold(title);
+  const found = wbChaptersOf(book.id).find(c => ideaFold(c.title) === want);
+  if (found) return found;
+  const ch = {
+    id: wbNewId('ch_'), workbookId: book.id, title,
+    file: wbUniqueFile(book.id, title), content: '',
+    created: Date.now(), updated: Date.now(), order: wbChaptersOf(book.id).length
+  };
+  wbChapters.push(ch);
+  if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); return null; }
+  invalidateWikiIndex();
+  return ch;
+}
+
+/* Append one idea to a chapter and write its file — the same two writes
+   Ctrl+S makes (IndexedDB, then the folder mirror), for a chapter that is
+   usually *not* the one in the editor. When it happens to be the open one,
+   the textarea has to move with it, or the next autosave writes the idea
+   straight back out. */
+async function ideaAppendTo(ch, line) {
+  const book = wbBook(ch.workbookId);
+  if (!book) return null;
+  const open = ch.id === wbCurrentId;
+  const before = (open ? editor.value : (ch.content || '')).replace(/\s+$/, '');
+  ch.content = (before ? before + '\n' : '') + line + '\n';
+  ch.updated = Date.now();
+  if (open) {
+    clearTimeout(wbSaveTimer);
+    editor.value = ch.content;
+    wbDirty = false;
+    updatePreview(); updateStatus(); updateNav();
+  }
+  if (!await wbPersist(WB_CHAPTERS, ch)) return null;
+  const path = await wbMirrorWrite(book, ch, ch.content);
+  await wbPendingClear(ch.id);
+  wbOpenBooks.add(book.id);
+  renderWorkbooks();
+  return { book, chapter: ch, path };
+}
+
+/* ── The modal ── */
+function openIdeaModal() {
+  document.getElementById('idea-modal').classList.add('open');
+  ideaPaintHint();
+  setTimeout(() => {
+    const el = document.getElementById('idea-text');
+    el.focus();
+    el.selectionStart = el.selectionEnd = el.value.length;
+  }, 40);
+}
+function closeIdeaModal() { document.getElementById('idea-modal').classList.remove('open'); }
+
+// Says where the idea will land, updated on every keystroke — the whole
+// point of the box is that you can fire it off without thinking.
+function ideaPaintHint() {
+  const hint = document.getElementById('idea-hint');
+  if (!hint) return;
+  const { name, body } = ideaSplit(document.getElementById('idea-text').value);
+  if (!body) { hint.textContent = t('ideaHintIdle'); return; }
+  const ch = ideaFindChapter(name);
+  if (ch) {
+    const book = wbBook(ch.workbookId);
+    hint.textContent = t('ideaHintTo', { book: book ? book.name : IDEA_BOOK, chapter: ch.title });
+    return;
+  }
+  const title = ideaToday();
+  const book = ideaFallbackBook();
+  const to = { book: IDEA_BOOK, chapter: title };
+  if (name) { hint.textContent = t('ideaHintFallback', { name, book: to.book, chapter: to.chapter }); return; }
+  const exists = book && wbChaptersOf(book.id).some(c => ideaFold(c.title) === ideaFold(title));
+  hint.textContent = t(exists ? 'ideaHintTo' : 'ideaHintNew', to);
+}
+
+async function saveIdea() {
+  const el = document.getElementById('idea-text');
+  const { name, body, text } = ideaSplit(el.value);
+  if (!body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
+  let target = ideaFindChapter(name);
+  // The "Chapter:" prefix is stripped only when it actually found a chapter.
+  // Otherwise it was part of the thought, and Idei keeps the text whole.
+  const line = target ? body : text;
+  if (!target) {
+    const book = await ideaEnsureBook();
+    target = book && await ideaEnsureChapter(book, ideaToday());
+  }
+  const done = target && await ideaAppendTo(target, line);
+  if (!done) { wbSay(t('ideaFailed'), true); return; }
+  el.value = '';
+  closeIdeaModal();
+  const info = { book: done.book.name, chapter: done.chapter.title, path: done.path };
+  wbSay(done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
+}
+
 /* ── Boot: load the tree, then reopen whatever was last edited ── */
 async function loadWorkbooks() {
   try {
@@ -7125,11 +7356,24 @@ document.getElementById('table-modal').addEventListener('click', function(e) {
 document.getElementById('wiki-modal').addEventListener('click', function(e) {
   if (e.target === this) closeWikiModal();
 });
+document.getElementById('idea-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeIdeaModal();
+});
+/* The idea box swallows the editor's own chords while it has the caret —
+   Ctrl+S, Ctrl+I, Alt+↑ and friends are all bound on `document`, and would
+   otherwise act on the chapter behind the modal. Ctrl+Enter files the idea. */
+document.getElementById('idea-text').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { e.stopPropagation(); closeIdeaModal(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault(); e.stopPropagation(); saveIdea(); return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) e.stopPropagation();
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     // Innermost first: the graph covers everything, so it closes on its own
     if (gv.open) { closeGraph(); return; }
-    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal();
+    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal();
     if (isSmallScreen()) closeAllPanels();
   }
   // Ctrl+Alt+1/2/3 → the three importance levels, Ctrl+Alt+0 clears. e.code
@@ -7143,6 +7387,10 @@ document.addEventListener('keydown', e => {
     setImportance(e.code === 'Digit0' ? 'none' : IMP_LEVELS[+e.code.slice(5) - 1]);
     return;
   }
+  // Ctrl+Alt+I — the idea box. Ctrl+I is italic and Ctrl+Shift+I is the
+  // browser's own devtools, so Ctrl+Alt is what is left; e.code and an early
+  // return for the same reason the importance chords above use them.
+  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyI') { e.preventDefault(); openIdeaModal(); return; }
   if ((e.ctrlKey||e.metaKey) && e.key === '3') { e.preventDefault(); toggleGraph(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'L') { e.preventDefault(); openWikiModal(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }

@@ -869,6 +869,98 @@ Run: `/apptest find`.
 
 ---
 
+## J. Quick idea capture (`index.html`)
+
+A thought arrives while you are writing about something else. The 💡 button
+in `.header-actions` — immediately right of **New** — and **Ctrl+Alt+I** open
+one textarea, and what you type is filed into the chapter it belongs to
+without ever leaving the chapter you were in.
+
+```
+Editor: - [ ] write code to bla bla bla
+```
+
+→ `- [ ] write code to bla bla bla` is appended to the chapter **Editor**,
+in whatever workbook holds it, and that chapter's `.md` file is written —
+the same two writes `Ctrl+S` makes.
+
+`docs/MAP.md` § "Quick idea capture" has the line anchors.
+
+### What the first line means
+
+`ideaSplit()` looks at the **first line only**, and at its **first `:`**.
+Everything before it is a name, everything after it (plus any further lines)
+is the idea, kept verbatim — the markdown you type is the markdown that
+lands, `- [ ]` included. A name longer than `IDEA_NAME_MAX` (80) is prose,
+not a name, and the whole text is treated as nameless. No `:` at all: same
+thing.
+
+The name is a **chapter** name, not a workbook name. That is the whole
+point — you remember what the note is called, not which book it sits in.
+
+### How the name finds its chapter
+
+`ideaFindChapter()` runs `resolveWiki()` first, so an idea addresses a
+chapter **exactly the way a `[[wikilink]]` does** — path, `Workbook/Title`,
+title, file name, nearest workbook wins (§ G "Resolving a name"). One
+resolver, two features; do not fork it.
+
+Only the passes *after* it are new, because an idea is typed in a hurry:
+
+1. case- and diacritic-folded exact match (`fdFold`, the search panel's) —
+   `retete` finds `Rețete`
+2. a prefix that fits **exactly one** chapter
+3. a fragment that fits **exactly one** chapter
+
+Ambiguous (two chapters start with the same word) counts as not found.
+
+### When nothing matches
+
+The text is kept **whole** — the unmatched `Grădinărit:` is part of the
+thought, not an address — and filed in a workbook called **`Idei`**, in a
+chapter named for today (`2026-09-02`, local date). Both are created on the
+spot if they are not there; a second idea the same day appends to the same
+chapter. `ideaToday()` is deliberately **not** `toISOString()`: that is UTC,
+and an idea jotted at one in the morning would land under yesterday.
+
+### The two things that are easy to get wrong
+
+**The open chapter.** The target is usually not the one in the editor — but
+when it is, `ideaAppendTo()` has to move `editor.value` too. Skip that and
+the next autosave writes the pre-idea text straight back over the file.
+
+**The editor's own chords.** `Ctrl+S`, `Ctrl+I`, `Alt+↑` and the rest are
+bound on `document`, so the `#idea-text` keydown handler `stopPropagation()`s
+every Ctrl/Alt combination — otherwise they act on the chapter behind the
+modal. `Ctrl+Enter` files the idea, `Escape` closes the box.
+
+**Ctrl+Alt+I, not Ctrl+I** (italic) or Ctrl+Shift+I (the browser's
+devtools, which a page cannot take). It uses `e.code === 'KeyI'` and returns
+early, for the same reason the importance chords do — `Alt` does not change
+`e.key` on every layout.
+
+### Adding to it
+
+- The hint under the textarea (`ideaPaintHint()`) repaints on every
+  keystroke and says where the idea will land. Anything new about routing
+  should show up there too, or the box stops being trustworthy.
+- All strings are `idea*` keys in both languages (`docs/I18N.md`). The
+  workbook name `Idei` is **not** a translated string: it is a folder on
+  disk, and renaming it per language would split someone's ideas in two.
+
+### Testing
+
+`tests/idea.js`. The button's position next to New, `Ctrl+Alt+I` and
+`Escape`, the hint, filing by `Ctrl+Enter`, the prefix stripped only on a
+match, a folded name (`retete` → `Rețete`), the editor moving when the
+target is the open chapter, the `Idei`/today fallback created and then
+reused, an empty box filing nothing, and `Ctrl+I` inside the box leaving the
+editor alone.
+
+Run: `/apptest idea`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
