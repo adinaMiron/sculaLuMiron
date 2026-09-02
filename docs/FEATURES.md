@@ -201,6 +201,32 @@ Alt text is the pasted file's name when it has one (`schiță.png` →
 `<img>` in the preview, the export round-trip, text-wins, the 1600 px cap,
 the JPEG/PNG choice and that transparency survives.
 
+### Assignee marker: `Name>> `
+
+A name or label at the **start of a line**, immediately followed by
+`>> `, reads as "this task is handed to that person" — written the way a
+todo gets prefixed with its owner: `John>> buy milk`, `Design team >>
+mockups by Friday`. `ASSIGNEE_RE` (next to `WIKI_RE`/`TAG_RE`, ~L3530)
+matches it in already-`&gt;`-escaped text, so it looks for the escaped
+`&gt;&gt;`, not a literal `>>`; the name is up to 4 words (each up to 21
+chars of letters/digits/`._'-`). It only matches at line start (`^`, `m`
+flag) — **not anywhere inline** — because position is the only thing that
+tells a name apart from an arbitrary run of prose words: without that
+anchor a greedy match runs backward and swallows whatever sentence
+precedes an unrelated `>> ` elsewhere in the line. `renderAssignee()`
+(next to `renderTag()`, ~L3699) wraps just the name in
+`<span class="md-assignee">` — the `>>` stays plain text. Wired into
+`applyInline()` right after the `WIKI_RE` replace, so it renders in both
+the live preview and the HTML export (same function, both paths — see
+the note above).
+
+Styling is `.md-assignee` in the preview `<style>` (next to `.md-tag`,
+~L1126) using `var(--danger)` — the shared terracotta status colour,
+reused rather than minting a new token because this is meant to read as
+an attention colour, not another link kind. The exported-HTML template
+carries the same rule with the literal hex (see the note above about why
+that stays literal).
+
 ---
 
 ## D. Saving files — one call, three destinations
