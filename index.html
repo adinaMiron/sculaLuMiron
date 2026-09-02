@@ -36,6 +36,15 @@
     --graph-unresolved: #5A6A60;  /* a link to a note that does not exist   */
     --graph-attachment: #C4643C;  /* an image or other attachment           */
     --graph-edge: #3C5A49;        /* a link between two nodes               */
+
+    /* Importance markers (!nice / !important / !vital). Three escalating
+       levels, drawn from the same earth palette: the mossy teal the tags
+       use, an amber between it and the accent, and the shared terracotta.
+       Tokens for the same reason as --graph-*: a light theme changes these
+       three values and nothing else. See docs/FEATURES.md § C. */
+    --imp-nice: #6E9E8A;
+    --imp-important: #D9A441;
+    --imp-vital: #C4643C;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1135,12 +1144,59 @@
     cursor: pointer;
   }
   .md-tag:hover { background: color-mix(in srgb, var(--graph-tag) 28%, transparent); }
+  /* A tag is an <a>, and "#preview a" carries an id — it outranks the class
+     rule above, so without this the mossy tag colour never showed and the
+     pill came out accent-olive with an underline on hover. */
+  #preview a.md-tag { color: var(--graph-tag); border-bottom: 0; }
 
   /* "Name>> " — the name of whoever a task is handed to, picked out from
      the surrounding text. Reuses --danger (the shared terracotta status
      colour) rather than minting a new token, since it needs to read as an
      attention colour, not another link kind. */
   .md-assignee { color: var(--danger); font-weight: 600; }
+
+  /* Importance markers. "!vital" in the source becomes a pill, and the block
+     it leads picks up a matching left edge, so a glance down the preview
+     shows what matters without reading it. docs/FEATURES.md § C. */
+  .md-imp-nice      { --imp-c: var(--imp-nice); }
+  .md-imp-important { --imp-c: var(--imp-important); }
+  .md-imp-vital     { --imp-c: var(--imp-vital); }
+
+  .md-imp {
+    display: inline-block;
+    padding: 0 8px;
+    margin-right: 5px;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    color: var(--imp-c);
+    background: color-mix(in srgb, var(--imp-c) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--imp-c) 42%, transparent);
+  }
+  .md-imp:hover { background: color-mix(in srgb, var(--imp-c) 30%, transparent); }
+  /* Same id-specificity fight as .md-tag above. */
+  #preview a.md-imp { color: var(--imp-c); border-bottom: 0; }
+  .md-imp-ico { margin-right: 4px; }
+  /* In a heading the pill would scale with the title (h1 is 2em) and read as
+     part of the name; cap it so it stays a marker on the heading. */
+  #preview :is(h1, h2, h3) .md-imp { font-size: 0.5em; vertical-align: 0.28em; }
+
+  /* :has() rather than a class written by the parser: a marker can lead a
+     paragraph, a list item, a task or a heading, and every one of those is a
+     separate branch in parseMarkdown(). One selector covers all four. The
+     level classes above set --imp-c on the pill; these set the same token on
+     the block around it, which cannot inherit it from a child. */
+  #preview :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-nice)      { --imp-c: var(--imp-nice); }
+  #preview :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-important) { --imp-c: var(--imp-important); }
+  #preview :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-vital)     { --imp-c: var(--imp-vital); }
+  #preview :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp) {
+    border-left: 3px solid var(--imp-c);
+    padding-left: 10px;
+    background: color-mix(in srgb, var(--imp-c) 8%, transparent);
+  }
 
   /* Where a heading/block link lands. Ordinary CSS animation rather than the
      inline style the nav panel used to set, so two jumps in a row re-fire. */
@@ -2143,6 +2199,17 @@
   <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
   <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
 
+  <!-- Importance: marks the caret's line (or every line of the selection).
+       Picking again replaces the marker, "Remove" clears it. -->
+  <select class="tb-select" id="importance-select" onchange="setImportance(this.value)"
+          data-i-title="impTip" title="Mark how important this line is">
+    <option value="" data-i="impDefault">— Importance —</option>
+    <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
+    <option value="important" data-i="impImportantOpt">⭐ Important</option>
+    <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
+    <option value="none" data-i="impNoneOpt">✕ Remove</option>
+  </select>
+
   <div class="toolbar-sep"></div>
   <span class="tb-label" data-i="lblSize">Size</span>
   <select class="tb-select" id="size-select" onchange="insertFontSize(this.value)">
@@ -2561,6 +2628,15 @@ const I18N = {
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
+    // Importance markers. The *syntax* stays English (!nice / !important /
+    // !vital) so a file reads the same in both languages — only the label
+    // on the pill and in the select is translated.
+    impTip:"Marchează cât de important e rândul (Ctrl+Alt+1/2/3, Ctrl+Alt+0 șterge)",
+    impDefault:"— Importanță —",
+    impNiceOpt:"🌱 Bine de avut", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
+    impNoneOpt:"✕ Scoate marcajul",
+    impNice:"Bine de avut", impImportant:"Important", impVital:"Vital",
+    impFindTip:"Caută tot ce e marcat așa",
     lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
     linkTip:"Inserează hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Imagine",
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
@@ -2713,6 +2789,12 @@ const I18N = {
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
+    impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
+    impDefault:"— Importance —",
+    impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
+    impNoneOpt:"✕ Remove",
+    impNice:"Nice to have", impImportant:"Important", impVital:"Vital",
+    impFindTip:"Find everything marked this way",
     lblSize:"Size", sizeDefault:"— Font Size —",
     linkTip:"Insert hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Image",
     tableTip:"Insert table", tableBtn:"⊞ Table",
@@ -3551,6 +3633,31 @@ const ASSIGNEE_RE = new RegExp(
   'gmu'
 );
 
+// "!nice" / "!important" / "!vital" — how much a line matters. Three levels,
+// one word each, written straight into the markdown so the file stays plain
+// text and greps like plain text. The syntax is English in both UI languages;
+// only the label on the rendered pill is translated (i18n keys imp*).
+//
+// The lead class is the same guard TAG_RE uses: a marker starts a line or
+// follows a space/bracket, so "wow!" and an "![[embed]]" never match, and the
+// trailing lookahead is what keeps "!nicely" out. Unlike ASSIGNEE_RE this one
+// is *not* anchored to the line — a marker is a fixed word, so there is no
+// ambiguity about where it begins and it may sit anywhere in a line.
+const IMP_LEVELS = ['nice', 'important', 'vital'];
+const IMP_ICON = { nice: '\u{1F331}', important: '\u2B50', vital: '\u{1F525}' };
+const IMP_RE = /(^|[\s(\[{])!(nice|important|vital)(?![\p{L}\p{N}_-])/gu;
+// The marker a line already carries, with the space after it.
+const IMP_LEAD_RE = /^!(?:nice|important|vital)(?![\p{L}\p{N}_-])[ \t]*/u;
+// Everything that legally comes *before* the marker on a line: the bullet,
+// the number, the "[ ]" of a task, the hashes of a heading, the "> " of a
+// quote — and then an assignee prefix, because "Ana>> !vital call her" has
+// to keep matching ASSIGNEE_RE, which is anchored to the line start.
+const IMP_LINE_LEAD = new RegExp(
+  '^([ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
+  `(?:${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3}[ \\t]?>>[ \\t]+)?)`,
+  'u'
+);
+
 // parseMarkdown() escapes the text before applyInline() sees it, so a name
 // arrives as "A &amp; B". Anything compared against a chapter title, or put
 // back into an attribute, has to go through these.
@@ -3566,6 +3673,9 @@ const attrEsc = s => String(s == null ? '' : s)
 function mdPlain(raw) {
   return mdUnescape(raw)
     .replace(WIKI_RE, (m, bang, target, alias) => alias || wikiDefaultLabel(parseWikiTarget(target)))
+    // an importance marker on a heading is decoration, not part of its name:
+    // dropping it here keeps the slug, the nav label and the graph label clean
+    .replace(IMP_RE, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
@@ -3719,6 +3829,71 @@ function renderAssignee(name, gap) {
   return `<span class="md-assignee">${name}</span>${gap}&gt;&gt;`;
 }
 
+/* ── Importance markers — docs/FEATURES.md § C ──────────────────────────
+   "!vital" in the source renders as a coloured pill, and the CSS puts a
+   matching edge on the block it leads (`:has(> .md-imp)`), so nothing here
+   has to know whether it is inside a paragraph, a task or a heading.
+
+   In the preview the pill is a link that searches for its own level, and
+   its label carries `data-i` so applyUILang() re-translates it in place on
+   a language switch — the preview is ordinary DOM, so that costs nothing.
+   The export gets the label baked in and no `data-i`, because it ships
+   without the app. */
+function renderImportance(lead, level, opts) {
+  const key = 'imp' + level.charAt(0).toUpperCase() + level.slice(1);
+  const label = attrEsc(t(key));
+  const ico = `<span class="md-imp-ico">${IMP_ICON[level]}</span>`;
+  if (opts && opts.forExport) {
+    return `${lead}<span class="md-imp md-imp-${level}">${ico}${label}</span>`;
+  }
+  return `${lead}<a class="md-imp md-imp-${level}" role="link" tabindex="0"` +
+    ` data-imp="${level}" title="${attrEsc(t('impFindTip'))}">${ico}<span data-i="${key}">${label}</span></a>`;
+}
+
+// The marker goes after the bullet / number / "[ ]" / hashes / assignee, so
+// the line stays valid markdown. Replaces whatever marker was there, which
+// is what makes the select idempotent; `level` empty removes it. Blank lines
+// are left alone — marking nothing is never what was meant.
+function impSetLine(line, level) {
+  if (!line.trim()) return line;
+  const lead = line.match(IMP_LINE_LEAD)[1];
+  const rest = line.slice(lead.length).replace(IMP_LEAD_RE, '');
+  if (!level) return lead + rest;
+  return lead + '!' + level + ' ' + rest;
+}
+
+// One click marks the caret's line, or every line the selection touches.
+function setImportance(value) {
+  const sel = document.getElementById('importance-select');
+  if (sel) sel.value = '';
+  if (!value) return;
+  const level = value === 'none' ? '' : value;
+  if (level && IMP_LEVELS.indexOf(level) === -1) return;
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const val = editor.value;
+  const from = val.lastIndexOf('\n', start - 1) + 1;
+  const nl = val.indexOf('\n', end);
+  const to = nl === -1 ? val.length : nl;
+  const block = val.slice(from, to).split('\n').map(l => impSetLine(l, level)).join('\n');
+  editor.setRangeText(block, from, to, 'end');
+  // setRangeText fires no `input`, so the textarea's own oninput chain
+  // (updatePreview / updateStatus / scheduleAutosave) has to be run by hand.
+  updatePreview(); updateStatus(); scheduleAutosave();
+}
+
+// Clicking a pill answers "what else is this important?" — the search panel
+// already does that, and the marker is plain text, so the query is the token.
+function impFind(level) {
+  if (IMP_LEVELS.indexOf(level) === -1) return;
+  const q = document.getElementById('find-q');
+  if (!findIsOpen()) togglePanelById('find-panel');
+  q.value = '!' + level;
+  fdState.q = q.value;
+  fdRefresh();
+  q.focus(); q.select();
+}
+
 // "…text ^anchor" → the text, and the name of the block it is.
 function takeBlockId(line) {
   const m = line.match(BLOCK_RE);
@@ -3859,6 +4034,8 @@ function applyInline(text, opts) {
     // "Name>> " before the wikilink brackets are gone: an assignee name
     // can't itself contain "[[" or "]]", so order with WIKI_RE doesn't matter.
     .replace(ASSIGNEE_RE, (m, name, gap) => renderAssignee(name, gap))
+    // before the image rule only for readability: "![" can never be a marker
+    .replace(IMP_RE, (m, lead, level) => renderImportance(lead, level, opts))
     .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
       (_, alt, src, title) => `<img src="${resolveImageSrc(src, forExport)}" alt="${alt}"${title ? ` title="${title}"` : ''}>`)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
@@ -4010,11 +4187,13 @@ preview.addEventListener('click', e => {
     return;
   }
   const tg = e.target.closest('.md-tag');
-  if (tg) { e.preventDefault(); openGraphForTag(tg.dataset.tag || ''); }
+  if (tg) { e.preventDefault(); openGraphForTag(tg.dataset.tag || ''); return; }
+  const im = e.target.closest('.md-imp');
+  if (im) { e.preventDefault(); impFind(im.dataset.imp || ''); }
 });
 preview.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
-  const hit = e.target.closest('.wikilink, .md-tag');
+  const hit = e.target.closest('.wikilink, .md-tag, .md-imp');
   if (hit) { e.preventDefault(); hit.click(); }
 });
 
@@ -6770,6 +6949,14 @@ function exportHtml() {
     .wikilink.is-unresolved { color: #999; border-bottom-color: #ccc; }
     .md-tag { display: inline-block; color: #3f7a63; background: #e6f0ea; border-radius: 10px; padding: 0 7px; font-size: 0.9em; }
     .md-assignee { color: #C4643C; font-weight: 600; }
+    .md-imp { display: inline-block; padding: 0 8px; margin-right: 5px; border-radius: 10px; font-size: 0.85em; font-weight: 600; white-space: nowrap; }
+    .md-imp-ico { margin-right: 4px; }
+    .md-imp-nice { color: #3F7A63; background: #E6F0EA; border: 1px solid #B9D5C8; }
+    .md-imp-important { color: #8A6114; background: #FAF0D8; border: 1px solid #E6CE93; }
+    .md-imp-vital { color: #A1421C; background: #FBE8E0; border: 1px solid #EEBCA6; }
+    :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-nice) { border-left: 3px solid #6E9E8A; padding-left: 10px; }
+    :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-important) { border-left: 3px solid #D9A441; padding-left: 10px; }
+    :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-vital) { border-left: 3px solid #C4643C; padding-left: 10px; }
     strong { font-weight: 700; }
     em { font-style: italic; }
     img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }
@@ -6944,6 +7131,17 @@ document.addEventListener('keydown', e => {
     if (gv.open) { closeGraph(); return; }
     closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal();
     if (isSmallScreen()) closeAllPanels();
+  }
+  // Ctrl+Alt+1/2/3 → the three importance levels, Ctrl+Alt+0 clears. e.code
+  // for the same reason the heading shortcuts use it, and because Ctrl+Alt is
+  // AltGr on a Romanian layout — the digits are unmapped there, the letters
+  // are not, which is why this is a digit shortcut and not a letter one.
+  // It runs *before* the panel shortcuts below, and returns: Alt does not
+  // change e.key on every layout, so otherwise Ctrl+Alt+3 also opens the graph.
+  if ((e.ctrlKey||e.metaKey) && e.altKey && /^Digit[0-3]$/.test(e.code)) {
+    e.preventDefault();
+    setImportance(e.code === 'Digit0' ? 'none' : IMP_LEVELS[+e.code.slice(5) - 1]);
+    return;
   }
   if ((e.ctrlKey||e.metaKey) && e.key === '3') { e.preventDefault(); toggleGraph(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'L') { e.preventDefault(); openWikiModal(); }

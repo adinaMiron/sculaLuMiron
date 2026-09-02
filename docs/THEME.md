@@ -39,6 +39,7 @@ have. Copy its `:root` when starting a new page.
 | `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
 | `--graph-*` | — | — | 8 node-role tokens, see below |
+| `--imp-*` | — | — | 3 importance levels, see below |
 
 `index.html` alone carries a `--graph-*` block (`:root` 25-35):
 one token per kind of node in the knowledge graph — `--graph-note`,
@@ -49,6 +50,14 @@ mossy teal for tags), so the graph reads as part of the app rather than as
 a chart pasted into it. They are tokens rather than literals for one
 reason: the canvas resolves them **once**, and the day a light theme lands
 they are the only eight values that need a `[data-theme="light"]` entry.
+
+`index.html` also carries `--imp-nice` `#6E9E8A` / `--imp-important`
+`#D9A441` / `--imp-vital` `#C4643C` — the three importance markers
+(`docs/FEATURES.md` § C), drawn from the same palette: the mossy teal the
+tags already use, an amber sitting between it and the accent, and the
+shared terracotta. Each level's CSS class sets these into an `--imp-c`
+custom property, which is what lets one rule colour both the pill and the
+block around it. Same reasoning as `--graph-*` for keeping them tokens.
 
 Where a cell is blank, that file has no equivalent — not a gap to fill,
 just a role it doesn't need (`voice.html` has no secondary accent tint or

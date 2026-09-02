@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `index.html` | 7537 | 65k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
@@ -51,6 +51,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The infinite canvas, or what an export's size is | `docs/MAP.md` § "The infinite canvas" |
 | PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md`, the shareable HTML page, searching a big plan, **USDA nutrition** | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
+| Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 
 Do not read a doc the task doesn't touch.
@@ -152,8 +153,9 @@ all three save routes), and for
 `index.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
-"Save all modified" with its pending-edit tracking (`wbsaveall.js`) and
-the TODO-workbook chapter filter (`wbtodo.js`), and for
+"Save all modified" with its pending-edit tracking (`wbsaveall.js`),
+the TODO-workbook chapter filter (`wbtodo.js`) and the
+`!nice`/`!important`/`!vital` importance markers (`importance.js`), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only

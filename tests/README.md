@@ -2,10 +2,12 @@
 
 Ad-hoc Playwright checks for `editor.html` (including `infinite.js`, the
 infinite canvas and what an export's size is) and `recipes.html`, and — in
-`graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js` and `paste.js` — for
+`graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
+`importance.js` and `paste.js` — for
 `index.html`'s knowledge graph, its search panel, its navigation
 panel, renaming a workbook or chapter in place, "Save all modified" and the
-pending-edit tracking under it, the TODO-workbook chapter filter, and pasting a picture
+pending-edit tracking under it, the TODO-workbook chapter filter, the
+`!nice`/`!important`/`!vital` importance markers, and pasting a picture
 into it, plus — in `voice.js` — `voice.html`'s keep-the-audio
 checkbox, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
@@ -46,7 +48,7 @@ for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
   build of `editor.html` living somewhere other than the repo root, or at a
   copy on a different commit for a before/after comparison.
 - `VOICE_URL` — the same, for `voice.js`, which drives `voice.html`.
-- `MD_URL` — the same, for `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js` and `paste.js`, which drive
+- `MD_URL` — the same, for `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js` and `paste.js`, which drive
   `index.html` instead. Both open their own browser context rather
   than using `lib.js`'s `open()` (which is hard-wired to `editor.html`);
   `graph.js` runs a desktop pass followed by a phone pass with a real touch
@@ -84,6 +86,7 @@ viewport without editing it:
 | `wbrename.js` | `index.html`'s in-place rename of a workbook or chapter name in the panel: a double-click (and one click then `F2`) turning the name `contenteditable`, Enter and blur committing while the chapter file name follows the title, Escape restoring, an emptied name rejected, and the plain single click still toggling the workbook / opening the chapter after its short delay |
 | `wbsaveall.js` | `index.html`'s "Save all modified" button and the pending-edit tracking behind it: editing a chapter records it in `wbPendingIds` and the `pending` object store and shows a `•` on the chapter and workbook rows, `Ctrl+S` clears only the open chapter, `Ctrl+Alt+S` writes every pending chapter and clears them all (content asserted on the real records), a marker created by switching away from an edited chapter, and a marker surviving a page reload. Drives the in-memory document on `file://` but does depend on the IndexedDB writes landing |
 | `wbtodo.js` | `index.html`'s TODO-workbook chapter filter: a workbook whose name contains "TODO" gets a `☑` act button (a plain workbook does not), toggling it hides every chapter with no unchecked `- [ ]` box (a chapter that is all `- [x]`, or has no boxes, drops out; the one with an open box stays), the row count switches to `shown/total` and the button takes an `.on` style, toggling off restores every chapter, and a workbook with nothing open shows the empty line. Drives the in-memory records on `file://` |
+| `importance.js` | `index.html`'s importance markers: the toolbar select and `Ctrl+Alt+1/2/3` / `Ctrl+Alt+0` marking the caret's line or every line of a selection, the marker landing *after* the bullet, the `[ ]` of a task, the hashes of a heading and a `Name>> ` assignee, a second pick replacing rather than stacking, "Remove" clearing, blank lines skipped, the three colours asserted on the computed pill colour and on the block's left edge, the marker kept out of the heading slug and the nav label, `!nicely` / `wow!` / `![alt](…)` matching nothing, the label re-translating in place on a language switch, the export string carrying the label baked in with no `data-i`, and a click on a pill opening the search panel with its own token. Drives the in-memory document on `file://` |
 | `voice.js` | `voice.html`'s "also save the sound of the recording" checkbox: ticked before recording, the transcript and a **playable** audio file come out under one name (the container's magic bytes are checked, not just the size); unticked, only the transcript; ticked only after recording, no file and the page says so; a second recording never inherits the first one's sound; and the label is translated. Runs against Chromium's fake microphone (`--use-fake-device-for-media-stream`), and asserts on the real files — on `file://` there is no directory picker, so every `ScuLaFolder.save` takes the download route and each saved file arrives as a Playwright download |
 | `paste.js` | Pasting a picture into `index.html` (Ctrl+V): the `data:` URI landing in the markdown at the caret, the `<img>` the preview renders, the export round-trip leaving the URI whole, a clipboard carrying text being left to the browser, a big paste capped at 1600 px and re-encoded as JPEG, and a transparent one staying PNG with its alpha intact — the pasted bytes are decoded back and asserted on pixels |
 
@@ -103,12 +106,12 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `paste.js` and `voice.js` are the scripts that do **not** use
+`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `paste.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
 `http://127.0.0.1` server, because the workbook check reads IndexedDB and a
-`file://` origin is opaque. `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js` and `paste.js` stay on `file://` — all six drive the
+`file://` origin is opaque. `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js` and `paste.js` stay on `file://` — all seven drive the
 in-memory document, so none depends on a write landing. `wbsaveall.js` also
 stays on `file://` but does read IndexedDB and reloads the page: Chrome keeps
 a `file://` database alive for the life of the browser context, which is all

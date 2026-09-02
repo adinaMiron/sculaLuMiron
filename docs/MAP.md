@@ -248,53 +248,53 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## index.html — 6481 lines · Markdown editor
+## index.html — 7537 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
-| 8–1377 | App CSS. `:root` **9–39** (earth-palette tokens + `--danger` + the `--graph-*` node roles). Workbooks panel **196–286**. Navigation panel **609**. **Search & filter panel 720–893**. **Knowledge graph 1041–1376**. `@media` **907** (the toolbar tightening), 912, 943, 1028, 1035, **1354** (the graph on a phone) |
-| 1380 | **mammoth.js CDN** (docx import) — only external dep in the repo |
-| 1385–2040 | **Shared nav + `ScuLaFolder`** |
-| 2042–~2338 | Markup: header, toolbar, workspace, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2184–2217**, `#nav-panel`), modals |
-| **2340–2469** | Markup: **`#graph-view`** overlay + `#wiki-modal` + `#wiki-suggest` |
-| 2471–6481 | App script |
+| 8–1494 | App CSS. `:root` **9–45** (earth-palette tokens + `--danger`, the `--graph-*` node roles, and the three `--imp-*` importance levels). Workbooks panel **210–250**, navigation panel **655**, **search & filter panel 783–960**, wikilinks/tags/assignee **1114–1160**, **importance markers 1159–1196**, **knowledge graph 1255–1493** |
+| 1496 | **mammoth.js CDN** (docx import) — only external dep in the repo |
+| 1499–2156 | **Shared nav + `ScuLaFolder`** |
+| 2158–2484 | Markup: header, **toolbar 2174–2262** (the `#importance-select` is at **2213–2221**), workspace, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2325**, `#nav-panel` 2356), modals |
+| **2486–2611** | Markup: **`#graph-view`** overlay + `#wiki-modal` + `#wiki-suggest` |
+| 2613–7535 | App script |
 
 | Line | Function / region |
 |---|---|
-| 2478 | `I18N` (`ro:` 2479 / `en:` 2608), `t()`, `store`, `applyUILang` |
-| 2790–2792 | `editor`, `preview` refs, `savedRange` |
-| 2795–2817 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
-| 2819–2892 | Insert helpers: `insertHeading`, `insertList`, `insertOrderedList`, `insertFontSize` |
-| 2894–2928 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
-| **2930–3020** | **Pasting a picture** (Ctrl+V): `imageBlobToDataUrl` (2967, the shrink), `clipboardImage` (2990), `handleEditorPaste` (2999) — the picture goes in as a `data:` URI, so it lives in the markdown file itself |
-| 3023–3025 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
-| 3033–3103 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (3044) + `togglePanelById`, `toggleFind`/`findIsOpen` (3087) — one map drives all four side panels |
-| 3195–3251 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
-| **3263–3568** | **Wikilinks, tags and block anchors** — see the sub-table below |
-| 3570 | `resolveImageSrc` — image-path rewrite, export-only |
-| 3576 | `applyInline(text, opts)` |
-| **3592** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 3698–3722 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation |
-| **3724** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 3469) and the textarea to the line (`gotoSourceHeading` 3485) |
-| 3785 | `updateStatus` |
-| **3806–4392** | **Workbooks** — see the sub-table below |
-| **4394–5384** | **Knowledge graph** — see the sub-table below |
-| **5386–5801** | **Search & filter** — see the sub-table below |
-| **5803–6046** | **Writing a `[[link]]`**: `wikiCandidates` 5816, the modal 5843–5919, the `[[` suggester 5921–6046 (incl. **`editorMirrorAt`** 5921, shared with the search panel) |
-| 6049–6069 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
-| 6071 | `importDocx` |
-| 6114 | `htmlToMarkdown` (docx → md) |
-| 6216–6223 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
-| ~6228–6262 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
-| 6275–6380 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
-| 6382–6400 | Link modal: `openLinkModal`, `insertLink` |
-| 6402–6441 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**, Ctrl+S save chapter, **Ctrl+Alt+S** save all modified) |
-| **~6820–7110** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` ~L2146, status pill `#dictate-pill` ~L2279, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `voice.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
-| 6443–6481 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
+| 2620 | `I18N` (`ro:` 2621 / `en:` 2782), `t()`, `store`, `applyUILang` **2966** |
+| 2993–2995 | `editor`, `preview` refs, `savedRange` |
+| 2998–3020 | Selection: `saveSelection`, `restoreSelection`, `insertAtCursor`, `wrapSelection` |
+| 3022–3192 | Insert helpers: `insertHeading` 3022, `insertList` 3035, `insertOrderedList` 3053, `insertTodoList` 3086, `toggleTodoDone` 3157, `insertFontSize` 3183 |
+| 3194–3265 | Image modal: `openImageModal`, `handleLocalImage`, `insertImage` |
+| **3267–3321** | **Pasting a picture** (Ctrl+V): `imageBlobToDataUrl` (3267, the shrink), `clipboardImage` (3290), `handleEditorPaste` (3298) — the picture goes in as a `data:` URI, so it lives in the markdown file itself |
+| 3323–3325 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
+| 3333–3420 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (3344) + `togglePanelById` (3364), `toggleFind`/`findIsOpen` (3409) — one map drives all four side panels |
+| 3517–3570 | Image tree: `createImageItem`, `showImageDetail`, `insertSelectedImage` |
+| **3599–3960** | **Wikilinks, tags, importance and block anchors** — see the sub-table below |
+| 4020 | `resolveImageSrc` — image-path rewrite, export-only |
+| **4026** | **`applyInline(text, opts)`** |
+| **4047** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 4161–4196 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation (checkbox · wikilink · `#tag` · importance pill) |
+| **4198** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 3919) and the textarea to the line (`gotoSourceHeading` 3940) |
+| 4259 | `updateStatus` |
+| **4280–5133** | **Workbooks** — see the sub-table below |
+| **5135–6099** | **Knowledge graph** — see the sub-table below |
+| **6102–6516** | **Search & filter** — see the sub-table below |
+| **6517–6748** | **Writing a `[[link]]`**: `wikiCandidates` 6517, the modal 6544–6620, the `[[` suggester 6672–6748 (incl. **`editorMirrorAt`** 6622, shared with the search panel) |
+| 6750–6771 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
+| 6772 | `importDocx` |
+| 6815 | `htmlToMarkdown` (docx → md) |
+| 6917–6924 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile`, `exportHtml` |
+| ~6929–6972 | **Exported-HTML template** — standalone `<style>`/`<body>` string, literal hex |
+| 6985–7101 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
+| 7103–7123 | Link modal: `openLinkModal`, `insertLink` |
+| 7125–7168 | Event listeners + keyboard shortcuts (**Ctrl+Alt+0/1/2/3 importance — first, and it returns**, then Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**, Ctrl+S save chapter, **Ctrl+Alt+S** save all modified, Ctrl+Shift+1..6 headings) |
+| **~7170–7455** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` 2240, status pill `#dictate-pill` 2374, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `voice.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
+| 7457–7535 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
-### Workbooks (4050–4851) — `docs/FEATURES.md` § E
+### Workbooks (4280–5133) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -303,15 +303,15 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| ~4104–4122 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly` + `WB_OPEN_TASK_RE`/`wbChapterHasOpenTask`/`wbIsTodoBook` — the TODO-workbook chapter filter, …) |
-| ~4124–4186 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist`; `wbPendingMark`/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
-| ~4188–4227 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| ~4229–4258 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| ~4260–4490 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden), `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| ~4492–4690 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| ~4692–4730 | Autosave: `scheduleAutosave`, `flushChapter` (marks the chapter pending), `detachChapter`, `canLeaveEditor` |
-| ~4735–4840 | Saving: `saveToWorkbook` (Ctrl+S), `saveAllModifiedChapters` (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| ~4891–4918 | `loadWorkbooks` (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
+| 4280–4298 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly` + `WB_OPEN_TASK_RE` 4295/`wbChapterHasOpenTask`/`wbIsTodoBook` — the TODO-workbook chapter filter, …) |
+| 4300–4362 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` 4333; `wbPendingMark` 4344/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
+| 4364–4403 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 4405–4434 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 4436–4681 | Panel rendering: `wbActBtn` 4436, `wbInlineRename` 4452/`wbInlineRenameById` 4497/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` 4551 (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden), `paintWorkbookWhere` 4660, `paintWorkbookCrumb` |
+| 4683–4871 | Operations: create/rename/delete workbook (`createWorkbook` 4683), new/open/rename/delete/export chapter (`newChapter` 4738), `syncAllToFolder` 4856 |
+| 4873–4910 | Autosave: `scheduleAutosave` 4873, `flushChapter` 4880 (marks the chapter pending), `detachChapter` 4895, `canLeaveEditor` |
+| 4912–5066 | Saving: `saveToWorkbook` 4912 (Ctrl+S), `saveAllModifiedChapters` 4930 (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` 4950 → `confirmSaveToWorkbook`) |
+| 5068–5133 | `loadWorkbooks` 5068 (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture) and marks the chapter
@@ -320,27 +320,28 @@ permission prompt is legal outside a gesture) and marks the chapter
 `syncAllToFolder` — all of which run inside a click, and each clears the
 pending marker for the chapter(s) it wrote.
 
-### Wikilinks, tags and block anchors (3263–3568) — `docs/FEATURES.md` § G
+### Wikilinks, tags, importance and block anchors (3599–3960) — `docs/FEATURES.md` § C, § G
 
 Obsidian's link syntax, and the only reason the graph has any edges. Both
 the preview and the export go through it, and so does the graph scanner.
 
 | Line | Function |
 |---|---|
-| 3287–3294 | **`WIKI_RE`**, `TAG_RE`, `BLOCK_RE`, `IMG_RE` — the four patterns. `WIKI_RE`/`TAG_RE` are **global**; anything that `exec`s them in a loop must use a private copy (`scanNote` does) |
-| 3298–3304 | `mdUnescape` / `attrEsc` — `applyInline` is handed already-escaped text, so a name is `A &amp; B` until it goes through these |
-| 3307 | `mdPlain(raw)` — heading text with its inline markdown stripped |
-| **3320** | **`headingSlug(raw, seen)`** — the one slug function. `parseMarkdown` writes it as a heading `id`, the nav panel and every `[[Note#Section]]` jump to that id. Three callers, one implementation: keep it that way |
-| 3335 | `parseWikiTarget(raw)` → `{name, sub, heading, block}` |
-| 3347–3383 | `wikiNotes()` — every note a link may point at (every chapter, plus the loose document), cached; `invalidateWikiIndex()` is called from `renderWorkbooks()` |
-| **3386** | **`resolveWiki(name, fromChapterId)`** — path, then `Workbook/Title`, then title, then file name; the nearest match (same workbook) wins, as in Obsidian |
-| 3422 | `renderWikiLink(...)` — the live `<a>` for the preview, a real anchor or plain text for the export |
-| 3455–3462 | `takeBlockId` / `liWithBlockId` — `…text ^anchor` becomes `id="block-anchor"` |
-| **3469** | **`gotoPreviewAnchor(id)`** — the single jump-to-anchor path: nav panel, wikilinks and the graph all land here |
-| **3485** | **`gotoSourceHeading(line)`** — the same jump for the **Markdown source**: selects the heading's line in the textarea and scrolls to it via `editorMirrorAt` (5921). Nav-panel clicks only; a phone has one pane on screen, so there it does nothing |
-| 3507 | `followWikiLink(name, heading, block)` — switch chapter, then jump |
-| 3525 | `offerToCreateNote(name)` — an unresolved link becomes a real chapter |
-| 3547 | `createChapterNamed(...)` — `newChapter()` without the prompt |
+| 3609–3648 | **`WIKI_RE`** 3609, `TAG_RE` 3612, `BLOCK_RE` 3614, `IMG_RE` 3615, `ASSIGNEE_RE` 3628, and the importance set — `IMP_LEVELS`/`IMP_ICON` 3643, **`IMP_RE`** 3645, `IMP_LEAD_RE`, `IMP_LINE_LEAD`. `WIKI_RE`/`TAG_RE`/`IMP_RE` are **global**; anything that `exec`s them in a loop must use a private copy (`scanNote` does) |
+| 3663–3668 | `mdUnescape` / `attrEsc` — `applyInline` is handed already-escaped text, so a name is `A &amp; B` until it goes through these |
+| 3670 | `mdPlain(raw)` — heading text with its inline markdown **and its importance marker** stripped |
+| **3686** | **`headingSlug(raw, seen)`** — the one slug function. `parseMarkdown` writes it as a heading `id`, the nav panel and every `[[Note#Section]]` jump to that id. Three callers, one implementation: keep it that way |
+| 3701 | `parseWikiTarget(raw)` → `{name, sub, heading, block}` |
+| 3722–3750 | `wikiNotes()` — every note a link may point at (every chapter, plus the loose document), cached; `invalidateWikiIndex()` 3721 is called from `renderWorkbooks()` |
+| **3752** | **`resolveWiki(name, fromChapterId)`** — path, then `Workbook/Title`, then title, then file name; the nearest match (same workbook) wins, as in Obsidian |
+| 3788 | `renderWikiLink(...)` — the live `<a>` for the preview, a real anchor or plain text for the export |
+| 3816 | `renderTag(lead, tag)` |
+| 3823–3836 | `renderAssignee(name, gap)` — the `Name>> ` marker |
+| **3839–3893** | **Importance markers** — `renderImportance` 3839 (the pill; `data-i` on the label in the preview, baked in for the export), `impSetLine` 3854 (put the marker after the bullet / `[ ]` / hashes / assignee, replace or remove), `setImportance` 3863 (what the select and Ctrl+Alt+0..3 call), `impFind` 3884 (a click on a pill searches for its own level) |
+| 3895–3902 | `takeBlockId` / `liWithBlockId` — `…text ^anchor` becomes `id="block-anchor"` |
+| **3919** | **`gotoPreviewAnchor(id)`** — the single jump-to-anchor path: nav panel, wikilinks and the graph all land here |
+| **3940** | **`gotoSourceHeading(line)`** — the same jump for the **Markdown source**: selects the heading's line in the textarea and scrolls to it via `editorMirrorAt` (6622). Nav-panel clicks only; a phone has one pane on screen, so there it does nothing |
+| 3957+ | `followWikiLink(name, heading, block)`, `offerToCreateNote(name)`, `createChapterNamed(...)` |
 
 **The tag pattern runs last in `applyInline`, on purpose.** By then every
 `#` the pass produced sits after `>` or a quote, and the lead class
@@ -349,7 +350,7 @@ the preview and the export go through it, and so does the graph scanner.
 pass to hide behind, so it blanks the `[[links]]` itself before scanning
 tags; without that, `[[#Inertia]]` mints a tag called `Inertia`.
 
-### Knowledge graph (4394–5384) — `docs/FEATURES.md` § G
+### Knowledge graph (5135–6099) — `docs/FEATURES.md` § G
 
 One `<canvas>`, one force simulation, no library. Obsidian's palette
 (Filters · Groups · Display · Forces) drives `gvSettings`, which persists
@@ -357,33 +358,33 @@ under `scula:graph`.
 
 | Line | Region |
 |---|---|
-| 4434–4450 | **`GRAPH_COLORS`** — the `--graph-*` tokens resolved **once**; canvas cannot use `var()`. Same rule as `editor.html`'s `CHROME`, see `docs/THEME.md` |
-| 4449–4453 | `GV_BASE_R`, **`GV_STRUCTURAL`** — the settings that change *which* nodes exist (those rebuild; everything else only repaints) |
-| 4455–4475 | `GV_DEFAULTS`, `gvSettings`, `gvLangReady` (a **`var`** — `applyUILang` reads it early) |
-| 4477–4493 | `gv` — the whole live state: nodes, links, `pos` (survives a rebuild), transform, pointers |
-| **4495** | **`scanNote(md)`** — one pass over a note: headings, `^blocks`, `#tags`, `[[links]]`, images, each tagged with the section it sat in |
-| 4547–4564 | `scanNoteCached`, `noteText` (the open note reads from the **editor**, saved or not), `gvCurrentBookId` |
-| **4567** | **`buildGraph()`** — dispatches on scope |
-| **4597** | **`buildNoteScope`** — the note, its headings as an outline, its blocks, its tags, and `[[#Section]]` links as section-to-section edges |
-| 4670 | `buildNotesScope` — chapters as nodes (`workbook` and `vault`) |
-| 4708–4779 | `gvMatches`, **`applyGraphFilters`** (search → kinds → local-graph depth → orphans, in that order), `gvNodeColor` (groups first) |
-| 4781–4844 | **`gvKick`/`gvStep`** — the four forces and the alpha decay |
-| 4822–4937 | `gvSX`/`gvSY`, `gvRadius`, **`gvDraw`** (hover dims the unconnected), `gvArrow` |
-| **4939** | **`gvRebuild()`** — filter, recompute degrees, keep old positions, re-link |
-| 4989–5027 | `gvFit`, `gvZoomAt`/`gvZoomBy`, `gvResize` (dpr-aware) |
-| **5029–5148** | **`gvHit` + `gvBindStage`** — the one pointer route: drag a node, drag the background to pan, two fingers to pinch, wheel to zoom |
-| 5150 | `gvOpenNode` — note opens, heading/block jumps, tag becomes the search, unresolved offers to be created |
-| 5167–5242 | Settings: save/load, `gvPaintControls`, `gvBindControls` (generic over `[data-gv]`), `setGraphScope` |
-| 5244–5304 | `renderGvGroups`, `renderGvLegend` |
-| 5306–5374 | `gvLoop`, **`openGraph`/`closeGraph`/`toggleGraph`**, `openGraphForTag`, `gvRefresh` (debounced; the graph follows the editor) |
-| 5376 | `gvRepaintLang` — what `applyUILang` calls for the generated legend/groups/counts |
+| 5135–5148 | **`GRAPH_COLORS`** — the `--graph-*` tokens resolved **once**; canvas cannot use `var()`. Same rule as `editor.html`'s `CHROME`, see `docs/THEME.md` |
+| 5150–5153 | `GV_BASE_R`, **`GV_STRUCTURAL`** — the settings that change *which* nodes exist (those rebuild; everything else only repaints) |
+| 5156–5176 | `GV_DEFAULTS`, `gvSettings`, `gvLangReady` (a **`var`** — `applyUILang` reads it early) |
+| 5178–5194 | `gv` — the whole live state: nodes, links, `pos` (survives a rebuild), transform, pointers |
+| **5196** | **`scanNote(md)`** — one pass over a note: headings, `^blocks`, `#tags`, `[[links]]`, images, each tagged with the section it sat in |
+| 5248–5266 | `scanNoteCached`, `noteText` 5256 (the open note reads from the **editor**, saved or not), `gvCurrentBookId` |
+| **5268** | **`buildGraph()`** — dispatches on scope |
+| **5298** | **`buildNoteScope`** — the note, its headings as an outline, its blocks, its tags, and `[[#Section]]` links as section-to-section edges |
+| 5371 | `buildNotesScope` — chapters as nodes (`workbook` and `vault`) |
+| 5409–5480 | `gvMatches` 5409, **`applyGraphFilters`** 5413 (search → kinds → local-graph depth → orphans, in that order), `gvNodeColor` 5462 (groups first) |
+| 5482–5533 | **`gvKick`/`gvStep`** — the four forces and the alpha decay |
+| 5537–5638 | `gvSX`/`gvSY` 5537, `gvRadius` 5539, **`gvDraw`** 5547 (hover dims the unconnected), `gvArrow` 5620 |
+| **5640** | **`gvRebuild()`** — filter, recompute degrees, keep old positions, re-link |
+| 5690–5728 | `gvFit`, `gvZoomAt`/`gvZoomBy`, `gvResize` (dpr-aware) |
+| **5730–5849** | **`gvHit` + `gvBindStage`** — the one pointer route: drag a node, drag the background to pan, two fingers to pinch, wheel to zoom |
+| 5851 | `gvOpenNode` — note opens, heading/block jumps, tag becomes the search, unresolved offers to be created |
+| 5868–5943 | Settings: `gvSaveSettings` 5868/load, `gvPaintControls` 5885, `gvBindControls` (generic over `[data-gv]`), `setGraphScope` |
+| 5945–6005 | `renderGvGroups`, `renderGvLegend` 5988 |
+| 6007–6075 | `gvLoop` 6007, **`openGraph`** 6013/`closeGraph`/`toggleGraph`, `openGraphForTag` 6057, `gvRefresh` 6064 (debounced; the graph follows the editor) |
+| 6077 | `gvRepaintLang` — what `applyUILang` calls for the generated legend/groups/counts |
 
 **Two lists must stay in step:** a new setting needs a control in the
 `#graph-view` markup carrying `data-gv="<key>"` **and** an entry in
 `GV_DEFAULTS`; add it to `GV_STRUCTURAL` too if changing it changes which
 nodes exist. `gvBindControls`/`gvPaintControls` then need no edit at all.
 
-### Search & filter (5386–5801) — `docs/FEATURES.md` § H
+### Search & filter (6102–6516) — `docs/FEATURES.md` § H
 
 One query, the same three scopes the graph has (open chapter · this
 workbook · every workbook), then two rows of chips that narrow what it
@@ -392,19 +393,19 @@ so "a note" means one thing in both features. Nothing touches the disk.
 
 | Line | Region |
 |---|---|
-| 5401–5428 | `FD_KEY` (`scula:find`), **`FD_KINDS`**, `fdReady` (a **`var`** — `applyUILang` reads it early), **`fdState`** (query, scope, four toggles, the two chip sets) |
-| 5430–5445 | **`fdFold`/`fdFoldMap`** — NFD minus the combining marks, with every folded character mapped back to its source index so a hit still marks the right characters |
-| 5448–5473 | `fdMatcher` (escape or regex, a broken one flagged not thrown), **`fdLineHits`** — whole-word tests the characters either side, **never `\b`** (after `ă` it cannot match) |
-| 5475 | `fdKindOf(line, inFence)` — the axis the "Only" chips filter on |
-| **5487** | **`fdNoteHits(text, m)`** — one chapter, line by line; `section` carries the `headingSlug()` the preview gave that heading, counted the same way |
-| 5513–5535 | `fdScopeNotes` (the three scopes), `fdNoteOrder` |
-| **5537** | **`fdCompute()`** — scope ▸ query ▸ tags ▸ kinds. Each chip's count comes from one step earlier than the chip filters |
-| 5571 | `fdSnippet` — escapes in the gaps between ranges, so a line of literal HTML is shown, never run |
-| 5589–5670 | `fdPaintScope`/`fdPaintOpts`/`fdPaintKinds`/`fdPaintTags`, **`fdRender`** |
-| 5672–5700 | `fdOffsetOfLine`, **`fdGoto`** — open the chapter, select the match, take the preview to the same section. Scrolls via `editorMirrorAt` (5921), shared with the `[[` suggester |
-| 5702–5741 | `fdRun`/`fdRefresh`/`fdQueryChanged`/`fdClearQuery`/`fdQueryKey`, `fdLive` (called from `updatePreview`), `fdRepaintLang` |
-| 5743–5765 | `fdSaveSettings`/`fdLoadSettings` — scope and the four toggles persist under `scula:find` |
-| 5767–5798 | Control wiring; the chips and result rows are generated, so both are delegated |
+| 6102–6129 | `FD_KEY` (`scula:find`) 6102, **`FD_KINDS`** 6103, `fdReady` (a **`var`** — `applyUILang` reads it early), **`fdState`** 6109 (query, scope, four toggles, the two chip sets) |
+| 6131–6147 | **`fdFold`/`fdFoldMap`** — NFD minus the combining marks, with every folded character mapped back to its source index so a hit still marks the right characters |
+| 6149–6186 | `fdMatcher` 6149 (escape or regex, a broken one flagged not thrown), **`fdLineHits`** — whole-word tests the characters either side, **never `\b`** (after `ă` it cannot match) |
+| 6176 | `fdKindOf(line, inFence)` — the axis the "Only" chips filter on |
+| **6188** | **`fdNoteHits(text, m)`** — one chapter, line by line; `section` carries the `headingSlug()` the preview gave that heading, counted the same way |
+| 6214–6234 | `fdScopeNotes` (the three scopes), `fdNoteOrder` 6229 |
+| **6238** | **`fdCompute()`** — scope ▸ query ▸ tags ▸ kinds. Each chip's count comes from one step earlier than the chip filters |
+| 6272 | `fdSnippet` — escapes in the gaps between ranges, so a line of literal HTML is shown, never run |
+| 6290–6371 | `fdPaintScope`/`fdPaintOpts`/`fdPaintKinds`/`fdPaintTags`, **`fdRender`** 6323 |
+| 6373–6401 | `fdOffsetOfLine`, **`fdGoto`** 6382 — open the chapter, select the match, take the preview to the same section. Scrolls via `editorMirrorAt` (6622), shared with the `[[` suggester |
+| 6403–6442 | `fdRun`/`fdRefresh`/`fdQueryChanged`/`fdClearQuery`/`fdQueryKey`, `fdLive` 6437 (called from `updatePreview`), `fdRepaintLang` 6442 |
+| 6444–6479 | `fdSaveSettings`/`fdLoadSettings` — scope and the four toggles persist under `scula:find` |
+| 6481–6516 | Control wiring; the chips and result rows are generated, so both are delegated |
 
 **Parser is unified (2026-08).** `parseMarkdown(md, {forExport})` and
 `applyInline(text, {forExport})` serve both preview (`forExport` falsy) and
@@ -415,7 +416,7 @@ when exporting). New markdown syntax now needs exactly one edit, in
 `parseMarkdown`/`applyInline`, not two.
 
 **One trap remains:** exported HTML must stay self-contained (its `<style>`
-runs 6234–6261). It ships to people who don't have the app, so it uses
+runs ~6933–6963). It ships to people who don't have the app, so it uses
 literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---

@@ -132,8 +132,8 @@ come out right for free. `HANDOFF.md` § "Infinite canvas" has the rest.
 
 ## C. New markdown syntax in `index.html`
 
-The parser is unified: `parseMarkdown(md, opts)` (L3188) and
-`applyInline(text, opts)` (L3172) serve **both** the live preview
+The parser is unified: `parseMarkdown(md, opts)` (L4047) and
+`applyInline(text, opts)` (L4026) serve **both** the live preview
 (`updatePreview()`, opts omitted) and the HTML export
 (`exportHtml()`, `{forExport: true}`). Add new syntax once, in these two
 functions — no twin to keep in sync.
@@ -143,17 +143,17 @@ has to appear in the graph, which reads the text through `scanNote()`
 rather than through the parser. See § G.
 
 The only place behaviour forks on `forExport` is `resolveImageSrc()`
-(L3166): export rewrites relative image paths to `public/images/…` and
+(L4020): export rewrites relative image paths to `public/images/…` and
 turns a bare image-path line into a standalone `<img>`, because exported
 HTML ships without the app's working-folder image tree. If your new
 syntax needs export-only handling (e.g. it also touches paths that only
 make sense relative to the app's file picker), branch on `opts &&
 opts.forExport` the same way rather than forking the function.
 
-Also update `updateNav()` (L3319) if the syntax creates headings, and the
+Also update `updateNav()` (L4198) if the syntax creates headings, and the
 toolbar button + its `I18N` keys.
 
-**The exported-HTML template (L5390-5424) stays literal hex** — it ships
+**The exported-HTML template (~L6929-6972) stays literal hex** — it ships
 to people without the app, so it can't reference theme tokens.
 
 ### Pasting a picture (Ctrl+V)
@@ -174,14 +174,14 @@ space and no `)`, so the existing image rule in `applyInline()` matches a
 `data:` URI as-is, and `resolveImageSrc()` already treats `data:` as
 absolute.
 
-`handleEditorPaste()` (L2999) is a `paste` listener on `#editor`:
+`handleEditorPaste()` (L3298) is a `paste` listener on `#editor`:
 
 - **Text wins.** If the clipboard carries any non-blank `text/plain`, the
   handler returns and the browser pastes as usual — a copy out of a word
   processor brings both, and there the text is what was meant.
 - The picture is read from `clipboardData.files` first, then
   `clipboardData.items` (a screenshot arrives only as an item).
-- `imageBlobToDataUrl()` (L2967) keeps the original bytes when they are
+- `imageBlobToDataUrl()` (L3267) keeps the original bytes when they are
   under `PASTE_KEEP_BYTES` (512 KB) or the picture is an SVG. Anything
   larger is drawn to a canvas at `PASTE_MAX_DIM` (1600 px on the long
   edge) and re-encoded: **PNG if any pixel is transparent, JPEG
@@ -206,7 +206,7 @@ the JPEG/PNG choice and that transparency survives.
 A name or label at the **start of a line**, immediately followed by
 `>> `, reads as "this task is handed to that person" — written the way a
 todo gets prefixed with its owner: `John>> buy milk`, `Design team >>
-mockups by Friday`. `ASSIGNEE_RE` (next to `WIKI_RE`/`TAG_RE`, ~L3530)
+mockups by Friday`. `ASSIGNEE_RE` (next to `WIKI_RE`/`TAG_RE`, ~L3628)
 matches it in already-`&gt;`-escaped text, so it looks for the escaped
 `&gt;&gt;`, not a literal `>>`; the name is up to 4 words (each up to 21
 chars of letters/digits/`._'-`). It only matches at line start (`^`, `m`
@@ -214,18 +214,88 @@ flag) — **not anywhere inline** — because position is the only thing that
 tells a name apart from an arbitrary run of prose words: without that
 anchor a greedy match runs backward and swallows whatever sentence
 precedes an unrelated `>> ` elsewhere in the line. `renderAssignee()`
-(next to `renderTag()`, ~L3699) wraps just the name in
+(next to `renderTag()`, ~L3823) wraps just the name in
 `<span class="md-assignee">` — the `>>` stays plain text. Wired into
 `applyInline()` right after the `WIKI_RE` replace, so it renders in both
 the live preview and the HTML export (same function, both paths — see
 the note above).
 
 Styling is `.md-assignee` in the preview `<style>` (next to `.md-tag`,
-~L1126) using `var(--danger)` — the shared terracotta status colour,
+~L1156) using `var(--danger)` — the shared terracotta status colour,
 reused rather than minting a new token because this is meant to read as
 an attention colour, not another link kind. The exported-HTML template
 carries the same rule with the literal hex (see the note above about why
 that stays literal).
+
+### Importance markers: `!nice` / `!important` / `!vital`
+
+Three levels of "how much does this matter", written into the markdown as
+one word each and rendered as a coloured pill with an icon:
+
+```md
+- [ ] !vital renew the passport
+- [ ] !important book the flights
+- [ ] !nice a window seat
+```
+
+| Marker | Icon | Token | Hex | i18n label |
+|---|---|---|---|---|
+| `!nice` | 🌱 | `--imp-nice` | `#6E9E8A` | `impNice` |
+| `!important` | ⭐ | `--imp-important` | `#D9A441` | `impImportant` |
+| `!vital` | 🔥 | `--imp-vital` | `#C4643C` | `impVital` |
+
+**Three ways in, all of them one gesture.** The toolbar's
+`#importance-select` (next to the todo buttons) marks the caret's line, or
+every line a selection touches; `Ctrl+Alt+1/2/3` do the same from the
+keyboard and `Ctrl+Alt+0` clears; or the word can just be typed. Picking a
+second time *replaces* the marker rather than stacking one on another,
+which is what lets the select double as "change my mind", and the select
+snaps back to its `— Importance —` placeholder afterwards, like the
+heading and font-size selects do.
+
+`impSetLine()` puts the marker **after** whatever legally leads the line —
+the bullet, the number, the `[ ]` of a task, the hashes of a heading, and
+then a `Name>> ` assignee, since `ASSIGNEE_RE` is anchored to the line
+start and would stop matching if the marker went in front of it. Blank
+lines in a selection are skipped. That ordering is the whole reason
+`IMP_LINE_LEAD` exists and why it is built from `ASSIGNEE_WORD`.
+
+`IMP_RE` matches anywhere a `#tag` would (line start, or after a
+space/bracket) — unlike the assignee it is a fixed word, so there is no
+ambiguity about where it begins and it needs no line anchor. The trailing
+`(?![\p{L}\p{N}_-])` is what keeps `!nicely` out, and the lead class keeps
+`wow!` and `![[embed]]` out.
+
+**The syntax stays English in both UI languages** so a file reads the same
+either way; only the label is translated. In the preview the pill is an
+`<a>` whose label carries `data-i="impVital"`, so `applyUILang()`
+re-translates it in place on a language switch without re-rendering
+anything — the preview is ordinary DOM. In the export the label is baked
+in and there is no `data-i`, because the exported page ships without the
+app.
+
+`mdPlain()` strips the marker, which is what keeps it out of heading
+slugs, the nav-panel label and the graph's node names — `## !vital Plan`
+is still `plan` and still reads "Plan".
+
+Styling is `.md-imp` + `.md-imp-<level>` (~L1159). The level class sets an
+`--imp-c` custom property, and a `:has(> .md-imp-<level>)` rule sets the
+same token on the **block** around the pill, which then gets a matching
+left edge and a faint tint — one selector covering paragraphs, list items,
+tasks and headings, all of which are separate branches in
+`parseMarkdown()`. Note that `#preview a { color: var(--accent) }` carries
+an id and so outranks a bare class rule: both `.md-imp` and `.md-tag` need
+an `#preview a.<class>` rule to get their own colour (`.md-tag` did not
+have one and was silently rendering olive).
+
+Clicking a pill opens the search panel with `!vital` as the query
+(`impFind()`) — the marker is plain text, so the search panel already
+answers "what else is this important?" with no new machinery.
+
+`tests/importance.js` covers all of it: the select and the shortcuts, the
+marker landing after the bullet / checkbox / hashes / assignee, replace and
+remove, multi-line selections, the slug staying clean, what must *not*
+match, the language switch, the export string, and the click-to-search.
 
 ---
 
