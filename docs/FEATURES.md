@@ -431,6 +431,20 @@ is that record.
   moot.
 - `loadWorkbooks()` reloads the set from the `pending` store at boot.
 
+### The TODO filter — show only chapters with an open box
+
+A workbook whose **name contains "TODO"** (case-insensitive, `wbIsTodoBook`)
+gets one extra act button in its row: `☑`. It toggles the workbook's id in
+`wbTodoOnly` (a `Set`, in-memory only — not persisted) and re-renders.
+
+While a workbook is filtered, `renderWorkbooks()` hides every chapter whose
+text has no line matching `WB_OPEN_TASK_RE` — `/^[ \t]*[-*+] \[ \]/m`, i.e.
+an unchecked Markdown task box (`- [ ]`, any bullet, any indent).
+`wbChapterHasOpenTask(ch)` runs against `ch.content` straight from the store,
+so it reflects the last autosave without a disk read. The row count shows
+`shown/total` and the button carries an `.on` style; if nothing matches, the
+list shows `wbNoOpenTasks`. Checked boxes (`- [x]`) don't count — only `- [ ]`.
+
 ### The three routes, for a chapter
 
 Same three routes as § D, because the same rules apply:

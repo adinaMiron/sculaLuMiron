@@ -151,8 +151,9 @@ detail panels on both sides**, the whole OCR path against a stub engine,
 all three save routes), and for
 `index.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
-in-place rename of a workbook or chapter name (`wbrename.js`) and
-"Save all modified" with its pending-edit tracking (`wbsaveall.js`), and for
+in-place rename of a workbook or chapter name (`wbrename.js`),
+"Save all modified" with its pending-edit tracking (`wbsaveall.js`) and
+the TODO-workbook chapter filter (`wbtodo.js`), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only

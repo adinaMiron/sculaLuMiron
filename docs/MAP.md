@@ -303,15 +303,15 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 4062–4072 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, …) |
-| 4074–4127 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist`; `wbPendingMark`/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
-| 4139–4174 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 4176–4208 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 4210–4437 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` (`.modified` dot on a chapter row / `.has-modified` on its book), `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 4439–4626 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| 4627–4666 | Autosave: `scheduleAutosave`, `flushChapter` (marks the chapter pending), `detachChapter`, `canLeaveEditor` |
-| 4668–4772 | Saving: `saveToWorkbook` (Ctrl+S), `saveAllModifiedChapters` (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| 4824–4851 | `loadWorkbooks` (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
+| ~4104–4122 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly` + `WB_OPEN_TASK_RE`/`wbChapterHasOpenTask`/`wbIsTodoBook` — the TODO-workbook chapter filter, …) |
+| ~4124–4186 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist`; `wbPendingMark`/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
+| ~4188–4227 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| ~4229–4258 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| ~4260–4490 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden), `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| ~4492–4690 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| ~4692–4730 | Autosave: `scheduleAutosave`, `flushChapter` (marks the chapter pending), `detachChapter`, `canLeaveEditor` |
+| ~4735–4840 | Saving: `saveToWorkbook` (Ctrl+S), `saveAllModifiedChapters` (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| ~4891–4918 | `loadWorkbooks` (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture) and marks the chapter

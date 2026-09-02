@@ -274,6 +274,7 @@
     transition: color 0.12s, background 0.12s;
   }
   .wb-act:hover { color: var(--accent-2); background: var(--bg); }
+  .wb-act.on { color: var(--accent); background: var(--bg); }
 
   .wb-chapters { display: none; padding-bottom: 4px; }
   .wb-book.open .wb-chapters { display: block; }
@@ -2612,7 +2613,10 @@ const I18N = {
     saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
     wbNoChapters:"niciun capitol încă",
+    wbNoOpenTasks:"niciun capitol cu bifă neterminată",
     wbLocalOnly:"💾 salvat local (fără dosar)",
+    filterTodoOnTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”)",
+    filterTodoOffTip:"Arată toate capitolele",
     addChapterTip:"Capitol nou", renameWorkbookTip:"Redenumește caietul", deleteWorkbookTip:"Șterge caietul",
     renameChapterTip:"Redenumește capitolul", exportChapterTip:"Exportă capitolul", deleteChapterTip:"Șterge capitolul",
     wbRenameHint:"Dublu-clic sau F2 pentru redenumire",
@@ -2761,7 +2765,10 @@ const I18N = {
     saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
     wbNoChapters:"no chapters yet",
+    wbNoOpenTasks:"no chapter has an unchecked box",
     wbLocalOnly:"💾 saved locally (no folder)",
+    filterTodoOnTip:"Show only chapters with an unchecked box (“- [ ]”)",
+    filterTodoOffTip:"Show all chapters",
     addChapterTip:"New chapter", renameWorkbookTip:"Rename workbook", deleteWorkbookTip:"Delete workbook",
     renameChapterTip:"Rename chapter", exportChapterTip:"Export chapter", deleteChapterTip:"Delete chapter",
     wbRenameHint:"Double-click or F2 to rename",
@@ -4105,6 +4112,13 @@ let wbDirty = false;
 let wbSaveTimer = 0;
 const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
+const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
+
+/* A chapter "has an open task" when a line reads "- [ ]" (optionally indented,
+   any of - * + as the bullet). Used only by the TODO filter button. */
+const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
+function wbChapterHasOpenTask(ch) { return !!ch && WB_OPEN_TASK_RE.test(ch.content || ''); }
+function wbIsTodoBook(book) { return !!book && /todo/i.test(book.name || ''); }
 
 /* ── IndexedDB plumbing ── */
 function wbDb() {
@@ -4375,6 +4389,9 @@ function renderWorkbooks() {
   orderedBooks.forEach((book, bookIdx) => {
     const chapters = wbChaptersOf(book.id);
     const open = wbOpenBooks.has(book.id);
+    const todoBook = wbIsTodoBook(book);
+    const todoFiltered = todoBook && wbTodoOnly.has(book.id);
+    const shownChapters = todoFiltered ? chapters.filter(wbChapterHasOpenTask) : chapters;
 
     const wrap = document.createElement('div');
     wrap.className = 'wb-book' + (open ? ' open' : '');
@@ -4399,13 +4416,22 @@ function renderWorkbooks() {
     });
     const count = document.createElement('span');
     count.className = 'wb-count';
-    count.textContent = chapters.length;
+    count.textContent = todoFiltered ? shownChapters.length + '/' + chapters.length : chapters.length;
 
     const acts = document.createElement('div');
     acts.className = 'wb-acts';
     if (bookIdx > 0) acts.appendChild(wbActBtn('▲', t('moveWorkbookUpTip'), () => moveWorkbook(book.id, -1)));
     if (bookIdx < orderedBooks.length - 1) acts.appendChild(wbActBtn('▼', t('moveWorkbookDownTip'), () => moveWorkbook(book.id, 1)));
     acts.appendChild(wbActBtn('＋', t('addChapterTip'), () => newChapter(book.id)));
+    if (todoBook) {
+      const fBtn = wbActBtn('☑', t(todoFiltered ? 'filterTodoOffTip' : 'filterTodoOnTip'), () => {
+        if (wbTodoOnly.has(book.id)) { wbTodoOnly.delete(book.id); }
+        else { wbTodoOnly.add(book.id); wbOpenBooks.add(book.id); }
+        renderWorkbooks();
+      });
+      if (todoFiltered) fBtn.classList.add('on');
+      acts.appendChild(fBtn);
+    }
     acts.appendChild(wbActBtn('✎', t('renameWorkbookTip'), () => renameWorkbook(book.id)));
     acts.appendChild(wbActBtn('🗑', t('deleteWorkbookTip'), () => deleteWorkbook(book.id)));
 
@@ -4419,8 +4445,14 @@ function renderWorkbooks() {
       none.className = 'wb-ch-empty';
       none.textContent = t('wbNoChapters');
       list.appendChild(none);
+    } else if (todoFiltered && !shownChapters.length) {
+      const none = document.createElement('div');
+      none.className = 'wb-ch-empty';
+      none.textContent = t('wbNoOpenTasks');
+      list.appendChild(none);
     }
     chapters.forEach((ch, chIdx) => {
+      if (todoFiltered && !wbChapterHasOpenTask(ch)) return;
       const chRow = document.createElement('div');
       chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '') + (wbPendingIds.has(ch.id) ? ' modified' : '');
       chRow.title = book.folder + '/' + ch.file;
