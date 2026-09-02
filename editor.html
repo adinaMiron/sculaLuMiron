@@ -430,7 +430,7 @@
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
-  <button onclick="connectGoogleDrive()">Connect Google Drive & Select Folder</button>
+  <button id="connectGoogleDrive">Connect Google Drive & Select Folder</button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
@@ -1450,7 +1450,11 @@ function connectGoogleDrive() {
   window.location.href = `${oauth2Endpoint}?${urlParams}`;
 }
 
+const connectGoogleDriveBtn = document.getElementById("connectGoogleDrive");
+connectGoogleDriveBtn.addEventListener("click", ()=>   connectGoogleDriveBtn());
+
 // 3. Handle OAuth Redirect Code on Page Load
+
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   const authCode = urlParams.get("code");
