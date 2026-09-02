@@ -199,6 +199,7 @@
 
   /* ── Workbooks panel (workbook → chapters, see docs/FEATURES.md § E) ── */
   #wb-panel {
+    position: relative;
     width: var(--panel-w);
     min-width: var(--panel-w);
     background: var(--surface);
@@ -210,6 +211,23 @@
     order: -1;
   }
   #wb-panel.collapsed { width: 0; min-width: 0; }
+  #wb-panel.resizing { transition: none; }
+
+  /* Drag handle on the right edge of the workbooks panel — lets the user
+     widen/narrow it; the chosen width is persisted, see wbPanelResize(). */
+  #wb-resize-handle {
+    position: absolute;
+    top: 0; right: -3px; bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 5;
+    touch-action: none;
+  }
+  #wb-resize-handle:hover, #wb-resize-handle.active { background: var(--accent); opacity: 0.5; }
+  #wb-panel.collapsed #wb-resize-handle { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    #wb-resize-handle { display: none; }
+  }
 
   #wb-where {
     font-size: 11px;
@@ -2181,6 +2199,7 @@
       <div id="wb-where"></div>
     </div>
     <div id="wb-tree"></div>
+    <div id="wb-resize-handle" title="Drag to resize"></div>
   </div>
 
   <!-- Image Explorer Side Panel -->
@@ -7125,10 +7144,56 @@ function applyResponsiveDefaults() {
   }
 }
 
+/* ── Workbooks panel width: drag-to-resize, persisted per browser ── */
+const WB_WIDTH_KEY = 'scula-wb-panel-width';
+function initWbPanelResize() {
+  const panel = document.getElementById('wb-panel');
+  const handle = document.getElementById('wb-resize-handle');
+  if (!panel || !handle) return;
+
+  const MIN_W = 160, MAX_W = 640;
+  let saved = null;
+  try { saved = localStorage.getItem(WB_WIDTH_KEY); } catch (e) {}
+  if (saved && !isSmallScreen()) {
+    const w = Math.max(MIN_W, Math.min(MAX_W, parseFloat(saved) || MIN_W));
+    panel.style.setProperty('--panel-w', w + 'px');
+  }
+  let startX = 0, startW = 0;
+
+  function onMove(e) {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const w = Math.max(MIN_W, Math.min(MAX_W, startW + (x - startX)));
+    panel.style.setProperty('--panel-w', w + 'px');
+  }
+  function onUp() {
+    panel.classList.remove('resizing');
+    handle.classList.remove('active');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    try { localStorage.setItem(WB_WIDTH_KEY, panel.style.getPropertyValue('--panel-w').trim()); } catch (e) {}
+  }
+  function onDown(e) {
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    startW = panel.getBoundingClientRect().width;
+    panel.classList.add('resizing');
+    handle.classList.add('active');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+    e.preventDefault();
+  }
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, { passive: false });
+}
+
 setView('source');
 applyResponsiveDefaults();
 loadWorkbooks();
 initToolbarCollapse();
+initWbPanelResize();
 
 let lastSmall = isSmallScreen();
 window.addEventListener('resize', () => {
