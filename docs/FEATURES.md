@@ -374,7 +374,8 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
   the disk: `requestPermission()` is only legal inside a user gesture, and
   a keystroke isn't one.
 - **Explicit save → store + mirror.** `saveToWorkbook()` (the primary
-  header button, Ctrl+S), the save modal, rename, delete and *Sync to
+  header button, Ctrl+S), `saveAllModifiedChapters()` (Ctrl+Alt+S — see
+  *Pending edits* below), the save modal, rename, delete and *Sync to
   folder* all run inside a click, so they can call
   `ScuLaFolder.dir(true)` and write the file.
 
@@ -382,6 +383,27 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
 this app knows it wrote, and drops a workbook folder only if the file
 system agrees it's empty. Nothing a person put in that folder by hand is
 ever deleted.
+
+### Pending edits — "Save all modified"
+
+Autosave keeps every chapter's text safe in the store, but the `.md`
+mirror only moves on an explicit save, and until then there was no record
+of *which* chapters were behind. `wbPendingIds` (a `Set`, mirrored to the
+`pending` object store in `scula-md` — the reason `WB_VER` is now **2**)
+is that record.
+
+- `flushChapter()` calls `wbPendingMark(ch)` every time it writes a chapter
+  back to the store, so editing anything — the open chapter, or a chapter
+  you edit then switch away from — leaves a marker that survives a reload.
+- The workbook panel shows it: a `•` after the chapter name (`.wb-ch-row.modified`)
+  and after its workbook's name (`.wb-book-row.has-modified`).
+- **`saveAllModifiedChapters()`** (header button `📚 Save all modified`,
+  **Ctrl+Alt+S**) flushes the open chapter, then walks `wbPendingIds`:
+  `wbMirrorWrite` for each, and `wbPendingClear(id)` once its file is
+  written. `saveToWorkbook`, `confirmSaveToWorkbook`, `syncAllToFolder`,
+  `deleteChapter` and `deleteWorkbook` each clear the markers they make
+  moot.
+- `loadWorkbooks()` reloads the set from the `pending` store at boot.
 
 ### The three routes, for a chapter
 

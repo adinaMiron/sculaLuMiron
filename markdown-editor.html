@@ -290,6 +290,9 @@
   .wb-ch-row:hover { background: var(--surface-2); color: var(--text); }
   .wb-ch-row.current { border-left-color: var(--accent); background: var(--surface-2); color: var(--accent-2); }
   .wb-ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* chapter edited since its last save — cleared by "Save to workbook" / "Save all modified" */
+  .wb-ch-row.modified .wb-ch-name::after,
+  .wb-book-row.has-modified .wb-book-name::after { content: "•"; color: var(--accent); margin-left: 5px; font-weight: 700; }
   .wb-ch-empty { padding: 6px 10px 6px 26px; font-size: 11px; color: var(--text-3); font-style: italic; }
   .wb-name-editing {
     overflow: visible; text-overflow: clip; white-space: normal;
@@ -2103,6 +2106,7 @@
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
     <button class="btn" onclick="saveFile()" data-i="saveFileBtn" data-i-title="saveFileTip" title="Save a copy of the file (Ctrl+Shift+S)">Save ↓</button>
+    <button class="btn" id="btn-save-all-modified" onclick="saveAllModifiedChapters()" data-i="saveAllModifiedBtn" data-i-title="saveAllModifiedTip" title="Save every modified chapter in every workbook (Ctrl+Alt+S)">📚 Save all modified</button>
     <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
   </div>
 </header>
@@ -2598,6 +2602,7 @@ const I18N = {
     newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
     syncFolderTip:"Scrie fiecare capitol în dosarul markdown",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
+    saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
     saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
     wbNoChapters:"niciun capitol încă",
@@ -2620,6 +2625,9 @@ const I18N = {
     wbSavedTo:p=>`Salvat în ${p}`,
     wbSavedLocal:"Capitol salvat pe acest dispozitiv.",
     wbSynced:n=>`${n} capitol${n===1?'':'e'} scrise în dosar.`,
+    wbNoModified:"Niciun capitol modificat.",
+    wbSavedAllModified:n=>`${n} capitol${n===1?'':'e'} modificat${n===1?'':'e'} salvat${n===1?'':'e'}.`,
+    wbSavedSomeModified:n=>`${n} capitol${n===1?'':'e'} salvat${n===1?'':'e'}; unele nu s-au putut scrie.`,
     wbStoreFailed:"Nu s-a putut salva local (IndexedDB indisponibil).",
     wbRestored:n=>`Reluat: ${n}`,
     wbRemoved:"Șters.",
@@ -2743,6 +2751,7 @@ const I18N = {
     newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
     syncFolderTip:"Write every chapter into the markdown folder",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
+    saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
     saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
     wbNoChapters:"no chapters yet",
@@ -2765,6 +2774,9 @@ const I18N = {
     wbSavedTo:p=>`Saved to ${p}`,
     wbSavedLocal:"Chapter saved on this device.",
     wbSynced:n=>`${n} chapter${n===1?'':'s'} written to the folder.`,
+    wbNoModified:"No modified chapters.",
+    wbSavedAllModified:n=>`${n} modified chapter${n===1?'':'s'} saved.`,
+    wbSavedSomeModified:n=>`${n} chapter${n===1?'':'s'} saved; some couldn't be written.`,
     wbStoreFailed:"Couldn't save locally (IndexedDB unavailable).",
     wbRestored:n=>`Resumed: ${n}`,
     wbRemoved:"Deleted.",
@@ -4047,8 +4059,8 @@ function updateStatus() {
 
    Full description: docs/FEATURES.md § E.
    ============================================================ */
-const WB_DB = 'scula-md', WB_VER = 1;
-const WB_BOOKS = 'workbooks', WB_CHAPTERS = 'chapters', WB_META = 'meta';
+const WB_DB = 'scula-md', WB_VER = 2;
+const WB_BOOKS = 'workbooks', WB_CHAPTERS = 'chapters', WB_META = 'meta', WB_PENDING = 'pending';
 
 var wbBooted = false;        // var: applyUILang() reads it before this runs
 let wbBooks = [];            // [{ id, name, folder, created, updated, order }]
@@ -4057,6 +4069,7 @@ let wbCurrentId = null;      // open chapter, or null for a loose file
 let wbDirty = false;
 let wbSaveTimer = 0;
 const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
+const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 
 /* ── IndexedDB plumbing ── */
 function wbDb() {
@@ -4070,6 +4083,7 @@ function wbDb() {
         db.createObjectStore(WB_CHAPTERS, { keyPath: 'id' }).createIndex('byWorkbook', 'workbookId');
       }
       if (!db.objectStoreNames.contains(WB_META)) db.createObjectStore(WB_META);
+      if (!db.objectStoreNames.contains(WB_PENDING)) db.createObjectStore(WB_PENDING, { keyPath: 'chapterId' });
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -4094,6 +4108,22 @@ const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 async function wbPersist(store, value) {
   try { await wbPut(store, value); return true; }
   catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
+}
+
+/* ── Pending edits ──
+   Autosave already writes the open chapter's text straight to IndexedDB.
+   wbPendingIds additionally remembers *which* chapters have changed since
+   their .md file was last written — in memory and in the `pending` store,
+   so the list survives a reload. A marker is dropped when that chapter's
+   file is written by saveToWorkbook() or saveAllModifiedChapters(). */
+async function wbPendingMark(ch) {
+  wbPendingIds.add(ch.id);
+  try { await wbPut(WB_PENDING, { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() }); }
+  catch (e) {}
+}
+async function wbPendingClear(id) {
+  wbPendingIds.delete(id);
+  try { await wbDrop(WB_PENDING, id); } catch (e) {}
 }
 
 /* ── Small helpers ── */
@@ -4315,7 +4345,7 @@ function renderWorkbooks() {
     wrap.className = 'wb-book' + (open ? ' open' : '');
 
     const row = document.createElement('div');
-    row.className = 'wb-book-row';
+    row.className = 'wb-book-row' + (chapters.some(c => wbPendingIds.has(c.id)) ? ' has-modified' : '');
     row.title = book.folder + '/';
     row.addEventListener('click', () => {
       if (open) wbOpenBooks.delete(book.id); else wbOpenBooks.add(book.id);
@@ -4357,7 +4387,7 @@ function renderWorkbooks() {
     }
     chapters.forEach((ch, chIdx) => {
       const chRow = document.createElement('div');
-      chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '');
+      chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '') + (wbPendingIds.has(ch.id) ? ' modified' : '');
       chRow.title = book.folder + '/' + ch.file;
       chRow.addEventListener('click', () => openChapter(ch.id));
 
@@ -4449,6 +4479,7 @@ async function deleteWorkbook(id) {
   const chapters = wbChaptersOf(book.id);
   for (const ch of chapters) {
     try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
+    await wbPendingClear(ch.id);
     await wbMirrorRemove(book.folder, ch.file);
   }
   await wbMirrorRemove(book.folder, null);
@@ -4526,6 +4557,7 @@ async function deleteChapter(id) {
   if (!confirm(t('confirmDeleteChapter', ch.title))) return;
   const book = wbBook(ch.workbookId);
   try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
+  await wbPendingClear(ch.id);
   if (book) await wbMirrorRemove(book.folder, ch.file);
   wbChapters = wbChapters.filter(c => c.id !== ch.id);
   if (ch.id === wbCurrentId) detachChapter();
@@ -4587,6 +4619,8 @@ async function syncAllToFolder() {
       if (await wbMirrorWrite(book, ch, ch.content || '')) n++;
     }
   }
+  for (const id of [...wbPendingIds]) await wbPendingClear(id);   // everything is on disk now
+  renderWorkbooks();
   wbSay(t('wbSynced', n), true);
 }
 
@@ -4608,7 +4642,12 @@ async function flushChapter() {
   ch.content = editor.value;
   ch.updated = Date.now();
   wbDirty = false;
-  if (await wbPersist(WB_CHAPTERS, ch)) wbSay(t('wbAutosaved'));
+  if (await wbPersist(WB_CHAPTERS, ch)) {
+    const wasPending = wbPendingIds.has(ch.id);
+    await wbPendingMark(ch);
+    if (!wasPending) renderWorkbooks();   // show the "modified" dot
+    wbSay(t('wbAutosaved'));
+  }
 }
 function detachChapter() {
   clearTimeout(wbSaveTimer);
@@ -4638,7 +4677,30 @@ async function saveToWorkbook() {
   wbDirty = false;
   if (!await wbPersist(WB_CHAPTERS, ch)) return;
   const path = await wbMirrorWrite(book, ch, ch.content);
+  await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  renderWorkbooks();
+}
+
+/* Save every chapter edited since its last save — write each one's .md
+   file, then drop its pending marker. Header button + Ctrl+Alt+S. */
+async function saveAllModifiedChapters() {
+  await flushChapter();                       // fold in the open chapter's latest edits
+  const ids = [...wbPendingIds];
+  if (!ids.length) { wbSay(t('wbNoModified'), true); return; }
+  let done = 0, failed = 0;
+  for (const id of ids) {
+    const ch = wbChapter(id);
+    if (!ch) { await wbPendingClear(id); continue; }
+    const book = wbBook(ch.workbookId);
+    if (!book) { failed++; continue; }
+    try {
+      await wbMirrorWrite(book, ch, ch.content || '');
+      await wbPendingClear(id);
+      done++;
+    } catch (e) { failed++; }
+  }
+  wbSay(failed ? t('wbSavedSomeModified', done) : t('wbSavedAllModified', done), true);
   renderWorkbooks();
 }
 
@@ -4755,6 +4817,7 @@ async function confirmSaveToWorkbook() {
   closeWorkbookModal();
   renderWorkbooks();
   const path = await wbMirrorWrite(book, ch, ch.content);
+  await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
 }
 
@@ -4764,6 +4827,7 @@ async function loadWorkbooks() {
     const [books, chapters] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS)]);
     wbBooks = (books || []).sort(wbByOrder);
     wbChapters = (chapters || []).sort(wbByOrder);
+    try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }
   wbBooted = true;
   renderWorkbooks();
@@ -6821,6 +6885,7 @@ document.addEventListener('keydown', e => {
   // Ctrl+Shift+F as well, the way every editor spells "search everything".
   // Plain Ctrl+F is left alone: the browser's own find still has a job here.
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'F') { e.preventDefault(); toggleFind(); }
+  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyS') { e.preventDefault(); saveAllModifiedChapters(); return; }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); saveFile(); }
   else if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveToWorkbook(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }

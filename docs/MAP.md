@@ -290,11 +290,11 @@ a `polyline`, whose vertices are all corners already.
 | ~6228–6262 | **Exported-HTML template** — standalone `<style>`/`<body>` string |
 | 6275–6380 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
 | 6382–6400 | Link modal: `openLinkModal`, `insertLink` |
-| 6402–6441 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**) |
+| 6402–6441 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**, Ctrl+S save chapter, **Ctrl+Alt+S** save all modified) |
 | **~6820–7110** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` ~L2146, status pill `#dictate-pill` ~L2279, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `index.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
 | 6443–6481 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
-### Workbooks (3806–4392) — `docs/FEATURES.md` § E
+### Workbooks (4050–4851) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -303,20 +303,22 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 3806–3816 | DB/store names, module state (`wbBooks`, `wbChapters`, `wbCurrentId`, …) |
-| 3818–3854 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` |
-| 3864–3893 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 3905–3937 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 3937–4047 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks`, `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 4050–4200 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
-| 4201–4233 | Autosave: `scheduleAutosave`, `flushChapter`, `detachChapter`, `canLeaveEditor` |
-| 4235–4365 | Saving: `saveToWorkbook`, the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
-| 4367–4392 | `loadWorkbooks` (boot + resume last chapter), `scula-folder`/visibility/unload hooks |
+| 4062–4072 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, …) |
+| 4074–4127 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist`; `wbPendingMark`/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
+| 4139–4174 | `wbSlug` + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 4176–4208 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 4210–4437 | Panel rendering: `wbActBtn`, `wbInlineRename`/`wbInlineRenameById`/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` (`.modified` dot on a chapter row / `.has-modified` on its book), `paintWorkbookWhere`, `paintWorkbookCrumb` |
+| 4439–4626 | Operations: create/rename/delete workbook, new/open/rename/delete/export chapter, `syncAllToFolder` |
+| 4627–4666 | Autosave: `scheduleAutosave`, `flushChapter` (marks the chapter pending), `detachChapter`, `canLeaveEditor` |
+| 4668–4772 | Saving: `saveToWorkbook` (Ctrl+S), `saveAllModifiedChapters` (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` → `confirmSaveToWorkbook`) |
+| 4824–4851 | `loadWorkbooks` (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
-permission prompt is legal outside a gesture); the disk mirror happens on
-explicit saves — `saveToWorkbook`, `confirmSaveToWorkbook`, rename, delete,
-`syncAllToFolder` — all of which run inside a click.
+permission prompt is legal outside a gesture) and marks the chapter
+*pending*; the disk mirror happens on explicit saves — `saveToWorkbook`,
+`saveAllModifiedChapters`, `confirmSaveToWorkbook`, rename, delete,
+`syncAllToFolder` — all of which run inside a click, and each clears the
+pending marker for the chapter(s) it wrote.
 
 ### Wikilinks, tags and block anchors (3263–3568) — `docs/FEATURES.md` § G
 
