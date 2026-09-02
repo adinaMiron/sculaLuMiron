@@ -1,4 +1,4 @@
-// Voice dictation in markdown-editor.html: the Caiet vocal transcriber,
+// Voice dictation in index.html: the Caiet vocal transcriber,
 // writing into the open chapter. Uses the settings saved under the shared
 // "caiet-vocal:settings" blob and has no settings UI of its own.
 //
@@ -12,7 +12,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let failed = 0;
@@ -105,7 +105,7 @@ async function dictateOnce(page, ms) {
   }
 
   // 3. Each append-run lands after the previous text, one paragraph per run
-  //    (matches index.html's appendText).
+  //    (matches voice.html's appendText).
   {
     const { ctx, page, errors } = await newPage(browser, SETTINGS);
     await page.evaluate(() => { const e = document.getElementById('editor'); e.value = ''; updatePreview(); });

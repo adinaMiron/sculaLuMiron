@@ -1,6 +1,6 @@
-// Knowledge graph + wikilinks in markdown-editor.html.
+// Knowledge graph + wikilinks in index.html.
 //
-// The only script in this folder that drives markdown-editor.html rather
+// The only script in this folder that drives index.html rather
 // than editor.html, so it opens its own page instead of using lib.js's
 // open(). Same rules otherwise: real app off disk, real pixels
 // (getImageData on the graph canvas), no screenshots - see tests/README.md.
@@ -10,7 +10,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 
 let failed = 0;
 function check(name, ok, extra) {

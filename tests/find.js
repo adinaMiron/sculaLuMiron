@@ -1,4 +1,4 @@
-// Search & filter panel in markdown-editor.html (docs/FEATURES.md § H).
+// Search & filter panel in index.html (docs/FEATURES.md § H).
 //
 // Drives the real app off disk, like graph.js, and asserts on the real
 // result set (`fdLast`), the real DOM the panel renders, and the real
@@ -9,7 +9,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 
 let failed = 0;
 function check(name, ok, extra) {

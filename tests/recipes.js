@@ -682,7 +682,7 @@ function serve() {
   check('workbook: one workbook created', wb.books.length === 1 && wb.books[0].name === 'Rețete',
         JSON.stringify(wb.books.map(x => x.name)) + (wb.error || ''));
   check('workbook: one chapter per day', wb.chapters.length === 1, JSON.stringify(wb.chapters.map(c => c.title)));
-  check('workbook: chapter record matches markdown-editor.html shape',
+  check('workbook: chapter record matches index.html shape',
         wb.chapters[0] && wb.chapters[0].title === 'Ziua 3' && wb.chapters[0].file === 'Ziua-3.md' &&
         wb.chapters[0].workbookId === wb.books[0].id && /^# Ziua 3/.test(wb.chapters[0].content),
         JSON.stringify(wb.chapters[0] && { t: wb.chapters[0].title, f: wb.chapters[0].file }));

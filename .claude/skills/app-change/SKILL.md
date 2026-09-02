@@ -1,6 +1,6 @@
 ---
 name: app-change
-description: Make a change to one of the four standalone browser apps (index.html / editor.html / markdown-editor.html / recipes.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", etc. — a feature, button, fix, or styling change inside one app file.
+description: Make a change to one of the four standalone browser apps (voice.html / editor.html / index.html / recipes.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", etc. — a feature, button, fix, or styling change inside one app file.
 ---
 
 # Changing one of the four apps
@@ -12,14 +12,14 @@ This skill is the repeatable loop for a change request.
 
 | User says | File | nav label |
 |---|---|---|
-| "markdown page", "markdown editor" | `markdown-editor.html` | Markdown |
+| "markdown page", "markdown editor" | `index.html` | Markdown |
 | "retete", "rețete", "recipe(s) page" | `recipes.html` | Rețete |
-| "index", "voice", "caiet vocal", "dictation" | `index.html` | Caiet vocal |
+| "index", "voice", "caiet vocal", "dictation" | `voice.html` | Caiet vocal |
 | "editor.html", "image marker", "mazgaleste", "drawing/canvas page" | `editor.html` | Mazgaleste (was "Editor") |
 
 ## 2. Locate before reading — never read a whole app file
 
-`recipes.html` is ~84k tokens, `markdown-editor.html` ~58k. Reading one blows the
+`recipes.html` is ~84k tokens, `index.html` ~58k. Reading one blows the
 budget.
 
 1. Read `docs/MAP.md` for the section's line anchors. Its numbers **drift** —

@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14201A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caiet vocal">
+<title>Caiet vocal — dictare ro / en</title>
+<style>
+  :root{
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    /* surfaces, back → front */
+    --bg:#14201A;
+    --surface:#1B2A22;
+    --surface-2:#22342A;
+    --border:#2E4739;
+
+    /* text, strongest → weakest */
+    --text:#F3EEE1;
+    --text-2:#9FB3A5;
+    --on-text:#20261E;   /* dark text on a --text-coloured surface (transcript card) */
+
+    /* brand */
+    --accent:#C1BB45;
+    --on-accent:#1A2117; /* text ON an accent fill (pressed chip) */
+
+    /* status */
+    --danger:#C4643C;
+
+    /* shape + type */
+    --radius:14px;
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 60% at 50% -10%, #1E3128 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    font-size:16px;
+    line-height:1.45;
+    min-height:100dvh;
+    padding:0 0 calc(24px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- header ---------- */
+  .top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+    padding:calc(14px + env(safe-area-inset-top)) 18px 10px;
+  }
+  .brand{min-width:0}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 2px;
+  }
+  .wordmark{font-family:var(--font-display);font-size:27px;line-height:1;margin:0;font-weight:400}
+  .top-actions{display:flex;gap:8px;flex:0 0 auto}
+  .icon-btn{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    background:transparent;color:var(--text-2);border:1px solid var(--border);
+    border-radius:999px;padding:9px 13px;min-height:38px;cursor:pointer;
+  }
+  .icon-btn:active{background:var(--surface-2)}
+  .icon-btn[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+
+  main{padding:0 18px;max-width:680px;margin:0 auto}
+
+  /* ---------- notices ---------- */
+  .notice{
+    border:1px solid var(--danger);border-radius:var(--radius);
+    background:rgba(196,100,60,.12);color:#F0D5C6;
+    padding:12px 14px;font-size:14px;margin:6px 0 14px;
+  }
+  .notice code{font-family:var(--font-mono);font-size:12px}
+  .hidden{display:none !important}
+
+  /* ---------- stage: growth rings + record ---------- */
+  .stage{
+    position:relative;display:grid;place-items:center;
+    height:290px;margin:2px 0 4px;
+  }
+  .rings{position:absolute;width:250px;height:250px;pointer-events:none}
+  .ring{
+    position:absolute;inset:0;border-radius:50%;
+    border:1px solid var(--accent);opacity:.14;
+    transform:scale(.55);
+    transition:transform .09s linear, opacity .18s linear;
+  }
+  .stage.idle .ring{opacity:.09}
+  .btn-rec{
+    position:relative;width:146px;height:146px;border-radius:50%;
+    border:1px solid rgba(243,238,225,.22);
+    background:radial-gradient(120% 120% at 30% 25%, #3A5B48 0%, #23382C 70%);
+    color:var(--text);cursor:pointer;
+    display:grid;place-items:center;gap:2px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .btn-rec .dot{
+    width:20px;height:20px;border-radius:50%;background:var(--danger);
+    box-shadow:0 0 0 6px rgba(196,100,60,.16);
+  }
+  .btn-rec .label{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text);
+  }
+  .btn-rec.on{background:radial-gradient(120% 120% at 30% 25%, #6E3524 0%, #2B2019 70%);border-color:rgba(196,100,60,.55)}
+  .btn-rec.on .dot{border-radius:4px;background:var(--text);box-shadow:none;width:22px;height:22px}
+  .btn-rec:disabled{opacity:.5;cursor:default}
+  .clock{
+    position:absolute;bottom:16px;
+    font-family:var(--font-mono);font-size:13px;letter-spacing:.14em;color:var(--text-2);
+  }
+  .clock b{color:var(--accent);font-weight:400}
+
+  /* ---------- controls ---------- */
+  .field-label{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--text-2);margin:16px 0 7px;
+  }
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    flex:1 1 0;min-width:88px;min-height:46px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    color:var(--text);font-size:15px;cursor:pointer;padding:10px 8px;
+  }
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+  .chip:active{transform:translateY(1px)}
+
+  /* keep-the-audio option — lives next to the record button, not in the
+     settings sheet, because it has to be decided before pressing record */
+  .rec-opt{margin-top:18px}
+  .rec-opt-tip{margin:6px 0 0}
+
+  /* ---------- transcript ---------- */
+  .paper{
+    background:var(--text);color:var(--on-text);border-radius:18px;
+    padding:14px 14px 10px;margin-top:18px;
+    box-shadow:0 14px 36px rgba(0,0,0,.35);
+  }
+  #transcript{
+    width:100%;min-height:220px;resize:vertical;
+    background:transparent;border:0;outline:none;
+    color:var(--on-text);font-family:var(--font-display);font-size:18px;line-height:1.55;
+    padding:0;
+  }
+  #transcript::placeholder{color:#8A8C7E}
+  .interim{
+    font-family:var(--font-display);font-size:18px;line-height:1.55;color:#7C8073;
+    min-height:0;margin:2px 0 0;
+  }
+  .paper-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    border-top:1px solid rgba(32,38,30,.14);margin-top:10px;padding-top:9px;
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6E7266;
+  }
+
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{
+    flex:1 1 0;min-width:98px;min-height:48px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    color:var(--text);font-size:15px;cursor:pointer;padding:12px 10px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn:active{background:var(--surface-2)}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:#E9B79F;border-color:rgba(196,100,60,.45)}
+
+  .status{
+    font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--text-2);
+    margin:14px 0 0;min-height:18px;
+  }
+  .status.err{color:#EEA98A}
+  .status.busy b{color:var(--accent);font-weight:400}
+
+  /* ---------- settings sheet ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(8,14,11,.6);backdrop-filter:blur(2px);z-index:8}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:9;
+    background:var(--surface);border-top:1px solid var(--border);
+    border-radius:20px 20px 0 0;
+    padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height:88dvh;overflow:auto;
+    max-width:680px;margin:0 auto;
+  }
+  .sheet h2{font-family:var(--font-display);font-weight:400;font-size:22px;margin:2px 0 4px}
+  .sheet p.help{font-size:13px;color:var(--text-2);margin:0 0 12px}
+  .grid{display:grid;gap:12px}
+  label.stack{display:grid;gap:6px}
+  label.stack > span{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);
+  }
+  input[type=text],input[type=password],select,textarea.hint{
+    width:100%;font-size:16px;font-family:var(--font-ui);
+    background:var(--bg);color:var(--text);
+    border:1px solid var(--border);border-radius:12px;padding:12px 13px;min-height:48px;
+  }
+  textarea.hint{min-height:76px;resize:vertical;line-height:1.4}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .row2{display:flex;gap:8px;align-items:flex-end}
+  .row2 > *{flex:1 1 0;min-width:0}
+  .row2 > button{flex:0 0 auto}
+  .toggle{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--text)}
+  .toggle input{width:22px;height:22px;accent-color:var(--accent)}
+  .tiny{font-size:12px;color:var(--text-2);font-family:var(--font-mono);line-height:1.5}
+  .tiny a{color:var(--accent)}
+  hr.sep{border:0;border-top:1px solid var(--border);margin:16px 0}
+  .sheet-foot{display:flex;gap:8px;margin-top:18px}
+
+  @media (prefers-reduced-motion: reduce){
+    .ring{transition:none}
+  }
+  @media (min-width:620px){
+    .wordmark{font-size:34px}
+    .stage{height:320px}
+  }
+</style>
+</head>
+<body>
+<!-- ===== toolbar nav — paste right after <body> ===== -->
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so there the button
+     could only ever name the fallback route - not worth a slot in the nav.
+     Saves still take the share route on their own, and ScuLaFolder.chooser()
+     still opens the sheet. The language toggle inherits the auto margin that
+     used to push it to the right. */
+  @media (hover: none) and (pointer: coarse){
+    #site-nav #navFolderBtn{ display:none; }
+    #site-nav #navLangBtn{ margin-left:auto; }
+  }
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script type="module" src="https://apis.google.com/js/api.js"></script>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+
+<div class="top">
+  <div class="brand">
+    <p class="eyebrow" id="eyebrow" data-i="eyebrow">dictare · română / english</p>
+    <h1 class="wordmark">Caiet vocal</h1>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="setBtn" type="button" data-i="settings">Setări</button>
+  </div>
+</div>
+
+<main>
+  <div class="notice hidden" id="secureWarn"></div>
+  <div class="notice hidden" id="setupWarn"></div>
+
+  <div class="stage idle" id="stage">
+    <div class="rings" aria-hidden="true">
+      <div class="ring" data-i0></div>
+      <div class="ring" data-i1></div>
+      <div class="ring" data-i2></div>
+      <div class="ring" data-i3></div>
+    </div>
+    <button class="btn-rec" id="recBtn" type="button">
+      <span class="dot"></span>
+      <span class="label" id="recLabel">Înregistrează</span>
+    </button>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+
+  <label class="toggle rec-opt">
+    <input type="checkbox" id="keepAudio">
+    <span data-i="keepAudioLabel">Salvează și sunetul înregistrării</span>
+  </label>
+  <p class="tiny rec-opt-tip" data-i="keepAudioTip">Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.</p>
+
+  <p class="field-label" data-i="langLabel">Limba vorbită</p>
+  <div class="chips" role="group" id="langChips">
+    <button class="chip" type="button" data-lang="ro" aria-pressed="true">Română</button>
+    <button class="chip" type="button" data-lang="en" aria-pressed="false">English</button>
+    <button class="chip" type="button" data-lang="auto" aria-pressed="false" data-i="auto">Automat</button>
+  </div>
+
+  <p class="field-label" data-i="engineLabel">Motor de transcriere</p>
+  <div class="chips" role="group" id="engineChips">
+    <button class="chip" type="button" data-engine="api" aria-pressed="true" data-i="engApi">Server (precis)</button>
+    <button class="chip" type="button" data-engine="live" aria-pressed="false" data-i="engLive">Browser (fără cheie)</button>
+  </div>
+
+  <div class="paper">
+    <textarea id="transcript" spellcheck="true" placeholder="Textul apare aici." data-i-placeholder="placeholder"></textarea>
+    <p class="interim" id="interim"></p>
+    <div class="paper-foot">
+      <span id="counts">0 cuvinte</span>
+      <span id="segInfo"></span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button" data-i="copy">Copiază</button>
+    <button class="btn" id="shareBtn" type="button" data-i="share">Trimite</button>
+    <button class="btn" id="dlBtn" type="button" data-i="download">Descarcă</button>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="fileBtn" type="button" data-i="importFile">Transcrie un fișier audio</button>
+    <button class="btn ghost danger" id="clearBtn" type="button" data-i="clear">Șterge tot</button>
+  </div>
+  <input type="file" id="fileInput" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+
+  <p class="status" id="status"></p>
+</main>
+
+<div class="scrim hidden" id="scrim"></div>
+<div class="sheet hidden" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle" data-i="settings">Setări</h2>
+  <p class="help" data-i="setHelp">Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.</p>
+
+  <div class="grid">
+    <label class="stack">
+      <span data-i="provider">Furnizor</span>
+      <select id="provider">
+        <option value="groq">Groq — Whisper large v3</option>
+        <option value="openai">OpenAI</option>
+        <option value="custom" data-i="ownServer">Server propriu (proxy)</option>
+      </select>
+    </label>
+
+    <label class="stack" id="endpointWrap">
+      <span data-i="endpoint">Adresa proxy-ului</span>
+      <input type="text" id="endpoint" inputmode="url" placeholder="/api/transcribe" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+
+    <label class="stack">
+      <span data-i="apiKey">Cheie API</span>
+      <span class="row2">
+        <input type="password" id="apiKey" placeholder="gsk_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="icon-btn" id="peekBtn" type="button" data-i="show">Arată</button>
+      </span>
+    </label>
+    <p class="tiny" id="keyTip"></p>
+
+    <label class="stack">
+      <span data-i="model">Model</span>
+      <input type="text" id="model" list="modelList" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <datalist id="modelList"></datalist>
+    </label>
+
+    <label class="stack">
+      <span data-i="hint">Termeni utili (opțional)</span>
+      <textarea class="hint" id="hint" placeholder="ex. Netopia, răsaduri, semănare directă, Darcy-Weisbach"></textarea>
+    </label>
+
+    <label class="stack">
+      <span data-i="segLen">Lungimea unui segment</span>
+      <select id="segLen">
+        <option value="2">2 min</option>
+        <option value="5" selected>5 min</option>
+        <option value="10">10 min</option>
+        <option value="0" data-i="segOff">Fără împărțire</option>
+      </select>
+    </label>
+
+    <hr class="sep">
+
+    <label class="toggle">
+      <input type="checkbox" id="tidy">
+      <span data-i="tidyLabel">Corectează punctuația și diacriticele după transcriere</span>
+    </label>
+    <label class="stack">
+      <span data-i="tidyModel">Model pentru corectură</span>
+      <input type="text" id="tidyModel" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+  </div>
+
+  <div class="sheet-foot">
+    <button class="btn" id="saveBtn" type="button" data-i="save">Salvează</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1. i18n
+   ============================================================ */
+const I18N = {
+  ro:{
+    eyebrow:"dictare · română / english",
+    settings:"Setări", langLabel:"Limba vorbită", auto:"Automat",
+    engineLabel:"Motor de transcriere", engApi:"Server (precis)", engLive:"Browser (fără cheie)",
+    copy:"Copiază", share:"Trimite", download:"Descarcă", clear:"Șterge tot",
+    importFile:"Transcrie un fișier audio",
+    rec:"Înregistrează", stop:"Oprește",
+    keepAudioLabel:"Salvează și sunetul înregistrării",
+    keepAudioTip:"Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.",
+    noAudio:"Nu s-a păstrat niciun fișier audio pentru acest text.",
+    setHelp:"Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.",
+    provider:"Furnizor", ownServer:"Server propriu (proxy)", endpoint:"Adresa proxy-ului",
+    apiKey:"Cheie API", show:"Arată", hide:"Ascunde", model:"Model",
+    hint:"Termeni utili (opțional)", segLen:"Lungimea unui segment", segOff:"Fără împărțire",
+    tidyLabel:"Corectează punctuația și diacriticele după transcriere",
+    tidyModel:"Model pentru corectură", save:"Salvează",
+    placeholder:"Textul apare aici.",
+    words:n=>n+(n===1?" cuvânt":" cuvinte"),
+    listening:"Ascult. Ține ecranul aprins.",
+    transcribing:n=>"Se transcrie segmentul "+n+"…",
+    doneSeg:n=>"Segmentul "+n+" e gata.",
+    tidying:"Se corectează textul…",
+    ready:"Gata.",
+    copied:"Copiat.",
+    cleared:"Text șters.",
+    micDenied:"Microfonul e blocat. Permite accesul în setările browserului, apoi reîncarcă pagina.",
+    noRecorder:"Browserul acesta nu poate înregistra audio. Încearcă Safari pe iPhone sau Chrome pe tabletă.",
+    insecure:"Microfonul funcționează doar pe <b>https://</b> sau localhost. Deschis din fișier local (file://) sau http, browserul nu dă acces la microfon.",
+    needKey:"Adaugă o cheie API în Setări, sau comută pe „Browser (fără cheie)”.",
+    errNoKey:"Lipsește cheia API.",
+    errNoEndpoint:"Lipsește adresa proxy-ului.",
+    errNetwork:"Cererea nu a ajuns la server (rețea sau CORS). Dacă furnizorul blochează cererile din browser, folosește un proxy pe serverul tău.",
+    err401:"Cheie respinsă",
+    err413:"Fișierul e prea mare. Alege un segment mai scurt în Setări.",
+    err429:"Prea multe cereri, mai încearcă",
+    liveUnsupported:"Dictarea din browser nu e disponibilă aici (frecvent pe tabletele fără servicii Google). Folosește motorul „Server (precis)”.",
+    liveAuto:"Dictarea din browser are nevoie de o limbă anume; folosesc româna.",
+    liveOn:"Dictare activă. Vorbește normal.",
+    fileReading:"Se transcrie fișierul…",
+    keyTipGroq:'Cheie de la <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 scrie corect cu diacritice. Ca să generezi una: intră pe link, conectează-te (sau creează cont gratuit), apasă „Create API Key”, dă-i un nume și copiaz-o — apare o singură dată, deci lipește-o aici acum.',
+    keyTipOpenAI:'Cheie de la platform.openai.com/api-keys.',
+    keyTipCustom:'Trimite POST multipart către adresa ta; cheia rămâne pe server. Lasă câmpul de cheie gol.',
+    tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB)."
+  },
+  en:{
+    eyebrow:"dictation · romanian / english",
+    settings:"Settings", langLabel:"Spoken language", auto:"Auto",
+    engineLabel:"Transcription engine", engApi:"Server (accurate)", engLive:"Browser (no key)",
+    copy:"Copy", share:"Share", download:"Download", clear:"Clear all",
+    importFile:"Transcribe an audio file",
+    rec:"Record", stop:"Stop",
+    keepAudioLabel:"Also save the sound of the recording",
+    keepAudioTip:"Tick this before recording. The audio file is saved on “Download”, under the same name as the text.",
+    noAudio:"No audio was kept for this text.",
+    setHelp:"The key stays on this device. Audio goes only to the provider you pick.",
+    provider:"Provider", ownServer:"Your own server (proxy)", endpoint:"Proxy address",
+    apiKey:"API key", show:"Show", hide:"Hide", model:"Model",
+    hint:"Useful terms (optional)", segLen:"Segment length", segOff:"No splitting",
+    tidyLabel:"Fix punctuation and diacritics after transcribing",
+    tidyModel:"Model for the cleanup pass", save:"Save",
+    placeholder:"Your text appears here.",
+    words:n=>n+(n===1?" word":" words"),
+    listening:"Listening. Keep the screen on.",
+    transcribing:n=>"Transcribing segment "+n+"…",
+    doneSeg:n=>"Segment "+n+" done.",
+    tidying:"Cleaning up the text…",
+    ready:"Ready.",
+    copied:"Copied.",
+    cleared:"Text cleared.",
+    micDenied:"The microphone is blocked. Allow access in your browser settings, then reload.",
+    noRecorder:"This browser can't record audio. Try Safari on iPhone or Chrome on the tablet.",
+    insecure:"The microphone only works over <b>https://</b> or localhost. Opened from a local file (file://) or plain http, the browser won't grant mic access.",
+    needKey:"Add an API key in Settings, or switch to “Browser (no key)”.",
+    errNoKey:"API key missing.",
+    errNoEndpoint:"Proxy address missing.",
+    errNetwork:"The request never reached the server (network or CORS). If the provider blocks browser calls, route it through a proxy on your own server.",
+    err401:"Key rejected",
+    err413:"File too large. Pick a shorter segment in Settings.",
+    err429:"Too many requests, try again",
+    liveUnsupported:"Browser dictation isn't available here (common on tablets without Google services). Use the “Server (accurate)” engine.",
+    liveAuto:"Browser dictation needs a specific language; using Romanian.",
+    liveOn:"Dictation on. Speak normally.",
+    fileReading:"Transcribing the file…",
+    keyTipGroq:'Key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 handles Romanian diacritics well. To generate one: open the link, sign in (or create a free account), click “Create API Key”, name it, and copy it — it is shown only once, so paste it here right away.',
+    keyTipOpenAI:'Key from platform.openai.com/api-keys.',
+    keyTipCustom:'Sends a multipart POST to your address; the key stays on the server. Leave the key field empty.',
+    tooBig:"File is too large for a single request (over 25 MB)."
+  }
+};
+let UI = "ro";
+function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+
+/* ============================================================
+   2. Providers
+   ============================================================ */
+const PROVIDERS = {
+  groq:{
+    url:"https://api.groq.com/openai/v1/audio/transcriptions",
+    models:["whisper-large-v3","whisper-large-v3-turbo"],
+    chatUrl:"https://api.groq.com/openai/v1/chat/completions",
+    chatModel:"llama-3.3-70b-versatile",
+    keyPlaceholder:"gsk_…", tip:"keyTipGroq"
+  },
+  openai:{
+    url:"https://api.openai.com/v1/audio/transcriptions",
+    models:["gpt-4o-transcribe","whisper-1","gpt-4o-mini-transcribe"],
+    chatUrl:"https://api.openai.com/v1/chat/completions",
+    chatModel:"gpt-4o-mini",
+    keyPlaceholder:"sk-…", tip:"keyTipOpenAI"
+  },
+  custom:{
+    url:"", models:["whisper-large-v3"],
+    chatUrl:"", chatModel:"",
+    keyPlaceholder:"", tip:"keyTipCustom"
+  }
+};
+
+/* ============================================================
+   3. Settings store (persists where storage exists, memory otherwise)
+   ============================================================ */
+const KEY = "caiet-vocal:settings";
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__cv","1"); localStorage.removeItem("__cv"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+
+const S = {
+  ui:"ro", lang:"ro", engine:"api",
+  provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
+  hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile",
+  keepAudio:false
+};
+
+/* ============================================================
+   4. DOM
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const stage=$("#stage"), recBtn=$("#recBtn"), recLabel=$("#recLabel"), clock=$("#clock");
+const rings=[...document.querySelectorAll(".ring")];
+const ta=$("#transcript"), interim=$("#interim"), counts=$("#counts"), segInfo=$("#segInfo");
+const statusEl=$("#status"), secureWarn=$("#secureWarn"), setupWarn=$("#setupWarn");
+const sheet=$("#sheet"), scrim=$("#scrim");
+const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
+const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
+const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
+const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio");
+
+function say(msg, kind){
+  statusEl.className = "status" + (kind ? " " + kind : "");
+  statusEl.innerHTML = msg || "";
+}
+function updateCounts(){
+  const txt = ta.value.trim();
+  const n = txt ? txt.split(/\s+/).length : 0;
+  counts.textContent = t("words", n);
+}
+function appendText(text){
+  if(!text) return;
+  const cur = ta.value.replace(/\s+$/,"");
+  ta.value = cur ? cur + "\n\n" + text : text;
+  updateCounts();
+  ta.scrollTop = ta.scrollHeight;
+}
+
+/* ============================================================
+   5. Language / engine chips
+   ============================================================ */
+function bindChips(sel, attr, onPick){
+  const box = $(sel);
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button[" + attr + "]");
+    if(!b) return;
+    [...box.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    onPick(b.getAttribute(attr));
+  });
+}
+bindChips("#langChips","data-lang", v => { S.lang = v; save(); if(live.active){ stopLive(); startLive(); } });
+bindChips("#engineChips","data-engine", v => { S.engine = v; save(); checkSetup(); });
+
+/* ============================================================
+   6. UI language
+   ============================================================ */
+const LANG_KEY = "scula:ui-lang";
+const UI_ATTRS = ["placeholder", "title", "aria-label", "value", "alt"];
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  const navBtn = document.getElementById("navLangBtn");
+  if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
+  try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
+  recLabel.textContent = rec.active ? t("stop") : t("rec");
+  const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+  secureWarn.innerHTML = t("insecure");
+  updateCounts(); updateProviderUI(); checkSetup();
+}
+window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); });
+
+/* ============================================================
+   7. Settings sheet
+   ============================================================ */
+function openSheet(){ sheet.classList.remove("hidden"); scrim.classList.remove("hidden"); }
+function closeSheet(){ sheet.classList.add("hidden"); scrim.classList.add("hidden"); }
+$("#setBtn").addEventListener("click", openSheet);
+scrim.addEventListener("click", closeSheet);
+$("#peekBtn").addEventListener("click", () => {
+  apiKeyEl.type = apiKeyEl.type === "password" ? "text" : "password";
+  $("#peekBtn").textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+});
+function updateProviderUI(){
+  const p = PROVIDERS[providerSel.value] || PROVIDERS.groq;
+  apiKeyEl.placeholder = p.keyPlaceholder;
+  modelList.innerHTML = p.models.map(m => '<option value="' + m + '"></option>').join("");
+  endpointWrap.classList.toggle("hidden", providerSel.value !== "custom");
+  keyTip.innerHTML = t(p.tip);
+}
+providerSel.addEventListener("change", () => {
+  const p = PROVIDERS[providerSel.value];
+  modelEl.value = p.models[0] || "";
+  tidyModelEl.value = p.chatModel || "";
+  updateProviderUI();
+});
+$("#saveBtn").addEventListener("click", () => {
+  S.provider = providerSel.value;
+  S.key = apiKeyEl.value.trim();
+  S.model = modelEl.value.trim() || PROVIDERS[S.provider].models[0] || "";
+  S.endpoint = endpointEl.value.trim();
+  S.hint = hintEl.value.trim();
+  S.segMin = parseInt(segLenEl.value, 10) || 0;
+  S.tidy = tidyEl.checked;
+  S.tidyModel = tidyModelEl.value.trim();
+  save(); closeSheet(); checkSetup(); say(t("ready"));
+});
+async function save(){ try{ await store.set(KEY, JSON.stringify(S)); }catch(e){} try{ await store.set(LANG_KEY, S.ui); }catch(e){} }
+async function load(){
+  let raw = null;
+  try{ raw = await store.get(KEY); }catch(e){}
+  if(raw){ try{ Object.assign(S, JSON.parse(raw)); }catch(e){} }
+  // Shared LANG_KEY (docs/I18N.md) is the source of truth once it exists;
+  // S.ui (from the per-app settings blob above) is the back-compat fallback.
+  let sharedLang = null;
+  try{ sharedLang = await store.get(LANG_KEY); }catch(e){}
+  S.ui = sharedLang === "en" || sharedLang === "ro" ? sharedLang : S.ui;
+  UI = S.ui === "en" ? "en" : "ro";
+  providerSel.value = S.provider in PROVIDERS ? S.provider : "groq";
+  apiKeyEl.value = S.key || "";
+  modelEl.value = S.model || PROVIDERS[providerSel.value].models[0];
+  endpointEl.value = S.endpoint || "";
+  hintEl.value = S.hint || "";
+  segLenEl.value = String(S.segMin);
+  tidyEl.checked = !!S.tidy;
+  tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
+  keepAudioEl.checked = !!S.keepAudio;
+  document.querySelectorAll("#langChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
+  document.querySelectorAll("#engineChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.engine === S.engine)));
+  applyUILang();
+}
+
+function checkSetup(){
+  const needsKey = S.engine === "api" && S.provider !== "custom" && !S.key;
+  const needsUrl = S.engine === "api" && S.provider === "custom" && !S.endpoint;
+  if(needsKey || needsUrl){
+    setupWarn.textContent = needsUrl ? t("errNoEndpoint") : t("needKey");
+    setupWarn.classList.remove("hidden");
+  } else {
+    setupWarn.classList.add("hidden");
+  }
+}
+
+/* ============================================================
+   8. Secure-context check
+   ============================================================ */
+if(!window.isSecureContext){ secureWarn.classList.remove("hidden"); }
+
+/* ============================================================
+   9. Recording (MediaRecorder) with segment rotation
+   ============================================================ */
+function pickMime(){
+  if(typeof MediaRecorder === "undefined") return null;
+  const cand = [
+    ["audio/webm;codecs=opus","webm"],
+    ["audio/ogg;codecs=opus","ogg"],
+    ["audio/mp4;codecs=mp4a.40.2","m4a"],
+    ["audio/mp4","m4a"],
+    ["audio/aac","m4a"]
+  ];
+  for(const [m,e] of cand){
+    try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return {mime:m, ext:e}; }catch(_){}
+  }
+  return {mime:"", ext:"webm"};
+}
+
+const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, timer:null, rot:null, rotating:false, n:0 };
+
+/* Keeping the sound is a *second* MediaRecorder on the same stream, running
+   uninterrupted for the whole session. The transcription recorder above is
+   rotated every S.segMin minutes, and its segments are separate containers -
+   glueing them back together does not produce a playable file. One recorder
+   that never stops does. */
+const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null };
+
+// Read the checkbox once, when recording starts: what was ticked then is what
+// gets recorded. Any earlier take is dropped here, so a new recording never
+// leaves the previous session's sound behind to be saved with the new text.
+function armAudio(){
+  audio.armed = !!keepAudioEl.checked;
+  audio.blob = null; audio.chunks = [];
+}
+
+// `stream` is the recording stream when there is one (the API engine); browser
+// dictation has none, so ask for our own and stop it again when done.
+async function startAudioKeep(stream){
+  if(!audio.armed || typeof MediaRecorder === "undefined") return;
+  if(audio.mr && audio.mr.state === "recording") return;
+  if(!stream){
+    try{ stream = audio.own = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+    catch(e){ audio.armed = false; return; }
+  }
+  const fmt = pickMime();
+  audio.ext = fmt.ext;
+  const opts = {};
+  if(fmt.mime) opts.mimeType = fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ audio.mr = new MediaRecorder(stream, opts); }
+  catch(e){ try{ audio.mr = new MediaRecorder(stream); }catch(e2){ audio.armed = false; return; } }
+  audio.chunks = [];
+  audio.mr.ondataavailable = ev => { if(ev.data && ev.data.size) audio.chunks.push(ev.data); };
+  audio.mr.onstop = () => {
+    const type = audio.chunks.length ? (audio.chunks[0].type || fmt.mime) : fmt.mime;
+    const blob = new Blob(audio.chunks, {type: type || "audio/webm"});
+    audio.chunks = [];
+    audio.blob = blob.size > 1200 ? blob : null;
+    stopOwnStream();
+  };
+  try{ audio.mr.start(); }catch(e){ audio.armed = false; stopOwnStream(); }
+}
+
+function stopOwnStream(){
+  if(audio.own){ audio.own.getTracks().forEach(tr => tr.stop()); audio.own = null; }
+}
+function stopAudioKeep(){
+  try{ if(audio.mr && audio.mr.state !== "inactive"){ audio.mr.stop(); return; } }catch(e){}
+  stopOwnStream();
+}
+
+keepAudioEl.addEventListener("change", () => { S.keepAudio = keepAudioEl.checked; save(); });
+const queue = { items:[], busy:false, done:0 };
+let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
+
+recBtn.addEventListener("click", () => {
+  if(S.engine === "live"){ live.active ? stopLive() : startLive(); return; }
+  rec.active ? stopRec() : startRec();
+});
+
+async function startRec(){
+  if(typeof MediaRecorder === "undefined"){ say(t("noRecorder"), "err"); return; }
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  if(S.provider === "custom" && !S.endpoint){ say(t("errNoEndpoint"), "err"); openSheet(); return; }
+
+  try{
+    rec.stream = await navigator.mediaDevices.getUserMedia({
+      audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+  }catch(e){ say(t("micDenied"), "err"); return; }
+
+  rec.fmt = pickMime();
+  armAudio(); startAudioKeep(rec.stream);
+  rec.active = true; rec.n = 0; rec.t0 = Date.now();
+  queue.done = 0;
+  setRecUI(true);
+  say(t("listening"), "busy");
+  startMeter(rec.stream);
+  requestWakeLock();
+  rec.timer = setInterval(tick, 250); tick();
+  startSegment();
+}
+
+function startSegment(){
+  const opts = {};
+  if(rec.fmt.mime) opts.mimeType = rec.fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ rec.mr = new MediaRecorder(rec.stream, opts); }
+  catch(e){ try{ rec.mr = new MediaRecorder(rec.stream); }catch(e2){ say(t("noRecorder"),"err"); return; } }
+  rec.chunks = [];
+  rec.n++;
+  rec.mr.ondataavailable = ev => { if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
+  rec.mr.onstop = () => {
+    const type = rec.chunks.length ? (rec.chunks[0].type || rec.fmt.mime) : rec.fmt.mime;
+    const blob = new Blob(rec.chunks, {type:type || "audio/webm"});
+    rec.chunks = [];
+    if(blob.size > 1200) enqueue(blob, rec.fmt.ext);
+    if(rec.rotating && rec.active){ rec.rotating = false; startSegment(); armRotation(); }
+  };
+  rec.mr.start();
+  armRotation();
+}
+
+function armRotation(){
+  clearTimeout(rec.rot);
+  if(!S.segMin) return;
+  rec.rot = setTimeout(() => {
+    if(rec.active && rec.mr && rec.mr.state === "recording"){ rec.rotating = true; rec.mr.stop(); }
+  }, S.segMin * 60000);
+}
+
+function stopRec(){
+  rec.active = false; rec.rotating = false;
+  clearTimeout(rec.rot); clearInterval(rec.timer);
+  try{ if(rec.mr && rec.mr.state !== "inactive") rec.mr.stop(); }catch(e){}
+  stopAudioKeep();
+  stopMeter();
+  releaseWakeLock();
+  setRecUI(false);
+  setTimeout(() => {
+    if(rec.stream){ rec.stream.getTracks().forEach(tr => tr.stop()); rec.stream = null; }
+  }, 400);
+}
+
+function setRecUI(on){
+  recBtn.classList.toggle("on", on);
+  recLabel.textContent = on ? t("stop") : t("rec");
+  stage.classList.toggle("idle", !on);
+  if(!on){ rings.forEach(r => { r.style.transform = "scale(.55)"; r.style.opacity = ""; }); }
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+function tick(){
+  const ms = Date.now() - rec.t0;
+  clock.innerHTML = fmtTime(ms) + (S.segMin ? ' · <b>' + t("segLen").toLowerCase() + " " + S.segMin + " min</b>" : "");
+}
+
+/* --- level meter drives the growth rings --- */
+function startMeter(stream){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    srcNode = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512; analyser.smoothingTimeConstant = .75;
+    srcNode.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    let smooth = 0;
+    const loop = () => {
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0;
+      for(let i=0;i<buf.length;i++){ const v = Math.abs(buf[i]-128)/128; if(v>peak) peak = v; }
+      smooth = smooth*0.72 + peak*0.28;
+      const lvl = Math.min(1, smooth*3.2);
+      rings.forEach((r,i) => {
+        const base = 0.55 + i*0.13;
+        r.style.transform = "scale(" + (base + lvl*(0.16 + i*0.05)).toFixed(3) + ")";
+        r.style.opacity = (0.12 + lvl*(0.5 - i*0.09)).toFixed(3);
+      });
+      rafId = requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){}
+}
+function stopMeter(){
+  cancelAnimationFrame(rafId);
+  try{ if(srcNode) srcNode.disconnect(); }catch(e){}
+  try{ if(audioCtx) audioCtx.close(); }catch(e){}
+  audioCtx = analyser = srcNode = null;
+}
+
+async function requestWakeLock(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseWakeLock(){ try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){} }
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && rec.active && !wakeLock) requestWakeLock();
+});
+
+/* ============================================================
+   10. Transcription queue
+   ============================================================ */
+function enqueue(blob, ext){
+  queue.items.push({blob, ext});
+  segInfo.textContent = "";
+  pump();
+}
+async function pump(){
+  if(queue.busy || !queue.items.length) return;
+  queue.busy = true;
+  const item = queue.items.shift();
+  const idx = ++queue.done;
+  say(t("transcribing", idx), "busy");
+  segInfo.textContent = t("transcribing", idx);
+  try{
+    if(item.blob.size > 25*1024*1024) throw new Error(t("tooBig"));
+    let text = await transcribe(item.blob, item.ext, tailPrompt());
+    if(text && S.tidy){ say(t("tidying"), "busy"); text = await tidyUp(text); }
+    appendText(text);
+    say(t("doneSeg", idx));
+  }catch(e){
+    say(String(e.message || e), "err");
+  }
+  segInfo.textContent = "";
+  queue.busy = false;
+  if(queue.items.length) pump();
+}
+function tailPrompt(){
+  const tail = ta.value.trim().slice(-400);
+  const bits = [];
+  if(S.hint) bits.push(S.hint);
+  if(tail) bits.push(tail);
+  return bits.join(" ").slice(-800);
+}
+
+async function transcribe(blob, ext, promptText){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? S.endpoint : p.url;
+  if(!url) throw new Error(t("errNoEndpoint"));
+  if(S.provider !== "custom" && !S.key) throw new Error(t("errNoKey"));
+
+  const fd = new FormData();
+  fd.append("file", blob, "inregistrare." + (ext || "webm"));
+  fd.append("model", S.model || p.models[0]);
+  fd.append("response_format", "json");
+  fd.append("temperature", "0");
+  if(S.lang !== "auto") fd.append("language", S.lang);
+  if(promptText) fd.append("prompt", promptText);
+
+  const headers = {};
+  if(S.key) headers.Authorization = "Bearer " + S.key;
+
+  let res;
+  try{ res = await fetch(url, {method:"POST", headers, body:fd}); }
+  catch(e){ throw new Error(t("errNetwork")); }
+
+  if(!res.ok){
+    let msg = "HTTP " + res.status;
+    try{
+      const j = await res.json();
+      if(j && j.error) msg = j.error.message || (typeof j.error === "string" ? j.error : msg);
+    }catch(_){}
+    if(res.status === 401 || res.status === 403) msg = t("err401") + " · " + msg;
+    if(res.status === 413) msg = t("err413");
+    if(res.status === 429) msg = t("err429") + " · " + msg;
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return String(data.text || "").trim();
+}
+
+async function tidyUp(text){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? "" : p.chatUrl;
+  if(!url || !S.tidyModel) return text;
+  const sys = "You edit raw speech-to-text output. Fix punctuation, capitalisation and missing Romanian diacritics. " +
+              "Never translate, never rephrase, never add or remove words. Reply with the corrected text only.";
+  try{
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + S.key },
+      body: JSON.stringify({
+        model: S.tidyModel, temperature: 0,
+        messages: [{role:"system", content:sys}, {role:"user", content:text}]
+      })
+    });
+    if(!res.ok) return text;
+    const j = await res.json();
+    const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    return out ? String(out).trim() : text;
+  }catch(e){ return text; }
+}
+
+/* ============================================================
+   11. Browser dictation (Web Speech API)
+   ============================================================ */
+const live = { active:false, sr:null, wantOn:false };
+function startLive(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ say(t("liveUnsupported"), "err"); return; }
+  const lang = S.lang === "en" ? "en-US" : "ro-RO";
+  if(S.lang === "auto") say(t("liveAuto"));
+  try{
+    live.sr = new SR();
+  }catch(e){ say(t("liveUnsupported"), "err"); return; }
+  live.sr.lang = lang;
+  live.sr.continuous = true;
+  live.sr.interimResults = true;
+  live.wantOn = true; live.active = true;
+  armAudio(); startAudioKeep(null);
+  setRecUI(true);
+  say(t("liveOn"), "busy");
+  clock.textContent = lang;
+
+  live.sr.onresult = ev => {
+    let inter = "";
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const r = ev.results[i];
+      if(r.isFinal){
+        const txt = String(r[0].transcript).trim();
+        if(txt){
+          const cur = ta.value.replace(/\s+$/,"");
+          ta.value = cur ? cur + " " + txt : txt;
+          updateCounts(); ta.scrollTop = ta.scrollHeight;
+        }
+      } else {
+        inter += r[0].transcript;
+      }
+    }
+    interim.textContent = inter;
+    const pulse = Math.min(1, (inter.length % 40) / 40 + 0.25);
+    rings.forEach((r,i) => { r.style.transform = "scale(" + (0.55 + i*0.13 + pulse*0.1).toFixed(3) + ")"; });
+  };
+  live.sr.onerror = ev => {
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){ live.wantOn = false; say(t("micDenied"), "err"); }
+    else if(ev.error === "language-not-supported"){ live.wantOn = false; say(t("liveUnsupported"), "err"); }
+  };
+  live.sr.onend = () => {
+    interim.textContent = "";
+    if(live.wantOn){ try{ live.sr.start(); }catch(e){} }
+    else { live.active = false; setRecUI(false); clock.textContent = "00:00"; say(t("ready")); }
+  };
+  try{ live.sr.start(); }
+  catch(e){ live.wantOn = false; live.active = false; setRecUI(false); say(t("liveUnsupported"), "err"); }
+  requestWakeLock();
+}
+function stopLive(){
+  live.wantOn = false;
+  try{ if(live.sr) live.sr.stop(); }catch(e){}
+  stopAudioKeep();
+  live.active = false; setRecUI(false); interim.textContent = "";
+  clock.textContent = "00:00"; releaseWakeLock();
+}
+
+/* ============================================================
+   12. File import
+   ============================================================ */
+$("#fileBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files && fileInput.files[0];
+  fileInput.value = "";
+  if(!f) return;
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  const ext = (f.name.split(".").pop() || "m4a").toLowerCase();
+  say(t("fileReading"), "busy");
+  enqueue(f, ext);
+});
+
+/* ============================================================
+   13. Copy / share / download / clear
+   ============================================================ */
+$("#copyBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); say(t("copied")); }
+  catch(e){ ta.focus(); ta.select(); say(t("copied")); }
+});
+$("#shareBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  if(navigator.share){ try{ await navigator.share({title:"Caiet vocal", text:txt}); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(txt); say(t("copied")); }catch(e){} }
+});
+$("#dlBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  const stamp = new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
+  const blob = new Blob(["\uFEFF" + txt], {type:"text/plain;charset=utf-8"});
+  const name = "transcriere_" + stamp + ".txt";
+  // Folder, share sheet or download - ScuLaFolder decides and hands back a
+  // ready-made message (null when there is nothing to say, e.g. the person
+  // dismissed the share sheet). See the shared nav block.
+  const r = await ScuLaFolder.save(name, blob, { quiet:true });
+  const msgs = [r.message];
+  // The kept sound rides along under the name the text actually got (freeName
+  // may have bumped it to -1), so the pair stays together in the folder.
+  if(keepAudioEl.checked && !r.cancelled){
+    if(audio.blob){
+      const twin = (r.name || name).replace(/\.[^.]+$/, "") + "." + audio.ext;
+      const ra = await ScuLaFolder.save(twin, audio.blob, { quiet:true });
+      msgs.push(ra.message);
+    } else {
+      msgs.push(t("noAudio"));
+    }
+  }
+  const msg = msgs.filter(Boolean).join(" · ");
+  if(msg) say(msg);
+});
+$("#clearBtn").addEventListener("click", () => {
+  ta.value = ""; interim.textContent = ""; audio.blob = null; updateCounts(); say(t("cleared"));
+});
+ta.addEventListener("input", updateCounts);
+
+/* ============================================================
+   14. Go
+   ============================================================ */
+load();
+})();
+</script>
+</body>
+</html>

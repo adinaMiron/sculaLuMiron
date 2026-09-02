@@ -406,8 +406,8 @@
 </head>
 <body>
 <nav id="site-nav" aria-label="Instrumente">
-  <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
-  <a href="index.html" data-page="index.html">Caiet vocal</a>
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
@@ -619,9 +619,9 @@
      ============================================================ */
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
-    "index.html": "transcript",
+    "voice.html": "transcript",
     "editor.html": "desen",
-    "markdown-editor.html": "markdown",
+    "index.html": "markdown",
     "recipes.html": "retete"
   };
   var T = {
@@ -1740,7 +1740,7 @@ const PREF_KEY = "scula:recipes";
    to hand back null and call the file unreadable.
 
    So the decoder is here. Hand-rolled, like the knowledge graph in
-   markdown-editor.html and like everything else in this repo: no
+   index.html and like everything else in this repo: no
    dependency, no wasm, no fetch. It is a lot of code for one image
    format, but the alternative is a page a user cannot read at all.
 
@@ -4108,7 +4108,7 @@ const Recipes = (function(){
 
   /* ---------- reading the contract back ----------
      The inverse of buildDayMarkdown() in section 7 — docs/RECIPES.md § C.
-     A file this page wrote (or one edited since in markdown-editor.html)
+     A file this page wrote (or one edited since in index.html)
      comes back as the model it was built from, so the day cards, the
      search, the workbook and the HTML page all work on an imported plan
      exactly as they do on a freshly-read PDF.
@@ -6631,7 +6631,7 @@ function allMarkdown(){
 
 /* A deliberately small renderer: exactly the subset this page emits
    (headings, tables, ordered lists, *em*, **strong**) — enough to show the
-   file as markdown-editor.html will show it, without a second parser to
+   file as index.html will show it, without a second parser to
    keep in sync with anything. */
 function renderPreview(md){
   const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -8083,7 +8083,7 @@ async function ocrPages(imgs){
 /* ============================================================
    9. Saving — a .md file, a .json ingredient book, or a chapter
    ============================================================ */
-// Same rules as wbSlug() in markdown-editor.html: Romanian diacritics are
+// Same rules as wbSlug() in index.html: Romanian diacritics are
 // legal file names and survive; only what a file system rejects is replaced.
 const CTRL_CHARS = new RegExp("[\\u0000-\\u001F\\u007F]", "g");
 function slug(name, fallback){
@@ -8165,7 +8165,7 @@ async function readBookFile(file){
 
 /* ---- the Markdown editor's workbook store (docs/FEATURES.md § E) ----
    Same database, same records: a chapter written here shows up in
-   markdown-editor.html the next time it loads. The disk mirror is that
+   index.html the next time it loads. The disk mirror is that
    app's job — it writes the file on its next explicit save. */
 const WB_DB = "scula-md", WB_VER = 1;
 const WB_BOOKS = "workbooks", WB_CHAPTERS = "chapters", WB_META = "meta";

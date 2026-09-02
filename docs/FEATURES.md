@@ -23,7 +23,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
    and an `I18N` object with `data-i` attributes (`docs/I18N.md`) from the
    first commit. Retrofitting is what makes the other two apps expensive.
-5. Reuse the storage wrapper from `index.html:1133-1153` — never call
+5. Reuse the storage wrapper from `voice.html:1133-1153` — never call
    `localStorage` directly (these run from `file://`, where it can throw).
 6. Add a row to the table in `CLAUDE.md` and a section in `docs/MAP.md`.
 
@@ -130,7 +130,7 @@ come out right for free. `HANDOFF.md` § "Infinite canvas" has the rest.
 
 ---
 
-## C. New markdown syntax in `markdown-editor.html`
+## C. New markdown syntax in `index.html`
 
 The parser is unified: `parseMarkdown(md, opts)` (L3188) and
 `applyInline(text, opts)` (L3172) serve **both** the live preview
@@ -289,16 +289,16 @@ Full surface:
 
   | Page | Subfolder |
   |---|---|
-  | `index.html` | `transcript` |
+  | `voice.html` | `transcript` |
   | `editor.html` | `desen` |
-  | `markdown-editor.html` | `markdown` |
+  | `index.html` | `markdown` |
   | `recipes.html` | `retete` |
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
   and the first `save()` re-requests inside the click.
 - **Nothing is overwritten.** `a.png` taken → `a-1.png`, `a-2.png`, …
-- **Two files that must share a name** — `index.html` saves the recording's
+- **Two files that must share a name** — `voice.html` saves the recording's
   sound beside its transcript — take the second name from **`r.name`**, the
   name the first file actually got, never from the name you asked for:
   `freeName` may have bumped it to `-1`.
@@ -343,7 +343,7 @@ and `#navLangBtn` inherits the `margin-left:auto` that used to push it
 right. Nothing else changes: `currentMode()` already prefers `share` when
 there is no picker, so saves go to the OS share sheet on their own, and
 `ScuLaFolder.chooser()` still opens `#scula-sheet` for any page that wants
-to offer the choice (`markdown-editor.html` does, from its workbook sync).
+to offer the choice (`index.html` does, from its workbook sync).
 A page that needs the destination chooser on a phone must call
 `chooser()` — do not count on the nav button being there.
 
@@ -354,10 +354,10 @@ also needs an entry in `SUBDIR` — in all copies of the block.
 
 ---
 
-## E. Workbooks and chapters (`markdown-editor.html`)
+## E. Workbooks and chapters (`index.html`)
 
 A **workbook** holds **chapters**; one chapter is one markdown file, the
-way OneNote holds pages in a notebook. Code: `markdown-editor.html`
+way OneNote holds pages in a notebook. Code: `index.html`
 3396–3982, mapped function-by-function in `docs/MAP.md`.
 
 ### Two layers, and which one is the truth
@@ -494,7 +494,7 @@ rather than drawing or typing one. It has its own doc — **`docs/RECIPES.md`**
   an address they can repoint at a local copy.
 
 It writes chapters into the same workbook store as § E, one per day, so a
-day extracted here shows up in `markdown-editor.html` on its next load.
+day extracted here shows up in `index.html` on its next load.
 
 The nutrition pass is built (§ E there). Under every ingredient it names
 the USDA food it matched and what the quantity comes to — `120 g · 168
@@ -522,11 +522,11 @@ other save in this repo (§ D), and card 5 previews it in a sandboxed
 
 ---
 
-## G. The knowledge graph (`markdown-editor.html`)
+## G. The knowledge graph (`index.html`)
 
 Obsidian's graph view, on this app's own notion of a note. Circles are
 notes, lines are the links between them; hover to light up what something
-is connected to, click to open it. Code: `markdown-editor.html`
+is connected to, click to open it. Code: `index.html`
 2878–3164 (the link syntax) and 3984–4974 (the graph), mapped
 function-by-function in `docs/MAP.md`.
 
@@ -674,7 +674,7 @@ nothing.
 ### Testing
 
 `tests/graph.js` — the one script in that folder that drives
-`markdown-editor.html`. It covers the parser, jumping to an anchor, all
+`index.html`. It covers the parser, jumping to an anchor, all
 three scopes, every filter, the simulation actually settling, cross-chapter
 resolution, the `[[` suggester, both languages, the export fallback, and the
 same graph on a phone with a real touch drag. Canvas is asserted on pixels
@@ -685,7 +685,7 @@ approach used throughout".)
 
 ---
 
-## H. Search and filter (`markdown-editor.html`)
+## H. Search and filter (`index.html`)
 
 `🔍 Find` in the toolbar, `Ctrl+4` or `Ctrl+Shift+F`, opens a fourth side
 panel. Plain `Ctrl+F` is deliberately left to the browser: the preview is a

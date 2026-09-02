@@ -40,7 +40,7 @@
     --text: #F3EEE1;                 /* was --ink */
     --text-2: #9FB3A5;               /* was --muted */
     --text-3: #5A6A60;
-    --danger: #C4643C;               /* terracotta, matches index.html's --danger */
+    --danger: #C4643C;               /* terracotta, matches voice.html's --danger */
     --shadow: 0 2px 10px rgba(0,0,0,.35);
     --radius: 0.714rem;
   }
@@ -425,8 +425,8 @@
 <body>
 <!-- ===== toolbar nav — paste right after <body> ===== -->
 <nav id="site-nav" aria-label="Instrumente">
-  <a href="markdown-editor.html" data-page="markdown-editor.html">Markdown</a>
-  <a href="index.html" data-page="index.html">Caiet vocal</a>
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
@@ -639,9 +639,9 @@
      ============================================================ */
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
-    "index.html": "transcript",
+    "voice.html": "transcript",
     "editor.html": "desen",
-    "markdown-editor.html": "markdown",
+    "index.html": "markdown",
     "recipes.html": "retete"
   };
   var T = {
@@ -1499,7 +1499,7 @@ function pickerCallback(data) {
 
 
 /* ============================================================
-   1. i18n — pattern copied from index.html, see docs/I18N.md
+   1. i18n — pattern copied from voice.html, see docs/I18N.md
    ============================================================ */
 const I18N = {
   ro:{

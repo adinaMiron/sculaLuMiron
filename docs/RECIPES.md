@@ -320,7 +320,7 @@ Fixed points:
   unmatched rows would look complete when it is not.
 - Only markdown the editor already renders is used (headings, tables,
   ordered lists, `*em*`). No HTML comments, no front matter: both would
-  show up as literal text in `markdown-editor.html`'s preview.
+  show up as literal text in `index.html`'s preview.
 
 Cells escape `|`, so an ingredient can contain one safely.
 
@@ -328,7 +328,7 @@ Cells escape `|`, so an ingredient can contain one safely.
 
 A contract only earns the name if it can be read as well as written, so the
 inverse exists: `fromMarkdown(text)` → `{ days, source }`, the same model
-`parse()` produces, out of a file this page (or `markdown-editor.html`)
+`parse()` produces, out of a file this page (or `index.html`)
 wrote. Everything downstream then works on an imported plan exactly as it
 does on a freshly-read PDF — the day cards, the search, the `.md` save, the
 workbook, the HTML page.
@@ -627,10 +627,10 @@ Two buttons, both local:
 |---|---|
 | **Salvează .md** | one day → `<Ziua N>.md`; several days → one file named after the source. Always through `ScuLaFolder.save()` — folder on desktop, OS share sheet on a phone, download otherwise (`docs/FEATURES.md` § D). The page's subfolder is `retete` |
 | **Salvează baza (.json)** | the ingredient book (§ E), same route. *Citește o bază* reads one back and merges it |
-| **Adaugă în caiet** | writes one **chapter per day** into the Markdown editor's workbook store (`scula-md`), creating the workbook — *Rețete* by default — if it is missing. Same records, same fields as `markdown-editor.html` writes (`docs/FEATURES.md` § E), so the chapters simply appear there on its next load |
+| **Adaugă în caiet** | writes one **chapter per day** into the Markdown editor's workbook store (`scula-md`), creating the workbook — *Rețete* by default — if it is missing. Same records, same fields as `index.html` writes (`docs/FEATURES.md` § E), so the chapters simply appear there on its next load |
 
 The workbook route deliberately does **not** write the disk mirror: that
-belongs to `markdown-editor.html`, which writes the file on its next
+belongs to `index.html`, which writes the file on its next
 explicit save (a mirror write from here would need that page's `markdown`
 subfolder, not this page's). A day added here is safe in IndexedDB
 immediately; it reaches the folder when the editor next saves or syncs.

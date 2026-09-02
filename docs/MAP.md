@@ -22,8 +22,8 @@ Shared shape of all four files:
 ## The shared block (byte-identical in all four files)
 
 From the `<nav id="site-nav">` line through `<!-- ===== end toolbar nav ===== -->`
-(~650 lines). Rough starts: `index.html:226` · `editor.html:427` ·
-`markdown-editor.html:1402` · `recipes.html:408` — these drift; grep the
+(~650 lines). Rough starts: `voice.html:226` · `editor.html:427` ·
+`index.html:1402` · `recipes.html:408` — these drift; grep the
 `<nav id="site-nav"` line.
 
 Two features share it, because both must exist before any app script runs:
@@ -52,7 +52,7 @@ stayed identical.
 
 ---
 
-## index.html — 1749 lines · "Caiet vocal" (voice dictation)
+## voice.html — 1749 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
@@ -248,7 +248,7 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## markdown-editor.html — 6481 lines · Markdown editor
+## index.html — 6481 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
@@ -291,7 +291,7 @@ a `polyline`, whose vertices are all corners already.
 | 6275–6380 | Table modal: `rebuildTableGrid`, `insertTable`, `insertCodeBlock` |
 | 6382–6400 | Link modal: `openLinkModal`, `insertLink` |
 | 6402–6441 | Event listeners + keyboard shortcuts (Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**, Ctrl+S save chapter, **Ctrl+Alt+S** save all modified) |
-| **~6820–7110** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` ~L2146, status pill `#dictate-pill` ~L2279, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `index.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
+| **~6820–7110** | **Voice dictation** — a self-contained IIFE (`window.toggleDictation`, toolbar button `#btn-dictate` ~L2146, status pill `#dictate-pill` ~L2279, `dictate*` i18n keys). Reads the Caiet vocal settings from the shared **`caiet-vocal:settings`** blob via `store`; no settings UI of its own. Mirrors `voice.html` §§ 2, 9–11 (`PROVIDERS`, MediaRecorder + segment rotation + queue for the `api` engine, Web Speech for `live`). `emit()` writes at the caret — or, when the editor has no caret, appends a paragraph after the last line — then `scheduleAutosave()`s the chapter. `docs/FEATURES.md` § I |
 | 6443–6481 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 
 ### Workbooks (4050–4851) — `docs/FEATURES.md` § E
@@ -717,7 +717,7 @@ grep -n "X" *.html
 grep -n "#[0-9a-fA-F]\{3,8\}\b" editor.html | sed -n '20,$p'
 
 # every user-visible string in markup
-grep -n "placeholder=\"\|title=\"\|aria-label=\"" markdown-editor.html
+grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 
 # confirm nav still in sync + JS still parses — one command
 /verify

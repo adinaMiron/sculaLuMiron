@@ -6,17 +6,20 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `index.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `markdown-editor.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `index.html` | 6650 | 58k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
-"markdown page" → `markdown-editor.html` · "retete" / "rețete" →
-`recipes.html` · "index" / "voice" / "caiet vocal" → `index.html` ·
+"markdown page" / "index" → `index.html` · "retete" / "rețete" →
+`recipes.html` · "voice" / "caiet vocal" → `voice.html` ·
 "editor.html" / "mazgaleste" / "drawing page" → `editor.html`. The nav order
 is Markdown, Caiet vocal, Rețete, Mazgaleste, and the old "Editor" label is
-now "Mazgaleste".
+now "Mazgaleste". `index.html` is the markdown editor — it's the file
+served at the site root, and its nav link is the one highlighted as
+current when the site loads at `/` (see the `here` fallback in the shared
+nav script).
 
 For a feature/fix/styling change inside one app file, the **`app-change`
 skill** is the repeatable loop (locate → narrow read → edit → `/verify` →
@@ -25,7 +28,7 @@ sync docs).
 ## Rule 1: never read a whole HTML file
 
 Reading all four costs ~200k tokens; `recipes.html` alone is 84k and
-`markdown-editor.html` 58k. **Never `view` an entire app file.** Locate
+`index.html` 58k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
 ```bash
@@ -57,7 +60,7 @@ Do not read a doc the task doesn't touch.
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all four files — from the `<nav id="site-nav">` line through the
 `<!-- ===== end toolbar nav ===== -->` marker (~650 lines; starts near
-`index.html:226`, `editor.html:427`, `markdown-editor.html:1402`,
+`voice.html:226`, `editor.html:427`, `index.html:1402`,
 `recipes.html:408`, but these **drift** — grep the `<nav` line). It carries
 the nav links, the UI-language toggle, **and `window.ScuLaFolder`** — which
 decides where every saved file goes (see `docs/FEATURES.md` § D). Any change
@@ -74,13 +77,13 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `markdown-editor.html:1390` (docx import). Don't add more. The OCR
+  CDN in `index.html:1390` (docx import). Don't add more. The OCR
   engine in `recipes.html` is the one deliberate exception, and it is still
   not a file in this repo: Tesseract is fetched on first use from an address
   that is a visible, editable field, the page reads PDFs and takes pasted
   text without it, and pointing the field at a local `./ocr/` makes it work
   offline. It loads on arrival of a photo now rather than on a button press
-  — `docs/RECIPES.md` § A. The knowledge graph in `markdown-editor.html`
+  — `docs/RECIPES.md` § A. The knowledge graph in `index.html`
   and the JPEG 2000 decoder in `recipes.html` § 3 are what the rule looks
   like when it holds: a force-graph library and an image codec, both
   hand-rolled rather than pulled in. The codec is 1000 lines for one image
@@ -121,14 +124,14 @@ is the before-done check across all four.
 
 ```bash
 # JS in every <script> block still parses (verified working on all 4 files)
-for f in index.html editor.html markdown-editor.html recipes.html; do
+for f in voice.html editor.html index.html recipes.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `markdown-editor.html:1380` has attributes and is correctly skipped. If
+in `index.html:1380` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach. The
@@ -146,11 +149,11 @@ written and read back, the shareable HTML page **driven in the file it
 ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
 detail panels on both sides**, the whole OCR path against a stub engine,
 all three save routes), and for
-`markdown-editor.html`'s knowledge graph (`graph.js`), its search &
+`index.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`) and
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`), and for
-`index.html`'s keep-the-audio checkbox (`voice.js` — driven against
+`voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`

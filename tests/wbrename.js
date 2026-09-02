@@ -1,4 +1,4 @@
-// Inline rename of workbook / chapter names in markdown-editor.html.
+// Inline rename of workbook / chapter names in index.html.
 //
 // A name span (.wb-book-name / .wb-ch-name) renames on a double-click, or on
 // one click followed by F2. Enter / blur commits, Escape restores. A plain
@@ -13,7 +13,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 
 let failed = 0;
 function check(name, ok, extra) {

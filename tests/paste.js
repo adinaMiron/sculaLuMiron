@@ -1,4 +1,4 @@
-// Pasting a picture into markdown-editor.html (Ctrl+V).
+// Pasting a picture into index.html (Ctrl+V).
 //
 // Drives the real app off disk like find.js/graph.js and asserts on the real
 // textarea value, the real <img> the preview renders, and the real pixels the
@@ -9,7 +9,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 
 let failed = 0;
 function check(name, ok, extra) {

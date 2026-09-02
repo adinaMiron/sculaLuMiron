@@ -1,4 +1,4 @@
-// Ad-hoc Playwright checks for index.html ("Caiet vocal") - specifically the
+// Ad-hoc Playwright checks for voice.html ("Caiet vocal") - specifically the
 // "also save the sound of the recording" checkbox: what it records, when it
 // records it, and that the audio file lands next to the transcript under the
 // same name. Plain Node script, no framework - see README.md.
@@ -14,7 +14,7 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.VOICE_URL || 'file://' + path.resolve(__dirname, '..', 'index.html');
+const URL = process.env.VOICE_URL || 'file://' + path.resolve(__dirname, '..', 'voice.html');
 
 let failed = 0;
 function check(name, cond, detail) {

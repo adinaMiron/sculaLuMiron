@@ -1,4 +1,4 @@
-// Navigation panel in markdown-editor.html: clicking a heading takes both
+// Navigation panel in index.html: clicking a heading takes both
 // panes to it - the preview by the heading's id, the Markdown source by the
 // line it was read from.
 //
@@ -11,7 +11,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
-const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'markdown-editor.html');
+const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.html');
 
 let failed = 0;
 function check(name, ok, extra) {
