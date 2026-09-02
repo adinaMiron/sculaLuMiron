@@ -2173,7 +2173,7 @@
   <button class="tb-btn" onclick="toggleGraph()" data-i="graphBtn" data-i-title="graphTip" title="Knowledge graph (Ctrl+3)">🕸 Graph</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" id="btn-find" onclick="toggleFind()" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
+  <button class="tb-btn" id="btn-find" onclick="toggleFind(true)" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
   <button class="tb-btn" id="btn-workbooks" onclick="toggleWorkbooks()" data-i="workbooksBtn" data-i-title="workbooksTip" title="Workbooks (Ctrl+2)">📓 Workbooks</button>
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
@@ -2254,7 +2254,7 @@ Use the toolbar above to insert formatting.
   <div id="find-panel" class="collapsed">
     <div class="panel-header">
       <span class="panel-title" data-i="findTitle">Search &amp; filter</span>
-      <button class="panel-close" onclick="toggleFind()" data-i-title="closeFindTip" title="Close (Ctrl+4)">✕</button>
+      <button class="panel-close" onclick="toggleFind(true)" data-i-title="closeFindTip" title="Close (Ctrl+4)">✕</button>
     </div>
     <div class="find-controls">
       <div class="find-row">
@@ -3311,11 +3311,12 @@ async function initToolbarCollapse() {
   document.getElementById('btn-toolbar-toggle').classList.toggle('active', !collapsed);
 }
 // Opening the search panel is always a request to search: refresh what is in
-// it and put the cursor in the query box. Asking for it while it is open but
-// not focused means the same thing, so that focuses rather than closes.
-function toggleFind() {
+// it and put the cursor in the query box. A keyboard shortcut fired while it
+// is open but not focused means the same thing, so that focuses rather than
+// closes — but a click on the toolbar button or the ✕ always toggles.
+function toggleFind(fromClick) {
   const q = document.getElementById('find-q');
-  if (findIsOpen() && document.activeElement !== q) { q.focus(); q.select(); return; }
+  if (!fromClick && findIsOpen() && document.activeElement !== q) { q.focus(); q.select(); return; }
   togglePanelById('find-panel');
   if (findIsOpen()) {
     fdRefresh();

@@ -309,6 +309,18 @@ const SUPA = [
   check('asking for an open but unfocused panel focuses it', shortcut.kept, shortcut);
   check('Ctrl+4 closes and reopens the panel', shortcut.closed && shortcut.open, shortcut);
 
+  // A click on the toolbar button toggles the panel shut even though the click
+  // pulled focus off the query box — the "focus, don't close" path is keyboard-only.
+  const clickToggle = await page.evaluate(() => {
+    const btn = document.getElementById('btn-find');
+    const collapsed = () => document.getElementById('find-panel').classList.contains('collapsed');
+    if (collapsed()) btn.click();
+    const opened = !collapsed();
+    btn.click();                                     // click moves focus to the button
+    return { opened, closed: collapsed() };
+  });
+  check('the Find button toggles the panel back off when clicked', clickToggle.opened && clickToggle.closed, clickToggle);
+
   check('no page errors', errors.length === 0, errors);
 
   await browser.close();
