@@ -165,7 +165,9 @@ inline `#rrggbb` hex-colour swatch (`color.js` — the preview chip, the
 export string, and the graph scanner not minting a node for it), the
 💡 quick idea capture with its chapter matching and its `Idei` fallback
 (`idea.js`), the editor's own undo/redo history (`mdundo.js` — real
-keystrokes and the real toolbar buttons) and the copy-to-clipboard button
+keystrokes and the real toolbar buttons), the blank-line-above/below
+shortcuts (`mdlines.js` — Ctrl+Enter / Ctrl+Shift+Enter, caret placement
+and one-step undo) and the copy-to-clipboard button
 on code blocks in the HTML
 export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
