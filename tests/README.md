@@ -3,12 +3,14 @@
 Ad-hoc Playwright checks for `editor.html` (including `infinite.js`, the
 infinite canvas and what an export's size is) and `recipes.html`, and — in
 `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
-`importance.js`, `idea.js`, `mdundo.js` and `paste.js` — for
+`importance.js`, `idea.js`, `mdundo.js`, `paste.js` and `calendar.js` — for
 `index.html`'s knowledge graph, its search panel, its navigation
 panel, renaming a workbook or chapter in place, "Save all modified" and the
 pending-edit tracking under it, the TODO-workbook chapter filter, the
 `!nice`/`!important`/`!vital` importance markers, quick idea capture, its
-undo/redo history, and pasting a picture into it, plus — in `voice.js` — `voice.html`'s keep-the-audio
+undo/redo history, pasting a picture into it, and the `@date` markers it
+flags for the calendar, plus — in `calendar.js` — `calendar.html` itself, and
+— in `voice.js` — `voice.html`'s keep-the-audio
 checkbox, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
@@ -89,6 +91,7 @@ viewport without editing it:
 | `importance.js` | `index.html`'s importance markers: the toolbar select and `Ctrl+Alt+1/2/3` / `Ctrl+Alt+0` marking the caret's line or every line of a selection, the marker landing *after* the bullet, the `[ ]` of a task, the hashes of a heading and a `Name>> ` assignee, a second pick replacing rather than stacking, "Remove" clearing, blank lines skipped, the three colours asserted on the computed pill colour and on the block's left edge, the marker kept out of the heading slug and the nav label, `!nicely` / `wow!` / `![alt](…)` matching nothing, the label re-translating in place on a language switch, the export string carrying the label baked in with no `data-i`, and a click on a pill opening the search panel with its own token. Drives the in-memory document on `file://` |
 | `idea.js` | `index.html`'s quick idea capture: the 💡 button sitting immediately right of "New", `Ctrl+Alt+I` opening the box with the caret already in it and `Escape` closing it, the hint naming the chapter the idea will land in, `Ctrl+Enter` filing it, the `"Chapter: "` prefix stripped only when it matched (and kept when it did not), a case- and diacritic-folded name (`retete` → `Rețete`), the pending marker cleared so filing counts as a real save, the textarea moving with the file when the target happens to be the open chapter, the `Idei` workbook and today's chapter created on demand and then reused by a second idea the same day, an empty box filing nothing and staying open, and `Ctrl+I` inside the box leaving the editor's text alone. Drives the in-memory records on `file://` |
 | `voice.js` | `voice.html`'s "also save the sound of the recording" checkbox: ticked before recording, the transcript and a **playable** audio file come out under one name (the container's magic bytes are checked, not just the size); unticked, only the transcript; ticked only after recording, no file and the page says so; a second recording never inherits the first one's sound; and the label is translated. Runs against Chromium's fake microphone (`--use-fake-device-for-media-stream`), and asserts on the real files — on `file://` there is no directory picker, so every `ScuLaFolder.save` takes the download route and each saved file arrives as a Playwright download |
+| `calendar.js` | The calendar, both halves. `calendar.html`: an event added through the real modal and read back in **Google's own event shape** (`start.dateTime` with an offset, an IANA `timeZone`, a base32hex id, our fields as strings under `extendedProperties.private`); the month, week, day and agenda views, with the week block's `top`/`height` asserted as the percentages 14:00–15:30 actually works out to; **dragging the hour grid** from 09:00 to 11:00 prefilling that interval; an all-day span proving `end.date` is stored exclusive the way Google wants it; search folding both case and diacritics (`sedinta` finds `Ședință`); the four facet filters built from the events themselves; and the two exports captured off `ScuLaFolder.save` — the `.ics` checked for a `VCALENDAR` envelope, UTC `DTSTART` for timed events, `VALUE=DATE` for all-day ones, 75-octet folding, and a clean round-trip back through `fromICS`, the JSON checked as an array of `events.insert`-ready bodies. Then `index.html`: `@2026-09-03 14:00-15:30` and its `..` span rendering as pills while an e-mail address, a version number and a backticked marker render as none, and the 📅 button pushing every marker in the vault into the shared store — the title stripped of the bullet, the assignee and the importance marker, the line's `#tag` riding along, a second sync neither duplicating nor changing ids, and an edited marker moving its event while a deleted one takes its event with it. It also checks the things only a rendered page shows: the all-day strip pinned with the day header rather than left to scroll away, the event ink following its background's luminance (Google's palette runs from Banana to Tomato), a phone with no saved view opening on the agenda while a view the person picked survives a reload, and an end date set behind the start being clamped rather than stored backwards. Empties the store through the store's own API rather than `deleteDatabase`, which the open page blocks |
 | `paste.js` | Pasting a picture into `index.html` (Ctrl+V): the `data:` URI landing in the markdown at the caret, the `<img>` the preview renders, the export round-trip leaving the URI whole, a clipboard carrying text being left to the browser, a big paste capped at 1600 px and re-encoded as JPEG, and a transparent one staying PNG with its alpha intact — the pasted bytes are decoded back and asserted on pixels |
 
 `fixtures/` holds two small synthetic checkerboard PNGs (not real photos)
@@ -107,7 +110,7 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `drive.js` and `voice.js` are the scripts that do **not** use
+`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `calendar.js`, `drive.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway

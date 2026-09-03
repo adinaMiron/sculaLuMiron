@@ -1135,6 +1135,204 @@ Run: `/apptest mdundo`.
 
 ---
 
+## L. The calendar (`calendar.html` + `window.ScuLaCal`)
+
+Events on days and hours, a page to see them on, and one store every other
+page can write into. Two pieces:
+
+- **`window.ScuLaCal`** — the store, in the shared nav block beside
+  `ScuLaFolder` (CLAUDE.md rule 2). It is there for the same reason: no
+  build step, so the nav block is where shared code lives. Every page has
+  it, defined before any app script runs.
+- **`calendar.html`** — the page. Month / week / day / agenda, an editor,
+  search, filters, export and import. It owns no data format of its own.
+
+### The one decision: events are stored in Google's shape
+
+An event in the store **is** a Google Calendar API event resource. Not a
+private format converted on the way out — the same object, field for field:
+
+```js
+{
+  id: "scula1a2b3c…",                 // base32hex, 5-1024 chars: Google's rule
+  summary: "Ședință de proiect",
+  description: "…", location: "…",
+  status: "confirmed",
+  colorId: "5",                        // Google's own 1..11 palette
+  start: { dateTime: "2026-09-03T14:00:00+03:00", timeZone: "Europe/Bucharest" },
+  end:   { dateTime: "2026-09-03T15:30:00+03:00", timeZone: "Europe/Bucharest" },
+  recurrence: ["RRULE:FREQ=WEEKLY"],   // optional
+  reminders: { useDefault: true },
+  extendedProperties: { private: { sculaSource:"index.html", … } }
+}
+```
+
+That is the whole reason the export needs no converter:
+`ScuLaCal.toGoogleJSON(list)` drops `created`/`updated` (the API sets those)
+and returns the array. Each element is a body for `events.insert`. And it is
+why nothing can drift — there is no second format to keep in step.
+
+**Our own fields live in `extendedProperties.private`**, which Google
+round-trips, so they survive a trip through Google and back. Values there
+must be strings; `make()` coerces them.
+
+| Key | Means |
+|---|---|
+| `sculaSource` | the page that scraped it (`"index.html"`), absent if added by hand |
+| `sculaRef` | what it was scraped from — a chapter id |
+| `sculaKey` | the identity a re-scrape matches on (see `syncSource` below) |
+| `sculaCal` | the "calendar" (category) it belongs to — free text |
+| `sculaTags` | comma-separated tags |
+
+### ⚠ `end.date` is exclusive
+
+An all-day event's `end.date` is the first day it does **not** cover — same
+trap Google has. `@2026-09-03..2026-09-05` means three days, and is stored
+with `end.date = "2026-09-06"`.
+
+**`when(ev)` and `daysOf(ev)` are the only places that know this.** Read a
+range through them; never off `start`/`end` directly. `make({allDay, date,
+endDate})` does the conversion the other way, so a caller passes the last
+day it actually means.
+
+### The API
+
+```js
+ScuLaCal.make({ title, date, time, endDate, endTime, allDay, colorId,
+                location, description, recurrence, ext })   // -> an event
+ScuLaCal.put(ev) / .remove(id) / .putMany(list) / .all() / .get(id)
+ScuLaCal.when(ev)      // -> { start:Date, end:Date, allDay }
+ScuLaCal.daysOf(ev)    // -> ["2026-09-03", …] every day it touches
+ScuLaCal.priv(ev, k)   // an extendedProperties.private value, or ""
+ScuLaCal.toICS(list) / .fromICS(text) / .toGoogleJSON(list)
+ScuLaCal.findMarks(text) / .markRe() / .readMark(match)     // the @date syntax
+ScuLaCal.onChange(fn)  // this page and any other tab
+ScuLaCal.COLORS / .colorHex(id) / .newId() / .tz() / .meta(k) / .setMeta(k, v)
+```
+
+**Only `make()` knows Google's field names.** Build events with it rather
+than by hand, and a change to the shape is one edit.
+
+Storage is IndexedDB (`scula-cal`, stores `events` keyed by `id`, and
+`meta`), with a `localStorage` fallback and then an in-memory one, because
+these pages run from `file://` where either can throw.
+
+### `syncSource` — the hook for scraping events out of a page
+
+A page that finds dates in its own content calls one function:
+
+```js
+ScuLaCal.syncSource("index.html", null, events)   // -> {added, updated, removed}
+```
+
+Everything that source owns is **replaced** by `events`. Pass a `ref` to
+scope it to one chapter, or `null` for "everything from this page".
+
+The identity that makes a re-scrape idempotent is **`sculaKey`**: an
+incoming event whose key matches a stored one keeps that event's `id` and
+`created`. So re-running a sync moves an event rather than duplicating it,
+and a marker that was deleted takes its event with it. Pick a key that
+means "the same marker": `index.html` uses chapter + line number + the
+marker's own text.
+
+### The `@date` marker in markdown
+
+The syntax lives in `ScuLaCal`, not in `index.html`, so every page that
+learns to scrape dates reads the same one.
+
+```md
+@2026-09-03                            a whole day
+@2026-09-03 14:00                      an hour from 14:00
+@2026-09-03 14:00-15:30                an interval
+@2026-09-03..2026-09-05                several whole days, through the 5th
+@2026-09-03 14:00..2026-09-05 10:00    an interval across days
+```
+
+`03.09.2026` and `03/09/2026` are accepted too — that is how the date gets
+written by hand here. `22:00-01:00` rolls the end to the next day. An
+impossible date (`@2026-02-31`) matches nothing and stays plain text.
+
+The lead class is `TAG_RE`'s — a marker starts a line or follows a
+space/bracket — which is what keeps `ana@2026.com` and `@1.2.3` from being
+dates. In `applyInline` it runs **after** the inline-code rule, so a
+marker inside backticks now follows `>` and is left alone; same trick
+`TAG_RE` relies on (§ C).
+
+In `index.html` it renders as a `.md-date` pill in both the preview and the
+export. The label is a *formatted date*, not a fixed string, so it cannot
+carry a `data-i` key — `calRepaintLang()` re-formats every pill in place on
+a language switch, the way `gvRepaintLang`/`fdRepaintLang` do for their own
+generated text, and `applyUILang` calls it.
+
+**📅 Push dates** (header button, `Ctrl+Alt+D`) runs `calSyncAll()`: scan
+every chapter, build an event per marker, hand the lot to `syncSource`. The
+title is the line with the marker, the bullet, the `[ ]`, the assignee, the
+importance marker and the inline markdown stripped; the line's `#tags` ride
+along. It returns its promise — the writes are a chain of IndexedDB
+transactions, so "the button was clicked" is not yet "the events are there".
+
+### The page
+
+Four views off one `render()`, which filters, paints the sidebar and hands
+the stage to a builder. Views build detached nodes and swap them in once.
+
+| View | Notes |
+|---|---|
+| Month | 6×7, Monday-first, 3 chips a day then "+N more" |
+| Week / Day | one hour grid, `renderTime(days)` for both |
+| Agenda | grouped by day; **with a query typed the date window is dropped**, since a search that only looked forward would hide the thing being searched for |
+
+**The hour grid.** Timed events are positioned as a *percentage* of the
+column height, so the layout holds at any `--hour-h` and any root font
+size. Overlapping events are packed into lanes (`lanesFor`), counted per
+**cluster** of transitively-overlapping events rather than per day — one
+busy morning must not squeeze the rest of the day to half width. A block
+crossing midnight is clipped to its column; the next day draws its share.
+Dragging the grid paints a ghost and opens the editor on that interval,
+snapped to 15 minutes; a plain click gives an hour.
+
+**Filters** are built from the events themselves — no list to maintain.
+State keeps what is **hidden**, so an event carrying a brand-new tag shows
+up straight away instead of being silently filtered out. Counts come from
+after the query but before the facet filters, so a chip that is off still
+says what turning it back on would bring.
+
+### Getting it into Google Calendar
+
+Two routes, both from the sidebar, both exporting **what the filters left on
+screen** through `ScuLaFolder.save` (§ D):
+
+- **`.ics`** — the one a person uses: Google Calendar ▸ Settings ▸ Import &
+  export. Timed events go out in **UTC** rather than with a `TZID`: it needs
+  no `VTIMEZONE` block and every importer agrees what it means. Lines are
+  folded at 75 octets, CRLF, values escaped per RFC 5545.
+- **JSON** — the array of `events.insert` bodies, for anyone driving the API.
+  This is the route that carries the IANA `timeZone`, which is why the ICS
+  one can afford to be UTC.
+
+Import takes either back (`.ics` or our own JSON). An event arriving with
+Google's own id is renamed, since ids have to stay legal and unique here.
+
+### Adding to it
+
+- A new field on an event: add it to `make()` and, if it is ours rather than
+  Google's, to `extendedProperties.private` as a **string**.
+- A new view: a builder returning a node, a branch in `render()`, a button
+  carrying `data-view`.
+- A new facet: one `paintFacet` call and a `FACET_KEY` entry.
+- **A page that scrapes its own dates**: read the markers with
+  `ScuLaCal.findMarks(line)`, build with `make()`, push with `syncSource()`
+  under your own `sculaSource`. Do not re-implement the syntax.
+
+### Testing
+
+`tests/calendar.js` — both halves, driven off disk. It empties the store
+through the store's own API rather than `deleteDatabase`, which the open
+page blocks; a blocked delete reporting success left the next run racing
+against the rows still there.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors

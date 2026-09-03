@@ -1,21 +1,23 @@
 # CLAUDE.md
 
-Four standalone browser tools. **No build step, no framework, no package
+Five standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 5270 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 8167 | 70k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 8470 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `voice.html` | 2220 | 22k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 5812 | 54k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
+| `index.html` | 8820 | 76k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `recipes.html` | 8941 | 89k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `calendar.html` | 2539 | 25k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
 "markdown page" / "index" → `index.html` · "retete" / "rețete" →
 `recipes.html` · "voice" / "caiet vocal" → `voice.html` ·
-"editor.html" / "mazgaleste" / "drawing page" → `editor.html`. The nav order
-is Markdown, Caiet vocal, Rețete, Mazgaleste, and the old "Editor" label is
+"editor.html" / "mazgaleste" / "drawing page" → `editor.html` ·
+"calendar" / "calendarul" → `calendar.html`. The nav order is Markdown,
+Calendar, Caiet vocal, Rețete, Mazgaleste, and the old "Editor" label is
 now "Mazgaleste". `index.html` is the markdown editor — it's the file
 served at the site root, and its nav link is the one highlighted as
 current when the site loads at `/` (see the `here` fallback in the shared
@@ -27,8 +29,8 @@ sync docs).
 
 ## Rule 1: never read a whole HTML file
 
-Reading all four costs ~200k tokens; `recipes.html` alone is 84k and
-`index.html` 67k. **Never `view` an entire app file.** Locate
+Reading all five costs ~265k tokens; `recipes.html` alone is 89k and
+`index.html` 76k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
 ```bash
@@ -55,22 +57,25 @@ it instead of exploring. It is far cheaper than one file scan.
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
+| The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 
 Do not read a doc the task doesn't touch.
 
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all four files — from the `<nav id="site-nav">` line through the
-`<!-- ===== end toolbar nav ===== -->` marker (~650 lines; starts near
-`voice.html:226`, `editor.html:427`, `index.html:1402`,
-`recipes.html:408`, but these **drift** — grep the `<nav` line). It carries
-the nav links, the UI-language toggle, **and `window.ScuLaFolder`** — which
-decides where every saved file goes (see `docs/FEATURES.md` § D). Any change
-to it must be applied to **all four** or they drift.
+in all five files — from the `<nav id="site-nav">` line through the
+`<!-- ===== end toolbar nav ===== -->` marker (~1120 lines; starts near
+`voice.html:226`, `editor.html:427`, `index.html:1548`,
+`recipes.html:408`, `calendar.html:248`, but these **drift** — grep the
+`<nav` line). It carries the nav links, the UI-language toggle,
+**`window.ScuLaFolder`** — which decides where every saved file goes
+(`docs/FEATURES.md` § D) — **and `window.ScuLaCal`**, the shared calendar
+store every page can write events into (`docs/FEATURES.md` § L). Any change
+to it must be applied to **all five** or they drift.
 
 **Verify with `/verify`** — it extracts the block by those two anchors (no
-line numbers) and diffs all four.
+line numbers) and diffs all five.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -107,6 +112,11 @@ block's `SUBDIR` map, so the new page gets its own folder.
   `<a download>`. It routes to the chosen folder (desktop), the OS share
   sheet (phones — no mobile browser has `showDirectoryPicker`), or a
   download, and reports what it did — `docs/FEATURES.md` § D.
+- **Write events through `ScuLaCal`**, never a private event format. Events
+  are stored in the *Google Calendar API* shape, so the export is the API
+  body; `ScuLaCal.make()` builds one without you touching a field name, and
+  `syncSource()` is how a page keeps its scraped events in step —
+  `docs/FEATURES.md` § L.
 
 ## Standard workflow
 
@@ -126,15 +136,15 @@ the file you just edited on every save and blocks on a syntax error; `/verify`
 is the before-done check across all four.
 
 ```bash
-# JS in every <script> block still parses (verified working on all 4 files)
-for f in voice.html editor.html index.html recipes.html; do
+# JS in every <script> block still parses (verified working on all 5 files)
+for f in voice.html editor.html index.html recipes.html calendar.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `index.html:1380` has attributes and is correctly skipped. If
+in `index.html:1543` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach. The
@@ -149,12 +159,19 @@ canvas: drawing two screens apart, the window that follows the view, and the
 export framed to the ink plus its 10 px margin, and — in `drive.js` — the
 Google Drive button: the lazy script loading, both languages, connect and
 disconnect, the folder it creates and the multipart upload, all against a
-stubbed Drive API, so no Google account is needed), for `recipes.html` (`recipes.js` —
+stubbed Drive API, so no Google account is needed, and — in `selcolor.js` —
+the Selection-panel colour converters: `HEX → HSL` and the `HSL → RGB`
+(`#rrggbb`) field beside it), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown both
 written and read back, the shareable HTML page **driven in the file it
 ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
 detail panels on both sides**, the whole OCR path against a stub engine,
-all three save routes), and for
+all three save routes), for `calendar.html` (`calendar.js` — the event
+modal writing a real Google-shaped event, all four views including the
+week block's geometry and drag-to-create on the hour grid, search, the
+four facet filters, and both exports plus the `.ics` round-trip; it also
+covers the `@date` markdown marker and the 📅 push in `index.html`),
+and for
 `index.html`'s knowledge graph (`graph.js`), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
@@ -214,6 +231,10 @@ change, not "later":
    first heading scrolls the source back to the top but leaves `#preview`
    at ~700px. Reproduces on the `index.html` in `HEAD`, so it is not
    whatever you just changed. The other 15 checks pass.
+3. **Not** an issue, though it reads like one: the calendar never talks to
+   Google. Events reach Google Calendar as an export the person carries
+   over — the `.ics` through its Import screen, or the JSON through the
+   API. No OAuth, no network call, deliberately — see Rule 3.
 
 ## Planned direction (design toward these)
 

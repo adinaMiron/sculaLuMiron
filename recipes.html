@@ -407,6 +407,7 @@
 <body>
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
@@ -619,6 +620,7 @@
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
     "voice.html": "transcript",
+    "calendar.html": "calendar",
     "editor.html": "desen",
     "index.html": "markdown",
     "recipes.html": "retete"
@@ -1058,6 +1060,475 @@
     save: save,
     download: download,
     toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
   };
 })();
 </script>

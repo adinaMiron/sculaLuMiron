@@ -1194,6 +1194,22 @@
     border: 1px solid var(--border);
   }
 
+  /* "@2026-09-03 14:00-15:30" — a date flagged in the source, rendered as a
+     pill and picked up by the calendar page (docs/FEATURES.md § L). Reuses
+     --imp-important, the amber already in the palette: a date is a soft
+     "this matters on a day", which is what that colour already says. The
+     label is baked in, so calRepaintLang() re-formats it on a language
+     switch the way gvRepaintLang/fdRepaintLang do for their generated text. */
+  .md-date {
+    display: inline-block;
+    color: var(--imp-important);
+    background: color-mix(in srgb, var(--imp-important) 15%, transparent);
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 0.9em;
+    white-space: nowrap;
+  }
+
   /* "Name>> " — the name of whoever a task is handed to, picked out from
      the surrounding text. Reuses --danger (the shared terracotta status
      colour) rather than minting a new token, since it needs to read as an
@@ -1547,6 +1563,7 @@
 <!-- ===== toolbar nav — paste right after <body> ===== -->
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
@@ -1759,6 +1776,7 @@
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
     "voice.html": "transcript",
+    "calendar.html": "calendar",
     "editor.html": "desen",
     "index.html": "markdown",
     "recipes.html": "retete"
@@ -2200,6 +2218,475 @@
     toast: toast
   };
 })();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
 </script>
 <!-- ===== end toolbar nav ===== -->
 
@@ -2210,6 +2697,7 @@
     <span class="file-name" id="current-file">untitled.md</span>
     <button class="btn" onclick="newFile()" data-i="newFileBtn">New</button>
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
+    <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
@@ -2862,6 +3350,11 @@ const I18N = {
 
     /* Idee rapidă (Ctrl+Alt+I) — docs/FEATURES.md § J */
     ideaBtn:"💡 Idee", ideaTip:"Notează o idee direct în capitolul ei (Ctrl+Alt+I)",
+    calSyncBtn:"📅 Trimite datele", calSyncTip:"Trimite fiecare „@dată” din toate caietele în calendar (Ctrl+Alt+D)",
+    calSynced:([n, gone]) => (n === 1 ? "1 dată trimisă în calendar" : n + " date trimise în calendar") +
+                             (gone ? ", " + gone + " șterse" : "") + ".",
+    calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
+    calOpen:"Deschide",
     modalTitleIdea:"Idee rapidă", lblIdea:"Idee",
     ideaPlaceholder:"Editor: - [ ] scrie cod care să…",
     ideaSaveBtn:"Trimite ideea", ideaSaveTip:"Trimite ideea (Ctrl+Enter)",
@@ -3040,6 +3533,11 @@ const I18N = {
 
     /* Quick idea capture (Ctrl+Alt+I) — docs/FEATURES.md § J */
     ideaBtn:"💡 Idea", ideaTip:"Capture an idea straight into its chapter (Ctrl+Alt+I)",
+    calSyncBtn:"📅 Push dates", calSyncTip:"Send every \u201C@date\u201D in every workbook to the calendar (Ctrl+Alt+D)",
+    calSynced:([n, gone]) => (n === 1 ? "1 date sent to the calendar" : n + " dates sent to the calendar") +
+                             (gone ? ", " + gone + " removed" : "") + ".",
+    calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
+    calOpen:"Open",
     modalTitleIdea:"Quick idea", lblIdea:"Idea",
     ideaPlaceholder:"Editor: - [ ] write code to …",
     ideaSaveBtn:"Send idea", ideaSaveTip:"File this idea (Ctrl+Enter)",
@@ -3096,6 +3594,8 @@ function applyUILang(){
   if(typeof gvRepaintLang === "function" && gvLangReady) gvRepaintLang();
   // And for the search panel's generated chips, results and counts.
   if(typeof fdRepaintLang === "function" && fdReady) fdRepaintLang();
+  // And for the "@date" pills, whose label is a formatted date, not a key.
+  if(typeof calRepaintLang === "function") calRepaintLang();
 }
 window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
 (async function initUILang(){
@@ -3851,6 +4351,12 @@ const TAG_RE = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu;
 // and the export. Tried before TAG_RE, since "#4F8A97" also satisfies the
 // tag pattern (it has letters in it).
 const HEX_COLOR_RE = /(^|[\s(\[{])#([0-9a-fA-F]{8}|[0-9a-fA-F]{6})\b/g;
+// "@2026-09-03 14:00-15:30" — a date flagged for the calendar. The pattern
+// is ScuLaCal's, not this file's: the calendar page and any other page that
+// learns to scrape dates must read the exact same syntax, so it lives once
+// in the shared nav block (docs/FEATURES.md § L). Global, but only ever used
+// through .replace(), which resets lastIndex itself.
+const DATE_MARK_RE = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
 // "^anchor" at the very end of a line names that block.
 const BLOCK_RE = /\s\^([A-Za-z0-9][A-Za-z0-9-]*)\s*$/;
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?)$/i;
@@ -4064,6 +4570,132 @@ function renderTag(lead, tag) {
 function renderColorSwatch(lead, hex) {
   const css = '#' + hex;
   return `${lead}<span class="md-color"><span class="md-color-sw" style="background:${css}"></span>${css}</span>`;
+}
+
+/* "@2026-09-03 14:00-15:30" — a date and, optionally, a time or an interval.
+   The syntax itself lives in ScuLaCal (the shared nav block) so that every
+   page reads one syntax and the calendar page never has to guess; this
+   function only turns a parsed marker into the pill.
+
+   The label is written out in the current UI language rather than carrying
+   a data-i key, because it is a formatted date, not a fixed string —
+   calRepaintLang() re-formats it in place on a language switch. The export
+   gets the same baked label and no repaint, since it ships without the app. */
+function calDateWords(ymd) {
+  try {
+    return ScuLaCal.dayStart(ymd)
+      .toLocaleDateString(UI === 'ro' ? 'ro-RO' : 'en-GB',
+                          { day:'numeric', month:'short', year:'numeric' });
+  } catch (e) { return ymd; }
+}
+function calMarkLabel(mark) {
+  const d1 = calDateWords(mark.date);
+  const spans = mark.endDate && mark.endDate !== mark.date;
+  if (mark.allDay) return spans ? d1 + ' – ' + calDateWords(mark.endDate) : d1;
+  if (spans) return d1 + ', ' + mark.time + ' – ' + calDateWords(mark.endDate) + ', ' + (mark.endTime || mark.time);
+  return d1 + ', ' + mark.time + (mark.endTime ? '–' + mark.endTime : '');
+}
+// Called from the replace() below with its own `arguments`: the group order
+// of ScuLaCal.markRe() is exactly what readMark() indexes into.
+function renderDateMark(args) {
+  const lead = args[1] || '';
+  const mark = window.ScuLaCal && ScuLaCal.readMark(args);
+  if (!mark) return args[0];        // "@2026-02-31" — leave the text alone
+  // Every value here came out of normDate/normTime, so it is digits, "-"
+  // and ":" only and needs no escaping.
+  const a = ['data-d="' + mark.date + '"'];
+  if (mark.endDate && mark.endDate !== mark.date) a.push('data-d2="' + mark.endDate + '"');
+  if (mark.allDay) a.push('data-all="1"');
+  else {
+    a.push('data-t="' + mark.time + '"');
+    if (mark.endTime) a.push('data-t2="' + mark.endTime + '"');
+  }
+  return `${lead}<span class="md-date" ${a.join(' ')}>\u{1F4C5} ${calMarkLabel(mark)}</span>`;
+}
+/* ── Pushing the flagged dates into the calendar — docs/FEATURES.md § L ──
+   One button, the whole vault. Every "@date" in every chapter becomes an
+   event in the shared store, and ScuLaCal.syncSource() with a null ref
+   replaces *everything* this page owns in one pass — so a marker that was
+   edited moves, and a marker that was deleted takes its event with it.
+
+   The identity that makes that work is sculaKey: chapter + line + the
+   marker text. Re-running the sync re-finds the same key and keeps the
+   event's id, so anything pointing at it survives; change the line and it
+   is a different event, which is the honest answer since the old one no
+   longer exists in the source. */
+function calTitleOf(line, hit) {
+  let s = line.slice(0, hit.index) + line.slice(hit.index + hit.length);
+  // the bullet, the "[ ]", the number, the hashes, the quote mark
+  s = s.replace(/^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+|#{1,6}\s+|>\s+)/, '');
+  s = s.replace(IMP_RE, '$1');
+  s = s.replace(/^\s*[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}(?:[ \t]+[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}){0,3}[ \t]?>>[ \t]+/u, '');
+  s = s.replace(WIKI_RE, (m, bang, target, alias) => alias || target);
+  s = s.replace(TAG_RE, '$1');
+  s = s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1');
+  return s.replace(/\s+/g, ' ').trim();
+}
+function calTagsOf(line) {
+  const out = [];
+  line.replace(TAG_RE, (m, lead, tag) => { out.push(tag); return m; });
+  return out;
+}
+function calScan() {
+  const events = [];
+  wikiNotes().forEach(n => {
+    const text = noteText(n);
+    if (!text) return;
+    const ref = n.chapterId || 'loose';
+    text.split('\n').forEach((line, i) => {
+      ScuLaCal.findMarks(line).forEach(hit => {
+        const tags = calTagsOf(line);
+        events.push(ScuLaCal.make({
+          title: calTitleOf(line, hit) || n.title,
+          allDay: hit.mark.allDay,
+          date: hit.mark.date,
+          time: hit.mark.time,
+          endDate: hit.mark.endDate,
+          endTime: hit.mark.endTime,
+          colorId: '2',
+          location: '',
+          description: n.title + (n.bookName ? ' · ' + n.bookName : ''),
+          ext: {
+            sculaSource: 'index.html',
+            sculaRef: ref,
+            sculaKey: ref + ':' + i + ':' + hit.text,
+            sculaCal: n.bookName || n.title,
+            sculaTags: tags.join(',')
+          }
+        }));
+      });
+    });
+  });
+  return events;
+}
+// Returns the sync's promise so a caller can wait for it - the writes are a
+// chain of IndexedDB transactions, so "the button was clicked" is not yet
+// "the events are there".
+function calSyncAll() {
+  if (!window.ScuLaCal) return Promise.resolve(null);
+  const events = calScan();
+  return ScuLaCal.syncSource('index.html', null, events).then(r => {
+    const total = events.length;
+    ScuLaFolder.toast(total ? t('calSynced', [total, r.removed]) : t('calNoDates'),
+                      t('calOpen'), () => { location.href = 'calendar.html'; });
+    return r;
+  });
+}
+
+// The pills are generated, so a language switch has to re-format them.
+function calRepaintLang() {
+  document.querySelectorAll('#preview .md-date').forEach(el => {
+    el.textContent = '\u{1F4C5} ' + calMarkLabel({
+      date: el.dataset.d,
+      endDate: el.dataset.d2 || el.dataset.d,
+      allDay: el.dataset.all === '1',
+      time: el.dataset.t,
+      endTime: el.dataset.t2 || null
+    });
+  });
 }
 
 // "Name>> " marks a task as handed to that person. name is already escaped
@@ -4288,6 +4920,10 @@ function applyInline(text, opts) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // "@date" after the code rule for the same reason TAG_RE runs last: a
+    // marker inside `inline code` now follows ">", which the lead class
+    // excludes, so backticked text is left alone.
+    .replace(DATE_MARK_RE, function () { return renderDateMark(arguments); })
     // "#rrggbb" as a swatch — before TAG_RE, which would otherwise eat it.
     // A "#" inside a <code> span produced above is preceded by ">", not a
     // space, so this leaves inline code alone (same guard TAG_RE relies on).
@@ -7533,6 +8169,7 @@ function exportHtml() {
     .wikilink { color: #6b5bd6; border-bottom: 1px dashed #b3aae8; }
     .wikilink.is-unresolved { color: #999; border-bottom-color: #ccc; }
     .md-tag { display: inline-block; color: #3f7a63; background: #e6f0ea; border-radius: 10px; padding: 0 7px; font-size: 0.9em; }
+    .md-date { display: inline-block; color: #8a6a1f; background: #f6ecd4; border-radius: 10px; padding: 0 7px; font-size: 0.9em; white-space: nowrap; }
     .md-color { font-family: 'Courier New', monospace; font-size: 0.92em; white-space: nowrap; }
     .md-color-sw { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.12em; border-radius: 3px; border: 1px solid #ccc; }
     .md-assignee { color: #C4643C; font-weight: 600; }
@@ -7784,6 +8421,7 @@ document.addEventListener('keydown', e => {
   // browser's own devtools, so Ctrl+Alt is what is left; e.code and an early
   // return for the same reason the importance chords above use them.
   if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyI') { e.preventDefault(); openIdeaModal(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyD') { e.preventDefault(); calSyncAll(); return; }
   if ((e.ctrlKey||e.metaKey) && e.key === '3') { e.preventDefault(); toggleGraph(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'L') { e.preventDefault(); openWikiModal(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }

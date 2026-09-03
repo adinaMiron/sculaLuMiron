@@ -1,9 +1,9 @@
 # THEME.md — unified colour theme
 
-Goal: one shared visual identity across all four apps, switchable
+Goal: one shared visual identity across all five apps, switchable
 light/dark, with no build step.
 
-## Current state — all four migrated
+## Current state — all five migrated
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
@@ -11,15 +11,17 @@ light/dark, with no build step.
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `recipes.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
+| `calendar.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 
-None of the four files share one `:root` block yet — each still defines
+None of the five files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
 
-`recipes.html` was written after the migrations, so it carries the full
-target set below from its first commit — including the `--text-3`,
+`recipes.html` and `calendar.html` were written after the migrations, so
+they carry the full target set below from their first commit — including
+the `--text-3`,
 `--accent-2`, `--accent-soft` and `--ok` roles the older files only partly
-have. Copy its `:root` when starting a new page.
+have. Copy one of their `:root` blocks when starting a new page.
 
 | Role | `voice.html` | `editor.html` | `index.html` |
 |---|---|---|---|

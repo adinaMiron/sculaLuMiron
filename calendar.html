@@ -1,0 +1,2539 @@
+<!doctype html><html lang="ro" data-theme="dark"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calendar — Scula lu Miron</title>
+<style>
+  :root {
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    --bg: #14201A;
+    --surface: #1B2A22;
+    --surface-2: #22342A;
+    --border: #2E4739;
+    --accent: #C1BB45;
+    --accent-2: #D3CD7C;
+    --on-accent: #1A2117;
+    --text: #F3EEE1;
+    --text-2: #9FB3A5;
+    --text-3: #5A6A60;
+    --danger: #C4643C;
+    --ok: #6E9E8A;
+    --radius: 10px;
+    --shadow: 0 12px 40px rgba(0,0,0,.5);
+    --font-mono: 'Courier New', monospace;
+    --font-ui: 'Trebuchet MS', sans-serif;
+    --side-w: 15rem;
+    --hour-h: 3rem;      /* one hour in the week/day grid */
+    --gutter-w: 3.4rem;  /* the hour-label column beside it */
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 0.9rem;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ---------- header ---------- */
+  #cal-head {
+    flex: 0 0 auto; display: flex; align-items: center; gap: .5rem;
+    flex-wrap: wrap; padding: .5rem .75rem;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  #cal-head .grp { display: flex; align-items: center; gap: .25rem; }
+  #cal-head .spacer { flex: 1 1 auto; }
+  .btn {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: .4rem .7rem; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { border-color: var(--danger); color: var(--danger); }
+  .btn.icon { padding: .4rem .55rem; }
+  #cal-title { font-size: 1.05rem; font-weight: 600; min-width: 9rem; }
+  .views { display: flex; gap: .15rem; background: var(--surface-2);
+           border: 1px solid var(--border); border-radius: var(--radius); padding: .15rem; }
+  .views .btn { border: 0; background: transparent; padding: .35rem .6rem; }
+  .views .btn.on { background: var(--accent); }
+
+  /* ---------- body ---------- */
+  #cal-body { flex: 1 1 auto; display: flex; min-height: 0; }
+  #side {
+    flex: 0 0 var(--side-w); width: var(--side-w);
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: .75rem; overflow-y: auto; display: flex; flex-direction: column; gap: .9rem;
+  }
+  #side.hidden { display: none; }
+  #stage { flex: 1 1 auto; min-width: 0; overflow: auto; position: relative; display: flex; flex-direction: column; }
+  #stage > * { flex: 1 1 auto; }
+
+  .side-h { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+            color: var(--text-3); margin: 0 0 .4rem; }
+  .field { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .5rem; }
+  .field label { font-size: .75rem; color: var(--text-2); }
+  .field input, .field select, .field textarea {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .45rem .55rem; width: 100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 4rem; font-family: var(--font-ui); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: .25rem .55rem; font-size: .78rem; color: var(--text-2);
+  }
+  .chip .dot { width: .55rem; height: .55rem; border-radius: 50%; flex: 0 0 auto; }
+  .chip .n { color: var(--text-3); font-size: .7rem; }
+  .chip.on { border-color: var(--accent); color: var(--text); background: var(--bg); }
+  .chip.off { opacity: .45; }
+  .side-empty { color: var(--text-3); font-size: .78rem; }
+
+  /* ---------- month ---------- */
+  .m-head, .m-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .m-head {
+    position: sticky; top: 0; z-index: 3;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .m-head div { padding: .4rem .5rem; font-size: .74rem; color: var(--text-2);
+                text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+  /* #stage already stretches its child; a min-height here as well makes
+     the grid 100% *plus* the weekday header, and the last week overflows. */
+  .m-month { display: flex; flex-direction: column; }
+  /* 1fr rows so six weeks fill the stage instead of leaving dead space
+     under the last one; minmax keeps a crowded cell from collapsing. */
+  .m-grid { flex: 1 1 auto; grid-template-rows: repeat(6, minmax(6rem, 1fr)); }
+  .m-cell {
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    min-height: 6rem; padding: .25rem; display: flex; flex-direction: column; gap: .15rem;
+    background: var(--bg);
+  }
+  .m-cell.out { background: var(--surface); }
+  .m-cell.today .m-num { background: var(--accent); color: var(--on-accent); }
+  .m-num {
+    align-self: flex-start; font-size: .76rem; color: var(--text-2);
+    min-width: 1.35rem; height: 1.35rem; line-height: 1.35rem; text-align: center;
+    border-radius: 50%; padding: 0 .25rem;
+  }
+  .m-cell.out .m-num { color: var(--text-3); }
+  .m-add {
+    flex: 1 1 auto; min-height: .8rem; border: 0; background: transparent;
+    border-radius: 6px; padding: 0;
+  }
+  .m-add:hover { background: var(--surface-2); }
+  .ev {
+    display: flex; align-items: center; gap: .3rem; width: 100%; text-align: left;
+    border: 0; border-radius: 5px; padding: .12rem .3rem;
+    background: var(--surface-2); color: var(--text); font-size: .74rem;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .ev:hover { outline: 1px solid var(--accent); }
+  .ev .bar { width: .2rem; align-self: stretch; min-height: .9rem; border-radius: 2px; flex: 0 0 auto; }
+  .ev .t { color: var(--text-2); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .ev .s { overflow: hidden; text-overflow: ellipsis; }
+  .ev.allday { color: var(--on-accent); }
+  .ev.allday .t { display: none; }
+  .m-more { border: 0; background: transparent; color: var(--text-3);
+            font-size: .7rem; text-align: left; padding: 0 .3rem; }
+  .m-more:hover { color: var(--accent); }
+
+  /* ---------- week / day (the hour grid) ---------- */
+  .tg { display: flex; flex-direction: column; min-height: 100%; }
+  /* Header and all-day strip are pinned as one block: scrolling to the
+     afternoon must not take "what is happening all day" off screen. */
+  .tg-top { position: sticky; top: 0; z-index: 4; background: var(--surface); }
+  .tg-head { display: grid; border-bottom: 1px solid var(--border); }
+  .tg-head .corner { border-right: 1px solid var(--border); }
+  .tg-dow { padding: .3rem .4rem; text-align: center; border-right: 1px solid var(--border); }
+  .tg-dow .d { font-size: .72rem; color: var(--text-2); text-transform: uppercase; }
+  .tg-dow .n { font-size: 1.05rem; }
+  .tg-dow.today .n { color: var(--accent); font-weight: 700; }
+  .tg-allday { display: grid; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .tg-allday .lab { font-size: .62rem; line-height: 1.15; color: var(--text-3);
+                    padding: .25rem .3rem; text-align: right;
+                    border-right: 1px solid var(--border); }
+  .tg-allday .slot { border-right: 1px solid var(--border); padding: .15rem;
+                     display: flex; flex-direction: column; gap: .1rem; min-height: 1.3rem; }
+  .tg-scroll { display: grid; position: relative; }
+  .tg-gutter { border-right: 1px solid var(--border); }
+  .tg-hr { height: var(--hour-h); font-size: .68rem; color: var(--text-3);
+           text-align: right; padding-right: .3rem; transform: translateY(-.5em); }
+  .tg-col {
+    position: relative; border-right: 1px solid var(--border);
+    background-image: repeating-linear-gradient(
+      to bottom, var(--border) 0 1px, transparent 1px var(--hour-h));
+    touch-action: none;
+  }
+  .tg-col.today { background-color: rgba(193,187,69,.045); }
+  .tg-now { position: absolute; left: 0; right: 0; height: 0;
+            border-top: 2px solid var(--danger); z-index: 3; pointer-events: none; }
+  .tg-now::before { content: ""; position: absolute; left: -.25rem; top: -.3rem;
+                    width: .5rem; height: .5rem; border-radius: 50%; background: var(--danger); }
+  .tev {
+    position: absolute; overflow: hidden; border: 0; text-align: left;
+    border-radius: 6px; padding: .15rem .3rem; font-size: .72rem;
+    color: var(--on-accent); border-left: .2rem solid rgba(0,0,0,.35);
+    line-height: 1.15; min-height: .9rem;
+  }
+  .tev:hover { outline: 2px solid var(--text); z-index: 5; }
+  .tev .s { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; }
+  .tev .t { opacity: .8; font-variant-numeric: tabular-nums; }
+  .tg-ghost { position: absolute; background: rgba(193,187,69,.3);
+              border: 1px dashed var(--accent); border-radius: 6px; pointer-events: none; z-index: 6; }
+
+  /* ---------- agenda ---------- */
+  .ag { padding: .75rem; max-width: 52rem; }
+  .ag-day { border-bottom: 1px solid var(--border); padding: .5rem 0; display: flex; gap: .75rem; }
+  .ag-when { flex: 0 0 6.5rem; color: var(--text-2); font-size: .8rem; padding-top: .2rem; }
+  .ag-when .n { font-size: 1.3rem; color: var(--text); display: block; }
+  .ag-day.today .ag-when .n { color: var(--accent); }
+  .ag-list { flex: 1 1 auto; display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+  .ag-ev { display: flex; align-items: baseline; gap: .5rem; width: 100%; text-align: left;
+           background: var(--surface); border: 1px solid var(--border);
+           border-radius: 8px; padding: .4rem .55rem; }
+  .ag-ev:hover { border-color: var(--accent); }
+  .ag-ev .bar { width: .25rem; align-self: stretch; border-radius: 2px; flex: 0 0 auto; }
+  .ag-ev .t { flex: 0 0 auto; color: var(--text-2); font-size: .78rem;
+              font-variant-numeric: tabular-nums; min-width: 6.5rem; }
+  .ag-ev .s { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ag-ev .meta { flex: 0 0 auto; color: var(--text-3); font-size: .72rem; }
+  .empty { color: var(--text-3); padding: 2rem; text-align: center; }
+
+  /* ---------- modal ---------- */
+  .modal {
+    position: fixed; inset: 0; z-index: 500; display: none;
+    align-items: center; justify-content: center; padding: 1rem;
+    background: rgba(0,0,0,.55);
+  }
+  .modal.open { display: flex; }
+  .modal .card {
+    width: min(34rem, 100%); max-height: calc(100vh - 2rem); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem; box-shadow: var(--shadow);
+  }
+  .modal h2 { margin: 0 0 .75rem; font-size: 1rem; }
+  .modal .acts { display: flex; gap: .5rem; margin-top: .9rem; }
+  .modal .acts .spacer { flex: 1 1 auto; }
+  .swatches { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .sw { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid transparent; padding: 0; }
+  .sw.on { border-color: var(--text); }
+  .note { font-size: .74rem; color: var(--text-2); background: var(--bg);
+          border: 1px solid var(--border); border-left: 3px solid var(--accent);
+          border-radius: 6px; padding: .4rem .55rem; margin-bottom: .6rem; }
+  .hint { font-size: .72rem; color: var(--text-3); margin: .2rem 0 0; }
+  .check { display: flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+  .check input { width: auto; }
+
+  /* ---------- phones ---------- */
+  #sideBtn { display: none; }
+  @media (max-width: 800px) {
+    #side { position: absolute; z-index: 20; inset: 0 auto 0 0; box-shadow: var(--shadow); }
+    #side.hidden { display: none; }
+    #sideBtn { display: inline-flex; }
+    #cal-title { min-width: 0; font-size: .95rem; }
+    :root { --hour-h: 3.2rem; }
+    /* Seven columns across a phone leave ~50px each: the title is all that
+       fits, and the time is already in the block's position. Day view keeps
+       it - there the column is the whole width. */
+    .tg.week .tev .t { display: none; }
+    .tg.week .tev { padding: .1rem .2rem; font-size: .68rem; }
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .btn { min-height: 44px; padding: 8px 12px; }
+    .views .btn { min-height: 40px; }
+    .field input, .field select, .field textarea { min-height: 44px; font-size: 16px; }
+    .chip { min-height: 34px; }
+    .m-cell { min-height: 5rem; }
+  }
+</style>
+</head>
+<body>
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so there the button
+     could only ever name the fallback route - not worth a slot in the nav.
+     Saves still take the share route on their own, and ScuLaFolder.chooser()
+     still opens the sheet. The language toggle inherits the auto margin that
+     used to push it to the right. */
+  @media (hover: none) and (pointer: coarse){
+    #site-nav #navFolderBtn{ display:none; }
+    #site-nav #navLangBtn{ margin-left:auto; }
+  }
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "calendar.html": "calendar",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+<header id="cal-head">
+  <button id="sideBtn" class="btn icon" type="button" data-i-title="filters" data-i-aria="filters">☰</button>
+  <div class="grp">
+    <button id="todayBtn" class="btn" type="button" data-i="today">Azi</button>
+    <button id="prevBtn" class="btn icon" type="button" data-i-title="prev" data-i-aria="prev">‹</button>
+    <button id="nextBtn" class="btn icon" type="button" data-i-title="next" data-i-aria="next">›</button>
+  </div>
+  <span id="cal-title"></span>
+  <span class="spacer"></span>
+  <div class="views" role="group" data-i-aria="viewGroup" aria-label="Vizualizare">
+    <button class="btn" type="button" data-view="month" data-i="vMonth">Lună</button>
+    <button class="btn" type="button" data-view="week" data-i="vWeek">Săptămână</button>
+    <button class="btn" type="button" data-view="day" data-i="vDay">Zi</button>
+    <button class="btn" type="button" data-view="agenda" data-i="vAgenda">Agendă</button>
+  </div>
+  <button id="newBtn" class="btn primary" type="button" data-i="newEvent">+ Eveniment</button>
+</header>
+
+<div id="cal-body">
+  <aside id="side">
+    <div>
+      <div class="field">
+        <label for="q" data-i="search">Caută</label>
+        <input id="q" type="search" data-i-placeholder="searchHint" placeholder="titlu, loc, descriere, etichetă" autocomplete="off">
+      </div>
+      <p id="count" class="hint"></p>
+    </div>
+
+    <div>
+      <h2 class="side-h" data-i="calendars">Calendare</h2>
+      <div id="fCals" class="chips"></div>
+    </div>
+
+    <div>
+      <h2 class="side-h" data-i="tags">Etichete</h2>
+      <div id="fTags" class="chips"></div>
+    </div>
+
+    <div>
+      <h2 class="side-h" data-i="sources">Sursă</h2>
+      <div id="fSrcs" class="chips"></div>
+    </div>
+
+    <div>
+      <h2 class="side-h" data-i="colors">Culori</h2>
+      <div id="fColors" class="chips"></div>
+    </div>
+
+    <div>
+      <button id="clearF" class="btn ghost" type="button" data-i="clearFilters">Șterge filtrele</button>
+    </div>
+
+    <div>
+      <h2 class="side-h" data-i="exportImport">Export / Import</h2>
+      <div class="field">
+        <button id="expIcs" class="btn" type="button" data-i="expIcs">⬇ .ics (Google, Apple)</button>
+        <p class="hint" data-i="expIcsHint">Import în Google Calendar: Setări ▸ Importă și exportă.</p>
+      </div>
+      <div class="field">
+        <button id="expJson" class="btn" type="button" data-i="expJson">⬇ JSON (Google API)</button>
+        <p class="hint" data-i="expJsonHint">Gata de trimis către events.insert.</p>
+      </div>
+      <div class="field">
+        <button id="copyJson" class="btn ghost" type="button" data-i="copyJson">📋 Copiază JSON</button>
+      </div>
+      <div class="field">
+        <button id="impBtn" class="btn ghost" type="button" data-i="importBtn">⬆ Importă .ics / .json</button>
+        <input id="impFile" type="file" accept=".ics,.ical,.json,text/calendar,application/json" hidden>
+      </div>
+      <p class="hint" id="expScope" data-i="expScope">Se exportă ce e vizibil acum (după filtre).</p>
+    </div>
+  </aside>
+
+  <main id="stage"></main>
+</div>
+
+<!-- ===== the one event editor: new and existing both land here ===== -->
+<div id="ev-modal" class="modal" role="dialog" aria-modal="true" data-i-aria="evDialog" aria-label="Eveniment">
+  <div class="card">
+    <h2 id="ev-h" data-i="newEvent">Eveniment nou</h2>
+    <p id="ev-src" class="note" hidden></p>
+
+    <div class="field">
+      <label for="ev-title" data-i="fTitle">Titlu</label>
+      <input id="ev-title" type="text" autocomplete="off">
+    </div>
+
+    <div class="check">
+      <input id="ev-allday" type="checkbox">
+      <label for="ev-allday" data-i="fAllDay">Toată ziua</label>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="ev-date" data-i="fStart">Început</label>
+        <input id="ev-date" type="date">
+      </div>
+      <div class="field" id="ev-time-w">
+        <label for="ev-time" data-i="fStartTime">Ora</label>
+        <input id="ev-time" type="time" step="300">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="ev-edate" data-i="fEnd">Sfârșit</label>
+        <input id="ev-edate" type="date">
+      </div>
+      <div class="field" id="ev-etime-w">
+        <label for="ev-etime" data-i="fEndTime">Ora</label>
+        <input id="ev-etime" type="time" step="300">
+      </div>
+    </div>
+
+    <div class="field">
+      <label data-i="fColor">Culoare</label>
+      <div id="ev-colors" class="swatches"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="ev-cal" data-i="fCalendar">Calendar</label>
+        <input id="ev-cal" type="text" list="cal-names" autocomplete="off">
+        <datalist id="cal-names"></datalist>
+      </div>
+      <div class="field">
+        <label for="ev-rec" data-i="fRepeat">Se repetă</label>
+        <select id="ev-rec">
+          <option value="" data-i="recNone">Niciodată</option>
+          <option value="DAILY" data-i="recDaily">Zilnic</option>
+          <option value="WEEKLY" data-i="recWeekly">Săptămânal</option>
+          <option value="MONTHLY" data-i="recMonthly">Lunar</option>
+          <option value="YEARLY" data-i="recYearly">Anual</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ev-loc" data-i="fLocation">Loc</label>
+      <input id="ev-loc" type="text" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="ev-tags" data-i="fTags">Etichete</label>
+      <input id="ev-tags" type="text" data-i-placeholder="tagsHint" placeholder="muncă, familie" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="ev-desc" data-i="fNotes">Notițe</label>
+      <textarea id="ev-desc"></textarea>
+    </div>
+
+    <div class="acts">
+      <button id="ev-del" class="btn danger" type="button" data-i="delete">Șterge</button>
+      <span class="spacer"></span>
+      <button id="ev-cancel" class="btn ghost" type="button" data-i="cancel">Renunță</button>
+      <button id="ev-save" class="btn primary" type="button" data-i="save">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== "+N more" for a crowded day ===== -->
+<div id="day-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2 id="day-h"></h2>
+    <div id="day-list" class="ag-list"></div>
+    <div class="acts">
+      <button id="day-new" class="btn" type="button" data-i="newEvent">+ Eveniment</button>
+      <span class="spacer"></span>
+      <button id="day-close" class="btn ghost" type="button" data-i="close">Închide</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. i18n  (docs/I18N.md — same shape as the other four apps)
+   ============================================================ */
+const I18N = {
+  ro: {
+    today:"Azi", prev:"Înapoi", next:"Înainte", viewGroup:"Vizualizare",
+    vMonth:"Lună", vWeek:"Săptămână", vDay:"Zi", vAgenda:"Agendă",
+    newEvent:"+ Eveniment", editEvent:"Editează evenimentul",
+    filters:"Filtre", search:"Caută",
+    searchHint:"titlu, loc, descriere, etichetă",
+    calendars:"Calendare", tags:"Etichete", sources:"Sursă", colors:"Culori",
+    clearFilters:"Șterge filtrele", noneYet:"— nimic încă —",
+    exportImport:"Export / Import",
+    expIcs:"⬇ .ics (Google, Apple)",
+    expIcsHint:"Import în Google Calendar: Setări ▸ Importă și exportă.",
+    expJson:"⬇ JSON (Google API)",
+    expJsonHint:"Gata de trimis către events.insert.",
+    copyJson:"📋 Copiază JSON", importBtn:"⬆ Importă .ics / .json",
+    expScope:"Se exportă ce e vizibil acum (după filtre).",
+    evDialog:"Eveniment",
+    fTitle:"Titlu", fAllDay:"Toată ziua", fStart:"Început", fStartTime:"Ora",
+    fEnd:"Sfârșit", fEndTime:"Ora", fColor:"Culoare", fCalendar:"Calendar",
+    fRepeat:"Se repetă", recNone:"Niciodată", recDaily:"Zilnic",
+    recWeekly:"Săptămânal", recMonthly:"Lunar", recYearly:"Anual",
+    fLocation:"Loc", fTags:"Etichete", tagsHint:"muncă, familie", fNotes:"Notițe",
+    save:"Salvează", cancel:"Renunță", delete:"Șterge", close:"Închide",
+    allDayShort:"Toată ziua", untitled:"(fără titlu)",
+    noEvents:"Niciun eveniment aici.",
+    noMatch:"Niciun eveniment nu se potrivește cu filtrele.",
+    count:n => n === 1 ? "1 eveniment" : n + " evenimente",
+    more:n => "+" + n + " altele",
+    srcManual:"Adăugate manual",
+    srcOf:s => ({ "index.html":"Markdown", "voice.html":"Caiet vocal",
+                  "recipes.html":"Rețete", "editor.html":"Mazgaleste" })[s] || s,
+    fromSource:s => "Vine din „" + s + "”. O re-sincronizare a paginii aceleia rescrie titlul și data.",
+    deleteAsk:"Ștergi evenimentul?",
+    savedMsg:"Eveniment salvat.", deletedMsg:"Eveniment șters.",
+    imported:n => n === 1 ? "1 eveniment importat." : n + " evenimente importate.",
+    importEmpty:"Fișierul nu conținea evenimente.",
+    importBad:"Fișierul nu a putut fi citit.",
+    copied:"JSON copiat.", copyFail:"Nu s-a putut copia.",
+    nothingToExport:"Nu e nimic de exportat.",
+    needDate:"Pune măcar o dată.",
+    searchAll:"Rezultatele căutării, din tot calendarul.",
+    colLavender:"Lavandă", colSage:"Salvie", colGrape:"Strugure", colFlamingo:"Flamingo",
+    colBanana:"Banană", colTangerine:"Mandarină", colPeacock:"Păun", colGraphite:"Grafit",
+    colBlueberry:"Afină", colBasil:"Busuioc", colTomato:"Roșie",
+    noCal:"Fără calendar"
+  },
+  en: {
+    today:"Today", prev:"Back", next:"Forward", viewGroup:"View",
+    vMonth:"Month", vWeek:"Week", vDay:"Day", vAgenda:"Agenda",
+    newEvent:"+ Event", editEvent:"Edit event",
+    filters:"Filters", search:"Search",
+    searchHint:"title, place, notes, tag",
+    calendars:"Calendars", tags:"Tags", sources:"Source", colors:"Colours",
+    clearFilters:"Clear filters", noneYet:"— nothing yet —",
+    exportImport:"Export / Import",
+    expIcs:"⬇ .ics (Google, Apple)",
+    expIcsHint:"Into Google Calendar: Settings ▸ Import & export.",
+    expJson:"⬇ JSON (Google API)",
+    expJsonHint:"Ready to POST to events.insert.",
+    copyJson:"📋 Copy JSON", importBtn:"⬆ Import .ics / .json",
+    expScope:"Exports what is visible now (after filters).",
+    evDialog:"Event",
+    fTitle:"Title", fAllDay:"All day", fStart:"Starts", fStartTime:"Time",
+    fEnd:"Ends", fEndTime:"Time", fColor:"Colour", fCalendar:"Calendar",
+    fRepeat:"Repeats", recNone:"Never", recDaily:"Daily",
+    recWeekly:"Weekly", recMonthly:"Monthly", recYearly:"Yearly",
+    fLocation:"Place", fTags:"Tags", tagsHint:"work, family", fNotes:"Notes",
+    save:"Save", cancel:"Cancel", delete:"Delete", close:"Close",
+    allDayShort:"All day", untitled:"(untitled)",
+    noEvents:"Nothing here.",
+    noMatch:"No event matches the filters.",
+    count:n => n === 1 ? "1 event" : n + " events",
+    more:n => "+" + n + " more",
+    srcManual:"Added by hand",
+    srcOf:s => ({ "index.html":"Markdown", "voice.html":"Voice notebook",
+                  "recipes.html":"Recipes", "editor.html":"Mazgaleste" })[s] || s,
+    fromSource:s => "Comes from “" + s + "”. Re-syncing that page rewrites its title and date.",
+    deleteAsk:"Delete this event?",
+    savedMsg:"Event saved.", deletedMsg:"Event deleted.",
+    imported:n => n === 1 ? "1 event imported." : n + " events imported.",
+    importEmpty:"That file held no events.",
+    importBad:"That file could not be read.",
+    copied:"JSON copied.", copyFail:"Could not copy.",
+    nothingToExport:"Nothing to export.",
+    needDate:"Give it a date at least.",
+    searchAll:"Search results, from the whole calendar.",
+    colLavender:"Lavender", colSage:"Sage", colGrape:"Grape", colFlamingo:"Flamingo",
+    colBanana:"Banana", colTangerine:"Tangerine", colPeacock:"Peacock", colGraphite:"Graphite",
+    colBlueberry:"Blueberry", colBasil:"Basil", colTomato:"Tomato",
+    noCal:"No calendar"
+  }
+};
+let UI = "ro";
+function t(k, a){
+  const v = (I18N[UI] || I18N.ro)[k];
+  return typeof v === "function" ? v(a) : v;
+}
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  ["placeholder","title","aria-label","value","alt"].forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  buildSwatches();
+  render();
+}
+
+/* ============================================================
+   2. State
+   ============================================================ */
+const Cal = window.ScuLaCal;
+const LOCALE = () => (UI === "ro" ? "ro-RO" : "en-GB");
+
+let EVENTS = [];        // everything in the store
+let SHOWN = [];         // what the filters left
+let anchor = new Date(); anchor.setHours(0, 0, 0, 0);
+let view = "month";
+// Filters keep what is *hidden*, so an event carrying a brand-new tag shows
+// up straight away instead of being silently filtered out.
+let hidden = { cals:[], tags:[], srcs:[], colors:[] };
+let query = "";
+let editing = null;     // the event open in the modal, or null for a new one
+
+const $ = id => document.getElementById(id);
+const stage = $("stage");
+
+/* ============================================================
+   3. Dates
+   ============================================================ */
+const DAY = 86400000;
+function startOfDay(d){ const c = new Date(d); c.setHours(0, 0, 0, 0); return c; }
+function addDays(d, n){ const c = new Date(d); c.setDate(c.getDate() + n); return c; }
+function addMonths(d, n){ const c = new Date(d); c.setDate(1); c.setMonth(c.getMonth() + n); return c; }
+// Monday-first, which is the week both ro-RO and en-GB use.
+function startOfWeek(d){
+  const c = startOfDay(d), k = (c.getDay() + 6) % 7;
+  return addDays(c, -k);
+}
+const ymd = d => Cal.ymd(d);
+const isToday = d => ymd(d) === ymd(new Date());
+function fmt(d, o){ try{ return d.toLocaleDateString(LOCALE(), o); }catch(e){ return ymd(d); } }
+function hhmm(d){ return Cal.hm(d); }
+function minsOf(d){ return d.getHours() * 60 + d.getMinutes(); }
+
+/* ============================================================
+   4. Reading an event
+   ============================================================ */
+const evTitle = e => (e.summary || "").trim() || t("untitled");
+const evCal   = e => Cal.priv(e, "sculaCal");
+const evSrc   = e => Cal.priv(e, "sculaSource");
+function evTags(e){
+  return Cal.priv(e, "sculaTags").split(",").map(s => s.trim()).filter(Boolean);
+}
+function evColor(e){ return Cal.colorHex(e.colorId || "7"); }
+// Google's palette runs from Banana to Tomato, so a fixed dark ink is
+// unreadable on half of it. Relative luminance decides, once per colour.
+const INK = {};
+function inkOn(hex){
+  if(INK[hex]) return INK[hex];
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+  return (INK[hex] = L > 0.35 ? "#1A2117" : "#F7F4EC");
+}
+function evTimeLabel(e){
+  const w = Cal.when(e);
+  if(w.allDay) return t("allDayShort");
+  return hhmm(w.start) + " – " + hhmm(w.end);
+}
+
+/* ============================================================
+   5. Filtering
+   ============================================================ */
+function fold(s){
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function matchQuery(e, q){
+  if(!q) return true;
+  const hay = fold([e.summary, e.description, e.location, evCal(e), evTags(e).join(" ")].join(" "));
+  return q.split(/\s+/).filter(Boolean).every(w => hay.indexOf(w) >= 0);
+}
+function applyFilters(){
+  const q = fold(query);
+  SHOWN = EVENTS.filter(e =>
+    matchQuery(e, q) &&
+    hidden.cals.indexOf(evCal(e)) < 0 &&
+    hidden.srcs.indexOf(evSrc(e)) < 0 &&
+    hidden.colors.indexOf(String(e.colorId || "7")) < 0 &&
+    !evTags(e).some(tg => hidden.tags.indexOf(tg) >= 0)
+  );
+  SHOWN.sort((a, b) => {
+    const wa = Cal.when(a), wb = Cal.when(b);
+    if(wa.allDay !== wb.allDay) return wa.allDay ? -1 : 1;
+    return wa.start - wb.start;
+  });
+}
+// day "YYYY-MM-DD" -> [events], rebuilt once per render
+function indexByDay(list){
+  const map = {};
+  list.forEach(e => Cal.daysOf(e).forEach(d => { (map[d] = map[d] || []).push(e); }));
+  return map;
+}
+
+/* ============================================================
+   6. Rendering
+   ------------------------------------------------------------
+   render() is the only entry point: it filters, paints the
+   sidebar, then hands the stage to one view builder. Every view
+   builds detached nodes and swaps them in once.
+   ============================================================ */
+function el(tag, cls, txt){
+  const n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(txt != null) n.textContent = txt;
+  return n;
+}
+function evButton(e, cls){
+  const b = el("button", cls || "ev");
+  b.type = "button";
+  b.dataset.id = e.id;
+  const w = Cal.when(e);
+  const bar = el("span", "bar");
+  bar.style.background = evColor(e);
+  b.appendChild(bar);
+  if(!w.allDay) b.appendChild(el("span", "t", hhmm(w.start)));
+  b.appendChild(el("span", "s", evTitle(e)));
+  b.title = evTitle(e) + " · " + evTimeLabel(e) + (e.location ? " · " + e.location : "");
+  return b;
+}
+// An all-day chip is a filled block rather than a bar + label.
+function paintAllDayChip(b, e){
+  const c = evColor(e);
+  b.style.background = c;
+  b.style.color = inkOn(c);
+  b.querySelector(".bar").style.background = "rgba(0,0,0,.3)";
+}
+
+/* ---------- month ---------- */
+function renderMonth(){
+  const wrap = el("div", "m-month");
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const gridStart = startOfWeek(first);
+  const byDay = indexByDay(SHOWN);
+
+  const head = el("div", "m-head");
+  for(let i = 0; i < 7; i++){
+    head.appendChild(el("div", null, fmt(addDays(gridStart, i), { weekday:"short" })));
+  }
+  wrap.appendChild(head);
+
+  const grid = el("div", "m-grid");
+  for(let i = 0; i < 42; i++){
+    const d = addDays(gridStart, i);
+    const key = ymd(d);
+    const cell = el("div", "m-cell" +
+      (d.getMonth() !== anchor.getMonth() ? " out" : "") + (isToday(d) ? " today" : ""));
+    cell.appendChild(el("span", "m-num", String(d.getDate())));
+
+    const list = byDay[key] || [];
+    list.slice(0, 3).forEach(e => {
+      const allDay = Cal.when(e).allDay;
+      const b = evButton(e, "ev" + (allDay ? " allday" : ""));
+      if(allDay) paintAllDayChip(b, e);
+      cell.appendChild(b);
+    });
+    if(list.length > 3){
+      const more = el("button", "m-more", t("more", list.length - 3));
+      more.type = "button";
+      more.dataset.day = key;
+      cell.appendChild(more);
+    }
+    // The rest of the cell is the target for "new event on this day".
+    const add = el("button", "m-add");
+    add.type = "button";
+    add.dataset.newday = key;
+    add.setAttribute("aria-label", t("newEvent"));
+    cell.appendChild(add);
+    grid.appendChild(cell);
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+/* ---------- week / day: the hour grid ----------
+   Timed events are positioned as a percentage of the column height, so the
+   layout holds at any --hour-h and any root font size.
+
+   Overlapping events are packed into lanes: walk them in start order, drop
+   each into the first lane whose last event has already finished. Lanes are
+   counted per *cluster* (a run of events that transitively overlap) rather
+   than per day, so one busy morning does not squeeze the rest of the day. */
+function lanesFor(list){
+  const out = [];
+  let cluster = [], lanes = [], clusterEnd = 0;
+  function flush(){
+    const n = Math.max(1, lanes.length);
+    cluster.forEach(p => { p.of = n; out.push(p); });
+    cluster = []; lanes = []; clusterEnd = 0;
+  }
+  list.forEach(e => {
+    const w = Cal.when(e);
+    const s = w.start.getTime(), en = w.end.getTime();
+    if(cluster.length && s >= clusterEnd) flush();
+    let i = 0;
+    while(i < lanes.length && lanes[i] > s) i++;
+    if(i === lanes.length) lanes.push(0);
+    lanes[i] = en;
+    clusterEnd = Math.max(clusterEnd, en);
+    cluster.push({ ev:e, lane:i });
+  });
+  flush();
+  return out;
+}
+function renderTime(days){
+  const wrap = el("div", "tg " + (days.length > 1 ? "week" : "day"));
+  const cols = "var(--gutter-w) repeat(" + days.length + ", minmax(0, 1fr))";
+  const byDay = indexByDay(SHOWN);
+
+  const top = el("div", "tg-top");
+  const head = el("div", "tg-head");
+  head.style.gridTemplateColumns = cols;
+  head.appendChild(el("div", "corner"));
+  days.forEach(d => {
+    const c = el("div", "tg-dow" + (isToday(d) ? " today" : ""));
+    c.appendChild(el("div", "d", fmt(d, { weekday:"short" })));
+    c.appendChild(el("div", "n", String(d.getDate())));
+    head.appendChild(c);
+  });
+  top.appendChild(head);
+
+  const strip = el("div", "tg-allday");
+  strip.style.gridTemplateColumns = cols;
+  strip.appendChild(el("div", "lab", t("allDayShort")));
+  days.forEach(d => {
+    const slot = el("div", "slot");
+    slot.dataset.newday = ymd(d);
+    (byDay[ymd(d)] || []).filter(e => Cal.when(e).allDay).forEach(e => {
+      const b = evButton(e, "ev allday");
+      paintAllDayChip(b, e);
+      slot.appendChild(b);
+    });
+    strip.appendChild(slot);
+  });
+  top.appendChild(strip);
+  wrap.appendChild(top);
+
+  const scroll = el("div", "tg-scroll");
+  scroll.style.gridTemplateColumns = cols;
+  const gutter = el("div", "tg-gutter");
+  for(let h = 0; h < 24; h++){
+    gutter.appendChild(el("div", "tg-hr", h === 0 ? "" : (h < 10 ? "0" : "") + h + ":00"));
+  }
+  scroll.appendChild(gutter);
+
+  days.forEach(d => {
+    const col = el("div", "tg-col" + (isToday(d) ? " today" : ""));
+    col.style.height = "calc(var(--hour-h) * 24)";
+    col.dataset.day = ymd(d);
+    const dStart = startOfDay(d), dEnd = addDays(dStart, 1);
+    const timed = (byDay[ymd(d)] || []).filter(e => !Cal.when(e).allDay);
+    lanesFor(timed).forEach(p => {
+      const w = Cal.when(p.ev);
+      // A block running past midnight is clipped to this column; the next
+      // day draws its own share.
+      const s = Math.max(w.start.getTime(), dStart.getTime());
+      const e2 = Math.min(w.end.getTime(), dEnd.getTime());
+      const b = el("button", "tev");
+      b.type = "button";
+      b.dataset.id = p.ev.id;
+      b.style.top = ((s - dStart.getTime()) / DAY * 100) + "%";
+      b.style.height = Math.max((e2 - s) / DAY * 100, 1.4) + "%";
+      b.style.left = (p.lane / p.of * 100) + "%";
+      b.style.width = (100 / p.of) + "%";
+      const c = evColor(p.ev);
+      b.style.background = c;
+      b.style.color = inkOn(c);
+      b.appendChild(el("span", "s", evTitle(p.ev)));
+      b.appendChild(el("span", "t", evTimeLabel(p.ev)));
+      b.title = evTitle(p.ev) + " · " + evTimeLabel(p.ev);
+      col.appendChild(b);
+    });
+    if(isToday(d)){
+      const now = el("div", "tg-now");
+      now.style.top = (minsOf(new Date()) / 1440 * 100) + "%";
+      col.appendChild(now);
+    }
+    scroll.appendChild(col);
+  });
+  wrap.appendChild(scroll);
+  return wrap;
+}
+
+/* ---------- agenda ----------
+   With a query typed the date window is dropped and every match in the
+   calendar is listed - a search that only looked forward from the anchor
+   would hide the very thing being searched for. */
+function renderAgenda(){
+  const wrap = el("div", "ag");
+  const searching = !!query.trim();
+  const from = ymd(anchor);
+  const byDay = indexByDay(SHOWN);
+  let keys = Object.keys(byDay).sort();
+  if(!searching) keys = keys.filter(k => k >= from);
+  if(searching) wrap.appendChild(el("p", "hint", t("searchAll")));
+
+  if(!keys.length){
+    wrap.appendChild(el("p", "empty", EVENTS.length ? t("noMatch") : t("noEvents")));
+    return wrap;
+  }
+  keys.slice(0, 400).forEach(k => {
+    const d = Cal.dayStart(k);
+    const row = el("div", "ag-day" + (isToday(d) ? " today" : ""));
+    const when = el("div", "ag-when");
+    when.appendChild(el("span", "n", String(d.getDate())));
+    // Formatted separately and joined: asking one call for weekday+month
+    // gives ro-RO "sept. joi", which reads backwards.
+    when.appendChild(document.createTextNode(
+      fmt(d, { weekday:"long" }) + " · " + fmt(d, { month:"short" })));
+    row.appendChild(when);
+    const list = el("div", "ag-list");
+    byDay[k].forEach(e => list.appendChild(agendaRow(e)));
+    row.appendChild(list);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+function agendaRow(e){
+  const b = el("button", "ag-ev");
+  b.type = "button";
+  b.dataset.id = e.id;
+  const bar = el("span", "bar");
+  bar.style.background = evColor(e);
+  b.appendChild(bar);
+  b.appendChild(el("span", "t", evTimeLabel(e)));
+  b.appendChild(el("span", "s", evTitle(e)));
+  const bits = [evCal(e), e.location].filter(Boolean).join(" · ");
+  if(bits) b.appendChild(el("span", "meta", bits));
+  return b;
+}
+
+/* ---------- the title above the grid ---------- */
+function headTitle(){
+  if(view === "month") return fmt(anchor, { month:"long", year:"numeric" });
+  if(view === "day")   return fmt(anchor, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+  if(view === "week"){
+    const a = startOfWeek(anchor), b = addDays(a, 6);
+    const sameMonth = a.getMonth() === b.getMonth();
+    return fmt(a, { day:"numeric", month: sameMonth ? undefined : "short" }) + " – " +
+           fmt(b, { day:"numeric", month:"short", year:"numeric" });
+  }
+  return t("vAgenda") + " · " + fmt(anchor, { day:"numeric", month:"long", year:"numeric" });
+}
+
+function render(){
+  applyFilters();
+  $("cal-title").textContent = headTitle();
+  $("count").textContent = t("count", SHOWN.length);
+  document.querySelectorAll(".views .btn").forEach(b =>
+    b.classList.toggle("on", b.dataset.view === view));
+
+  let node;
+  if(view === "month") node = renderMonth();
+  else if(view === "week") node = renderTime(Array.from({ length:7 }, (_, i) => addDays(startOfWeek(anchor), i)));
+  else if(view === "day") node = renderTime([anchor]);
+  else node = renderAgenda();
+
+  stage.textContent = "";
+  stage.appendChild(node);
+  paintFilters();
+  if(view === "week" || view === "day") scrollToHour();
+}
+// Open the hour grid where the day actually is, not at midnight.
+function scrollToHour(){
+  const col = stage.querySelector(".tg-col");
+  if(!col) return;
+  const h = col.getBoundingClientRect().height / 24;
+  stage.scrollTop = Math.max(0, (new Date().getHours() - 1.5) * h);
+}
+
+/* ============================================================
+   7. The filter sidebar
+   ------------------------------------------------------------
+   Facet values come from the events themselves, so there is no
+   list to maintain: type a new calendar name on an event and it
+   appears here. Counts are taken after the query but before the
+   facet filters, so a chip that is off still says what turning it
+   back on would bring with it.
+   ============================================================ */
+function facetCounts(pick){
+  const q = fold(query), out = {};
+  EVENTS.filter(e => matchQuery(e, q)).forEach(e => {
+    [].concat(pick(e)).forEach(v => { out[v] = (out[v] || 0) + 1; });
+  });
+  return out;
+}
+function paintFacet(box, counts, hiddenList, label, dot){
+  box.textContent = "";
+  const keys = Object.keys(counts).sort();
+  if(!keys.length){ box.appendChild(el("span", "side-empty", t("noneYet"))); return; }
+  keys.forEach(k => {
+    const off = hiddenList.indexOf(k) >= 0;
+    const b = el("button", "chip " + (off ? "off" : "on"));
+    b.type = "button";
+    b.dataset.facet = box.id;
+    b.dataset.val = k;
+    b.setAttribute("aria-pressed", off ? "false" : "true");
+    if(dot){
+      const d = el("span", "dot");
+      d.style.background = dot(k);
+      b.appendChild(d);
+    }
+    b.appendChild(document.createTextNode(label(k)));
+    b.appendChild(el("span", "n", String(counts[k])));
+    box.appendChild(b);
+  });
+}
+function paintFilters(){
+  paintFacet($("fCals"), facetCounts(evCal), hidden.cals, k => k || t("noCal"));
+  paintFacet($("fTags"), facetCounts(evTags), hidden.tags, k => "#" + k);
+  paintFacet($("fSrcs"), facetCounts(evSrc), hidden.srcs,
+             k => k ? t("srcOf", k) : t("srcManual"));
+  paintFacet($("fColors"), facetCounts(e => String(e.colorId || "7")), hidden.colors,
+             k => { const c = Cal.COLORS.filter(x => x.id === k)[0]; return c ? t(c.key) : k; },
+             k => Cal.colorHex(k));
+  const dl = $("cal-names");
+  dl.textContent = "";
+  Object.keys(facetCounts(evCal)).filter(Boolean).sort().forEach(n => {
+    const o = document.createElement("option");
+    o.value = n;
+    dl.appendChild(o);
+  });
+}
+const FACET_KEY = { fCals:"cals", fTags:"tags", fSrcs:"srcs", fColors:"colors" };
+function toggleFacet(box, val){
+  const key = FACET_KEY[box];
+  if(!key) return;
+  const i = hidden[key].indexOf(val);
+  if(i < 0) hidden[key].push(val); else hidden[key].splice(i, 1);
+  savePrefs();
+  render();
+}
+
+/* ============================================================
+   8. The event editor - new and existing both land here
+   ============================================================ */
+let colorPick = "7";
+function buildSwatches(){
+  const box = $("ev-colors");
+  if(!box) return;
+  box.textContent = "";
+  Cal.COLORS.forEach(c => {
+    const b = el("button", "sw");
+    b.type = "button";
+    b.dataset.color = c.id;
+    b.style.background = c.hex;
+    b.title = t(c.key);
+    b.setAttribute("aria-label", t(c.key));
+    box.appendChild(b);
+  });
+  paintSwatches();
+}
+function paintSwatches(){
+  document.querySelectorAll("#ev-colors .sw").forEach(b =>
+    b.classList.toggle("on", b.dataset.color === colorPick));
+}
+function paintAllDay(){
+  const on = $("ev-allday").checked;
+  $("ev-time-w").style.visibility = on ? "hidden" : "visible";
+  $("ev-etime-w").style.visibility = on ? "hidden" : "visible";
+}
+function openEvent(ev, pre){
+  editing = ev || null;
+  $("ev-h").textContent = ev ? t("editEvent") : t("newEvent");
+  $("ev-del").hidden = !ev;
+
+  const src = ev ? evSrc(ev) : "";
+  $("ev-src").hidden = !src;
+  if(src) $("ev-src").textContent = t("fromSource", t("srcOf", src));
+
+  let allDay, d1, t1, d2, t2;
+  if(ev){
+    const w = Cal.when(ev);
+    allDay = w.allDay;
+    d1 = ymd(w.start);
+    t1 = allDay ? "09:00" : hhmm(w.start);
+    // end.date is exclusive in storage; the field shows the last day meant.
+    d2 = allDay ? ymd(Cal.addDays(w.end, -1)) : ymd(w.end);
+    t2 = allDay ? "10:00" : hhmm(w.end);
+  } else {
+    allDay = pre ? !!pre.allDay : true;
+    d1 = (pre && pre.date) || ymd(anchor);
+    t1 = (pre && pre.time) || "09:00";
+    d2 = (pre && pre.endDate) || d1;
+    t2 = (pre && pre.endTime) || "10:00";
+  }
+  $("ev-title").value = ev ? (ev.summary || "") : "";
+  $("ev-allday").checked = allDay;
+  $("ev-date").value = d1;
+  $("ev-time").value = t1;
+  $("ev-edate").value = d2;
+  $("ev-etime").value = t2;
+  $("ev-loc").value = ev ? (ev.location || "") : "";
+  $("ev-desc").value = ev ? (ev.description || "") : "";
+  $("ev-cal").value = ev ? evCal(ev) : "";
+  $("ev-tags").value = ev ? evTags(ev).join(", ") : "";
+  colorPick = ev ? String(ev.colorId || "7") : "7";
+  const rec = ev && ev.recurrence && ev.recurrence[0];
+  const freq = rec ? ((/FREQ=([A-Z]+)/.exec(rec) || [])[1] || "") : "";
+  $("ev-rec").value = ["DAILY","WEEKLY","MONTHLY","YEARLY"].indexOf(freq) >= 0 ? freq : "";
+
+  paintSwatches();
+  paintAllDay();
+  $("ev-modal").classList.add("open");
+  setTimeout(() => $("ev-title").focus(), 20);
+}
+function closeEvent(){ $("ev-modal").classList.remove("open"); editing = null; }
+
+function saveEvent(){
+  const date = $("ev-date").value;
+  if(!date){ ScuLaFolder.toast(t("needDate")); return; }
+  const allDay = $("ev-allday").checked;
+  // Anything the source page put on this event stays on it, so a re-sync
+  // can still recognise its own rows after a hand edit.
+  const ext = {};
+  if(editing && editing.extendedProperties && editing.extendedProperties.private){
+    const p = editing.extendedProperties.private;
+    Object.keys(p).forEach(k => { ext[k] = p[k]; });
+  }
+  // The #ev-date handler pushes the end along, but the end field can still
+  // be set back behind the start afterwards; an event that finishes before
+  // it starts must not reach the store.
+  let endDate = $("ev-edate").value || date;
+  if(endDate < date) endDate = date;
+  const cal = $("ev-cal").value.trim();
+  const tags = $("ev-tags").value.split(",").map(s => s.trim().replace(/^#/, "")).filter(Boolean);
+  if(cal) ext.sculaCal = cal; else delete ext.sculaCal;
+  if(tags.length) ext.sculaTags = tags.join(","); else delete ext.sculaTags;
+
+  const freq = $("ev-rec").value;
+  const ev = Cal.make({
+    id: editing ? editing.id : null,
+    created: editing ? editing.created : null,
+    title: $("ev-title").value,
+    description: $("ev-desc").value,
+    location: $("ev-loc").value,
+    colorId: colorPick,
+    allDay: allDay,
+    date: date,
+    time: $("ev-time").value || "09:00",
+    endDate: endDate,
+    endTime: allDay ? null : ($("ev-etime").value || null),
+    recurrence: freq ? ["RRULE:FREQ=" + freq] : null,
+    ext: ext
+  });
+  // No load() here: put() fires the change fan-out and this page is
+  // subscribed to it, so the repaint is already on its way. One path.
+  Cal.put(ev).then(() => {
+    closeEvent();
+    ScuLaFolder.toast(t("savedMsg"));
+  });
+}
+function deleteEvent(){
+  if(!editing) return;
+  if(!confirm(t("deleteAsk"))) return;
+  Cal.remove(editing.id).then(() => {
+    closeEvent();
+    ScuLaFolder.toast(t("deletedMsg"));
+  });
+}
+
+/* the "+N more" sheet */
+function openDay(key){
+  const d = Cal.dayStart(key);
+  $("day-h").textContent = fmt(d, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+  const box = $("day-list");
+  box.textContent = "";
+  SHOWN.filter(e => Cal.daysOf(e).indexOf(key) >= 0).forEach(e => box.appendChild(agendaRow(e)));
+  $("day-new").dataset.day = key;
+  $("day-modal").classList.add("open");
+}
+function closeDay(){ $("day-modal").classList.remove("open"); }
+
+/* ============================================================
+   9. Export / import
+   ------------------------------------------------------------
+   Both routes go through ScuLaFolder.save (docs/FEATURES.md § D):
+   folder on desktop, the OS share sheet on a phone, download
+   otherwise. What goes out is what the filters left on screen.
+   ============================================================ */
+function stamp(){ return ymd(new Date()); }
+function exportIcs(){
+  if(!SHOWN.length){ ScuLaFolder.toast(t("nothingToExport")); return; }
+  const blob = new Blob([Cal.toICS(SHOWN)], { type:"text/calendar;charset=utf-8" });
+  ScuLaFolder.save("calendar-" + stamp() + ".ics", blob);
+}
+function exportJson(){
+  if(!SHOWN.length){ ScuLaFolder.toast(t("nothingToExport")); return; }
+  const blob = new Blob([Cal.toGoogleJSON(SHOWN)], { type:"application/json;charset=utf-8" });
+  ScuLaFolder.save("calendar-" + stamp() + ".json", blob);
+}
+function copyJson(){
+  if(!SHOWN.length){ ScuLaFolder.toast(t("nothingToExport")); return; }
+  const text = Cal.toGoogleJSON(SHOWN);
+  const done = () => ScuLaFolder.toast(t("copied"));
+  const fail = () => ScuLaFolder.toast(t("copyFail"));
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, fail);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); done(); }catch(e){ fail(); }
+  ta.remove();
+}
+function importFile(file){
+  const r = new FileReader();
+  r.onload = () => {
+    let list = [];
+    try{
+      const txt = String(r.result);
+      if(/^\s*[\[{]/.test(txt)){
+        const j = JSON.parse(txt);
+        list = (Array.isArray(j) ? j : (j.items || [])).filter(e => e && e.start);
+        // An event out of Google carries Google's own id; ours has to stay
+        // legal and unique here, so anything unfamiliar is renamed.
+        list.forEach(e => { if(!/^[0-9a-v]{5,}$/.test(e.id || "")) e.id = Cal.newId(); });
+      } else {
+        list = Cal.fromICS(txt);
+      }
+    }catch(e){ ScuLaFolder.toast(t("importBad")); return; }
+    if(!list.length){ ScuLaFolder.toast(t("importEmpty")); return; }
+    list.forEach(e => {
+      e.status = e.status || "confirmed";
+      e.colorId = String(e.colorId || "7");
+      e.summary = e.summary || "";
+    });
+    Cal.putMany(list).then(n => ScuLaFolder.toast(t("imported", n)));
+  };
+  r.onerror = () => ScuLaFolder.toast(t("importBad"));
+  r.readAsText(file);
+}
+
+/* ============================================================
+   10. Moving around
+   ============================================================ */
+function setView(v){
+  view = v;
+  savePrefs();
+  render();
+}
+function step(dir){
+  if(view === "month") anchor = addMonths(anchor, dir);
+  else if(view === "week") anchor = addDays(anchor, 7 * dir);
+  else if(view === "day") anchor = addDays(anchor, dir);
+  else anchor = addDays(anchor, 30 * dir);
+  render();
+}
+function goToday(){ anchor = startOfDay(new Date()); render(); }
+
+/* ============================================================
+   11. Preferences (view + filters survive a reload)
+   ============================================================ */
+let prefsLoaded = false;
+function savePrefs(){
+  if(!prefsLoaded) return;
+  Cal.setMeta("view", { view:view, hidden:hidden });
+}
+function loadPrefs(){
+  return Cal.meta("view").then(v => {
+    // Month across a 412px screen gives each day about 55px - enough for a
+    // colour bar and nothing else. Agenda is the honest default there, and
+    // only until the person picks something, since that choice is saved.
+    if(!v && window.innerWidth <= 800) view = "agenda";
+    if(v && typeof v === "object"){
+      if(["month","week","day","agenda"].indexOf(v.view) >= 0) view = v.view;
+      if(v.hidden){
+        ["cals","tags","srcs","colors"].forEach(k => {
+          if(Array.isArray(v.hidden[k])) hidden[k] = v.hidden[k].slice();
+        });
+      }
+    }
+  }).catch(() => {}).then(() => { prefsLoaded = true; });
+}
+
+/* ============================================================
+   12. Loading
+   ============================================================ */
+function load(){
+  return Cal.all().then(list => {
+    EVENTS = list || [];
+    render();
+  });
+}
+
+/* ============================================================
+   13. Wiring
+   ------------------------------------------------------------
+   Every event chip, chip filter and day cell is generated, so
+   all of it is delegated from one listener per container.
+   ============================================================ */
+function byId(id){
+  for(let i = 0; i < EVENTS.length; i++) if(EVENTS[i].id === id) return EVENTS[i];
+  return null;
+}
+
+stage.addEventListener("click", ev => {
+  const hit = ev.target.closest("[data-id]");
+  if(hit){ const e = byId(hit.dataset.id); if(e) openEvent(e); return; }
+  const more = ev.target.closest("[data-day]");
+  if(more && more.classList.contains("m-more")){ openDay(more.dataset.day); return; }
+  const add = ev.target.closest("[data-newday]");
+  if(add) openEvent(null, { date: add.dataset.newday, allDay:true });
+});
+
+$("day-list").addEventListener("click", ev => {
+  const hit = ev.target.closest("[data-id]");
+  if(!hit) return;
+  const e = byId(hit.dataset.id);
+  if(e){ closeDay(); openEvent(e); }
+});
+$("day-new").addEventListener("click", () => {
+  const d = $("day-new").dataset.day;
+  closeDay();
+  openEvent(null, { date:d, allDay:true });
+});
+$("day-close").addEventListener("click", closeDay);
+$("day-modal").addEventListener("click", ev => { if(ev.target === $("day-modal")) closeDay(); });
+
+/* ---- drag on the hour grid to block out a time ----
+   A drag paints a ghost and opens the editor on that interval; a plain
+   click (no real movement) opens it on a one-hour slot. Both snap to 15
+   minutes, which is what makes the grid usable with a finger. */
+const SNAP = 15;
+let dragCol = null, dragFrom = 0, dragTo = 0, ghost = null, dragMoved = false;
+function minuteAt(col, clientY){
+  const r = col.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (clientY - r.top) / r.height));
+  return Math.round(frac * 1440 / SNAP) * SNAP;
+}
+function paintGhost(){
+  if(!ghost) return;
+  const a = Math.min(dragFrom, dragTo), b = Math.max(dragFrom, dragTo);
+  ghost.style.top = (a / 1440 * 100) + "%";
+  ghost.style.height = (Math.max(b - a, SNAP) / 1440 * 100) + "%";
+}
+function hm(mins){
+  const h = Math.floor(mins / 60) % 24, m = mins % 60;
+  return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+}
+stage.addEventListener("pointerdown", ev => {
+  const col = ev.target.closest(".tg-col");
+  if(!col || ev.target.closest(".tev") || ev.button) return;
+  dragCol = col;
+  dragMoved = false;
+  dragFrom = dragTo = minuteAt(col, ev.clientY);
+  ghost = el("div", "tg-ghost");
+  col.appendChild(ghost);
+  paintGhost();
+  col.setPointerCapture(ev.pointerId);
+  ev.preventDefault();
+});
+stage.addEventListener("pointermove", ev => {
+  if(!dragCol) return;
+  const m = minuteAt(dragCol, ev.clientY);
+  if(m !== dragTo){ dragMoved = true; dragTo = m; paintGhost(); }
+});
+stage.addEventListener("pointerup", ev => {
+  if(!dragCol) return;
+  const col = dragCol, from = dragFrom, to = dragTo, moved = dragMoved;
+  if(ghost){ ghost.remove(); ghost = null; }
+  dragCol = null;
+  try{ col.releasePointerCapture(ev.pointerId); }catch(e){}
+  const a = Math.min(from, to);
+  const b = moved && Math.abs(to - from) >= SNAP ? Math.max(from, to) : Math.min(a + 60, 1440);
+  openEvent(null, { date: col.dataset.day, allDay:false, time: hm(a), endTime: hm(b) });
+});
+
+/* ---- sidebar ---- */
+$("side").addEventListener("click", ev => {
+  const chip = ev.target.closest("[data-facet]");
+  if(chip) toggleFacet(chip.dataset.facet, chip.dataset.val);
+});
+$("q").addEventListener("input", () => { query = $("q").value; render(); });
+$("clearF").addEventListener("click", () => {
+  hidden = { cals:[], tags:[], srcs:[], colors:[] };
+  query = "";
+  $("q").value = "";
+  savePrefs();
+  render();
+});
+$("expIcs").addEventListener("click", exportIcs);
+$("expJson").addEventListener("click", exportJson);
+$("copyJson").addEventListener("click", copyJson);
+$("impBtn").addEventListener("click", () => $("impFile").click());
+$("impFile").addEventListener("change", () => {
+  const f = $("impFile").files[0];
+  if(f) importFile(f);
+  $("impFile").value = "";
+});
+
+/* ---- header ---- */
+$("todayBtn").addEventListener("click", goToday);
+$("prevBtn").addEventListener("click", () => step(-1));
+$("nextBtn").addEventListener("click", () => step(1));
+$("newBtn").addEventListener("click", () => openEvent(null, { date: ymd(anchor), allDay:true }));
+$("sideBtn").addEventListener("click", () => $("side").classList.toggle("hidden"));
+document.querySelector(".views").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-view]");
+  if(b) setView(b.dataset.view);
+});
+
+/* ---- the editor ---- */
+$("ev-save").addEventListener("click", saveEvent);
+$("ev-cancel").addEventListener("click", closeEvent);
+$("ev-del").addEventListener("click", deleteEvent);
+$("ev-allday").addEventListener("change", paintAllDay);
+$("ev-colors").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-color]");
+  if(b){ colorPick = b.dataset.color; paintSwatches(); }
+});
+$("ev-modal").addEventListener("click", ev => { if(ev.target === $("ev-modal")) closeEvent(); });
+// An end date that fell behind the start is almost always a typo mid-edit.
+$("ev-date").addEventListener("change", () => {
+  if($("ev-edate").value < $("ev-date").value) $("ev-edate").value = $("ev-date").value;
+});
+// Ctrl+Enter saves from anywhere in the form; the editor's own shortcuts
+// must not fire behind it, so every chord is stopped here.
+$("ev-modal").addEventListener("keydown", ev => {
+  if(ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)){ ev.preventDefault(); saveEvent(); return; }
+  if(ev.ctrlKey || ev.altKey || ev.metaKey) ev.stopPropagation();
+});
+
+/* ---- keyboard ---- */
+document.addEventListener("keydown", ev => {
+  if(ev.key === "Escape"){
+    if($("ev-modal").classList.contains("open")) closeEvent();
+    else if($("day-modal").classList.contains("open")) closeDay();
+    return;
+  }
+  const el2 = document.activeElement;
+  const typing = el2 && (/^(INPUT|TEXTAREA|SELECT)$/.test(el2.tagName) || el2.isContentEditable);
+  if(typing || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  if(ev.key === "ArrowLeft"){ step(-1); ev.preventDefault(); }
+  else if(ev.key === "ArrowRight"){ step(1); ev.preventDefault(); }
+  else if(ev.key === "t" || ev.key === "T") goToday();
+  else if(ev.key === "n" || ev.key === "N"){ openEvent(null, { date: ymd(anchor), allDay:true }); ev.preventDefault(); }
+  else if(ev.key === "m" || ev.key === "M") setView("month");
+  else if(ev.key === "w" || ev.key === "W") setView("week");
+  else if(ev.key === "d" || ev.key === "D") setView("day");
+  else if(ev.key === "a" || ev.key === "A") setView("agenda");
+  else if(ev.key === "/"){ $("side").classList.remove("hidden"); $("q").focus(); ev.preventDefault(); }
+});
+
+/* Another page wrote an event (or another tab did) - follow along. */
+Cal.onChange(() => load());
+// The shared nav owns the language; it announces changes to whoever cares.
+window.addEventListener("scula-ui-lang", ev => {
+  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
+});
+
+/* ============================================================
+   14. Init
+   ============================================================ */
+(function init(){
+  try{ UI = localStorage.getItem("scula:ui-lang") || "ro"; }catch(e){}
+  if(window.innerWidth <= 800) $("side").classList.add("hidden");
+  buildSwatches();
+  applyUILang();
+  loadPrefs().then(load);
+})();
+</script>
+</body></html>
