@@ -3,12 +3,12 @@
 Ad-hoc Playwright checks for `editor.html` (including `infinite.js`, the
 infinite canvas and what an export's size is) and `recipes.html`, and — in
 `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
-`importance.js`, `idea.js` and `paste.js` — for
+`importance.js`, `idea.js`, `mdundo.js` and `paste.js` — for
 `index.html`'s knowledge graph, its search panel, its navigation
 panel, renaming a workbook or chapter in place, "Save all modified" and the
 pending-edit tracking under it, the TODO-workbook chapter filter, the
-`!nice`/`!important`/`!vital` importance markers, quick idea capture, and
-pasting a picture into it, plus — in `voice.js` — `voice.html`'s keep-the-audio
+`!nice`/`!important`/`!vital` importance markers, quick idea capture, its
+undo/redo history, and pasting a picture into it, plus — in `voice.js` — `voice.html`'s keep-the-audio
 checkbox, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real

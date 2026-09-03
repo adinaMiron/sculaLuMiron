@@ -40,7 +40,7 @@ grep -nP '[\x{015F}\x{0163}]' voice.html editor.html index.html recipes.html
 ```
 
 Expect **only** these two known-good hits (both are prose *about* the
-cedilla, not user-facing strings): `index.html:~5752` (a comment)
+cedilla, not user-facing strings): `index.html:~6446` (a comment)
 and none in `recipes.html` (it uses `\u` escapes). Anything else in markup
 or a UI string is a bug — replace ş→ș (U+0219), ţ→ț (U+021B).
 

@@ -54,6 +54,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
+| Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
 
 Do not read a doc the task doesn't touch.
 
@@ -158,7 +159,9 @@ in-place rename of a workbook or chapter name (`wbrename.js`),
 the TODO-workbook chapter filter (`wbtodo.js`), the
 `!nice`/`!important`/`!vital` importance markers (`importance.js`), the
 💡 quick idea capture with its chapter matching and its `Idei` fallback
-(`idea.js`) and the copy-to-clipboard button on code blocks in the HTML
+(`idea.js`), the editor's own undo/redo history (`mdundo.js` — real
+keystrokes and the real toolbar buttons) and the copy-to-clipboard button
+on code blocks in the HTML
 export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
@@ -200,6 +203,10 @@ change, not "later":
 ## Known issues (unfixed — confirm before "fixing" something else)
 
 1. `README.md` is a stub.
+2. `tests/nav.js` fails one check — "and the preview too": clicking the
+   first heading scrolls the source back to the top but leaves `#preview`
+   at ~700px. Reproduces on the `index.html` in `HEAD`, so it is not
+   whatever you just changed. The other 15 checks pass.
 
 ## Planned direction (design toward these)
 

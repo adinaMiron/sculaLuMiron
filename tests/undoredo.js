@@ -181,6 +181,56 @@ const inkAt = (page, x, y) => page.evaluate(({ x, y }) => {
   await redoN(page, 8);
   check('eight redos walk all the way forward', await layers(page) === 8, `layers=${await layers(page)}`);
 
+  // ---------- 11. the toolbar buttons ----------
+  const btn = (page, id) => page.evaluate(i => {
+    const b = document.getElementById(i);
+    return { there: !!b, disabled: !!b && b.disabled, label: b ? b.querySelector('.tlabel').textContent.trim() : '' };
+  }, id);
+
+  m = await fresh();
+  let u = await btn(page, 'undoBtn'), r = await btn(page, 'redoBtn');
+  check('both buttons exist in the top bar', u.there && r.there);
+  check('nothing drawn yet, so both are disabled', u.disabled && r.disabled,
+    `undo=${u.disabled} redo=${r.disabled}`);
+
+  await page.keyboard.press('r');
+  await drag(page, at(0.2, 0.2).x, at(0.2, 0.2).y, at(0.45, 0.45).x, at(0.45, 0.45).y);
+  u = await btn(page, 'undoBtn'); r = await btn(page, 'redoBtn');
+  check('drawing enables undo, redo stays disabled', !u.disabled && r.disabled,
+    `undo=${u.disabled} redo=${r.disabled}`);
+
+  await page.click('#undoBtn');
+  await L.sleep(120);
+  check('the undo button undoes', await layers(page) === 0, `layers=${await layers(page)}`);
+  u = await btn(page, 'undoBtn'); r = await btn(page, 'redoBtn');
+  check('and the pair flips: undo off, redo on', u.disabled && !r.disabled,
+    `undo=${u.disabled} redo=${r.disabled}`);
+
+  await page.click('#redoBtn');
+  await L.sleep(120);
+  check('the redo button redoes', await layers(page) === 1, `layers=${await layers(page)}`);
+  check('redo is disabled again at the end of the stack',
+    (await btn(page, 'redoBtn')).disabled);
+
+  // Ctrl+Y is the second redo shortcut
+  await page.keyboard.press('Control+z');
+  await L.sleep(120);
+  await page.keyboard.press('Control+y');
+  await L.sleep(120);
+  check('Ctrl+Y redoes too', await layers(page) === 1, `layers=${await layers(page)}`);
+
+  // a new canvas empties the history, and the buttons say so
+  await page.click('#newCanvasBtn');
+  await page.click('#newCanvasCreate');
+  await L.sleep(200);
+  u = await btn(page, 'undoBtn'); r = await btn(page, 'redoBtn');
+  check('a new canvas disables both again', u.disabled && r.disabled,
+    `undo=${u.disabled} redo=${r.disabled}`);
+
+  // and they are translated like every other button in the bar
+  check('the labels are the Romanian ones', u.label === 'Anuleaz\u0103' && r.label === 'Ref\u0103',
+    `[${u.label}] [${r.label}]`);
+
   console.log(errors.length ? 'JS errors:\n' + errors.join('\n') : 'no JS errors');
   console.log(`\n${pass} passed, ${fail} failed`);
   await browser.close();

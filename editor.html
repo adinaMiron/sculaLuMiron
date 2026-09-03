@@ -1097,6 +1097,11 @@
       <button class="action" id="saveAllSizesBtn" data-i-title="saveAllSizesTip" data-i-aria="saveAllSizesTitle" title="Export this drawing at every preset size up to its current size, bundled in one zip" aria-label="Save all sizes"><span class="ticon">📐</span><span class="tlabel" data-i="saveAllSizes">Save all sizes</span></button>
     </div>
 
+    <div class="grp" id="historyGrp">
+      <button class="action" id="undoBtn" data-i-title="undoTip" data-i-aria="undoTip" title="Undo the last change (Ctrl+Z)" aria-label="Undo the last change" disabled><span class="ticon">↶</span><span class="tlabel" data-i="undo">Undo</span></button>
+      <button class="action" id="redoBtn" data-i-title="redoTip" data-i-aria="redoTip" title="Redo the change you just undid (Ctrl+Shift+Z or Ctrl+Y)" aria-label="Redo the change you just undid" disabled><span class="ticon">↷</span><span class="tlabel" data-i="redo">Redo</span></button>
+    </div>
+
     <div class="grp" id="zoomGrp">
       <button class="action" id="zoomOutBtn" data-i-title="zoomOutTip" title="Zoom out (Ctrl+scroll down)">−</button>
       <button class="action" id="zoomLabelBtn" data-i-title="zoomFitTip" title="Reset zoom to fit the window">100%</button>
@@ -1390,7 +1395,7 @@
       <div id="hint" data-i="hintText">
         Click a layer to select it. Shift‑click to select several. Drag a
         shape's corner handle to resize, the top handle to rotate.
-        Ctrl+Z / Ctrl+Shift+Z to undo/redo.
+        Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) to undo/redo.
       </div>
     </div>
   </div>
@@ -1506,6 +1511,9 @@ const I18N = {
     openImage:"Deschide", newCanvas:"Canvas nou", saveImage:"Salvează",
     openImageTip:"Deschide o imagine JPG sau PNG", newCanvasTip:"Începe de la un canvas gol",
     saveImageTip:"Salvează imaginea editată",
+    undo:"Anulează", redo:"Refă",
+    undoTip:"Anulează ultima modificare (Ctrl+Z)",
+    redoTip:"Refă modificarea anulată (Ctrl+Shift+Z sau Ctrl+Y)",
     saveAllSizes:"Toate dimensiunile",
     saveAllSizesTip:"Exportă acest desen la fiecare dimensiune presetată până la dimensiunea curentă, într-o singură arhivă zip",
     zoomOutTip:"Micșorează (Ctrl+derulare în jos)", zoomFitTip:"Readu zoom-ul la potrivirea ferestrei", zoomInTip:"Mărește (Ctrl+derulare în sus)",
@@ -1567,7 +1575,7 @@ const I18N = {
     copyBtn:"Copiază", copyTip:"Copiază (Ctrl+C)", pasteBtn:"Lipește", pasteTip:"Lipește (Ctrl+V)",
     groupBtn:"Grupează", groupTip:"Grupează (Ctrl+G)", ungroupBtn:"Degrupează", ungroupTip:"Degrupează (Ctrl+Shift+G)",
     fwdBtn:"Sus", fwdTip:"Adu în față", backBtn:"Jos", backTip:"Trimite în spate",
-    hintText:"Apasă pe un strat pentru a-l selecta. Shift‑clic pentru a selecta mai multe. Trage colțul unei forme pentru a redimensiona, mânerul de sus pentru a roti. Ctrl+Z / Ctrl+Shift+Z pentru anulare/refacere.",
+    hintText:"Apasă pe un strat pentru a-l selecta. Shift‑clic pentru a selecta mai multe. Trage colțul unei forme pentru a redimensiona, mânerul de sus pentru a roti. Ctrl+Z / Ctrl+Shift+Z (sau Ctrl+Y) pentru anulare/refacere.",
     layerText:p=>`Text: ${p}`, layerRect:"Dreptunghi", layerRectText:"Dreptunghi + text",
     layerFreehand:"Desen liber", layerArrowLabel:"Săgeată", layerHighlightLabel:"Evidențiere",
     layerCircle:"Cerc", layerEllipseLabel:"Elipsă", layerRhombusLabel:"Romb", layerLineLabel:"Linie",
@@ -1585,6 +1593,9 @@ const I18N = {
     openImage:"Open", newCanvas:"New canvas", saveImage:"Save",
     openImageTip:"Open a JPG or PNG image", newCanvasTip:"Start from a blank canvas",
     saveImageTip:"Save the edited image",
+    undo:"Undo", redo:"Redo",
+    undoTip:"Undo the last change (Ctrl+Z)",
+    redoTip:"Redo the change you just undid (Ctrl+Shift+Z or Ctrl+Y)",
     saveAllSizes:"All sizes",
     saveAllSizesTip:"Export this drawing at every preset size up to its current size, bundled in one zip",
     zoomOutTip:"Zoom out (Ctrl+scroll down)", zoomFitTip:"Reset zoom to fit the window", zoomInTip:"Zoom in (Ctrl+scroll up)",
@@ -1646,7 +1657,7 @@ const I18N = {
     copyBtn:"Copy", copyTip:"Copy (Ctrl+C)", pasteBtn:"Paste", pasteTip:"Paste (Ctrl+V)",
     groupBtn:"Group", groupTip:"Group (Ctrl+G)", ungroupBtn:"Ungroup", ungroupTip:"Ungroup (Ctrl+Shift+G)",
     fwdBtn:"Fwd", fwdTip:"Bring forward", backBtn:"Back", backTip:"Send backward",
-    hintText:"Click a layer to select it. Shift‑click to select several. Drag a shape's corner handle to resize, the top handle to rotate. Ctrl+Z / Ctrl+Shift+Z to undo/redo.",
+    hintText:"Click a layer to select it. Shift‑click to select several. Drag a shape's corner handle to resize, the top handle to rotate. Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) to undo/redo.",
     layerText:p=>`Text: ${p}`, layerRect:"Rectangle", layerRectText:"Rectangle + text",
     layerFreehand:"Freehand drawing", layerArrowLabel:"Arrow", layerHighlightLabel:"Highlight",
     layerCircle:"Circle", layerEllipseLabel:"Ellipse", layerRhombusLabel:"Rhombus", layerLineLabel:"Line",
@@ -1846,6 +1857,15 @@ function commit(json){
 function resetHistory(){
   state.undoStack = []; state.redoStack = [];
   commit();
+  syncHistoryButtons();
+}
+const undoBtnEl = document.getElementById('undoBtn');
+const redoBtnEl = document.getElementById('redoBtn');
+// The toolbar pair mirrors the stacks: an empty stack is a disabled button, so
+// the bar says what is available without anyone having to press it to find out.
+function syncHistoryButtons(){
+  undoBtnEl.disabled = !state.undoStack.length;
+  redoBtnEl.disabled = !state.redoStack.length;
 }
 function pushHistory(){
   const json = JSON.stringify(state.layers);
@@ -1859,6 +1879,7 @@ function pushHistory(){
   if (state.undoStack.length > 60) state.undoStack.shift();
   state.redoStack.length = 0;
   commit(json);
+  syncHistoryButtons();
 }
 function applyHistory(s){
   // a half-placed curve isn't in the history, so it can't survive a step
@@ -1867,6 +1888,7 @@ function applyHistory(s){
   state.layers = s.layers; state.selection = s.selection;
   commit(); // re-clone: the entry just popped is now live state, not a record
   renderAll();
+  syncHistoryButtons();
 }
 function undo(){
   if (!state.undoStack.length) return;
@@ -3532,6 +3554,9 @@ function groupMembers(l){
 }
 
 /* ===================== Toolbar wiring ===================== */
+undoBtnEl.addEventListener('click', () => undo());
+redoBtnEl.addEventListener('click', () => redo());
+
 document.querySelectorAll('button.tool').forEach(btn => {
   btn.addEventListener('click', () => {
     // don't strand a curve that is still being placed - reaching for another
@@ -4780,6 +4805,7 @@ window.addEventListener('keydown', (e) => {
   }
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z' && e.shiftKey){ e.preventDefault(); redo(); return; }
+  if (meta && e.key.toLowerCase() === 'y'){ e.preventDefault(); redo(); return; }
   if (meta && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
   if (meta && e.key.toLowerCase() === 'c'){ e.preventDefault(); copySelection(); return; }
   if (meta && e.key.toLowerCase() === 'v'){ e.preventDefault(); pasteClipboard(); return; }

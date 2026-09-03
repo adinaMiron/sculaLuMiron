@@ -2210,6 +2210,10 @@
   <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
 
   <div class="toolbar-groups" id="toolbar-groups">
+  <button class="tb-btn" id="btn-undo" onclick="undoEdit()" data-i="undoBtn" data-i-title="undoTip" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+  <button class="tb-btn" id="btn-redo" onclick="redoEdit()" data-i="redoBtn" data-i-title="redoTip" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
+
+  <div class="toolbar-sep"></div>
   <span class="tb-label">H</span>
   <select class="tb-select" id="heading-select" onchange="insertHeading(this.value)">
     <option value="" data-i="headingDefault">— Heading —</option>
@@ -2679,6 +2683,8 @@ const I18N = {
     newFileBtn:"Nou", openFileBtn:"Deschide .md", importDocxBtn:"Importă DOCX",
     exportHtmlBtn:"Exportă HTML", saveFileBtn:"Salvează fisierul",
     headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
+    undoBtn:"↶ Anulează", undoTip:"Anulează ultima modificare (Ctrl+Z)",
+    redoBtn:"↷ Refă", redoTip:"Refă modificarea anulată (Ctrl+Shift+Z sau Ctrl+Y)",
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
@@ -2857,6 +2863,8 @@ const I18N = {
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
     exportHtmlBtn:"Export HTML", saveFileBtn:"Save ↓",
     headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
+    undoBtn:"↶ Undo", undoTip:"Undo the last change (Ctrl+Z)",
+    redoBtn:"↷ Redo", redoTip:"Redo the undone change (Ctrl+Shift+Z or Ctrl+Y)",
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
@@ -3092,6 +3100,94 @@ function saveSelection() {
 function restoreSelection() {
   if (savedRange) { editor.focus(); editor.setSelectionRange(savedRange.start, savedRange.end); }
 }
+/* ── Undo / redo ─────────────────────────────────────────────────
+   The textarea's own history is unusable here: every toolbar action
+   edits through setRangeText (which Chrome does not record) and
+   opening a chapter replaces .value outright, so the native stack is
+   either empty or still full of the previous file's states. The editor
+   keeps its own stack of {value, start, end} snapshots instead.
+
+   Two hooks catch every edit there is: `beforeinput` (typing, paste,
+   cut, drag) and the setRangeText override below — which is what makes
+   this cover every toolbar action, the line moves, Tab, the [[ ]]
+   suggester and dictation without any of them having to remember to
+   record. A whole-document replacement (opening a chapter, New, an
+   import) calls undoReset() instead: that history belongs to a file
+   that is no longer on screen. */
+const UNDO_LIMIT = 200;         // snapshots kept, not keystrokes
+const UNDO_COALESCE_MS = 700;   // one burst of typing is one undo step
+let undoStack = [], redoStack = [], undoTime = 0, undoApplying = false;
+
+function undoSnap() {
+  return { value: editor.value, start: editor.selectionStart, end: editor.selectionEnd };
+}
+/* Called *before* the edit lands, so the snapshot is the state to come
+   back to. `coalesce` folds this edit into the burst already recorded. */
+function undoMark(coalesce) {
+  if (undoApplying) return;
+  const top = undoStack[undoStack.length - 1];
+  const near = coalesce && top && (Date.now() - undoTime) < UNDO_COALESCE_MS;
+  undoTime = Date.now();
+  redoStack.length = 0;                        // a new edit forks the history
+  if (!near && !(top && top.value === editor.value)) {
+    undoStack.push(undoSnap());
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  }
+  paintUndo();
+}
+function undoReset() { undoStack = []; redoStack = []; undoTime = 0; paintUndo(); }
+function undoScrollToCaret() {
+  const at = editorMirrorAt(editor.selectionStart);
+  if (at.top < editor.scrollTop || at.top > editor.scrollTop + editor.clientHeight - at.lineHeight)
+    editor.scrollTop = Math.max(0, at.top - editor.clientHeight / 2);
+}
+function undoApply(s) {
+  undoApplying = true;
+  editor.value = s.value;
+  editor.focus();
+  editor.setSelectionRange(s.start, s.end);
+  undoApplying = false;
+  undoScrollToCaret();
+  updatePreview(); updateStatus(); scheduleAutosave();
+  paintUndo();
+}
+function undoEdit() {
+  if (!undoStack.length) return;
+  redoStack.push(undoSnap());
+  undoApply(undoStack.pop());
+  undoTime = 0;                 // the next keystroke starts a fresh burst
+}
+function redoEdit() {
+  if (!redoStack.length) return;
+  undoStack.push(undoSnap());
+  undoApply(redoStack.pop());
+  undoTime = 0;
+}
+function paintUndo() {
+  const u = document.getElementById('btn-undo'), r = document.getElementById('btn-redo');
+  if (u) u.disabled = !undoStack.length;
+  if (r) r.disabled = !redoStack.length;
+}
+
+/* Typing, paste, cut, drops — plus the browser's own history events, so a
+   context-menu Undo lands in the same stack Ctrl+Z uses. Typing and single
+   deletions coalesce; a newline, a paste or a cut each start their own step. */
+editor.addEventListener('beforeinput', e => {
+  if (e.inputType === 'historyUndo') { e.preventDefault(); undoEdit(); return; }
+  if (e.inputType === 'historyRedo') { e.preventDefault(); redoEdit(); return; }
+  undoMark((e.inputType === 'insertText' && !/\n/.test(e.data || '')) ||
+           e.inputType === 'deleteContentBackward' ||
+           e.inputType === 'deleteContentForward');
+});
+
+/* Every programmatic edit in this file goes through setRangeText, so one
+   override records them all and no new toolbar action can forget to. */
+const editorSetRangeText = editor.setRangeText.bind(editor);
+editor.setRangeText = function (...args) {
+  undoMark(false);
+  return editorSetRangeText(...args);
+};
+
 function insertAtCursor(text) {
   editor.focus();
   const s = editor.selectionStart, e = editor.selectionEnd;
@@ -4306,6 +4402,7 @@ preview.addEventListener('click', e => {
     const lineIdx = Number(cb.dataset.line);
     const lines = editor.value.split('\n');
     lines[lineIdx] = lines[lineIdx].replace(/\[([ xX])\]/, (m, mark) => mark === ' ' ? '[x]' : '[ ]');
+    undoMark(false);
     editor.value = lines.join('\n');
     updatePreview(); updateStatus(); scheduleAutosave();
     return;
@@ -4892,6 +4989,7 @@ function loadChapterIntoEditor(ch) {
   wbDirty = false;
   clearTimeout(wbSaveTimer);
   editor.value = ch.content || '';
+  undoReset();                 // the old chapter's history is not this one's
   document.getElementById('current-file').textContent = ch.file;
   updatePreview(); updateStatus(); updateNav();
   renderWorkbooks();
@@ -5314,7 +5412,9 @@ async function ideaAppendTo(ch, line) {
   if (open) {
     clearTimeout(wbSaveTimer);
     editor.value = ch.content;
-    wbDirty = false;
+    undoReset();               // the idea is already written out; undoing it
+    wbDirty = false;           // here would lose it on the next autosave
+
     updatePreview(); updateStatus(); updateNav();
   }
   if (!await wbPersist(WB_CHAPTERS, ch)) return null;
@@ -7186,6 +7286,7 @@ function newFile() {
   if (wbCurrentId) flushChapter();
   else if (editor.value && !confirm(t('confirmDiscard'))) return;
   editor.value = '';
+  undoReset();
   detachChapter();
   document.getElementById('current-file').textContent = 'untitled.md';
   updatePreview(); updateStatus();
@@ -7196,6 +7297,7 @@ function handleFileOpen(event) {
   const reader = new FileReader();
   reader.onload = e => {
     editor.value = e.target.result;
+    undoReset();
     detachChapter();
     document.getElementById('current-file').textContent = file.name;
     updatePreview(); updateStatus();
@@ -7229,6 +7331,7 @@ function handleDocxImport(event) {
       }
 
       editor.value = md;
+      undoReset();
       const mdName = file.name.replace(/\.docx$/i, '.md');
       detachChapter();
       document.getElementById('current-file').textContent = mdName;
@@ -7603,6 +7706,16 @@ document.addEventListener('keydown', e => {
     if (gv.open) { closeGraph(); return; }
     closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal();
     if (isSmallScreen()) closeAllPanels();
+  }
+  // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → the editor's own history (undoMark).
+  // Another field's focus is left alone — a modal's inputs keep the
+  // browser's undo, which is the only one they have.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && /^[zyZY]$/.test(e.key)) {
+    const el = document.activeElement;
+    if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    e.preventDefault();
+    if (e.shiftKey || e.key === 'y' || e.key === 'Y') redoEdit(); else undoEdit();
+    return;
   }
   // Ctrl+Alt+1/2/3 → the three importance levels, Ctrl+Alt+0 clears. e.code
   // for the same reason the heading shortcuts use it, and because Ctrl+Alt is

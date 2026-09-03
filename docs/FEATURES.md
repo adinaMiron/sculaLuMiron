@@ -1008,6 +1008,65 @@ Run: `/apptest idea`.
 
 ---
 
+## K. Undo / redo (`index.html`)
+
+Two toolbar buttons (`#btn-undo` / `#btn-redo`, first in the group),
+**Ctrl+Z** and **Ctrl+Shift+Z** (**Ctrl+Y** redoes as well). `docs/MAP.md`
+§ index.html, the "Undo / redo" row.
+
+### Why the editor keeps its own stack
+
+The textarea has a native history, and it is not usable here:
+
+- every toolbar action edits through `editor.setRangeText`, which Chrome
+  does not record — bold, a list, a table, a code block and an importance
+  marker would all be invisible to the native stack;
+- opening a chapter assigns `editor.value` outright, so the native stack
+  would still hold the *previous* chapter's states and Ctrl+Z would paste
+  another file's text into this one.
+
+So the editor records `{value, start, end}` snapshots itself, capped at
+`UNDO_LIMIT` (200). The selection is part of the snapshot: undoing a bold
+puts the caret back around the words it was applied to.
+
+### Two hooks, and why there are only two
+
+- **`beforeinput`** on the textarea — typing, paste, cut, drag-and-drop,
+  and the browser's own `historyUndo`/`historyRedo` (a context-menu Undo),
+  which are cancelled and routed into this stack so there is one history,
+  not two.
+- **an override of `editor.setRangeText`** — every programmatic edit in the
+  file goes through it, so the toolbar, the line moves (Alt+↑/↓), Tab, the
+  `[[` completion and each dictated word each become one undo step without
+  any of them having to remember to record. **A new editing action needs no
+  undo code**; it only needs to keep going through `setRangeText`.
+
+A burst of typing coalesces into one step (`UNDO_COALESCE_MS`, 700 ms); a
+newline, a paste, a cut or any toolbar action starts a new one.
+
+### What resets the history
+
+A whole-document replacement — opening a chapter, New, opening a `.md`, a
+DOCX import — calls `undoReset()`: that history describes a file that is no
+longer on screen. So does an idea filed into the **open** chapter (§ J):
+it has already been written to disk, and an undo that took it back out of
+the editor would lose it at the next autosave.
+
+`Ctrl+Z` is ignored while another field has focus (a modal's inputs keep
+the browser's own undo, which is the only one they have).
+
+### Testing
+
+`tests/mdundo.js`. The buttons' disabled states, a typing burst undone in
+one press, a newline as its own step, all three ways to redo, the preview
+rebuilt from the undone value, a toolbar action undone with its selection
+restored, Ctrl+Z inside a modal field leaving the document alone, and New
+emptying both stacks.
+
+Run: `/apptest mdundo`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
