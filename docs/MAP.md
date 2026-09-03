@@ -275,7 +275,8 @@ a `polyline`, whose vertices are all corners already.
 | **3652–4013** | **Wikilinks, tags, importance and block anchors** — see the sub-table below |
 | 4073 | `resolveImageSrc` — image-path rewrite, export-only |
 | **4079** | **`applyInline(text, opts)`** |
-| **4100** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
+| 4103 | `renderCodeBlock(codeLines, codeLang, forExport)` — plain `<pre><code>` for preview; wrapped with a "Copiază" button for export |
+| **4109** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
 | 4214–4249 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation (checkbox · wikilink · `#tag` · importance pill) |
 | **4251** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 3972) and the textarea to the line (`gotoSourceHeading` 3993) |
 | 4312 | `updateStatus` |
@@ -288,8 +289,8 @@ a `polyline`, whose vertices are all corners already.
 | 6984–7005 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
 | 7006 | `importDocx` |
 | 7049 | `htmlToMarkdown` (docx → md) |
-| 7151–7158 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile` 7153, `exportHtml` 7158 |
-| ~7163–7207 | **Exported-HTML template** — standalone `<style>` (**7169–7201**)/`<body>` string, literal hex |
+| 7160–7167 | **`saveOut()`** (one line onto `ScuLaFolder.save`), `saveFile` 7162, `exportHtml` 7167 |
+| ~7172–7245 | **Exported-HTML template** — standalone `<style>` (**7178–7216**)/`<body>` string, literal hex; ends with an inline (string-split `<scr`+`ipt>`) copy-button handler for `.code-copy` |
 | 7219–7335 | Table modal: `rebuildTableGrid`, `insertTable` 7279, `insertCodeBlock` 7310 |
 | 7326–7344 | Link modal: `openLinkModal`, `insertLink` 7337 |
 | 7346–7418 | Event listeners + keyboard shortcuts (**Ctrl+Alt+0/1/2/3 importance — first, and it returns**, then **Ctrl+Alt+I the idea box** — also an early return, then Ctrl+1/2/**3**/**4**, Ctrl+Shift+**L**/**F**, Ctrl+S save chapter, **Ctrl+Alt+S** save all modified, Ctrl+Shift+1..6 headings). The `#idea-text` keydown handler (**7361**) `stopPropagation()`s every Ctrl/Alt chord so the editor's own shortcuts cannot fire behind the modal |
@@ -428,13 +429,14 @@ so "a note" means one thing in both features. Nothing touches the disk.
 **Parser is unified (2026-08).** `parseMarkdown(md, {forExport})` and
 `applyInline(text, {forExport})` serve both preview (`forExport` falsy) and
 export (`forExport: true`) from one implementation — see `resolveImageSrc`
-for the only behavioural fork (relative image paths get `public/images/`
+for the behavioural forks (relative image paths get `public/images/`
 prefixed, and a bare image-path line becomes a standalone `<img>`, only
-when exporting). New markdown syntax now needs exactly one edit, in
-`parseMarkdown`/`applyInline`, not two.
+when exporting; a fenced code block is wrapped with a "Copiază" button only
+when exporting — `renderCodeBlock`). New markdown syntax now needs exactly
+one edit, in `parseMarkdown`/`applyInline`, not two.
 
 **One trap remains:** exported HTML must stay self-contained (its `<style>`
-runs 7169–7201). It ships to people who don't have the app, so it uses
+runs 7178–7216). It ships to people who don't have the app, so it uses
 literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---

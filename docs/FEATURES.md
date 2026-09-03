@@ -142,10 +142,15 @@ Syntax that creates a *link* between notes is a third thing again: it also
 has to appear in the graph, which reads the text through `scanNote()`
 rather than through the parser. See § G.
 
-The only place behaviour forks on `forExport` is `resolveImageSrc()`
+Behaviour forks on `forExport` in two places. `resolveImageSrc()`
 (L4020): export rewrites relative image paths to `public/images/…` and
 turns a bare image-path line into a standalone `<img>`, because exported
-HTML ships without the app's working-folder image tree. If your new
+HTML ships without the app's working-folder image tree. And
+`renderCodeBlock()`: the preview emits a plain `<pre><code>`, the export
+wraps each fenced block in `.code-block` with a "Copiază" button (styled
+and wired by the template's own `<style>` and trailing inline script —
+that script tag is string-split `<scr`+`ipt>` so it survives being inside
+`index.html`'s own `<script>`). If your new
 syntax needs export-only handling (e.g. it also touches paths that only
 make sense relative to the app's file picker), branch on `opts &&
 opts.forExport` the same way rather than forking the function.

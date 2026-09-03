@@ -156,9 +156,11 @@ filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
 the TODO-workbook chapter filter (`wbtodo.js`), the
-`!nice`/`!important`/`!vital` importance markers (`importance.js`) and the
+`!nice`/`!important`/`!vital` importance markers (`importance.js`), the
 💡 quick idea capture with its chapter matching and its `Idei` fallback
-(`idea.js`), and for
+(`idea.js`) and the copy-to-clipboard button on code blocks in the HTML
+export (`codecopy.js` — clicks the real button in the exported file, reads
+the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out).
 It is dev-only
