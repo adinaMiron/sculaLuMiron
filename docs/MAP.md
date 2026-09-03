@@ -100,7 +100,7 @@ blob next to the transcript under the name the transcript actually got
 
 ---
 
-## editor.html — 5117 lines · "Image Marker" (canvas annotation)
+## editor.html — 5270 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -117,55 +117,56 @@ touch" for why and how.
 | Lines | Contents |
 |---|---|
 | 5–11 | Viewport meta — **page zoom is locked off** (`maximum-scale=1, user-scalable=no`); pinch belongs to the canvas, not the chrome |
-| 15–423 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
+| 15–426 | App CSS. `:root` **30–46**. `@font-face` ×9 near top (all 9 files present in `fonts/`) |
 | 57–68 | `html,body` — incl. `touch-action: pan-x pan-y`, the other half of the page-zoom lock |
-| 73–125 | Top toolbar |
-| 126–150 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform. `#stage.infinite` drops the drop shadow — that sheet has no edge worth casting one |
-| 261–350 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
-| 351–423 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
-| 427–1085 | **Shared nav + `ScuLaFolder`** |
-| 1091–1122 | Markup: `#toolbar` (file / **undo+redo** / zoom / capture / panel toggles) |
-| 1124–1161 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
-| 1162–1283 | Markup: `#selectionPanel` — one `.selRow` per property |
-| 1284–1366 | Markup: `#newCanvasOverlay` — the size presets, incl. `.sizePreset[data-infinite="1"]` |
-| 1367–1403 | Markup: the other modals, stage, sidebar |
-| 1405–5115 | App script |
+| 73–128 | Top toolbar — incl. `#driveBtn.connected` (the Drive button once a Google account is attached) |
+| 129–153 | `#canvasWrap` / `#stage` — **the viewport**: `overflow:hidden` + `touch-action:none` (every gesture is JS), `#stage` is `flex:0 0 auto` + `margin:auto` and carries the pan as a transform. `#stage.infinite` drops the drop shadow — that sheet has no edge worth casting one |
+| 264–353 | **Floating panels** — `.panel`/`.panelHead`/`.panelBody`, `#toolsPanel`, `#selectionPanel`. `.panel` caps `max-width`/`max-height` to the viewport |
+| 354–426 | Responsive: 900px (icon-only bar), 720px (sidebar under canvas), 520px (no tool captions), touch |
+| 430–1086 | **Shared nav + `ScuLaFolder`** |
+| 1092–1126 | Markup: `#toolbar` (file / **`#driveBtn`** / **undo+redo** / zoom / capture / panel toggles) |
+| 1127–1165 | Markup: `#toolsPanel` — Basic · Shapes · Arrows |
+| 1166–1285 | Markup: `#selectionPanel` — one `.selRow` per property |
+| 1286–1369 | Markup: `#newCanvasOverlay` — the size presets, incl. `.sizePreset[data-infinite="1"]` |
+| 1370–1405 | Markup: the other modals, stage, sidebar |
+| 1407–5268 | App script |
 
 Script sections (banners `/* ===== Title ===== */`):
 
 | Line | Section |
 |---|---|
-| 1506 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
-| 1734 | State — `state` object (incl. `zoom`/`panX`/`panY`, and `infinite`/`originX`/`originY`/`renderScale`), style defaults, `PALETTE` |
-| 1793 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
-| 1835 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, `committed` (the pre-change state an undo returns to), and `syncHistoryButtons` (the `#undoBtn`/`#redoBtn` disabled state) |
-| 1904 | Loading an image — `beginEditing(opts)`, `syncCanvasBuffers`, `setupStage` |
-| 1947 | Screen snapshot |
-| 1987 | Screen recording — `liveRenderLoop`, `startRecording` |
-| 2133 | Recording preview / playback — `recordingBlob` kept for the folder save |
-| **2260** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `clientToWorld`/`panWorldTo`, `setZoom`/`setZoomAt`, `zoomReset`/`fitDrawing`, buttons, wheel, **`gesture*` page-zoom blockers** |
-| **2427** | **Infinite canvas** — `INF_PAD`, `worldTransform`, `ensureInfiniteWindow`. See the section below |
-| 2508 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
-| 2560 | New canvas modal — incl. `modalInfinite` |
-| **2662** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
-| **3018** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
-| 3506 | Layer list (sidebar) — `renderLayerList` |
-| **3556** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
-| **3862** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **4046** | **Selection panel contents** — `ROW_TYPES` (4060), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
-| 4144 | Text box auto-fit |
-| 4155 | Pointer/canvas coords — `canvasPoint()`, which returns **world** coords |
-| **4197** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
-| 4712 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
-| 4795 | Keyboard shortcuts |
-| **4840** | **Save** — `EXPORT_MARGIN`/`inkBounds`/`exportRect` (what an export frames), `renderComposite`, **`saveOut()`** 4936 (one line onto `ScuLaFolder.save`) |
-| 4945 | Save all sizes (zip) — `qualifyingSizes(rect)`, `makeZip`, `crc32` |
-| 5101 | Fonts ready — `document.fonts.load()` startup pass |
+| 1411 | i18n — `I18N` (`ro:`/`en:`), `t()`, `applyUILang()` |
+| 1657 | State — `state` object (incl. `zoom`/`panX`/`panY`, and `infinite`/`originX`/`originY`/`renderScale`), style defaults, `PALETTE` |
+| 1716 | Utilities — incl. `setBtnLabel`/`setBtnIcon` (icon+label button spans) |
+| 1758 | History — `pushHistory`/`commit`/`applyHistory`/`undo`/`redo`, `committed` (the pre-change state an undo returns to), and `syncHistoryButtons` (the `#undoBtn`/`#redoBtn` disabled state) |
+| 1827 | Loading an image — `beginEditing(opts)`, `syncCanvasBuffers`, `setupStage` |
+| 1870 | Screen snapshot |
+| 1910 | Screen recording — `liveRenderLoop`, `startRecording` |
+| 2056 | Recording preview / playback — `recordingBlob` kept for the folder save |
+| **2183** | **Viewport: zoom + pan** — `applyZoomDisplay`/`applyPan` (the clamp), `clientToContent`/`panContentTo` (the anchor maths), `clientToWorld`/`panWorldTo`, `setZoom`/`setZoomAt`, `zoomReset`/`fitDrawing`, buttons, wheel, **`gesture*` page-zoom blockers** |
+| **2350** | **Infinite canvas** — `INF_PAD`, `worldTransform`, `ensureInfiniteWindow`. See the section below |
+| 2431 | Pan — `startPan`/`updatePan`/`endPan`, Alt/Space hints |
+| 2483 | New canvas modal — incl. `modalInfinite` |
+| **2585** | **Rendering** — `renderAll`, `renderBase`, `drawLayer`, all `drawX()` |
+| **2941** | **Spline curve + polyline** — both vertex-driven layer types in one block: `splineSegments` (the maths, and the only place `polyline` differs), `drawSpline`, `setSplinePoints`, the vertex edits, and the `state.pendingSpline` placing mode. See the section below |
+| 3429 | Layer list (sidebar) — `renderLayerList` |
+| **3479** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
+| **3785** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
+| **3969** | **Selection panel contents** — `ROW_TYPES` (3983), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| 4067 | Text box auto-fit |
+| 4078 | Pointer/canvas coords — `canvasPoint()`, which returns **world** coords |
+| **4120** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
+| 4635 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
+| 4718 | Keyboard shortcuts |
+| **4763** | **Save** — `EXPORT_MARGIN`/`inkBounds`/`exportRect` (what an export frames), `renderComposite`, **`saveOut()`** 4859 (one line onto `ScuLaFolder.save`) |
+| 4868 | Save all sizes (zip) — `qualifyingSizes(rect)`, `makeZip`, `crc32` |
+| 5024 | Fonts ready — `document.fonts.load()` startup pass |
+| **5037** | **Google Drive** — `DRIVE` config, `loadScriptOnce`, `driveAuth` (Google Identity Services, in a popup), `driveFetch` (one 401 retry), `drivePickFolder` (only if `DRIVE.API_KEY` is filled in), `driveEnsureFolder` (otherwise a "Mazgaleste" folder it creates), `driveUpload`, `paintDrive`. Both Google scripts are fetched on the first click, never at page load. Tested by `tests/drive.js` against a stubbed Drive API |
 
-Largest region by far is Rendering (2662–3506); go straight to the
+Largest region by far is Rendering (2585–3429); go straight to the
 specific `drawX()` you need.
 
-### The infinite canvas (2427–2506, and everywhere it touches)
+### The infinite canvas (2350–2429, and everywhere it touches)
 
 The New canvas modal's `∞ Infinite` size. The two `<canvas>` elements stop
 being the drawing and become a **window** onto it: `state.originX/Y` say
@@ -248,14 +249,14 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## index.html — 8130 lines · Markdown editor
+## index.html — 8167 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
 | 8–1528 | App CSS. `:root` **9–47** (earth-palette tokens + `--danger`, the `--graph-*` node roles, and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1145–1189**, **importance markers 1192–1227**, **knowledge graph 1137–1527** |
-| 1529–1530 | `apis.google.com` (Google Drive, in flight) + **mammoth.js CDN** (docx import) |
+| 1543 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone (Google Drive loads its scripts on demand now, from `editor.html` only — see that file's § Google Drive) |
 | 1535–2191 | **Shared nav + `ScuLaFolder`** |
 | 2193–2541 | Markup: header (**`#btn-idea`** 2197, right of "New"), **toolbar 2209–2291** (**`#btn-undo`/`#btn-redo` 2213–2214**, first in the group; the `#importance-select` is at **2240**), workspace 2296, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2360**, `#nav-panel` 2394), modals — `#image-modal` 2419, `#workbook-modal` 2452, **`#idea-modal` 2483**, `#link-modal` 2499, `#table-modal` 2522 |
 | **2543–2668** | Markup: **`#graph-view`** overlay + `#wiki-modal` 2644 + `#wiki-suggest` 2664 |
@@ -308,11 +309,11 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 4510–4528 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly` + `WB_OPEN_TASK_RE` 4525/`wbChapterHasOpenTask`/`wbIsTodoBook` — the TODO-workbook chapter filter, …) |
+| 4510–4528 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly`/`wbTodoOnlyAll` + `WB_OPEN_TASK_RE`/`wbChapterHasOpenTask`/`wbIsTodoBook`/`toggleTodoFilterAll` — the TODO chapter filter, per-book and the toolbar-wide `▣ Tasks only` switch, …) |
 | 4530–4581 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` 4563; `wbPendingMark` 4574/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
 | 4585–4633 | `wbNewId` 4585, `wbSlug` 4594 + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
 | 4635–4664 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 4666–4911 | Panel rendering: `wbActBtn` 4666, `wbInlineRename` 4682/`wbInlineRenameById` 4727/`wbBindName` 4742 (double-click or F2 renames a name in place), `renderWorkbooks` 4781 (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden), `paintWorkbookWhere` 4890, `paintWorkbookCrumb` |
+| 4666–4911 | Panel rendering: `wbActBtn` 4666, `wbInlineRename` 4682/`wbInlineRenameById` 4727/`wbBindName` 4742 (double-click or F2 renames a name in place), `renderWorkbooks` 4781 (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden; the toolbar `▣ Tasks only` button sets `wbTodoOnlyAll` and filters every book the same way, dropping books left empty), `paintWorkbookWhere`, `paintWorkbookCrumb` |
 | 4913–5102 | Operations: create/rename/delete workbook (`createWorkbook` 4913), new/open/rename/delete/export chapter (`newChapter` 4968), `syncAllToFolder` 5087 |
 | 5104–5141 | Autosave: `scheduleAutosave` 5104, `flushChapter` 5111 (marks the chapter pending), `detachChapter` 5126, `canLeaveEditor` |
 | 5143–5335 | Saving: `saveToWorkbook` 5143 (Ctrl+S), `saveAllModifiedChapters` 5161 (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` 5181 → `confirmSaveToWorkbook`) |
@@ -348,7 +349,7 @@ the preview and the export go through it, and so does the graph scanner.
 
 | Line | Function |
 |---|---|
-| 3829–3879 | **`WIKI_RE`** 3829, `TAG_RE` 3832, `BLOCK_RE` 3834, `IMG_RE` 3835, `ASSIGNEE_RE` 3848, and the importance set — `IMP_LEVELS` 3863/`IMP_ICON` 3864, **`IMP_RE`** 3865, `IMP_LEAD_RE` 3867, `IMP_LINE_LEAD` 3872. `WIKI_RE`/`TAG_RE`/`IMP_RE` are **global**; anything that `exec`s them in a loop must use a private copy (`scanNote` does) |
+| 3842–3893 | **`WIKI_RE`** 3842, `TAG_RE` 3845, **`HEX_COLOR_RE`** 3850 (a `#rrggbb`/`#rrggbbaa` colour, tried before `TAG_RE`), `BLOCK_RE` 3852, `IMG_RE` 3853, `ASSIGNEE_RE` 3866, and the importance set — `IMP_RE`, `IMP_LEAD_RE`, `IMP_LINE_LEAD` just below. `WIKI_RE`/`TAG_RE`/`IMP_RE`/`HEX_COLOR_RE` are **global**; anything that `exec`s them in a loop must use a private copy (`scanNote` does) |
 | 3881–3887 | `mdUnescape` / `attrEsc` — `applyInline` is handed already-escaped text, so a name is `A &amp; B` until it goes through these |
 | 3890 | `mdPlain(raw)` — heading text with its inline markdown **and its importance marker** stripped |
 | **3906** | **`headingSlug(raw, seen)`** — the one slug function. `parseMarkdown` writes it as a heading `id`, the nav panel and every `[[Note#Section]]` jump to that id. Three callers, one implementation: keep it that way |
@@ -356,7 +357,7 @@ the preview and the export go through it, and so does the graph scanner.
 | 3939–3970 | `WIKI_LOOSE` 3939, `wikiNotes()` 3942 — every note a link may point at (every chapter, plus the loose document), cached; `invalidateWikiIndex()` 3941 is called from `renderWorkbooks()` |
 | **3972** | **`resolveWiki(name, fromChapterId)`** — path, then `Workbook/Title`, then title, then file name; the nearest match (same workbook) wins, as in Obsidian. Also the first pass of `ideaFindChapter` (5341) |
 | 4008 | `renderWikiLink(...)` — the live `<a>` for the preview, a real anchor or plain text for the export |
-| 4036 | `renderTag(lead, tag)` |
+| 4054 | `renderTag(lead, tag)`, then `renderColorSwatch(lead, hex)` 4061 — the `#rrggbb` chip, same string for preview and export |
 | 4045–4057 | `renderAssignee(name, gap)` — the `Name>> ` marker |
 | **4059–4113** | **Importance markers** — `renderImportance` 4059 (the pill; `data-i` on the label in the preview, baked in for the export), `impSetLine` 4074 (put the marker after the bullet / `[ ]` / hashes / assignee, replace or remove), `setImportance` 4083 (what the select and Ctrl+Alt+0..3 call), `impFind` 4104 (a click on a pill searches for its own level) |
 | 4115–4122 | `takeBlockId` / `liWithBlockId` — `…text ^anchor` becomes `id="block-anchor"` |
@@ -449,7 +450,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 8449 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
+## recipes.html — 8470 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.

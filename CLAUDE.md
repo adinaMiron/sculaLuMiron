@@ -7,9 +7,9 @@ file). Open in a browser; that's the whole toolchain.
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 8017 | 70k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `editor.html` | 5270 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
+| `index.html` | 8167 | 70k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `recipes.html` | 8470 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
 "markdown page" / "index" → `index.html` · "retete" / "rețete" →
@@ -146,7 +146,10 @@ Run them with **`/apptest <name>`**.
 `tests/` holds the accumulated Playwright checks for `editor.html` (zoom,
 pan, gestures, undo/redo, every tool, and — in `infinite.js` — the infinite
 canvas: drawing two screens apart, the window that follows the view, and the
-export framed to the ink plus its 10 px margin), for `recipes.html` (`recipes.js` —
+export framed to the ink plus its 10 px margin, and — in `drive.js` — the
+Google Drive button: the lazy script loading, both languages, connect and
+disconnect, the folder it creates and the multipart upload, all against a
+stubbed Drive API, so no Google account is needed), for `recipes.html` (`recipes.js` —
 the PDF reader including scanned pages, the parser, the markdown both
 written and read back, the shareable HTML page **driven in the file it
 ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
@@ -158,6 +161,8 @@ in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
 the TODO-workbook chapter filter (`wbtodo.js`), the
 `!nice`/`!important`/`!vital` importance markers (`importance.js`), the
+inline `#rrggbb` hex-colour swatch (`color.js` — the preview chip, the
+export string, and the graph scanner not minting a node for it), the
 💡 quick idea capture with its chapter matching and its `Idei` fallback
 (`idea.js`), the editor's own undo/redo history (`mdundo.js` — real
 keystrokes and the real toolbar buttons) and the copy-to-clipboard button

@@ -1180,6 +1180,20 @@
      pill came out accent-olive with an underline on hover. */
   #preview a.md-tag { color: var(--graph-tag); border-bottom: 0; }
 
+  /* "#rrggbb" in the source — the code shown in mono with a small colour
+     chip in front of it. Baked identically into the export (§ export
+     template). */
+  .md-color { font-family: var(--font-mono); font-size: 0.92em; white-space: nowrap; }
+  .md-color-sw {
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    margin-right: 0.35em;
+    vertical-align: -0.12em;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
   /* "Name>> " — the name of whoever a task is handed to, picked out from
      the surrounding text. Reuses --danger (the shared terracotta status
      colour) rather than minting a new token, since it needs to read as an
@@ -1526,7 +1540,6 @@
     .ws-item { padding: 11px 10px; }
   }
 </style>
-<script type="module" src="https://apis.google.com/js/api.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body>
@@ -2234,6 +2247,7 @@
   <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
   <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
   <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
+  <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
 
   <!-- Importance: marks the caret's line (or every line of the selection).
        Picking again replaces the marker, "Remove" clears it. -->
@@ -2688,6 +2702,7 @@ const I18N = {
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
+    filterAllTodoBtn:"▣ Doar sarcini", filterAllTodoTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”), din toate caietele",
     // Importance markers. The *syntax* stays English (!nice / !important /
     // !vital) so a file reads the same in both languages — only the label
     // on the pill and in the select is translated.
@@ -2868,6 +2883,7 @@ const I18N = {
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
+    filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook",
     impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
     impDefault:"— Importance —",
     impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
@@ -3830,6 +3846,11 @@ const WIKI_RE = /(!?)\[\[\s*([^\[\]|]+?)\s*(?:\|\s*([^\[\]]*?)\s*)?\]\]/g;
 // #tag — letters, digits, _ - and /, at least one letter. A markdown heading
 // ("# Title") has a space after the hashes, which this class excludes.
 const TAG_RE = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu;
+// "#rrggbb" (or the 8-digit "#rrggbbaa") — a CSS hex colour written inline.
+// Rendered as a small swatch next to the code, identically in the preview
+// and the export. Tried before TAG_RE, since "#4F8A97" also satisfies the
+// tag pattern (it has letters in it).
+const HEX_COLOR_RE = /(^|[\s(\[{])#([0-9a-fA-F]{8}|[0-9a-fA-F]{6})\b/g;
 // "^anchor" at the very end of a line names that block.
 const BLOCK_RE = /\s\^([A-Za-z0-9][A-Za-z0-9-]*)\s*$/;
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?)$/i;
@@ -4035,6 +4056,14 @@ function renderWikiLink(bang, target, alias, opts) {
 
 function renderTag(lead, tag) {
   return `${lead}<a class="md-tag" role="link" tabindex="0" data-tag="${attrEsc(tag)}">#${tag}</a>`;
+}
+
+// "#4F8A97" → the code with a little colour chip in front of it. hex is
+// strictly [0-9a-fA-F]{6,8} from HEX_COLOR_RE, so it is safe to drop into
+// the inline style and the text as-is. Same output in preview and export.
+function renderColorSwatch(lead, hex) {
+  const css = '#' + hex;
+  return `${lead}<span class="md-color"><span class="md-color-sw" style="background:${css}"></span>${css}</span>`;
 }
 
 // "Name>> " marks a task as handed to that person. name is already escaped
@@ -4259,6 +4288,10 @@ function applyInline(text, opts) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // "#rrggbb" as a swatch — before TAG_RE, which would otherwise eat it.
+    // A "#" inside a <code> span produced above is preceded by ">", not a
+    // space, so this leaves inline code alone (same guard TAG_RE relies on).
+    .replace(HEX_COLOR_RE, (m, lead, hex) => renderColorSwatch(lead, hex))
     // last, and only after a space or a line start: by now every "#" this
     // pass produced sits right after ">" or a quote, so none of them match
     .replace(TAG_RE, (m, lead, tag) => renderTag(lead, tag));
@@ -4519,12 +4552,23 @@ let wbSaveTimer = 0;
 const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
+let wbTodoOnlyAll = false;       // toolbar "▣ Tasks only" — filters EVERY workbook to chapters with an open "- [ ]"
 
 /* A chapter "has an open task" when a line reads "- [ ]" (optionally indented,
    any of - * + as the bullet). Used only by the TODO filter button. */
 const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
 function wbChapterHasOpenTask(ch) { return !!ch && WB_OPEN_TASK_RE.test(ch.content || ''); }
 function wbIsTodoBook(book) { return !!book && /todo/i.test(book.name || ''); }
+
+/* Toolbar "▣ Tasks only": one switch that filters every workbook's chapter
+   list down to the ones with an open "- [ ]" — a global version of the
+   per-workbook ☑ act button. Books left with nothing to show are hidden. */
+function toggleTodoFilterAll() {
+  wbTodoOnlyAll = !wbTodoOnlyAll;
+  const btn = document.getElementById('btn-filter-todo');
+  if (btn) btn.classList.toggle('active', wbTodoOnlyAll);
+  renderWorkbooks();
+}
 
 /* ── IndexedDB plumbing ── */
 function wbDb() {
@@ -4794,10 +4838,11 @@ function renderWorkbooks() {
   const orderedBooks = wbBooks.slice().sort(wbByOrder);
   orderedBooks.forEach((book, bookIdx) => {
     const chapters = wbChaptersOf(book.id);
-    const open = wbOpenBooks.has(book.id);
     const todoBook = wbIsTodoBook(book);
-    const todoFiltered = todoBook && wbTodoOnly.has(book.id);
+    const todoFiltered = wbTodoOnlyAll || (todoBook && wbTodoOnly.has(book.id));
     const shownChapters = todoFiltered ? chapters.filter(wbChapterHasOpenTask) : chapters;
+    if (wbTodoOnlyAll && !shownChapters.length) return;   // nothing open here — hide the whole book
+    const open = wbOpenBooks.has(book.id) || (wbTodoOnlyAll && shownChapters.length > 0);
 
     const wrap = document.createElement('div');
     wrap.className = 'wb-book' + (open ? ' open' : '');
@@ -4829,7 +4874,7 @@ function renderWorkbooks() {
     if (bookIdx > 0) acts.appendChild(wbActBtn('▲', t('moveWorkbookUpTip'), () => moveWorkbook(book.id, -1)));
     if (bookIdx < orderedBooks.length - 1) acts.appendChild(wbActBtn('▼', t('moveWorkbookDownTip'), () => moveWorkbook(book.id, 1)));
     acts.appendChild(wbActBtn('＋', t('addChapterTip'), () => newChapter(book.id)));
-    if (todoBook) {
+    if (todoBook && !wbTodoOnlyAll) {
       const fBtn = wbActBtn('☑', t(todoFiltered ? 'filterTodoOffTip' : 'filterTodoOnTip'), () => {
         if (wbTodoOnly.has(book.id)) { wbTodoOnly.delete(book.id); }
         else { wbTodoOnly.add(book.id); wbOpenBooks.add(book.id); }
@@ -5619,6 +5664,7 @@ function scanNote(md) {
   const wikiRe = new RegExp(WIKI_RE.source, 'g');
   const wikiBlank = new RegExp(WIKI_RE.source, 'g');
   const tagRe = new RegExp(TAG_RE.source, TAG_RE.flags);
+  const hexRe = new RegExp(HEX_COLOR_RE.source, 'g');
   const imgRe = /!\[[^\]]*\]\(([^)\s"]+)(?:\s+"[^"]*")?\)/g;
 
   const headings = [], blocks = [], tags = [], links = [], images = [];
@@ -5646,7 +5692,11 @@ function scanNote(md) {
     }
     // "[[#Inertia]]" is a link, not a tag named Inertia — blank the links
     // out first, exactly as applyInline() does by replacing them first.
-    const noWiki = text.replace(wikiBlank, w => ' '.repeat(w.length));
+    // ...and blank "#rrggbb" hex colours too, so a colour code in a note
+    // isn't mistaken for a #tag / graph node (applyInline() renders it as
+    // a swatch, not a tag).
+    const noWiki = text.replace(wikiBlank, w => ' '.repeat(w.length))
+      .replace(hexRe, w => ' '.repeat(w.length));
     tagRe.lastIndex = 0;
     while ((m = tagRe.exec(noWiki)) !== null) tags.push({ tag: m[2], line: i, section });
     imgRe.lastIndex = 0;
@@ -7483,6 +7533,8 @@ function exportHtml() {
     .wikilink { color: #6b5bd6; border-bottom: 1px dashed #b3aae8; }
     .wikilink.is-unresolved { color: #999; border-bottom-color: #ccc; }
     .md-tag { display: inline-block; color: #3f7a63; background: #e6f0ea; border-radius: 10px; padding: 0 7px; font-size: 0.9em; }
+    .md-color { font-family: 'Courier New', monospace; font-size: 0.92em; white-space: nowrap; }
+    .md-color-sw { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.12em; border-radius: 3px; border: 1px solid #ccc; }
     .md-assignee { color: #C4643C; font-weight: 600; }
     .md-imp { display: inline-block; padding: 0 8px; margin-right: 5px; border-radius: 10px; font-size: 0.85em; font-weight: 600; white-space: nowrap; }
     .md-imp-ico { margin-right: 4px; }

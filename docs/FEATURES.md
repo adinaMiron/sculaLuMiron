@@ -302,6 +302,21 @@ marker landing after the bullet / checkbox / hashes / assignee, replace and
 remove, multi-line selections, the slug staying clean, what must *not*
 match, the language switch, the export string, and the click-to-search.
 
+### Hex colour codes: `#4F8A97`
+
+A 6- or 8-digit hex colour written inline (`#4F8A97`, `#00000080`) renders
+as the code in mono with a small colour chip in front of it — same output
+in the preview and the export. `HEX_COLOR_RE` (near `TAG_RE`) and
+`renderColorSwatch()`; `applyInline()` runs it **before** `TAG_RE`, since
+`#4F8A97` also satisfies the tag pattern. `scanNote()` blanks the same
+pattern out before its tag scan, so a colour code never becomes a graph
+node. Styling is `.md-color` / `.md-color-sw` (~L1183 preview, and a
+literal-hex copy in the export template). Only 6/8 digits — 3-digit
+(`#fff`) is left as-is to avoid eating tags like `#dad`; 7-digit / trailing
+non-hex runs don't match either. `tests/color.js` covers the preview chip,
+the 8-digit form, the export string, the negatives (real tag, 5/7 digits,
+inside `code`), and `scanNote()` not minting a graph node.
+
 ---
 
 ## D. Saving files — one call, three destinations
@@ -427,6 +442,50 @@ A page that needs the destination chooser on a phone must call
 Build the `Blob`, call `ScuLaFolder.save()`, print `r.message`. A new page
 also needs an entry in `SUBDIR` — in all copies of the block.
 
+### Google Drive — a fourth destination, `editor.html` only
+
+Deliberately *not* a `ScuLaFolder` mode. `ScuLaFolder` is the shared block
+copied into all four files and it must keep working from `file://` with no
+network; Google needs neither of those to be true. So the Drive button
+(`#driveBtn`, next to the other save actions) lives in `editor.html`'s own
+script — `docs/MAP.md` § Google Drive for the line anchors.
+
+Sign-in is **Google Identity Services in a popup**
+(`google.accounts.oauth2.initTokenClient`). The earlier attempt sent the whole
+page to `accounts.google.com` and back with `response_type=code`, traded the
+code through a Cloudflare worker, and loaded `gapi` as a
+`<script type="module">` in the shared nav. Three things were wrong with that
+and each one alone was fatal: the redirect threw away whatever was on the
+canvas, a module has no globals so `window.gapi` never appeared, and the
+shared nav made all four pages pay for a script only one of them wanted. Both
+Google scripts are fetched on the first click now, and only there.
+
+The token (about an hour) and the folder are kept in `localStorage`
+(`gdrive_token`, `gdrive_token_exp`, `gdrive_folder`); one 401 buys exactly
+one silent re-auth and retry. Right-clicking the button forgets both, the same
+gesture the folder button next to it uses.
+
+Scope is `drive.file` — the page only ever sees files it made itself. That is
+also why the folder is *not* browsed: with `drive.file`, `files.list` returns
+nothing but this page's own files, so by default the drawings go to a
+**`Mazgaleste` folder the page creates** in My Drive and remembers. Filling in
+`DRIVE.API_KEY` turns on Google's own folder picker instead, which is the only
+supported way to pick an arbitrary folder under this scope.
+
+Three things must be true on the Google side or the button cannot work, and
+none of them is code:
+
+- the page is served over **http(s)** — `file://` has origin `null` and Google
+  refuses it, so the button says so rather than opening a popup that dies;
+- that exact origin is listed under **Authorised JavaScript origins** on the
+  OAuth client in `DRIVE.CLIENT_ID`;
+- the **Drive API** is enabled in the same Cloud project (and the **Picker
+  API** too, if `API_KEY` is set).
+
+`tests/drive.js` drives the whole path — lazy loading, both languages,
+connect, disconnect, folder create, multipart upload — against a stubbed
+Drive API, so none of it needs a Google account to check.
+
 ---
 
 ## E. Workbooks and chapters (`index.html`)
@@ -519,6 +578,15 @@ an unchecked Markdown task box (`- [ ]`, any bullet, any indent).
 so it reflects the last autosave without a disk read. The row count shows
 `shown/total` and the button carries an `.on` style; if nothing matches, the
 list shows `wbNoOpenTasks`. Checked boxes (`- [x]`) don't count — only `- [ ]`.
+
+**The global switch.** The editor toolbar has a `▣ Tasks only` button
+(`#btn-filter-todo`, right of `☑ Toggle Done`) — `toggleTodoFilterAll()`
+flips `wbTodoOnlyAll` (a plain bool, in-memory only) and re-renders. While it
+is on, *every* workbook is filtered by `wbChapterHasOpenTask` regardless of
+its name, a book left with no matching chapter is dropped from the panel
+entirely (not shown with an empty line), each surviving book is force-opened,
+the per-book `☑` act button is suppressed, and the toolbar button carries
+`.tb-btn.active`. Toggling it off restores everything.
 
 ### The three routes, for a chapter
 

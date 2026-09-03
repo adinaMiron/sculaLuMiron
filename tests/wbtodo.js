@@ -108,6 +108,41 @@ function check(name, ok, extra) {
   check('no open tasks → the empty line, no rows',
     (await shownChapters('wb_todo')).length === 0 && (await hasEmptyLine('wb_todo')));
 
+  // ── the toolbar "▣ Tasks only" button: one global switch over every workbook ──
+  await page.evaluate(() => {
+    wbTodoOnly.clear();
+    wbChapter('ch_open').content = '# Deschis\n\n- [x] gata\n- [ ] de facut\n';   // open box back
+    renderWorkbooks();
+  });
+  await page.waitForTimeout(100);
+  check('a global filter button sits in the toolbar', await page.locator('#btn-filter-todo').count() === 1);
+  check('both workbooks show unfiltered', (await shownChapters('wb_todo')).length === 3 && (await shownChapters('wb_plain')).length === 1);
+
+  await page.locator('#btn-filter-todo').click();
+  await page.waitForTimeout(150);
+  check('global filter trims the TODO book to its open chapter',
+    JSON.stringify(await shownChapters('wb_todo')) === JSON.stringify(['Deschis']));
+  check('global filter also trims the plain book',
+    JSON.stringify(await shownChapters('wb_plain')) === JSON.stringify(['Mecanica']));
+  check('the toolbar button carries the .active style',
+    await page.locator('#btn-filter-todo').evaluate(el => el.classList.contains('active')));
+  check('the per-book ☑ act button is hidden while the global filter is on', await filterBtn().count() === 0);
+
+  // a book with nothing open disappears entirely
+  await page.evaluate(() => { wbChapter('ch_phys').content = '- [x] tema gata'; renderWorkbooks(); });
+  await page.waitForTimeout(120);
+  check('a book with no open task drops out of the list',
+    await page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_plain"])').count() === 0);
+
+  await page.locator('#btn-filter-todo').click();
+  await page.waitForTimeout(150);
+  check('toggling the toolbar button off restores every book',
+    (await shownChapters('wb_todo')).length === 3
+    && await page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_plain"])').count() === 1);
+  check('the toolbar button drops the .active style',
+    await page.locator('#btn-filter-todo').evaluate(el => !el.classList.contains('active')));
+  check('the per-book ☑ act button is back', await filterBtn().count() === 1);
+
   check('no page errors', errors.length === 0, errors);
 
   await browser.close();

@@ -91,6 +91,9 @@
   button.rough-btn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   #boldBtn.active{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   button.action.danger:hover{ background:color-mix(in srgb, var(--danger) 18%, var(--surface)); border-color:var(--danger); color:var(--danger); }
+  /* Connected to Google Drive - the button turns into "save there" and says so. */
+  #driveBtn.connected{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  #driveBtn.connected:hover{ background:var(--accent); filter:brightness(1.08); }
   #toolbar label{ font-size:0.786rem; color:var(--text-2); margin-right:0.286rem; }
   select, input[type=number], input[type=text]{
     border:1px solid var(--border); border-radius:0.429rem; padding:0.286rem 0.429rem; font-size:0.929rem; background:var(--surface); color:var(--text);
@@ -430,7 +433,6 @@
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
-  <button id="connectGoogleDrive">Connect Google Drive & Select Folder</button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
@@ -579,7 +581,6 @@
     font:inherit; cursor:pointer; min-height:44px;
   }
 </style>
-<script type="module" src="https://apis.google.com/js/api.js"></script>
 <script>
 (function(){
   var here = location.pathname.split("/").pop() || "index.html";
@@ -1095,6 +1096,7 @@
       <button class="action" id="newCanvasBtn" data-i-title="newCanvasTip" data-i-aria="newCanvasTip" title="Start from a blank canvas" aria-label="Start from a blank canvas"><span class="ticon">🖼</span><span class="tlabel" data-i="newCanvas">New canvas</span></button>
       <button class="action" id="saveBtn" data-i-title="saveImageTip" data-i-aria="saveImageTip" title="Save the edited image" aria-label="Save the edited image"><span class="ticon">💾</span><span class="tlabel" data-i="saveImage">Save image</span></button>
       <button class="action" id="saveAllSizesBtn" data-i-title="saveAllSizesTip" data-i-aria="saveAllSizesTitle" title="Export this drawing at every preset size up to its current size, bundled in one zip" aria-label="Save all sizes"><span class="ticon">📐</span><span class="tlabel" data-i="saveAllSizes">Save all sizes</span></button>
+      <button class="action" id="driveBtn" data-i-title="driveTip" data-i-aria="drive" title="Connect your Google Drive and save this drawing there" aria-label="Google Drive"><span class="ticon">☁️</span><span class="tlabel" data-i="drive">Drive</span></button>
     </div>
 
     <div class="grp" id="historyGrp">
@@ -1406,103 +1408,6 @@
 (function(){
 "use strict";
 
-// Adina: code to add a button for using google drive to handle files
-const CONFIG = {
-    CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
-    WORKER_URL: "https://oauth-proxy-api.mironadinas.workers.dev",
-    REDIRECT_URI: window.location.href.split('#')[0].split('?')[0],
-    APP_ID: "766100323605",
-    SCOPE: "https://www.googleapis.com/auth/drive.file"
-  };
-
-  let accessToken = null;
-
-// 1. Worker Token Exchange Function
-async function exchangeCodeForToken(authCode) {
-  const response = await fetch(CONFIG.WORKER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      code: authCode,
-      redirect_uri: CONFIG.REDIRECT_URI
-    })
-  });
-
-  const tokens = await response.json();
-  if (tokens.access_token) {
-    accessToken = tokens.access_token;
-    localStorage.setItem("gdrive_token", accessToken);
-    openFolderPicker();
-  } else {
-    console.error("Token exchange failed:", tokens);
-  }
-}
-
-// 2. Trigger Google OAuth Flow on Button Click
-function connectGoogleDrive() {
-  const oauth2Endpoint = "https://accounts.google.com/o/oauth2/v2/auth";
-  
-  const params = {
-    client_id: CONFIG.CLIENT_ID,
-    redirect_uri: CONFIG.REDIRECT_URI,
-    response_type: "code",
-    scope: CONFIG.SCOPE,
-    access_type: "offline",
-    prompt: "consent"
-  };
-
-  const urlParams = new URLSearchParams(params).toString();
-  window.location.href = `${oauth2Endpoint}?${urlParams}`;
-}
-
-const connectGoogleDriveBtn = document.getElementById("connectGoogleDrive");
-connectGoogleDriveBtn.addEventListener("click", ()=>   connectGoogleDrive());
-
-// 3. Handle OAuth Redirect Code on Page Load
-
-window.addEventListener("DOMContentLoaded", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const authCode = urlParams.get("code");
-
-  if (authCode) {
-    // Clean URL query parameters without refreshing
-    window.history.replaceState({}, document.title, window.location.pathname);
-    exchangeCodeForToken(authCode);
-  }
-});
-
-// 4. Open Google Drive Folder Picker
-function openFolderPicker() {
-  gapi.load("picker", () => {
-    const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-      .setMimeTypes("application/vnd.google-apps.folder")
-      .setSelectFolderEnabled(true);
-
-    const picker = new google.picker.PickerBuilder()
-      .setAppId(CONFIG.APP_ID)
-      .setOAuthToken(accessToken)
-      .addView(view)
-      .setCallback(pickerCallback)
-      .build();
-
-    picker.setVisible(true);
-  });
-}
-
-// 5. Handle Selected Folder
-function pickerCallback(data) {
-  if (data.action === google.picker.Action.PICKED) {
-    const folder = data.docs[0];
-    const folderId = folder.id;
-    const folderName = folder.name;
-    
-    console.log(`Selected Folder: ${folderName} (ID: ${folderId})`);
-    // Save folderId to your app state or localStorage for file uploads
-    localStorage.setItem("gdrive_folder_id", folderId);
-  }
-}
-
-
 /* ============================================================
    1. i18n — pattern copied from voice.html, see docs/I18N.md
    ============================================================ */
@@ -1516,6 +1421,15 @@ const I18N = {
     redoTip:"Refă modificarea anulată (Ctrl+Shift+Z sau Ctrl+Y)",
     saveAllSizes:"Toate dimensiunile",
     saveAllSizesTip:"Exportă acest desen la fiecare dimensiune presetată până la dimensiunea curentă, într-o singură arhivă zip",
+    drive:"Drive", driveSave:"Salvează în Drive",
+    driveTip:"Conectează-te la Google Drive și salvează desenul acolo",
+    driveSaveTip:name=>`Încarcă desenul în dosarul „${name}” din Google Drive (clic dreapta ca să te deconectezi)`,
+    driveConnected:name=>`Google Drive conectat. Desenele merg în dosarul „${name}”.`,
+    driveSaving:"Se încarcă în Google Drive…", driveSaved:name=>`Salvat în Google Drive: ${name}`,
+    driveOpen:"Deschide", driveError:msg=>`Google Drive: ${msg}`,
+    driveNoFile:"Google Drive nu merge cu pagina deschisă direct de pe disc (file://). Deschide-o prin http(s) — de pe site, de exemplu — și încearcă din nou.",
+    driveNoCanvas:"Nu ai încă nimic de salvat — deschide o imagine sau pornește un canvas nou.",
+    driveForgetAsk:"Uiți conexiunea cu Google Drive și dosarul ales?", driveForgot:"Google Drive deconectat.",
     zoomOutTip:"Micșorează (Ctrl+derulare în jos)", zoomFitTip:"Readu zoom-ul la potrivirea ferestrei", zoomInTip:"Mărește (Ctrl+derulare în sus)",
     screenshot:"Captură ecran", screenshotTip:"Capturează ecranul tău și încarcă-l în editor",
     record:"Înregistrează", recordTip:"Înregistrează ecranul tău (cu sunet) direct pe canvas, ca să poți desena live pe el",
@@ -1598,6 +1512,15 @@ const I18N = {
     redoTip:"Redo the change you just undid (Ctrl+Shift+Z or Ctrl+Y)",
     saveAllSizes:"All sizes",
     saveAllSizesTip:"Export this drawing at every preset size up to its current size, bundled in one zip",
+    drive:"Drive", driveSave:"Save to Drive",
+    driveTip:"Connect your Google Drive and save this drawing there",
+    driveSaveTip:name=>`Upload the drawing to the "${name}" folder in Google Drive (right-click to disconnect)`,
+    driveConnected:name=>`Google Drive connected. Drawings go to the "${name}" folder.`,
+    driveSaving:"Uploading to Google Drive…", driveSaved:name=>`Saved to Google Drive: ${name}`,
+    driveOpen:"Open", driveError:msg=>`Google Drive: ${msg}`,
+    driveNoFile:"Google Drive can't work when the page is opened straight off disk (file://). Serve it over http(s) — from the site, say — and try again.",
+    driveNoCanvas:"There's nothing to save yet — open an image or start a new canvas.",
+    driveForgetAsk:"Forget the Google Drive connection and the chosen folder?", driveForgot:"Google Drive disconnected.",
     zoomOutTip:"Zoom out (Ctrl+scroll down)", zoomFitTip:"Reset zoom to fit the window", zoomInTip:"Zoom in (Ctrl+scroll up)",
     screenshot:"Screenshot", screenshotTip:"Capture your screen and load it into the editor",
     record:"Record", recordTip:"Record your screen (with audio) directly into the canvas, so you can draw on it live",
@@ -5110,6 +5033,236 @@ const CUSTOM_FONT_FAMILIES = ['Poppins', 'Raleway', 'Roboto', 'Ink Free', 'Noto 
 CUSTOM_FONT_FAMILIES.forEach(family => {
   document.fonts.load(`16px "${family}"`).then(() => { if (state.canvasReady) renderAll(); }).catch(() => {});
 });
+
+/* ===================== Google Drive =====================
+   Sign in with Google Identity Services, then save the drawing straight
+   into Drive. The previous version could not work as written: it sent the
+   whole page to accounts.google.com and back (throwing away whatever was on
+   the canvas), traded the code for a token through a Cloudflare worker, and
+   loaded gapi as <script type="module"> — a module has no globals, so
+   `gapi` never appeared and the folder picker could only throw. GIS asks in
+   a popup instead: the canvas stays put, and no worker or client secret is
+   involved.
+
+   Nothing is fetched until the button is pressed. (The gapi tag used to sit
+   in the shared nav, so all four pages paid for it and none of them used it.)
+
+   What has to be true on the Google side:
+     - the page is served over http(s) — Google refuses file:// (its origin
+       is "null"), so the button says so rather than failing silently;
+     - this exact origin is listed under "Authorised JavaScript origins" on
+       the OAuth client below;
+     - the Drive API is enabled in the same Cloud project.
+   Fill in API_KEY as well and the folder is chosen with Google's own picker
+   (that one additionally wants the Picker API enabled); leave it empty and
+   the drawings land in a "Mazgaleste" folder this page creates in My Drive.
+   The drive.file scope means the page only ever sees what it made itself. */
+const DRIVE = {
+  CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
+  API_KEY: "",                 // optional — set it to get the folder picker
+  APP_ID: "766100323605",
+  SCOPE: "https://www.googleapis.com/auth/drive.file",
+  FOLDER_NAME: "Mazgaleste"
+};
+
+const driveBtn = document.getElementById('driveBtn');
+let driveToken = null, driveTokenExp = 0, driveFolder = null, driveClient = null;
+
+// An access token lives about an hour; keeping it means a reload doesn't
+// re-open the Google popup.
+try {
+  const tk = localStorage.getItem('gdrive_token');
+  const ex = Number(localStorage.getItem('gdrive_token_exp')) || 0;
+  if (tk && ex > Date.now() + 60000) { driveToken = tk; driveTokenExp = ex; }
+  driveFolder = JSON.parse(localStorage.getItem('gdrive_folder') || 'null');
+} catch (e) {}
+
+function driveLive(){ return !!driveToken && driveTokenExp > Date.now() + 60000; }
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    const found = document.querySelector('script[data-src="' + src + '"]');
+    if (found) {
+      if (found.dataset.loaded) return resolve();
+      found.addEventListener('load', () => resolve());
+      found.addEventListener('error', () => reject(new Error(src)));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.dataset.src = src;
+    s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); });
+    s.addEventListener('error', () => reject(new Error(src)));
+    document.head.appendChild(s);
+  });
+}
+
+function driveForget(tokenOnly){
+  if (driveToken && window.google && google.accounts && google.accounts.oauth2)
+    try { google.accounts.oauth2.revoke(driveToken, () => {}); } catch (e) {}
+  driveToken = null; driveTokenExp = 0;
+  try {
+    localStorage.removeItem('gdrive_token');
+    localStorage.removeItem('gdrive_token_exp');
+    if (!tokenOnly) { localStorage.removeItem('gdrive_folder'); localStorage.removeItem('gdrive_folder_id'); }
+  } catch (e) {}
+  if (!tokenOnly) driveFolder = null;
+}
+
+async function driveAuth(){
+  if (driveLive()) return driveToken;
+  await loadScriptOnce('https://accounts.google.com/gsi/client');
+  return new Promise((resolve, reject) => {
+    if (!driveClient) {
+      driveClient = google.accounts.oauth2.initTokenClient({
+        client_id: DRIVE.CLIENT_ID, scope: DRIVE.SCOPE, callback: () => {}
+      });
+    }
+    driveClient.callback = (resp) => {
+      if (resp.error) return reject(new Error(resp.error_description || resp.error));
+      driveToken = resp.access_token;
+      driveTokenExp = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+      try {
+        localStorage.setItem('gdrive_token', driveToken);
+        localStorage.setItem('gdrive_token_exp', String(driveTokenExp));
+      } catch (e) {}
+      resolve(driveToken);
+    };
+    // Closing the popup is a normal answer, not a failure to report loudly.
+    driveClient.error_callback = (err) => reject(new Error((err && err.type) || 'cancelled'));
+    driveClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// Every Drive call goes through here so one expired token is retried once
+// rather than surfacing as a bare 401.
+async function driveFetch(url, opts, retried){
+  const token = await driveAuth();
+  const o = Object.assign({}, opts);
+  o.headers = Object.assign({}, o.headers || {}, { Authorization: 'Bearer ' + token });
+  const r = await fetch(url, o);
+  if (r.status === 401 && !retried) { driveForget(true); return driveFetch(url, opts, true); }
+  if (!r.ok) {
+    let msg = r.status + '';
+    try { const e = await r.json(); msg = (e.error && e.error.message) || msg; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+function drivePickFolder(){
+  return loadScriptOnce('https://apis.google.com/js/api.js')
+    .then(() => new Promise((res, rej) => gapi.load('picker', { callback: res, onerror: () => rej(new Error('picker')) })))
+    .then(driveAuth)
+    .then(token => new Promise((resolve, reject) => {
+      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes('application/vnd.google-apps.folder');
+      new google.picker.PickerBuilder()
+        .setAppId(DRIVE.APP_ID)
+        .setDeveloperKey(DRIVE.API_KEY)
+        .setOAuthToken(token)
+        .setOrigin(location.protocol + '//' + location.host)
+        .addView(view)
+        .setCallback(data => {
+          if (data.action === google.picker.Action.PICKED)
+            resolve({ id: data.docs[0].id, name: data.docs[0].name });
+          else if (data.action === google.picker.Action.CANCEL)
+            reject(new Error('cancelled'));
+        })
+        .build().setVisible(true);
+    }));
+}
+
+async function driveEnsureFolder(){
+  if (driveFolder && driveFolder.id) return driveFolder;
+  if (DRIVE.API_KEY) {
+    // A picker that is misconfigured shouldn't cost the whole feature.
+    try { driveFolder = await drivePickFolder(); }
+    catch (e) { if (e.message === 'cancelled') throw e; driveFolder = null; }
+  }
+  if (!driveFolder) {
+    // drive.file only ever lists what this page made, so this finds the
+    // folder it created on an earlier visit and nothing else.
+    const q = "name='" + DRIVE.FOLDER_NAME + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const found = await driveFetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id,name)&q=' + encodeURIComponent(q));
+    driveFolder = (found.files && found.files[0]) || await driveFetch(
+      'https://www.googleapis.com/drive/v3/files?fields=id,name',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE.FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }) });
+  }
+  try { localStorage.setItem('gdrive_folder', JSON.stringify(driveFolder)); } catch (e) {}
+  return driveFolder;
+}
+
+function driveUpload(filename, blob){
+  return driveEnsureFolder().then(folder => {
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folder.id] })], { type: 'application/json' }));
+    form.append('file', blob);
+    return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+                      { method: 'POST', body: form });
+  });
+}
+
+function driveFilename(){
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return 'mazgaleste-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+       + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.png';
+}
+
+// applyUILang() repaints .tlabel and title from the data-i attributes, so the
+// connected wording has to be re-applied after it, not before.
+function paintDrive(){
+  if (!driveBtn) return;
+  const on = driveLive();
+  const label = driveBtn.querySelector('.tlabel');
+  if (label) label.textContent = on ? t('driveSave') : t('drive');
+  driveBtn.title = on ? t('driveSaveTip', (driveFolder && driveFolder.name) || DRIVE.FOLDER_NAME) : t('driveTip');
+  driveBtn.setAttribute('aria-label', driveBtn.title);
+  driveBtn.classList.toggle('connected', on);
+}
+
+if (driveBtn) {
+  window.addEventListener('scula-ui-lang', () => paintDrive());
+  setTimeout(paintDrive, 0);   // after initUILang's first applyUILang()
+
+  driveBtn.addEventListener('click', async () => {
+    if (location.protocol === 'file:') { ScuLaFolder.toast(t('driveNoFile')); return; }
+    const connected = driveLive();
+    driveBtn.disabled = true;
+    try {
+      if (!connected) {
+        await driveAuth();
+        const f = await driveEnsureFolder();
+        ScuLaFolder.toast(t('driveConnected', f.name));
+        return;
+      }
+      if (!state.canvasReady) { ScuLaFolder.toast(t('driveNoCanvas')); return; }
+      const rect = exportRect();
+      const out = renderComposite(Math.max(1, Math.round(rect.w)), Math.max(1, Math.round(rect.h)), { rect });
+      const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+      ScuLaFolder.toast(t('driveSaving'));
+      const file = await driveUpload(driveFilename(), blob);
+      ScuLaFolder.toast(t('driveSaved', file.name), file.webViewLink ? t('driveOpen') : null,
+                        file.webViewLink ? () => window.open(file.webViewLink, '_blank', 'noopener') : null);
+    } catch (err) {
+      const m = (err && err.message) || String(err);
+      if (m !== 'cancelled' && m !== 'popup_closed' && m !== 'popup_failed_to_open')
+        ScuLaFolder.toast(t('driveError', m));
+    } finally {
+      driveBtn.disabled = false;
+      paintDrive();
+    }
+  });
+
+  // Same gesture the folder button uses to forget its directory.
+  driveBtn.addEventListener('contextmenu', (ev) => {
+    ev.preventDefault();
+    if (!driveToken && !driveFolder) return;
+    if (confirm(t('driveForgetAsk'))) { driveForget(false); paintDrive(); ScuLaFolder.toast(t('driveForgot')); }
+  });
+}
 
 })();
 </script>

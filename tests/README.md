@@ -107,12 +107,16 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js` and `voice.js` are the scripts that do **not** use
+`recipes.js`, `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `drive.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
 `http://127.0.0.1` server, because the workbook check reads IndexedDB and a
-`file://` origin is opaque. `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js` stay on `file://` — all eight drive the
+`file://` origin is opaque. `drive.js` serves the repo the same way and
+for the same reason — Chrome gives a `file://` page no `localStorage`, and
+the stored Google token is what the connected states are made of. It checks
+the `file://` case too, on purpose: that is the one where the button has to
+explain itself instead of opening a popup that cannot work. `graph.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js` stay on `file://` — all eight drive the
 in-memory document, so none depends on a write landing. (`idea.js` files
 ideas without a folder handle, so `wbMirrorWrite` is a no-op and the
 assertions are on the records, which is where a phone's ideas live too.) `wbsaveall.js` also
