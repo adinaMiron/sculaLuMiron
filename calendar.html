@@ -223,6 +223,15 @@
   .modal h2 { margin: 0 0 .75rem; font-size: 1rem; }
   .modal .acts { display: flex; gap: .5rem; margin-top: .9rem; }
   .modal .acts .spacer { flex: 1 1 auto; }
+  .help-card { width: min(38rem, 100%); }
+  .help-body h3 { font-size: .95rem; margin: 1rem 0 .35rem; color: var(--text); }
+  .help-body h3:first-child { margin-top: 0; }
+  .help-body p { font-size: .82rem; line-height: 1.6; color: var(--text-2); margin: 0 0 .5rem; }
+  .help-body ul { margin: 0 0 .5rem; padding-left: 1.25rem; }
+  .help-body li { font-size: .82rem; line-height: 1.6; color: var(--text-2); margin: 0 0 .3rem; }
+  .help-body b { color: var(--text); }
+  .help-body code { font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2); border-radius: .3rem; padding: .05rem .35rem; color: var(--accent-2); }
+  .help-body kbd { font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: .3rem; padding: .05rem .35rem; }
   .swatches { display: flex; flex-wrap: wrap; gap: .3rem; }
   .sw { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid transparent; padding: 0; }
   .sw.on { border-color: var(--text); }
@@ -1402,6 +1411,7 @@
     <button class="btn" type="button" data-view="agenda" data-i="vAgenda">Agendă</button>
   </div>
   <button id="newBtn" class="btn primary" type="button" data-i="newEvent">+ Eveniment</button>
+  <button id="helpBtn" class="btn icon" type="button" data-i-title="helpBtn" data-i-aria="helpBtn" title="Ajutor">?</button>
 </header>
 
 <div id="cal-body">
@@ -1557,6 +1567,18 @@
   </div>
 </div>
 
+<!-- ===== Help ===== -->
+<div id="help-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="card help-card">
+    <h2 data-i="helpTitle">Ajutor — Calendar</h2>
+    <div id="help-body" class="help-body"></div>
+    <div class="acts">
+      <span class="spacer"></span>
+      <button id="help-close" class="btn" type="button" data-i="close">Închide</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    1. i18n  (docs/I18N.md — same shape as the other four apps)
@@ -1605,7 +1627,36 @@ const I18N = {
     colLavender:"Lavandă", colSage:"Salvie", colGrape:"Strugure", colFlamingo:"Flamingo",
     colBanana:"Banană", colTangerine:"Mandarină", colPeacock:"Păun", colGraphite:"Grafit",
     colBlueberry:"Afină", colBasil:"Busuioc", colTomato:"Roșie",
-    noCal:"Fără calendar"
+    noCal:"Fără calendar",
+
+    helpBtn:"Ajutor", helpTitle:"Ajutor — Calendar",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>Ține evenimente pe zile și ore și le poate scoate afară către Google Calendar. Fiecare eveniment e stocat exact în forma pe care o folosește API-ul Google Calendar, ca să nu fie nevoie de nicio conversie la export.</p>
+      <h3>Vizualizări</h3>
+      <p>Patru butoane în antet: <b>Lună</b>, <b>Săptămână</b>, <b>Zi</b>, <b>Agendă</b> (grupate cronologic). ‹ / › trec la perioada anterioară/următoare, „Azi” revine la ziua curentă.</p>
+      <h3>Adăugarea unui eveniment</h3>
+      <ul>
+        <li>Butonul „+ Eveniment” din antet deschide un eveniment nou, gol.</li>
+        <li>Pe grila orelor (Săptămână/Zi), trage pentru un interval anume — se lipește la 15 minute — sau dă un singur click pentru o oră întreagă.</li>
+        <li>Editorul are titlu, dată/oră de început și sfârșit, „toată ziua”, culoare, calendar (categorie), etichete, loc, notițe și repetare.</li>
+      </ul>
+      <h3>Filtre</h3>
+      <p>Bara laterală are o căutare și patru fațete (calendar, etichetă, sursă, culoare), construite automat din evenimentele existente. Un eveniment cu o etichetă nouă rămâne vizibil implicit.</p>
+      <h3>Trimiterea către Google Calendar</h3>
+      <ul>
+        <li><b>.ics</b> — fișierul pe care îl importă orice calendar: Google Calendar ▸ Setări ▸ Importă și exportă.</li>
+        <li><b>JSON</b> — corpurile gata pentru API-ul <code>events.insert</code>, pentru cine folosește direct API-ul.</li>
+      </ul>
+      <p>Ambele exportă doar ce a rămas vizibil după filtre. „Importă .ics / .json” aduce înapoi un fișier exportat de aici.</p>
+      <h3>Marcajul @dată din Markdown</h3>
+      <p>Orice <code>@2026-09-03</code> scris în pagina de editare Markdown ajunge aici cu butonul 📅 „Trimite datele” de acolo (sau <kbd>Ctrl+Alt+D</kbd>) — o resincronizare rescrie titlul și data, fără să dubleze evenimentul.</p>
+      <h3>Scurtături</h3>
+      <p>
+        <kbd>←</kbd> / <kbd>→</kbd> perioada anterioară/următoare · <kbd>T</kbd> azi · <kbd>N</kbd> eveniment nou ·
+        <kbd>M</kbd> / <kbd>W</kbd> / <kbd>D</kbd> / <kbd>A</kbd> Lună/Săptămână/Zi/Agendă · <kbd>/</kbd> caută.
+      </p>
+    `
   },
   en: {
     today:"Today", prev:"Back", next:"Forward", viewGroup:"View",
@@ -1650,7 +1701,36 @@ const I18N = {
     colLavender:"Lavender", colSage:"Sage", colGrape:"Grape", colFlamingo:"Flamingo",
     colBanana:"Banana", colTangerine:"Tangerine", colPeacock:"Peacock", colGraphite:"Graphite",
     colBlueberry:"Blueberry", colBasil:"Basil", colTomato:"Tomato",
-    noCal:"No calendar"
+    noCal:"No calendar",
+
+    helpBtn:"Help", helpTitle:"Help — Calendar",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>Keeps events on days and hours, and can export them to Google Calendar. Every event is stored exactly in the shape the Google Calendar API uses, so nothing needs converting on the way out.</p>
+      <h3>Views</h3>
+      <p>Four buttons in the header: <b>Month</b>, <b>Week</b>, <b>Day</b>, <b>Agenda</b> (grouped chronologically). ‹ / › move to the previous/next period, "Today" jumps back to the current day.</p>
+      <h3>Adding an event</h3>
+      <ul>
+        <li>The "+ Event" button in the header opens a fresh, empty event.</li>
+        <li>On the hour grid (Week/Day), drag out a specific interval — it snaps to 15 minutes — or a plain click gives a full hour.</li>
+        <li>The editor has a title, start/end date and time, "all day", colour, calendar (category), tags, place, notes and recurrence.</li>
+      </ul>
+      <h3>Filters</h3>
+      <p>The sidebar has a search box and four facets (calendar, tag, source, colour), built automatically from the events that exist. An event carrying a brand-new tag stays visible by default.</p>
+      <h3>Getting it into Google Calendar</h3>
+      <ul>
+        <li><b>.ics</b> — the file any calendar can import: Google Calendar ▸ Settings ▸ Import & export.</li>
+        <li><b>JSON</b> — the bodies ready for the <code>events.insert</code> API, for anyone driving it directly.</li>
+      </ul>
+      <p>Both export only what the filters left on screen. "Import .ics / .json" brings back a file exported from here.</p>
+      <h3>The @date marker in Markdown</h3>
+      <p>Any <code>@2026-09-03</code> written on the Markdown editor page reaches here via its 📅 "Push dates" button (or <kbd>Ctrl+Alt+D</kbd>) — a re-sync rewrites the title and date without duplicating the event.</p>
+      <h3>Shortcuts</h3>
+      <p>
+        <kbd>←</kbd> / <kbd>→</kbd> previous/next period · <kbd>T</kbd> today · <kbd>N</kbd> new event ·
+        <kbd>M</kbd> / <kbd>W</kbd> / <kbd>D</kbd> / <kbd>A</kbd> Month/Week/Day/Agenda · <kbd>/</kbd> search.
+      </p>
+    `
   }
 };
 let UI = "ro";
@@ -2393,6 +2473,14 @@ $("day-new").addEventListener("click", () => {
 $("day-close").addEventListener("click", closeDay);
 $("day-modal").addEventListener("click", ev => { if(ev.target === $("day-modal")) closeDay(); });
 
+/* ---- help ---- */
+function paintHelp(){ $("help-body").innerHTML = t("helpBody"); }
+function openHelp(){ paintHelp(); $("help-modal").classList.add("open"); }
+function closeHelp(){ $("help-modal").classList.remove("open"); }
+$("helpBtn").addEventListener("click", openHelp);
+$("help-close").addEventListener("click", closeHelp);
+$("help-modal").addEventListener("click", ev => { if(ev.target === $("help-modal")) closeHelp(); });
+
 /* ---- drag on the hour grid to block out a time ----
    A drag paints a ghost and opens the editor on that interval; a plain
    click (no real movement) opens it on a one-hour slot. Both snap to 15
@@ -2502,6 +2590,7 @@ document.addEventListener("keydown", ev => {
   if(ev.key === "Escape"){
     if($("ev-modal").classList.contains("open")) closeEvent();
     else if($("day-modal").classList.contains("open")) closeDay();
+    else if($("help-modal").classList.contains("open")) closeHelp();
     return;
   }
   const el2 = document.activeElement;
@@ -2522,7 +2611,7 @@ document.addEventListener("keydown", ev => {
 Cal.onChange(() => load());
 // The shared nav owns the language; it announces changes to whoever cares.
 window.addEventListener("scula-ui-lang", ev => {
-  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
+  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); if($("help-modal").classList.contains("open")) paintHelp(); }
 });
 
 /* ============================================================

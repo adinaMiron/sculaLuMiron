@@ -257,6 +257,27 @@
   #recordingControls{ display:flex; align-items:center; gap:0.571rem; }
   #recVolume{ width:6.429rem; }
 
+  /* ---------- Help modal ---------- */
+  #helpOverlay{
+    display:none; position:fixed; inset:0; background:rgba(20,20,15,.45);
+    z-index:100; align-items:center; justify-content:center;
+  }
+  #helpOverlay.open{ display:flex; }
+  #helpModal{
+    background:var(--surface); border-radius:var(--radius); padding:1.429rem 1.571rem;
+    width:38.571rem; max-width:94vw; max-height:82vh; overflow:auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    display:flex; flex-direction:column; gap:0.429rem;
+  }
+  #helpModal h3{ margin:0 0 0.429rem; font-size:1.143rem; display:flex; align-items:center; justify-content:space-between; }
+  .help-body h3{ font-size:0.929rem; margin:1rem 0 0.357rem; color:var(--text); }
+  .help-body h3:first-child{ margin-top:0; }
+  .help-body p{ font-size:0.821rem; line-height:1.6; color:var(--text-2); margin:0 0 0.5rem; }
+  .help-body ul{ margin:0 0 0.5rem; padding-left:1.286rem; }
+  .help-body li{ font-size:0.821rem; line-height:1.6; color:var(--text-2); margin:0 0 0.286rem; }
+  .help-body b{ color:var(--text); }
+  .help-body kbd{ font-family:'Noto Mono', ui-monospace, monospace; font-size:0.75rem; background:var(--surface-2); border:1px solid var(--border); border-radius:0.286rem; padding:0.071rem 0.357rem; }
+
   /* ---------- Floating, draggable panels ---------- */
   /* Tools and per-element properties used to live in the top bar, which
      meant one very long horizontal strip you had to swipe through to reach
@@ -1593,6 +1614,10 @@
       <button class="action panelToggle" id="toggleSelectionBtn" data-i-title="toggleSelectionTip" data-i-aria="panelSelection" title="Show / hide the selection panel" aria-label="Selection"><span class="ticon">🎛</span><span class="tlabel" data-i="panelSelection">Selection</span></button>
       <button class="action" id="resetPanelsBtn" data-i-title="resetPanelsTip" data-i-aria="resetPanelsTip" title="Move the panels back to their default spots" aria-label="Move the panels back to their default spots"><span class="ticon">⤢</span></button>
     </div>
+
+    <div class="grp">
+      <button class="action" id="helpBtn" data-i-title="helpTip" data-i-aria="helpTip" title="Help" aria-label="Help"><span class="ticon">❓</span><span class="tlabel" data-i="helpBtn">Ajutor</span></button>
+    </div>
   </div>
 
   <!-- ===== Floating tools palette ===== -->
@@ -1843,6 +1868,13 @@
     </div>
   </div>
 
+  <div id="helpOverlay">
+    <div id="helpModal">
+      <h3><span data-i="helpTitle">Ajutor — Mazgaleste</span><button class="action" id="helpCloseBtn" data-i-title="closeTip" title="Close">✕</button></h3>
+      <div class="help-body" id="helpBodyEl"></div>
+    </div>
+  </div>
+
   <div id="main">
     <div id="canvasWrap">
       <div id="emptyState">
@@ -1978,7 +2010,45 @@ const I18N = {
     captureError:msg=>`Nu s-a putut captura ecranul: ${msg}`,
     noScreenRecording:"Înregistrarea ecranului nu e disponibilă în acest browser/context. Are nevoie de un Chrome/Edge/Firefox modern și un context securizat (https:// sau localhost).",
     recordStartError:msg=>`Nu s-a putut porni înregistrarea ecranului: ${msg}`,
-    videoRecordError:msg=>`Acest browser nu poate înregistra video: ${msg}`
+    videoRecordError:msg=>`Acest browser nu poate înregistra video: ${msg}`,
+    helpBtn:"Ajutor", helpTip:"Ajutor", helpTitle:"Ajutor — Mazgaleste",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>„Mazgaleste” (Image Marker) e o pânză de desen/adnotare: încarci o poză sau pornești de la un canvas gol și desenezi forme, text și săgeți peste ea.</p>
+      <h3>Pornire</h3>
+      <ul>
+        <li><b>Deschide imagine</b> — încarcă un JPG/PNG existent.</li>
+        <li><b>Canvas nou</b> — alege o mărime presetată, sau <b>∞ Infinit</b>, unde poți desena oriunde, fără margini — exportul se decupează automat pe desen, cu 10 px margine.</li>
+      </ul>
+      <h3>Unelte</h3>
+      <p>Panoul flotant „Unelte” are trei grupe: Bază (selectare, text, creion, evidențiere), Forme (dreptunghi, elipsă, romb, linie) și Săgeți (săgeată, săgeată curbă, curbă spline, polilinie). Panourile se pot muta prin tragere; butonul ⤢ din bara de sus le pune la loc.</p>
+      <h3>Curba (spline) și polilinia</h3>
+      <p>Click pentru fiecare punct; <kbd>Enter</kbd> termină, <kbd>Escape</kbd> anulează, sau dublu-click pe ultimul punct. După ce ai desenat-o, tragi de puncte ca s-o remodelezi — panoul de selecție are un rând „Puncte” cu Colț / Șterge pentru fiecare vârf ales.</p>
+      <h3>Panoul de selecție</h3>
+      <p>Cu o formă selectată, panoul din dreapta îi arată proprietățile: culoare, umplere, grosime contur, stil schiță (Arhitect/Artist/Caricaturist), opacitate, rotație. Trage colțul unei forme pentru redimensionare, mânerul de sus pentru rotire.</p>
+      <h3>Zoom și deplasare</h3>
+      <p>Rotița mouse-ului derulează; <kbd>Ctrl</kbd>+rotița face zoom. Butoanele − / 100% / + din bara de sus fac același lucru; <kbd>Ctrl+0</kbd> resetează. Pe touch: pinch pentru zoom, o degetul pentru pan. Săgețile de pe tastatură deplasează vederea (<kbd>Shift</kbd> pentru pas mai mare).</p>
+      <h3>Captură și înregistrare ecran</h3>
+      <p>„Captură ecran” aduce o poză a ecranului direct în editor. „Înregistrează” filmează ecranul (cu sunet) live, cu pauză/reluare, direct pe canvas.</p>
+      <h3>Salvare</h3>
+      <ul>
+        <li><b>Salvează</b> — exportă imaginea curentă, în aceeași mărime ca și canvasul (sau decupată pe desen, pe pânza infinită).</li>
+        <li><b>Toate mărimile</b> — exportă un .zip cu fiecare mărime presetată până la mărimea curentă.</li>
+        <li><b>Drive</b> — conectează contul Google și salvează direct într-un folder „Mazgaleste”, creat automat.</li>
+      </ul>
+      <h3>Scurtături</h3>
+      <p>
+        <kbd>Ctrl+Z</kbd> anulare · <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> refacere ·
+        <kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> copiază/lipește ·
+        <kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd> grupează/degrupează ·
+        <kbd>Ctrl+=</kbd> / <kbd>Ctrl+-</kbd> zoom · <kbd>Ctrl+0</kbd> resetează zoom ·
+        <kbd>Delete</kbd> șterge selecția (sau un punct de curbă ales) ·
+        săgeți deplasare vedere (<kbd>Shift</kbd> = pas mare) ·
+        <kbd>V</kbd> selectare, <kbd>T</kbd> text, <kbd>R</kbd> dreptunghi, <kbd>O</kbd> elipsă, <kbd>D</kbd> romb,
+        <kbd>P</kbd> creion, <kbd>A</kbd> săgeată, <kbd>H</kbd> evidențiere, <kbd>L</kbd> linie,
+        <kbd>S</kbd> săgeată curbă, <kbd>C</kbd> curbă spline, <kbd>G</kbd> polilinie.
+      </p>
+    `
   },
   en:{
     openImage:"Open", newCanvas:"New canvas", saveImage:"Save",
@@ -2069,7 +2139,45 @@ const I18N = {
     captureError:msg=>`Could not capture the screen: ${msg}`,
     noScreenRecording:"Screen recording isn't available in this browser/context. It needs a modern Chrome/Edge/Firefox and a secure context (https:// or localhost).",
     recordStartError:msg=>`Could not start screen recording: ${msg}`,
-    videoRecordError:msg=>`This browser can't record video: ${msg}`
+    videoRecordError:msg=>`This browser can't record video: ${msg}`,
+    helpBtn:"Help", helpTip:"Help", helpTitle:"Help — Mazgaleste",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>"Mazgaleste" (Image Marker) is a drawing/annotation canvas: load a picture, or start from a blank canvas, and draw shapes, text and arrows over it.</p>
+      <h3>Getting started</h3>
+      <ul>
+        <li><b>Open image</b> — load an existing JPG/PNG.</li>
+        <li><b>New canvas</b> — pick a preset size, or <b>∞ Infinite</b>, where you can draw anywhere with no edges — the export crops itself to your drawing, with a 10 px margin.</li>
+      </ul>
+      <h3>Tools</h3>
+      <p>The floating "Tools" panel has three groups: Basic (select, text, pencil, highlight), Shapes (rectangle, ellipse, rhombus, line) and Arrows (arrow, curved arrow, spline curve, polyline). Panels can be dragged around; the ⤢ button in the top bar puts them back.</p>
+      <h3>The spline curve and polyline</h3>
+      <p>Click to place each point; <kbd>Enter</kbd> finishes, <kbd>Escape</kbd> cancels, or double-click the last point. Once drawn, drag its points any time to reshape it — the selection panel has a "Points" row with Corner / Remove for whichever vertex is picked.</p>
+      <h3>The selection panel</h3>
+      <p>With a shape selected, the panel on the right shows its properties: color, fill, stroke width, sketch style (Architect/Artist/Cartoonist), opacity, rotation. Drag a shape's corner to resize, the top handle to rotate.</p>
+      <h3>Zoom and pan</h3>
+      <p>The mouse wheel scrolls; <kbd>Ctrl</kbd>+wheel zooms. The − / 100% / + buttons in the top bar do the same; <kbd>Ctrl+0</kbd> resets. On touch: pinch to zoom, one finger to pan. Arrow keys move the view (<kbd>Shift</kbd> for a bigger step).</p>
+      <h3>Screenshot and screen recording</h3>
+      <p>"Screenshot" brings a picture of your screen straight into the editor. "Record" films your screen (with audio) live, with pause/resume, directly onto the canvas.</p>
+      <h3>Saving</h3>
+      <ul>
+        <li><b>Save</b> — exports the current image, at the same size as the canvas (or cropped to the drawing, on the infinite canvas).</li>
+        <li><b>All sizes</b> — exports a .zip with every preset size up to the current one.</li>
+        <li><b>Drive</b> — connects your Google account and saves straight into a "Mazgaleste" folder it creates automatically.</li>
+      </ul>
+      <h3>Shortcuts</h3>
+      <p>
+        <kbd>Ctrl+Z</kbd> undo · <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> redo ·
+        <kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> copy/paste ·
+        <kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd> group/ungroup ·
+        <kbd>Ctrl+=</kbd> / <kbd>Ctrl+-</kbd> zoom · <kbd>Ctrl+0</kbd> reset zoom ·
+        <kbd>Delete</kbd> deletes the selection (or a picked curve point) ·
+        arrow keys pan the view (<kbd>Shift</kbd> = bigger step) ·
+        <kbd>V</kbd> select, <kbd>T</kbd> text, <kbd>R</kbd> rectangle, <kbd>O</kbd> ellipse, <kbd>D</kbd> rhombus,
+        <kbd>P</kbd> pencil, <kbd>A</kbd> arrow, <kbd>H</kbd> highlight, <kbd>L</kbd> line,
+        <kbd>S</kbd> curved arrow, <kbd>C</kbd> spline curve, <kbd>G</kbd> polyline.
+      </p>
+    `
   }
 };
 let UI = "ro";
@@ -2110,7 +2218,7 @@ function applyUILang(){
   const noFillSw = document.querySelector(".noFillSwatch");
   if(noFillSw) noFillSw.title = t("noFillTip");
 }
-window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
+window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); if(helpOverlay && helpOverlay.classList.contains('open')) paintHelp(); });
 (async function initUILang(){
   let saved = null;
   try{ saved = await store.get(LANG_KEY); }catch(e){}
@@ -2956,6 +3064,16 @@ window.addEventListener('blur', () => { spaceHeld = false; overlayCanvas.classLi
 // over the canvas. On the wrapper, not the canvas: pointer capture retargets
 // the compatibility mouse events to whatever element holds the capture.
 canvasWrap.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+
+/* ===================== Help modal ===================== */
+const helpOverlay = document.getElementById('helpOverlay');
+function paintHelp(){ document.getElementById('helpBodyEl').innerHTML = t('helpBody'); }
+function openHelpModal(){ paintHelp(); helpOverlay.classList.add('open'); }
+function closeHelpModal(){ helpOverlay.classList.remove('open'); }
+document.getElementById('helpBtn').addEventListener('click', openHelpModal);
+document.getElementById('helpCloseBtn').addEventListener('click', closeHelpModal);
+helpOverlay.addEventListener('click', (e) => { if (e.target === helpOverlay) closeHelpModal(); });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && helpOverlay.classList.contains('open')) closeHelpModal(); });
 
 /* ===================== New canvas modal ===================== */
 const newCanvasOverlay = document.getElementById('newCanvasOverlay');

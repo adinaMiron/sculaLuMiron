@@ -64,7 +64,28 @@ stayed identical.
 
 ---
 
-## voice.html — 2220 lines · "Caiet vocal" (voice dictation)
+## The Help modal (in every file — content differs per page)
+
+Each app has its own **Help** button (top bar / header, near the other
+page-level actions) that opens a modal listing *that page's* features and
+keyboard shortcuts. Unlike the nav block above, this one does **not** need
+to stay byte-identical — only the pattern is shared, the content is not:
+
+| Part | Where |
+|---|---|
+| Button | top bar/header, styled like its sibling buttons (icon+label in `editor.html`, plain `.btn` elsewhere) |
+| Content | `I18N.ro.helpBody` / `I18N.en.helpBody` — one HTML template-literal per language: `<h3>` sections, `<p>`, `<ul><li>`, `<code>` for syntax, `<kbd>` for shortcuts |
+| Open/close | `openHelpModal()` / `closeHelpModal()` (`openHelp()`/`closeHelp()` in `calendar.html`); open calls `paintHelp()`, which sets the body's `innerHTML` from `t('helpBody')` |
+| Language switch | each file's `"scula-ui-lang"` listener calls `paintHelp()` again if the modal is currently open — the one exception this feature needs to the "modals don't repaint" rule in `docs/I18N.md`, because unlike every other modal here it can plausibly stay open a while |
+| Styling | a `.help-body` class (`h3`/`p`/`ul`/`li`/`b`/`code`/`kbd`), reusing each file's own existing modal chrome (`.image-modal`/`.modal-box` in `index.html`, `#newCanvasOverlay`-style overlay in `editor.html`, `.scrim`/`.sheet` in `voice.html`, `.modal`/`.card` in `calendar.html` and, copied from there, `recipes.html`) |
+
+**When a feature changes, update its own file's `helpBody` in the same
+change** — it is hand-written prose, not generated from anything else, so
+nothing keeps it in sync automatically.
+
+---
+
+## voice.html — 2303 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
@@ -112,7 +133,7 @@ blob next to the transcript under the name the transcript actually got
 
 ---
 
-## editor.html — 5812 lines · "Image Marker" (canvas annotation)
+## editor.html — 5930 lines · "Image Marker" (canvas annotation)
 
 `lang="ro"`. Deep internals in **`HANDOFF.md`** — read that for the layer
 model, rendering pipeline, and canvas traps. Map only below.
@@ -263,7 +284,7 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## index.html — 8820 lines · Markdown editor
+## index.html — 8961 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
@@ -465,7 +486,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 8941 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
+## recipes.html — 9044 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -755,7 +776,7 @@ is also how it reaches a printer).
 ## Fast recipes
 
 ```bash
-## calendar.html — 2539 lines · "Calendar" (events on days and hours)
+## calendar.html — 2628 lines · "Calendar" (events on days and hours)
 
 `lang="ro"`. Themed and bilingual from the first commit. The *why*, the
 storage contract and the `@date` syntax live in **`docs/FEATURES.md` § L** —

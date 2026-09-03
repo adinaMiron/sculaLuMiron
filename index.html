@@ -537,6 +537,15 @@
   #idea-text { min-height: 108px; resize: vertical; line-height: 1.55; }
   .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .help-modal-box { width: 640px; max-width: 92vw; max-height: 82vh; overflow: auto; }
+  .help-body h3 { font-size: 14px; margin: 16px 0 6px; color: var(--text); }
+  .help-body h3:first-child { margin-top: 0; }
+  .help-body p { font-size: 13px; line-height: 1.6; color: var(--text-2); margin: 0 0 8px; }
+  .help-body ul { margin: 0 0 8px; padding-left: 20px; }
+  .help-body li { font-size: 13px; line-height: 1.6; color: var(--text-2); margin: 0 0 4px; }
+  .help-body b { color: var(--text); }
+  .help-body code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); font-size: 0.88em; color: var(--accent-2); }
+  .help-body kbd { font-family: var(--font-mono); font-size: 0.85em; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
   .local-pick { display: flex; align-items: center; gap: 10px; }
   .btn-pick {
     background: var(--surface-2);
@@ -2696,6 +2705,7 @@
     <span class="wb-crumb" id="wb-crumb" hidden></span>
     <span class="file-name" id="current-file">untitled.md</span>
     <button class="btn" onclick="newFile()" data-i="newFileBtn">New</button>
+    <button class="btn" id="btn-help" onclick="openHelpModal()" data-i="helpBtn" data-i-title="helpTip" title="Help">❓ Help</button>
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
@@ -3042,6 +3052,17 @@ Use the toolbar above to insert formatting.
   </div>
 </div>
 
+<!-- Help -->
+<div class="image-modal" id="help-modal">
+  <div class="modal-box help-modal-box">
+    <div class="modal-title" data-i="modalTitleHelp">Help — Markdown editor</div>
+    <div class="help-body" id="help-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeHelpModal()" data-i="closeBtn">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ Knowledge graph ═══════════
      Circles are notes, lines are the [[links]] between them - Obsidian's
      model. Three scopes: inside one note, one workbook, or every workbook.
@@ -3365,7 +3386,63 @@ const I18N = {
     ideaEmpty:"Scrie ideea mai întâi.",
     ideaSaved:o=>`Idee trimisă în ${o.book} / ${o.chapter}`,
     ideaSavedTo:o=>`Idee trimisă în ${o.book} / ${o.chapter} → ${o.path}`,
-    ideaFailed:"Nu am putut salva ideea."
+    ideaFailed:"Nu am putut salva ideea.",
+
+    /* Help modal */
+    helpBtn:"Ajutor", helpTip:"Ajutor", modalTitleHelp:"Ajutor — Editor Markdown", closeBtn:"Închide",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>Editorul Markdown ține notele în <b>caiete</b> cu <b>capitole</b> — un capitol e un fișier .md. Textul se scrie în stânga, previzualizarea apare în dreapta.</p>
+      <h3>Caiete și capitole</h3>
+      <ul>
+        <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
+        <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus.</li>
+        <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
+        <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele.</li>
+      </ul>
+      <h3>Formatare</h3>
+      <p>Bara de instrumente are bold, italic, titluri, liste, listă de sarcini, cod, tabel, imagine, link și dimensiune font. Lipirea unei poze (<kbd>Ctrl+V</kbd>) o pune direct în text, ca imagine încorporată.</p>
+      <h3>Legături [[wikilink]] și #etichete</h3>
+      <ul>
+        <li>Scrie <code>[[</code> pentru sugestii de notițe (↑↓ alege, Enter/Tab inserează, Esc renunță), sau folosește butonul ⟦⟧ Notiță / <kbd>Ctrl+Shift+L</kbd>.</li>
+        <li><code>[[Notiță]]</code> deschide un capitol; <code>[[Notiță#Secțiune]]</code> sare la un titlu; <code>[[Notiță#^ancoră]]</code> sare la un bloc anume; <code>[[#Secțiune]]</code> leagă în interiorul notiței curente.</li>
+        <li><code>![[imagine.png]]</code> încorporează o poză; <code>![[Notiță]]</code> devine un card ce deschide notița.</li>
+        <li><code>#etichetă</code> marchează un cuvânt drept etichetă.</li>
+        <li>O legătură către o notiță care nu există încă rămâne o legătură — apăsând pe ea se creează capitolul.</li>
+      </ul>
+      <h3>Graful de cunoștințe</h3>
+      <p>Butonul „Graf” sau <kbd>Ctrl+3</kbd> arată notițele ca noduri legate — poți privi doar notița curentă, tot caietul sau tot ce ai scris. Panoul din stânga are Filtre, Grupuri, Afișare și Forțe.</p>
+      <h3>Căutare și filtrare</h3>
+      <p>🔍 Find, <kbd>Ctrl+4</kbd> sau <kbd>Ctrl+Shift+F</kbd> deschide căutarea: capitol / caiet / tot ce ai scris, cu comutatoarele Aa (majuscule), ⌈ab⌉ (cuvinte întregi), .* (expresie regulată) și ăâ (ignoră diacriticele, activ implicit), plus filtre pe tipul liniei și pe etichete.</p>
+      <h3>Idee rapidă</h3>
+      <p>Butonul 💡 sau <kbd>Ctrl+Alt+I</kbd> deschide o casetă: scrii „Nume capitol: idee” și textul ajunge acolo — sau, fără nume, în caietul „Idei”, la capitolul de azi. <kbd>Ctrl+Enter</kbd> trimite, <kbd>Esc</kbd> închide.</p>
+      <h3>Marcaje de importanță</h3>
+      <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — din selectul din bară sau <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> șterge). Click pe pastilă caută tot ce mai are același marcaj.</p>
+      <h3>Responsabil</h3>
+      <p><code>Nume>> text</code> la începutul rândului marchează cine se ocupă de acea sarcină.</p>
+      <h3>Marcajul de dată @dată</h3>
+      <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, sau un interval de zile cu <code>..</code> — scris oriunde în text. 📅 „Trimite datele” sau <kbd>Ctrl+Alt+D</kbd> trimite toate marcajele către pagina Calendar.</p>
+      <h3>Anulare / Refă</h3>
+      <p><kbd>Ctrl+Z</kbd> anulează, <kbd>Ctrl+Shift+Z</kbd> sau <kbd>Ctrl+Y</kbd> reface — un istoric propriu al editorului, separat de cel al browserului, care ține pasul cu orice acțiune din bară.</p>
+      <h3>Import / Export</h3>
+      <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod.</p>
+      <h3>Dictare vocală</h3>
+      <p>Iconița 🎙 din bară transcrie vorbirea direct la cursor, folosind setările din pagina „Caiet vocal”.</p>
+      <h3>Scurtături</h3>
+      <p>
+        <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> salvează tot ce s-a modificat ·
+        <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> anulare/refă ·
+        <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> bloc de cod ·
+        <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 ·
+        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul ·
+        <kbd>Ctrl+L</kbd> selectează rândul (apasă din nou pentru paragraf) ·
+        <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf ·
+        <kbd>Ctrl+Shift+L</kbd> legătură [[notiță]] ·
+        <kbd>Ctrl+Alt+I</kbd> idee rapidă · <kbd>Ctrl+Alt+D</kbd> trimite datele în calendar ·
+        <kbd>Ctrl+Alt+1/2/3</kbd> importanță (<kbd>Ctrl+Alt+0</kbd> șterge) ·
+        <kbd>F2</kbd> redenumește caietul/capitolul selectat · <kbd>Esc</kbd> închide fereastra deschisă.
+      </p>
+    `
   },
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
@@ -3548,7 +3625,63 @@ const I18N = {
     ideaEmpty:"Write the idea first.",
     ideaSaved:o=>`Idea filed in ${o.book} / ${o.chapter}`,
     ideaSavedTo:o=>`Idea filed in ${o.book} / ${o.chapter} → ${o.path}`,
-    ideaFailed:"Could not save the idea."
+    ideaFailed:"Could not save the idea.",
+
+    /* Help modal */
+    helpBtn:"Help", helpTip:"Help", modalTitleHelp:"Help — Markdown editor", closeBtn:"Close",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>The Markdown editor keeps notes in <b>workbooks</b> holding <b>chapters</b> — one chapter is one .md file. You write on the left, the preview renders on the right.</p>
+      <h3>Workbooks and chapters</h3>
+      <ul>
+        <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
+        <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top.</li>
+        <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
+        <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook.</li>
+      </ul>
+      <h3>Formatting</h3>
+      <p>The toolbar has bold, italic, headings, lists, a todo list, code, a table, an image, a link and font size. Pasting a picture (<kbd>Ctrl+V</kbd>) drops it straight into the text as an embedded image.</p>
+      <h3>[[Wikilinks]] and #tags</h3>
+      <ul>
+        <li>Type <code>[[</code> for note suggestions (↑↓ to move, Enter/Tab to insert, Esc to dismiss), or use the ⟦⟧ Note link button / <kbd>Ctrl+Shift+L</kbd>.</li>
+        <li><code>[[Note]]</code> opens a chapter; <code>[[Note#Section]]</code> jumps to a heading; <code>[[Note#^anchor]]</code> jumps to one block; <code>[[#Section]]</code> links inside the current note.</li>
+        <li><code>![[image.png]]</code> embeds a picture; <code>![[Note]]</code> becomes a card that opens the note.</li>
+        <li><code>#tag</code> marks a word as a tag.</li>
+        <li>A link to a note that doesn't exist yet is still a link — following it creates the chapter.</li>
+      </ul>
+      <h3>The knowledge graph</h3>
+      <p>The "Graph" button or <kbd>Ctrl+3</kbd> shows notes as connected nodes — look at just the open note, the whole workbook, or everything you've written. The panel on the left has Filters, Groups, Display and Forces.</p>
+      <h3>Search and filter</h3>
+      <p>🔍 Find, <kbd>Ctrl+4</kbd> or <kbd>Ctrl+Shift+F</kbd> opens search: chapter / workbook / everything, with Aa (match case), ⌈ab⌉ (whole words), .* (regular expression) and ăâ (ignore diacritics, on by default) toggles, plus filters by line kind and by tag.</p>
+      <h3>Quick idea capture</h3>
+      <p>The 💡 button or <kbd>Ctrl+Alt+I</kbd> opens one box: write "Chapter name: idea" and the text lands there — or, with no name, in the "Idei" workbook, under today's chapter. <kbd>Ctrl+Enter</kbd> files it, <kbd>Esc</kbd> closes the box.</p>
+      <h3>Importance markers</h3>
+      <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — from the toolbar select or <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> clears). Clicking a pill searches for everything else carrying the same marker.</p>
+      <h3>Assignee marker</h3>
+      <p><code>Name>> text</code> at the start of a line marks who owns that task.</p>
+      <h3>The @date marker</h3>
+      <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, or a day range with <code>..</code> — written anywhere in the text. 📅 "Push dates" or <kbd>Ctrl+Alt+D</kbd> sends every marker to the Calendar page.</p>
+      <h3>Undo / redo</h3>
+      <p><kbd>Ctrl+Z</kbd> undoes, <kbd>Ctrl+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redoes — the editor's own history, separate from the browser's, which keeps up with every toolbar action too.</p>
+      <h3>Import / export</h3>
+      <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks.</p>
+      <h3>Voice dictation</h3>
+      <p>The 🎙 icon in the toolbar transcribes speech straight at the caret, using the settings saved on the "Caiet vocal" page.</p>
+      <h3>Shortcuts</h3>
+      <p>
+        <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> save all modified ·
+        <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> undo/redo ·
+        <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> code block ·
+        <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 ·
+        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line ·
+        <kbd>Ctrl+L</kbd> select the line (press again for the paragraph) ·
+        <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph ·
+        <kbd>Ctrl+Shift+L</kbd> [[note]] link ·
+        <kbd>Ctrl+Alt+I</kbd> quick idea · <kbd>Ctrl+Alt+D</kbd> push dates to calendar ·
+        <kbd>Ctrl+Alt+1/2/3</kbd> importance (<kbd>Ctrl+Alt+0</kbd> clears) ·
+        <kbd>F2</kbd> renames the selected workbook/chapter · <kbd>Esc</kbd> closes whatever's open.
+      </p>
+    `
   }
 };
 let UI = "ro";
@@ -3597,7 +3730,7 @@ function applyUILang(){
   // And for the "@date" pills, whose label is a formatted date, not a key.
   if(typeof calRepaintLang === "function") calRepaintLang();
 }
-window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); });
+window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); if (document.getElementById('help-modal').classList.contains('open')) paintHelp(); });
 (async function initUILang(){
   let saved = null;
   try{ saved = await store.get(LANG_KEY); }catch(e){}
@@ -8363,6 +8496,11 @@ function insertLink() {
   closeLinkModal(); restoreSelection(); insertAtCursor(md);
 }
 
+/* ── Help modal ── */
+function paintHelp() { document.getElementById('help-body').innerHTML = t('helpBody'); }
+function openHelpModal() { paintHelp(); document.getElementById('help-modal').classList.add('open'); }
+function closeHelpModal() { document.getElementById('help-modal').classList.remove('open'); }
+
 /* ── Event listeners ── */
 document.getElementById('image-modal').addEventListener('click', function(e) {
   if (e.target === this) closeImageModal();
@@ -8372,6 +8510,9 @@ document.getElementById('link-modal').addEventListener('click', function(e) {
 });
 document.getElementById('table-modal').addEventListener('click', function(e) {
   if (e.target === this) closeTableModal();
+});
+document.getElementById('help-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeHelpModal();
 });
 document.getElementById('wiki-modal').addEventListener('click', function(e) {
   if (e.target === this) closeWikiModal();
@@ -8393,7 +8534,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     // Innermost first: the graph covers everything, so it closes on its own
     if (gv.open) { closeGraph(); return; }
-    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal();
+    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal();
     if (isSmallScreen()) closeAllPanels();
   }
   // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → the editor's own history (undoMark).

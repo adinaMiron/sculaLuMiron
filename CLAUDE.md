@@ -6,11 +6,11 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `voice.html` | 2220 | 22k | "Caiet vocal" — voice dictation → text | dark (earth) |
-| `editor.html` | 5812 | 54k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 8820 | 76k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 8941 | 89k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
-| `calendar.html` | 2539 | 25k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
+| `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
+| `index.html` | 8961 | 77k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `recipes.html` | 9044 | 90k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
 "markdown page" / "index" → `index.html` · "retete" / "rețete" →

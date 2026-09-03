@@ -212,6 +212,16 @@
   hr.sep{border:0;border-top:1px solid var(--border);margin:16px 0}
   .sheet-foot{display:flex;gap:8px;margin-top:18px}
 
+  /* ---------- help ---------- */
+  .help-body h3{font-family:var(--font-display);font-weight:400;font-size:16px;margin:16px 0 6px;color:var(--text)}
+  .help-body h3:first-child{margin-top:0}
+  .help-body p{font-size:13px;line-height:1.6;color:var(--text-2);margin:0 0 8px}
+  .help-body ul{margin:0 0 8px;padding-left:20px}
+  .help-body li{font-size:13px;line-height:1.6;color:var(--text-2);margin:0 0 4px}
+  .help-body b{color:var(--text)}
+  .help-body code{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);border-radius:4px;padding:1px 5px;color:var(--accent)}
+  .help-body kbd{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+
   @media (prefers-reduced-motion: reduce){
     .ring{transition:none}
   }
@@ -1359,6 +1369,7 @@
     <h1 class="wordmark">Caiet vocal</h1>
   </div>
   <div class="top-actions">
+    <button class="icon-btn" id="helpBtn" type="button" data-i="helpBtn">Ajutor</button>
     <button class="icon-btn" id="setBtn" type="button" data-i="settings">Setări</button>
   </div>
 </div>
@@ -1490,6 +1501,16 @@
   </div>
 </div>
 
+<!-- Help -->
+<div class="scrim hidden" id="helpScrim"></div>
+<div class="sheet hidden" id="helpSheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <h2 id="helpTitle" data-i="helpTitle">Ajutor — Caiet vocal</h2>
+  <div class="help-body" id="helpBody"></div>
+  <div class="sheet-foot">
+    <button class="btn" id="helpCloseBtn" type="button" data-i="helpClose">Închide</button>
+  </div>
+</div>
+
 <script>
 (function(){
 "use strict";
@@ -1540,7 +1561,32 @@ const I18N = {
     keyTipGroq:'Cheie de la <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 scrie corect cu diacritice. Ca să generezi una: intră pe link, conectează-te (sau creează cont gratuit), apasă „Create API Key”, dă-i un nume și copiaz-o — apare o singură dată, deci lipește-o aici acum.',
     keyTipOpenAI:'Cheie de la platform.openai.com/api-keys.',
     keyTipCustom:'Trimite POST multipart către adresa ta; cheia rămâne pe server. Lasă câmpul de cheie gol.',
-    tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB)."
+    tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB).",
+    helpBtn:"Ajutor", helpTitle:"Ajutor — Caiet vocal", helpClose:"Închide",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>„Caiet vocal” transformă vorbirea în text — fie direct în browser, fie trimițând sunetul către un motor de transcriere extern.</p>
+      <h3>Înregistrarea</h3>
+      <ul>
+        <li>Apasă butonul mare pentru a începe; apasă din nou pentru a opri.</li>
+        <li>Ceasul de sub buton arată cât ai vorbit.</li>
+        <li><b>Limba vorbită</b> (Română / English / Automat) e separată de limba interfeței — poți dicta în română cu interfața în engleză, sau invers.</li>
+      </ul>
+      <h3>Motorul de transcriere</h3>
+      <p>Din <b>Setări</b> alegi între:</p>
+      <ul>
+        <li><b>Server (precis)</b> — trimite sunetul către Groq, OpenAI sau un server propriu; cere o cheie API, care rămâne pe acest dispozitiv.</li>
+        <li><b>Browser (fără cheie)</b> — dictare live, fără cont, cât timp browserul o suportă.</li>
+      </ul>
+      <h3>Păstrează și sunetul</h3>
+      <p>Bifează căsuța <i>„Salvează și sunetul înregistrării”</i> <b>înainte</b> de a apăsa Înregistrează — nu în timpul înregistrării. Fișierul audio se salvează odată cu textul, sub același nume.</p>
+      <h3>După transcriere</h3>
+      <p>Copiază, trimite (share), descarcă sau șterge textul cu butoanele de sub el. Poți transcrie și un fișier audio existent cu „Transcrie un fișier audio”.</p>
+      <h3>Unde ajung fișierele</h3>
+      <p>Butonul 📁 din bara de navigare alege unde se salvează: un folder de pe calculator, ecranul de partajare al telefonului, sau o descărcare simplă — totul ajunge în folderul <code>transcript</code>.</p>
+      <h3>Scurtături</h3>
+      <p><kbd>Esc</kbd> închide fereastra de Setări sau cea de alegere a folderului.</p>
+    `
   },
   en:{
     eyebrow:"dictation · romanian / english",
@@ -1584,7 +1630,32 @@ const I18N = {
     keyTipGroq:'Key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 handles Romanian diacritics well. To generate one: open the link, sign in (or create a free account), click “Create API Key”, name it, and copy it — it is shown only once, so paste it here right away.',
     keyTipOpenAI:'Key from platform.openai.com/api-keys.',
     keyTipCustom:'Sends a multipart POST to your address; the key stays on the server. Leave the key field empty.',
-    tooBig:"File is too large for a single request (over 25 MB)."
+    tooBig:"File is too large for a single request (over 25 MB).",
+    helpBtn:"Help", helpTitle:"Help — Caiet vocal", helpClose:"Close",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>"Caiet vocal" (voice notebook) turns speech into text — either right in the browser, or by sending the audio to an external transcription engine.</p>
+      <h3>Recording</h3>
+      <ul>
+        <li>Press the big button to start; press again to stop.</li>
+        <li>The clock under the button shows how long you've spoken.</li>
+        <li>The <b>spoken language</b> (Romanian / English / Auto) is separate from the interface language — you can dictate Romanian with an English interface, or the other way round.</li>
+      </ul>
+      <h3>The transcription engine</h3>
+      <p>In <b>Settings</b> you choose between:</p>
+      <ul>
+        <li><b>Server (accurate)</b> — sends the audio to Groq, OpenAI, or your own server; needs an API key, which stays on this device.</li>
+        <li><b>Browser (no key)</b> — live dictation, no account, as long as the browser supports it.</li>
+      </ul>
+      <h3>Keeping the audio</h3>
+      <p>Tick <i>"Also save the sound of the recording"</i> <b>before</b> pressing Record — not mid-recording. The audio file is saved alongside the text, under the same name.</p>
+      <h3>After transcribing</h3>
+      <p>Copy, share, download or clear the text with the buttons below it. You can also transcribe an existing audio file with "Transcribe an audio file".</p>
+      <h3>Where files go</h3>
+      <p>The 📁 button in the top nav picks where things are saved: a folder on your computer, your phone's share sheet, or a plain download — everything lands in the <code>transcript</code> folder.</p>
+      <h3>Shortcuts</h3>
+      <p><kbd>Esc</kbd> closes the Settings sheet or the folder-picker sheet.</p>
+    `
   }
 };
 let UI = "ro";
@@ -1714,7 +1785,7 @@ function applyUILang(){
   secureWarn.innerHTML = t("insecure");
   updateCounts(); updateProviderUI(); checkSetup();
 }
-window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); });
+window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); if(!helpSheet.classList.contains("hidden")) paintHelp(); });
 
 /* ============================================================
    7. Settings sheet
@@ -1788,6 +1859,18 @@ function checkSetup(){
     setupWarn.classList.add("hidden");
   }
 }
+
+/* ============================================================
+   7b. Help
+   ============================================================ */
+const helpSheet=$("#helpSheet"), helpScrim=$("#helpScrim");
+function paintHelp(){ $("#helpBody").innerHTML = t("helpBody"); }
+function openHelpModal(){ paintHelp(); helpSheet.classList.remove("hidden"); helpScrim.classList.remove("hidden"); }
+function closeHelpModal(){ helpSheet.classList.add("hidden"); helpScrim.classList.add("hidden"); }
+$("#helpBtn").addEventListener("click", openHelpModal);
+$("#helpCloseBtn").addEventListener("click", closeHelpModal);
+helpScrim.addEventListener("click", closeHelpModal);
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !helpSheet.classList.contains("hidden")) closeHelpModal(); });
 
 /* ============================================================
    8. Secure-context check

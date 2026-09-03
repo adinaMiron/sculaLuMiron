@@ -60,6 +60,30 @@
     letter-spacing:.01em;
   }
   header.page p{margin:0;color:var(--text-2);font-size:.9rem;max-width:52rem}
+  .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+
+  /* ---------- help modal ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:500;display:none;
+    align-items:center;justify-content:center;padding:1rem;
+    background:rgba(0,0,0,.55);
+  }
+  .modal.open{display:flex}
+  .modal .card{
+    width:min(38rem,100%);max-height:calc(100vh - 2rem);overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow);
+  }
+  .modal h2{margin:0 0 .75rem;font-size:1.05rem;font-family:var(--font-display)}
+  .modal .acts{display:flex;gap:.5rem;margin-top:.9rem}
+  .modal .acts .spacer{flex:1 1 auto}
+  .help-body h3{font-size:.95rem;margin:1rem 0 .35rem;color:var(--text)}
+  .help-body h3:first-child{margin-top:0}
+  .help-body p{font-size:.83rem;line-height:1.6;color:var(--text-2);margin:0 0 .5rem}
+  .help-body ul{margin:0 0 .5rem;padding-left:1.25rem}
+  .help-body li{font-size:.83rem;line-height:1.6;color:var(--text-2);margin:0 0 .3rem}
+  .help-body b{color:var(--text)}
+  .help-body kbd{font-family:var(--font-mono);font-size:.78rem;background:var(--surface-2);border:1px solid var(--border);border-radius:.35rem;padding:.05rem .35rem}
 
   .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:1rem;align-items:start}
   @media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr)} }
@@ -1536,9 +1560,23 @@
 
 <div class="wrap">
   <header class="page">
-    <h1 data-i="title">Rețete</h1>
+    <div class="page-head">
+      <h1 data-i="title">Rețete</h1>
+      <button type="button" class="btn ghost mini" id="btnHelp" data-i="helpBtn">Ajutor</button>
+    </div>
     <p data-i="intro">Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.</p>
   </header>
+
+  <div class="modal" id="helpModal">
+    <div class="card">
+      <h2 data-i="helpTitle">Ajutor — Rețete</h2>
+      <div class="help-body" id="helpBody"></div>
+      <div class="acts">
+        <span class="spacer"></span>
+        <button type="button" class="btn primary" id="btnHelpClose" data-i="closeBtn">Închide</button>
+      </div>
+    </div>
+  </div>
 
   <div class="cols">
     <section>
@@ -1946,7 +1984,34 @@ const I18N = {
     unnamed:"Fără nume",
     ocrLoaded:l => "pregătit · " + l,
     ocrLoading:"se aduce…",
-    ocrNotLoaded:"nepregătit"
+    ocrNotLoaded:"nepregătit",
+
+    helpBtn:"Ajutor", helpTitle:"Ajutor — Rețete", closeBtn:"Închide",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: „1. Ingrediente”, „2. Metoda de preparare”. Fiecare ingredient e potrivit cu o bază de date USDA, ca să iasă și valorile nutriționale.</p>
+      <h3>Aducerea textului</h3>
+      <ul>
+        <li><b>Alege fișier</b> — trage sau alege un PDF (și scanat), o poză, un text, sau un .md scris tot aici. Mai multe poze deodată merg.</li>
+        <li><b>Fotografiază</b> — folosește camera telefonului direct.</li>
+        <li><b>Lipesc textul</b> — pentru un text copiat din altă parte.</li>
+        <li><b>Importă .md</b> — aduce înapoi un fișier scris de pagina asta (sau de editorul Markdown): zilele, mesele, ingredientele și pașii se întorc întregi.</li>
+        <li>O poză se poate lipi și direct din clipboard cu <kbd>Ctrl+V</kbd>.</li>
+      </ul>
+      <h3>Text din poze (OCR)</h3>
+      <p>Pozele și PDF-urile scanate se citesc automat cu Tesseract, chiar în pagină. Motorul se aduce o singură dată, la prima poză, și rămâne pregătit — nimic nu pleacă de pe dispozitiv. Adresa lui e un câmp editabil, ca să poată fi îndreptat spre o copie locală, offline.</p>
+      <h3>Cardurile de revizuire</h3>
+      <p>Textul analizat apare împărțit pe zile și mese, gata de corectat: nume, ingrediente (cantitate, unitate, aliment) și pași. Fiecare ingredient arată alimentul USDA cu care a fost potrivit și ce valori nutriționale iese; o săgeată de la capătul liniei deschide celelalte 38 de valori (fibre, vitamine, minerale…). Potrivirile se țin minte între vizite, în cartea de ingrediente.</p>
+      <h3>Căutare și filtre</h3>
+      <p>Caseta de căutare și lista de ingrediente (separate prin virgulă) restrâng ce se arată — bun pentru un plan lung de zile.</p>
+      <h3>Salvare</h3>
+      <ul>
+        <li><b>.md</b> — rețeta scrisă ca markdown, gata de reimportat sau deschis în editorul Markdown.</li>
+        <li><b>.json</b> — cartea de ingrediente, ca să o muți pe alt dispozitiv.</li>
+        <li><b>.html</b> — o pagină de sine stătătoare, cu căutare și totaluri, bună de trimis pe mail sau de printat.</li>
+      </ul>
+      <p>Toate trec prin alegerea de folder din bara de sus (📁) — un folder pe calculator, ecranul de partajare pe telefon, sau o descărcare simplă.</p>
+    `
   },
   en:{
     title:"Recipes",
@@ -2146,7 +2211,34 @@ const I18N = {
     unnamed:"Untitled",
     ocrLoaded:l => "ready · " + l,
     ocrLoading:"fetching…",
-    ocrNotLoaded:"not ready"
+    ocrNotLoaded:"not ready",
+
+    helpBtn:"Help", helpTitle:"Help — Recipes", closeBtn:"Close",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>Reads the text out of a PDF or a photo, splits it into days and meals, and writes a clean recipe in markdown: "1. Ingredients", "2. Method". Every ingredient is matched against a USDA database, so nutrition numbers come out too.</p>
+      <h3>Getting the text in</h3>
+      <ul>
+        <li><b>Choose file</b> — drop or pick a PDF (scanned too), a photo, text, or a .md written by this page. Several photos at once work fine.</li>
+        <li><b>Camera</b> — use the phone's camera directly.</li>
+        <li><b>Paste text</b> — for text copied from elsewhere.</li>
+        <li><b>Import .md</b> — brings back a file this page wrote (or the Markdown editor did): days, meals, ingredients and steps come back whole.</li>
+        <li>A picture can also be pasted straight from the clipboard with <kbd>Ctrl+V</kbd>.</li>
+      </ul>
+      <h3>Text from photos (OCR)</h3>
+      <p>Photos and scanned PDFs are read automatically with Tesseract, right on the page. The engine is fetched once, on the first photo, and stays ready — nothing leaves the device. Its address is an editable field, so it can be pointed at a local, offline copy.</p>
+      <h3>The review cards</h3>
+      <p>The parsed text shows up split into days and meals, ready to correct: name, ingredients (quantity, unit, food) and steps. Each ingredient shows the USDA food it was matched to and what it comes to; a caret at the end of the line opens the other 38 values (fibre, vitamins, minerals…). Matches are remembered between visits, in the ingredient book.</p>
+      <h3>Search and filters</h3>
+      <p>The search box and the ingredient list (comma-separated) narrow what's shown — handy for a long book of days.</p>
+      <h3>Saving</h3>
+      <ul>
+        <li><b>.md</b> — the recipe written as markdown, ready to re-import or open in the Markdown editor.</li>
+        <li><b>.json</b> — the ingredient book, to move it to another device.</li>
+        <li><b>.html</b> — a self-contained page, with search and totals, good for emailing or printing.</li>
+      </ul>
+      <p>All of them go through the folder picker in the top bar (📁) — a folder on your computer, the phone's share sheet, or a plain download.</p>
+    `
   }
 };
 let UI = "ro";
@@ -8905,9 +8997,20 @@ els.ocrLangs.addEventListener("change", () => { savePrefs(); paintOcrState(); })
 [els.optSource, els.optTotals, els.optNutri].forEach(el =>
   el.addEventListener("change", () => { savePrefs(); renderMarkdown(); }));
 
+/* ---- Help modal ---- */
+const helpModal = document.getElementById("helpModal");
+function paintHelp(){ document.getElementById("helpBody").innerHTML = t("helpBody"); }
+function openHelpModal(){ paintHelp(); helpModal.classList.add("open"); }
+function closeHelpModal(){ helpModal.classList.remove("open"); }
+document.getElementById("btnHelp").addEventListener("click", openHelpModal);
+document.getElementById("btnHelpClose").addEventListener("click", closeHelpModal);
+helpModal.addEventListener("click", e => { if(e.target === helpModal) closeHelpModal(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && helpModal.classList.contains("open")) closeHelpModal(); });
+
 window.addEventListener("scula-ui-lang", ev => {
   UI = (ev.detail === "en" || ev.detail === "ro") ? ev.detail : UI;
   applyUILang();
+  if(helpModal.classList.contains("open")) paintHelp();
 });
 
 /* ---- init ---- */
