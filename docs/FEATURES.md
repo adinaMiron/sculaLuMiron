@@ -838,11 +838,48 @@ Each chip's count comes from one step *earlier* than the chip itself
 filters, so a chip can always be swapped for another without the list going
 empty first.
 
+### A result is a block, not a line
+
+The panel shows what Obsidian shows: the match **inside the lines around
+it**, so a hit can be read and judged without opening the chapter first.
+
+- **Context.** `FD_CTX` (1) lines either side by default, `FD_CTX_MORE` (4)
+  with the **≡** button on. It counts *lines that carry something* — blank
+  lines are skipped rather than printed, since in markdown they are most of
+  the neighbourhood — and never wanders more than `3n` lines away looking
+  for them (`fdCtxSpan`). Context lines are dimmed (`.find-line.ctx`); the
+  matched ones are not.
+- **Overlapping hits become one block.** `fdBlocks()` merges two hits whose
+  spans touch, so the same lines are never printed twice. That is why the
+  block count is usually lower than the match count — the count on the
+  chapter row and in the footer is always the number of *matches*.
+- **Every match is still its own place to go.** Each `<mark>` carries its
+  own hit index (`fdHitOf`), so clicking the third match in a block goes to
+  the third match; clicking anywhere else in the block goes to its first.
+- **The shared indentation is dropped** so a deep list item still reads
+  inside a 300px panel, and each line wraps instead of being cut off. A
+  single very long line is still trimmed to `FD_SNIPPET` (170) characters
+  around its first hit.
+
+### Folding
+
+- The **⊟** button folds every chapter away and becomes **⊞**; the chapter
+  rows and their match counts stay, which makes it the fastest way to see
+  *where* something is before reading any of it.
+- The chevron on a chapter row folds that one chapter. `fdState.collapse`
+  is the default and `fdShut` holds the exceptions (`fdNoteShut`), so the
+  button stays one decision and a chevron a second one.
+- Both, plus **≡**, persist under `scula:find` with the scope and the four
+  query toggles. Neither re-runs the search: they repaint what is already
+  found.
+
 ### Going to a hit
 
-Click a result row: the chapter opens if the hit is in another one, the
-match is selected in the `<textarea>`, and on a screen wide enough to be
-showing both panes the preview jumps to the same section and flashes it.
+Click a result block — or one `<mark>` inside it: the chapter opens if the
+hit is in another one, the match is selected in the `<textarea>`, and on a
+screen wide enough to be showing both panes the preview jumps to the same
+section and flashes it. A block is a `<div>`, so Enter and Space are wired
+by hand — a `<button>` cannot hold the clickable marks.
 The heading a hit sits under is slugged with `headingSlug()` and the same
 per-note counter `parseMarkdown()` uses, so the anchor really exists.
 
@@ -856,7 +893,9 @@ exactly the long chapters this is for.
 - A new toggle: a `<button class="find-opt" data-fd-opt="…">` in
   `#find-opts`, a matching boolean on `fdState`, and its use inside
   `fdMatcher()` or `fdLineHits()`. `fdPaintOpts()` and the persisted
-  settings pick it up with no further wiring.
+  settings pick it up with no further wiring. A toggle that changes only
+  how the results are *shown* goes in the same row as `data-fd-view` and
+  repaints (`fdRender`) rather than re-running the search.
 - A new kind of line: add it to `FD_KINDS`, teach `fdKindOf()` the test,
   and add a `findKind_<name>` key to both languages.
 - The panel's chips and rows are generated, so they carry no `data-i`.
@@ -865,10 +904,13 @@ exactly the long chapters this is for.
 
 ### Testing
 
-`tests/find.js`. All three scopes, all four toggles, both chip rows, a hit
-opening another chapter and landing selected, a hit below the fold scrolling
-to itself through wrapped lines, a line of literal HTML shown rather than
-run, both languages, `Ctrl+4`.
+`tests/find.js`. All three scopes, all four query toggles, both chip rows,
+the context block (its neighbours, its skipped blank lines, the ≡ widening
+it), hits merging into one block while keeping a mark each, a click on one
+mark going to *that* match, ⊟ folding every chapter and a chevron bringing
+one back, a hit opening another chapter and landing selected, a hit below
+the fold scrolling to itself through wrapped lines, a line of literal HTML
+shown rather than run, both languages, `Ctrl+4`.
 
 Run: `/apptest find`.
 

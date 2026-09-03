@@ -853,7 +853,8 @@
   .find-scope button:hover { color: var(--text); }
   .find-scope button.active { background: var(--accent); color: var(--on-accent); }
 
-  .find-opts { display: flex; gap: 4px; flex-wrap: wrap; }
+  .find-opts { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .find-sep { flex: 1; min-width: 4px; }
   .find-opt {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -902,19 +903,32 @@
   .find-note { border-bottom: 1px solid var(--border); }
   .find-note-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 6px;
-    padding: 7px 10px;
+    padding: 7px 10px 7px 4px;
     cursor: pointer;
     font-size: 11px;
     color: var(--text-2);
   }
+  /* The chevron folds one chapter away; the whole row still opens it. */
+  .find-caret {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 9px;
+    line-height: 1;
+    padding: 3px 4px;
+    transition: color 0.12s, transform 0.12s;
+  }
+  .find-caret:hover { color: var(--text); }
   .find-note-row:hover { background: var(--surface-2); color: var(--text); }
   .find-note-row.current { color: var(--accent-2); }
   .find-note-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .find-note-book { font-size: 9.5px; color: var(--text-3); font-family: var(--font-mono); }
   .find-note-n { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); }
 
+  /* One block of context, the lines around the match — Obsidian's shape. */
   .find-hit {
     display: block;
     width: 100%;
@@ -927,22 +941,37 @@
     font-family: var(--font-ui);
     font-size: 11.5px;
     line-height: 1.5;
-    padding: 5px 10px 5px 14px;
+    padding: 6px 10px 7px 14px;
     transition: background 0.1s, border-color 0.1s, color 0.1s;
   }
+  /* Two blocks in the same chapter are two answers — a hairline says so. */
+  .find-hit + .find-hit { box-shadow: inset 0 1px 0 var(--border); }
   .find-hit:hover { background: var(--surface-2); border-left-color: var(--accent); color: var(--text); }
-  .find-hit mark { background: var(--accent); color: var(--on-accent); border-radius: 2px; padding: 0 1px; }
+  .find-hit:focus-visible { outline: none; background: var(--surface-2); border-left-color: var(--accent-2); }
+  .find-hit mark {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-radius: 2px;
+    padding: 0 1px;
+    cursor: pointer;
+  }
+  .find-hit mark:hover { background: var(--accent-2); }
   .find-where {
     display: block;
     font-family: var(--font-mono);
     font-size: 9.5px;
     color: var(--text-3);
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .find-snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Wraps, because the point of the block is to read the sentence around
+     the match. The lines that are only context sit back a shade. */
+  .find-snip { display: block; }
+  .find-line { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .find-line.ctx { color: var(--text-3); }
+  .find-hit:hover .find-line.ctx { color: var(--text-2); }
 
   .find-empty { padding: 18px 12px; font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.6; }
   .find-note-hint { padding: 0 10px 8px; font-size: 10px; color: var(--text-3); line-height: 1.5; }
@@ -2350,6 +2379,9 @@ Use the toolbar above to insert formatting.
         <button type="button" class="find-opt" data-fd-opt="wholeWord" data-i-title="findWordTip" title="Whole words only">⌈ab⌉</button>
         <button type="button" class="find-opt" data-fd-opt="regex" data-i-title="findRegexTip" title="Regular expression">.*</button>
         <button type="button" class="find-opt" data-fd-opt="fold" data-i-title="findFoldTip" title="Ignore diacritics (a finds ă, â)">ăâ</button>
+        <span class="find-sep"></span>
+        <button type="button" class="find-opt" data-fd-view="context" data-i-title="findCtxTip" title="More context around each match">≡</button>
+        <button type="button" class="find-opt" data-fd-view="collapse" data-i-title="findCollapseAllTip" title="Collapse all results">⊟</button>
       </div>
       <div class="find-filter" id="find-kinds" hidden></div>
       <div class="find-filter" id="find-tags" hidden></div>
@@ -2791,6 +2823,9 @@ const I18N = {
     findScopeAll:"Tot", findScopeAllTip:"Toate capitolele din toate caietele",
     findCaseTip:"Ține cont de majuscule", findWordTip:"Doar cuvinte întregi",
     findRegexTip:"Expresie regulată", findFoldTip:"Ignoră diacriticele (a găsește ă, â)",
+    findCtxTip:"Mai mult context în jurul fiecărei potriviri",
+    findCollapseAllTip:"Restrânge toate rezultatele", findExpandAllTip:"Extinde toate rezultatele",
+    findCollapseNoteTip:"Restrânge capitolul", findExpandNoteTip:"Extinde capitolul",
     findKindsLabel:"Doar", findTagsLabel:"Etichete",
     findKind_heading:"titluri", findKind_text:"text", findKind_list:"liste",
     findKind_code:"cod", findKind_quote:"citate", findKind_table:"tabele",
@@ -2963,6 +2998,9 @@ const I18N = {
     findScopeAll:"All", findScopeAllTip:"Every chapter of every workbook",
     findCaseTip:"Match case", findWordTip:"Whole words only",
     findRegexTip:"Regular expression", findFoldTip:"Ignore diacritics (a finds ă, â)",
+    findCtxTip:"More context around each match",
+    findCollapseAllTip:"Collapse all results", findExpandAllTip:"Expand all results",
+    findCollapseNoteTip:"Collapse this chapter", findExpandNoteTip:"Expand this chapter",
     findKindsLabel:"Only", findTagsLabel:"Tags",
     findKind_heading:"headings", findKind_text:"text", findKind_list:"lists",
     findKind_code:"code", findKind_quote:"quotes", findKind_table:"tables",
@@ -6380,6 +6418,8 @@ const FD_KINDS = ['heading', 'text', 'list', 'code', 'quote', 'table'];
 const FD_SNIPPET = 170;        // characters of a line kept around its hits
 const FD_MAX_HITS = 400;       // per chapter — one file cannot flood the list
 const FD_MAX_TAGS = 30;        // chips, most-used first
+const FD_CTX = 1;              // context lines shown either side of a match
+const FD_CTX_MORE = 4;         // …with the "more context" toggle on
 
 var fdReady = false;           // var: applyUILang() reads it before this runs
 const fdState = {
@@ -6389,9 +6429,14 @@ const fdState = {
   wholeWord: false,
   regex: false,
   fold: true,                  // ignore diacritics: "sapun" finds "săpun"
+  context: false,              // show more lines around each match
+  collapse: false,             // fold every chapter by default
   kinds: new Set(),            // empty = every kind of line
   tags: new Set()              // a chapter must carry every selected tag
 };
+// Chapters folded against whatever `collapse` says — the exceptions, so the
+// ⊟ button stays one decision and a chevron stays a second one.
+const fdShut = new Set();
 let fdLast = { groups: [], matches: 0, notes: 0, kinds: new Map(), tags: new Map(), error: false, scoped: 0 };
 let fdTimer = 0, fdLiveTimer = 0;
 
@@ -6461,8 +6506,7 @@ function fdKindOf(line, inFence) {
 // One chapter, line by line. `section` is the heading a hit sits under, with
 // the slug parseMarkdown() gave it — counted the same way, fenced code
 // skipped the same way, so the anchor the preview jumps to really exists.
-function fdNoteHits(text, m) {
-  const lines = String(text || '').split('\n');
+function fdNoteHits(lines, m) {
   const slugSeen = {};
   const hits = [];
   let inFence = false, section = null;
@@ -6477,7 +6521,7 @@ function fdNoteHits(text, m) {
     }
     if (!line.trim()) continue;
     const ranges = fdLineHits(line, m);
-    if (ranges.length) hits.push({ line: i, kind, section, text: line, ranges });
+    if (ranges.length) hits.push({ line: i, kind, section, ranges });
     if (hits.length >= FD_MAX_HITS) break;
   }
   return hits;
@@ -6523,7 +6567,8 @@ function fdCompute() {
 
   notes.forEach(n => {
     const text = noteText(n);
-    const hits = m ? fdNoteHits(text, m) : [];
+    const lines = String(text || '').split('\n');
+    const hits = m ? fdNoteHits(lines, m) : [];
     if (m && !hits.length) return;
 
     // Tag chips describe the chapters the query already found.
@@ -6535,41 +6580,124 @@ function fdCompute() {
     const shown = fdState.kinds.size ? hits.filter(h => fdState.kinds.has(h.kind)) : hits;
     if (m && !shown.length) return;
 
-    res.groups.push({ note: n, hits: shown });
+    // The lines ride along: the context block around a hit is cut at render
+    // time, once, and only for the chapters that actually matched.
+    res.groups.push({ note: n, hits: shown, lines });
     res.matches += shown.length;
     res.notes++;
   });
   return res;
 }
 
-/* ── Rendering ── */
-// The hits marked, without ever letting the line become HTML: the text is
-// escaped in the gaps between the ranges, never as one string afterwards.
-function fdSnippet(line, ranges) {
+/* ── Rendering ──
+   A result is a block of lines, not a line: the match sits inside the text
+   around it, the way Obsidian shows one, so it can be read and judged
+   without opening the chapter. Blank lines are skipped rather than printed
+   — in markdown they are the majority of the neighbourhood — and two
+   matches whose blocks would overlap become one block, so the same lines
+   are never shown twice. Each match keeps its own <mark>, and each <mark>
+   is its own place to go. */
+
+// The window around one hit: up to `n` lines that carry something, either
+// side, and never wandering more than 3n lines away looking for them.
+function fdCtxSpan(lines, line, n) {
+  let from = line, to = line, k = 0;
+  for (let i = line - 1; i >= 0 && k < n && line - i <= n * 3; i--)
+    if (lines[i].trim()) { k++; from = i; }
+  k = 0;
+  for (let i = line + 1; i < lines.length && k < n && i - line <= n * 3; i++)
+    if (lines[i].trim()) { k++; to = i; }
+  return { from, to };
+}
+
+// The hits of one chapter, grouped into the blocks they will be shown in.
+function fdBlocks(hits, lines, n) {
+  const out = [];
+  hits.forEach((h, hi) => {
+    const span = fdCtxSpan(lines, h.line, n);
+    const last = out[out.length - 1];
+    if (last && span.from <= last.to) { last.to = Math.max(last.to, span.to); last.hits.push(hi); }
+    else out.push({ from: span.from, to: span.to, hits: [hi] });
+  });
+  return out;
+}
+
+// One line, its hits marked, without ever letting it become HTML: the text
+// is escaped in the gaps between the ranges, never as one string afterwards.
+// `cut` is the indentation the whole block shares; `hit` is the index the
+// marks carry, so clicking one goes to that match and not to the block's first.
+function fdSnippet(line, ranges, cut, hit) {
+  const src = line.slice(cut || 0);
+  const rs = (ranges || []).map(r => [r[0] - (cut || 0), r[1] - (cut || 0)]).filter(r => r[1] > 0);
   let from = 0;
-  if (line.length > FD_SNIPPET && ranges[0][0] > 30) from = ranges[0][0] - 30;
-  const to = Math.min(line.length, from + FD_SNIPPET);
+  if (src.length > FD_SNIPPET && rs.length && rs[0][0] > 30) from = rs[0][0] - 30;
+  const to = Math.min(src.length, from + FD_SNIPPET);
   let html = from ? '…' : '';
   let at = from;
-  ranges.forEach(r => {
+  const tag = hit == null ? '<mark>' : '<mark data-fd-hit="' + hit + '">';
+  rs.forEach(r => {
     const a = Math.max(r[0], from), b = Math.min(r[1], to);
     if (b <= a || r[0] >= to) return;
-    if (a > at) html += attrEsc(line.slice(at, a));
-    html += '<mark>' + attrEsc(line.slice(a, b)) + '</mark>';
+    if (a > at) html += attrEsc(src.slice(at, a));
+    html += tag + attrEsc(src.slice(a, b)) + '</mark>';
     at = b;
   });
-  if (at < to) html += attrEsc(line.slice(at, to));
-  if (to < line.length) html += '…';
+  if (at < to) html += attrEsc(src.slice(at, to));
+  if (to < src.length) html += '…';
   return html;
 }
+
+// One block: where it is, then its lines — the matched ones marked, the rest
+// as context. The shared indentation is dropped so a deep list item still
+// reads inside a 300px panel.
+function fdBlockHtml(g, gi, blk) {
+  const lines = g.lines;
+  const byLine = new Map();
+  blk.hits.forEach(hi => byLine.set(g.hits[hi].line, hi));
+  let cut = Infinity;
+  for (let i = blk.from; i <= blk.to; i++) {
+    const l = lines[i];
+    if (!l.trim()) continue;
+    cut = Math.min(cut, l.length - l.replace(/^[ \t]+/, '').length);
+  }
+  if (!isFinite(cut)) cut = 0;
+
+  const first = g.hits[blk.hits[0]];
+  const sec = first.section ? first.section.text : '';
+  const body = [];
+  for (let i = blk.from; i <= blk.to; i++) {
+    const raw = lines[i];
+    if (!raw.trim()) continue;
+    const hi = byLine.has(i) ? byLine.get(i) : null;
+    body.push('<span class="find-line' + (hi === null ? ' ctx' : '') + '">' +
+      (hi === null ? fdSnippet(raw, [], cut, null)
+                   : fdSnippet(raw, g.hits[hi].ranges, cut, hi)) + '</span>');
+  }
+  return '<div class="find-hit" role="button" tabindex="0" data-fd-note="' + gi +
+    '" data-fd-hit="' + blk.hits[0] + '">' +
+    '<span class="find-where">' + attrEsc(t('findLineNo', first.line + 1)) +
+      (sec ? ' · ' + attrEsc(sec) : '') + '</span>' +
+    '<span class="find-snip">' + body.join('') + '</span></div>';
+}
+
+// Folded, or not: `collapse` is the default and fdShut holds the exceptions.
+function fdNoteShut(id) { return fdShut.has(id) ? !fdState.collapse : fdState.collapse; }
 
 function fdPaintScope() {
   document.querySelectorAll('#find-scope button').forEach(b =>
     b.classList.toggle('active', b.dataset.fdScope === fdState.scope));
 }
 function fdPaintOpts() {
-  document.querySelectorAll('#find-opts .find-opt').forEach(b =>
+  document.querySelectorAll('#find-opts [data-fd-opt]').forEach(b =>
     b.classList.toggle('on', !!fdState[b.dataset.fdOpt]));
+  document.querySelectorAll('#find-opts [data-fd-view]').forEach(b => {
+    const on = b.dataset.fdView === 'context' ? fdState.context : fdState.collapse;
+    b.classList.toggle('on', on);
+    if (b.dataset.fdView === 'collapse') {
+      b.textContent = on ? '⊞' : '⊟';
+      b.title = t(on ? 'findExpandAllTip' : 'findCollapseAllTip');
+    }
+  });
 }
 function fdChip(attr, value, label, count, on) {
   return '<button type="button" class="find-chip' + (on ? ' on' : '') + '" ' + attr + '="' + attrEsc(value) + '">' +
@@ -6618,23 +6746,21 @@ function fdRender() {
   if (fdState.scope === 'workbook' && !gvCurrentBookId())
     parts.push('<div class="find-note-hint">' + attrEsc(t('findLooseHint')) + '</div>');
 
+  const ctx = fdState.context ? FD_CTX_MORE : FD_CTX;
   res.groups.forEach((g, gi) => {
     const n = g.note;
     const where = n.loose ? t('wikiLooseFile') : (n.bookName || '');
+    const shut = fdNoteShut(n.id);
     parts.push('<div class="find-note">');
     parts.push('<div class="find-note-row' + (n.chapterId && n.chapterId === wbCurrentId ? ' current' : '') +
       '" data-fd-note="' + gi + '" title="' + attrEsc(t('findOpenNoteTip')) + '">' +
+      '<button type="button" class="find-caret" data-fd-fold="' + gi + '" title="' +
+        attrEsc(t(shut ? 'findExpandNoteTip' : 'findCollapseNoteTip')) + '">' + (shut ? '▸' : '▾') + '</button>' +
       '<span class="find-note-title">' + attrEsc(n.title) + '</span>' +
       (where ? '<span class="find-note-book">' + attrEsc(where) + '</span>' : '') +
       (g.hits.length ? '<span class="find-note-n">' + g.hits.length + '</span>' : '') +
       '</div>');
-    g.hits.forEach((h, hi) => {
-      const sec = h.section ? h.section.text : '';
-      parts.push('<button type="button" class="find-hit" data-fd-note="' + gi + '" data-fd-hit="' + hi + '">' +
-        '<span class="find-where">' + attrEsc(t('findLineNo', h.line + 1)) + (sec ? ' · ' + attrEsc(sec) : '') + '</span>' +
-        '<span class="find-snip">' + fdSnippet(h.text, h.ranges) + '</span>' +
-        '</button>');
-    });
+    if (!shut) fdBlocks(g.hits, g.lines, ctx).forEach(blk => parts.push(fdBlockHtml(g, gi, blk)));
     parts.push('</div>');
   });
   box.innerHTML = parts.join('');
@@ -6721,7 +6847,8 @@ function fdSaveSettings() {
   try {
     store.set(FD_KEY, JSON.stringify({
       scope: fdState.scope, matchCase: fdState.matchCase,
-      wholeWord: fdState.wholeWord, regex: fdState.regex, fold: fdState.fold
+      wholeWord: fdState.wholeWord, regex: fdState.regex, fold: fdState.fold,
+      context: fdState.context, collapse: fdState.collapse
     }));
   } catch (e) {}
 }
@@ -6732,7 +6859,7 @@ async function fdLoadSettings() {
   try { v = raw ? JSON.parse(raw) : null; } catch (e) { v = null; }
   if (v && typeof v === 'object') {
     if (['note', 'workbook', 'vault'].indexOf(v.scope) !== -1) fdState.scope = v.scope;
-    ['matchCase', 'wholeWord', 'regex', 'fold'].forEach(k => {
+    ['matchCase', 'wholeWord', 'regex', 'fold', 'context', 'collapse'].forEach(k => {
       if (typeof v[k] === 'boolean') fdState[k] = v[k];
     });
   }
@@ -6743,8 +6870,16 @@ async function fdLoadSettings() {
 
 document.querySelectorAll('#find-scope button').forEach(b =>
   b.addEventListener('click', () => { fdState.scope = b.dataset.fdScope; fdRefresh(); }));
-document.querySelectorAll('#find-opts .find-opt').forEach(b =>
+document.querySelectorAll('#find-opts [data-fd-opt]').forEach(b =>
   b.addEventListener('click', () => { fdState[b.dataset.fdOpt] = !fdState[b.dataset.fdOpt]; fdRefresh(); }));
+// How the results are shown, not what they are: a repaint, no second search.
+document.querySelectorAll('#find-opts [data-fd-view]').forEach(b =>
+  b.addEventListener('click', () => {
+    if (b.dataset.fdView === 'context') fdState.context = !fdState.context;
+    else { fdState.collapse = !fdState.collapse; fdShut.clear(); }
+    fdSaveSettings();
+    fdRender();
+  }));
 
 // The chips and the results are generated, so both are delegated.
 function fdToggleIn(set, value) { set.has(value) ? set.delete(value) : set.add(value); }
@@ -6760,11 +6895,26 @@ document.getElementById('find-tags').addEventListener('click', e => {
   fdToggleIn(fdState.tags, chip.dataset.fdTag);
   fdRefresh();
 });
+// A block goes to its first match; a <mark> inside it goes to that one, which
+// is what makes a block holding three matches still three places to go.
+function fdHitOf(el, target) {
+  const g = fdLast.groups[+el.dataset.fdNote];
+  if (!g) return null;
+  const mark = target && target.closest ? target.closest('mark[data-fd-hit]') : null;
+  const i = mark ? +mark.dataset.fdHit : +el.dataset.fdHit;
+  return { note: g.note, hit: g.hits[i] || null };
+}
 document.getElementById('find-results').addEventListener('click', e => {
+  const foldEl = e.target.closest('[data-fd-fold]');
+  if (foldEl) {
+    const g = fdLast.groups[+foldEl.dataset.fdFold];
+    if (g) { fdShut.has(g.note.id) ? fdShut.delete(g.note.id) : fdShut.add(g.note.id); fdRender(); }
+    return;
+  }
   const hitEl = e.target.closest('.find-hit');
   if (hitEl) {
-    const g = fdLast.groups[+hitEl.dataset.fdNote];
-    if (g) fdGoto(g.note, g.hits[+hitEl.dataset.fdHit] || null);
+    const go = fdHitOf(hitEl, e.target);
+    if (go) fdGoto(go.note, go.hit);
     return;
   }
   const noteEl = e.target.closest('.find-note-row');
@@ -6772,6 +6922,15 @@ document.getElementById('find-results').addEventListener('click', e => {
     const g = fdLast.groups[+noteEl.dataset.fdNote];
     if (g) fdGoto(g.note, null);
   }
+});
+// A block is a div, so it needs the keys a button would have given it.
+document.getElementById('find-results').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const hitEl = e.target.closest && e.target.closest('.find-hit');
+  if (!hitEl) return;
+  e.preventDefault();
+  const go = fdHitOf(hitEl, null);
+  if (go) fdGoto(go.note, go.hit);
 });
 
 fdLoadSettings();

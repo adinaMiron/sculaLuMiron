@@ -101,7 +101,8 @@ const SUPA = [
   const reset = () => page.evaluate(() => {
     fdState.matchCase = false; fdState.wholeWord = false;
     fdState.regex = false; fdState.fold = true;
-    fdState.kinds.clear(); fdState.tags.clear();
+    fdState.context = false; fdState.collapse = false;
+    fdState.kinds.clear(); fdState.tags.clear(); fdShut.clear();
   });
   // Typing goes through the real input handler, then past its debounce.
   const search = async (q, scope) => {
@@ -119,6 +120,7 @@ const SUPA = [
       tags: Array.from(fdLast.tags.entries()),
       rows: document.querySelectorAll('#find-results .find-hit').length,
       marks: document.querySelectorAll('#find-results mark').length,
+      ctx: document.querySelectorAll('#find-results .find-line.ctx').length,
       foot: document.getElementById('find-foot').textContent
     }));
   };
@@ -144,8 +146,11 @@ const SUPA = [
   check('chapter scope stays in the open chapter',
     inChapter.notes === 1 && inChapter.titles[0] === 'Mecanica', inChapter);
   check('and finds every line it is on', inChapter.matches === 5, inChapter);
-  check('each hit is a row with its marks',
-    inChapter.rows === 5 && inChapter.marks === 5, inChapter);
+  check('every hit keeps its own mark', inChapter.marks === 5, inChapter);
+  // Obsidian's shape: hits close enough for their context to overlap are one
+  // block, so the same lines are never printed twice.
+  check('and hits sharing context become one block',
+    inChapter.rows === 2 && inChapter.ctx > 0, inChapter);
 
   const inBook = await search('forța', 'workbook');
   check('workbook scope reaches the other chapter',
@@ -225,7 +230,80 @@ const SUPA = [
     onlyOptics.notes === 1 && onlyOptics.titles[0] === 'Optica', onlyOptics);
   await reset();
 
-  // ---- 6. going to a hit -------------------------------------------------
+  // ---- 6. the context around a hit ---------------------------------------
+  await reset();
+  const ctx1 = await search('piston', 'note');
+  const block = await page.evaluate(() => {
+    const hit = document.querySelector('#find-results .find-hit');
+    return {
+      lines: Array.from(hit.querySelectorAll('.find-line')).map(l => l.textContent),
+      ctx: hit.querySelectorAll('.find-line.ctx').length,
+      marked: hit.querySelector('mark').textContent
+    };
+  });
+  check('a hit is shown inside the lines around it',
+    ctx1.matches === 1 && block.ctx === 2 && block.marked === 'piston', block);
+  check('and the blank lines between them are skipped',
+    block.lines.length === 3 && block.lines.every(l => l.trim()), block.lines);
+  check('the line above and the line below are the neighbours',
+    /frecare/.test(block.lines[0]) && /dispare/.test(block.lines[2]), block.lines);
+
+  const wider = await page.evaluate(async () => {
+    document.querySelector('[data-fd-view="context"]').click();
+    await new Promise(r => setTimeout(r, 40));
+    const hit = document.querySelector('#find-results .find-hit');
+    return {
+      on: document.querySelector('[data-fd-view="context"]').classList.contains('on'),
+      lines: hit.querySelectorAll('.find-line').length,
+      heading: /Mecanică/.test(hit.textContent)
+    };
+  });
+  check('the ≡ toggle widens the block', wider.on && wider.lines > 3 && wider.heading, wider);
+  await reset();
+
+  // A block holding three matches is still three places to go: the marks
+  // carry their own hit index, the block carries its first.
+  await search('forța', 'note');
+  const picked = await page.evaluate(async () => {
+    const marks = document.querySelectorAll('#find-results .find-hit mark');
+    const third = marks[2];
+    third.click();
+    await new Promise(r => setTimeout(r, 200));
+    const ed = document.getElementById('editor');
+    return { n: marks.length, start: ed.selectionStart,
+             want: ed.value.indexOf('Forța nu dispare'),
+             picked: ed.value.slice(ed.selectionStart, ed.selectionEnd) };
+  });
+  check('clicking one mark of a block goes to that match',
+    picked.start === picked.want && picked.picked === 'Forța', picked);
+
+  // ---- 7. folding the results --------------------------------------------
+  await reset();
+  await search('forța', 'workbook');
+  const folded2 = await page.evaluate(async () => {
+    document.querySelector('[data-fd-view="collapse"]').click();
+    await new Promise(r => setTimeout(r, 40));
+    const shut = { rows: document.querySelectorAll('#find-results .find-hit').length,
+                   notes: document.querySelectorAll('#find-results .find-note-row').length,
+                   icon: document.querySelector('[data-fd-view="collapse"]').textContent };
+    document.querySelector('#find-results .find-caret').click();   // one chapter back
+    await new Promise(r => setTimeout(r, 40));
+    return { shut, reopened: document.querySelectorAll('#find-results .find-hit').length };
+  });
+  check('the ⊟ button folds every chapter away',
+    folded2.shut.rows === 0 && folded2.shut.notes === 2 && folded2.shut.icon === '⊞', folded2.shut);
+  check('and a chevron brings one of them back', folded2.reopened > 0, folded2);
+  // The chapter row still opens the chapter, chevron or no chevron.
+  const openedNote = await page.evaluate(async () => {
+    document.querySelector('#find-results .find-note-title').click();
+    await new Promise(r => setTimeout(r, 200));
+    return wbCurrentId;
+  });
+  check('the chapter row still opens the chapter', openedNote === 'ch_mec', openedNote);
+  await reset();
+  await page.evaluate(() => fdRefresh());
+
+  // ---- 8. going to a hit -------------------------------------------------
   await search('curburii', 'workbook');
   const jumped = await page.evaluate(async () => {
     document.querySelector('#find-results .find-hit').click();
@@ -266,7 +344,7 @@ const SUPA = [
   check('a hit below the fold scrolls the editor to it',
     scrolled.start === scrolled.at && scrolled.top > scrolled.max * 0.8, scrolled);
 
-  // ---- 7. the text stays text --------------------------------------------
+  // ---- 9. the text stays text --------------------------------------------
   await page.evaluate(() => loadChapterIntoEditor(wbChapter('ch_mec')));
   await page.waitForTimeout(150);
   const injected = await search('<script>', 'note');
@@ -277,7 +355,7 @@ const SUPA = [
   check('a line of HTML is shown, not run',
     injected.matches === 1 && safe.scripts === 0 && /&lt;script&gt;/.test(safe.html), safe);
 
-  // ---- 8. the other language ---------------------------------------------
+  // ---- 10. the other language ---------------------------------------------
   await reset();
   await search('forța', 'note');
   const swapped = await page.evaluate(async () => {
@@ -293,7 +371,7 @@ const SUPA = [
     /liste/.test(swapped.before) && /lists/.test(swapped.after), swapped);
   check('and so does the panel itself', /Search/.test(swapped.title), swapped);
 
-  // ---- 9. the keyboard ---------------------------------------------------
+  // ---- 11. the keyboard ---------------------------------------------------
   const shortcut = await page.evaluate(async () => {
     const q = document.getElementById('find-q');
     const collapsed = () => document.getElementById('find-panel').classList.contains('collapsed');

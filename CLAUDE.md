@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 1749 | 17k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 4923 | 49k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 7788 | 67k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `index.html` | 8017 | 70k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
 | `recipes.html` | 8449 | 84k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
