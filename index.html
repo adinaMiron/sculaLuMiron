@@ -3207,6 +3207,39 @@ function moveLineUp() {
   updatePreview(); updateStatus();
 }
 
+/* Ctrl+L — select the current line. Press again (line already fully
+   selected) to widen to the whole paragraph: the run of non-blank lines
+   the caret sits in. */
+function selectLineOrParagraph() {
+  editor.focus();
+  const val = editor.value;
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  const nl = val.indexOf('\n', end);
+  const lineEnd = nl === -1 ? val.length : nl;
+
+  if (start === lineStart && end === lineEnd && lineStart !== lineEnd) {
+    // line already selected → grow to the paragraph
+    let pStart = lineStart;
+    while (pStart > 0) {
+      const prevStart = val.lastIndexOf('\n', pStart - 2) + 1;
+      if (val.slice(prevStart, pStart - 1).trim() === '') break;
+      pStart = prevStart;
+    }
+    let pEnd = lineEnd;
+    while (pEnd < val.length) {
+      const nextNl = val.indexOf('\n', pEnd + 1);
+      const nextEnd = nextNl === -1 ? val.length : nextNl;
+      if (val.slice(pEnd + 1, nextEnd).trim() === '') break;
+      pEnd = nextEnd;
+    }
+    editor.setSelectionRange(pStart, pEnd);
+  } else {
+    editor.setSelectionRange(lineStart, lineEnd);
+  }
+  updateStatus();
+}
+
 function toggleTodoDone() {
   editor.focus();
   const start = editor.selectionStart, end = editor.selectionEnd;
@@ -7449,6 +7482,7 @@ document.addEventListener('keydown', e => {
   }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'Enter') { e.preventDefault(); insertLineAbove(); }
   else if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertLineBelow(); }
+  if ((e.ctrlKey||e.metaKey) && !e.altKey && !e.shiftKey && e.key === 'l' && document.activeElement === editor) { e.preventDefault(); selectLineOrParagraph(); return; }
   if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); moveLineDown(); }
   else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); moveLineUp(); }
 });
