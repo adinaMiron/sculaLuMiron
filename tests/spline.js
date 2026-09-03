@@ -51,6 +51,12 @@ async function layerNames(page) {
   let m = await L.metrics(page);
   console.log(`start: stage=${m.stage.w.toFixed(0)}x${m.stage.h.toFixed(0)} scale=${m.scale.toFixed(3)}`);
 
+  // The geometry checks below assume the exact curve. "Stil schiță" (the
+  // sloppiness styles) now applies to splines too - start on Architect (0)
+  // so the interpolation / smoothness checks are about the maths, not the
+  // hand-drawn wobble, which gets its own check in section 13.
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
+
   const toContent = (cx, cy) => L.contentUnder(m, cx, cy);
   const toClient = (x, y) => ({ x: m.stage.left + x * m.scale, y: m.stage.top + y * m.scale });
 
@@ -335,6 +341,54 @@ async function layerNames(page) {
   const stayed = [R[1], R[2]].map(v => nearestInk(spun(v), ink));
   check('the other vertices of a rotated curve did not move', stayed.every(d => d < 9),
     `moved ${stayed.map(d => d.toFixed(1)).join(', ')}px`);
+
+  // ---------- 13. Stil schiță: the sloppiness styles wobble the outline ----------
+  // The precise curve is one thin stroke; a sketchy one is inked twice with an
+  // independent wobble, so it covers markedly more of the canvas and its band
+  // is thicker. Compare ink area and vertical spread of the same arch.
+  const bandThickness = pix => {
+    const cols = new Map();
+    pix.forEach(([x, y]) => {
+      const c = cols.get(x) || [Infinity, -Infinity];
+      cols.set(x, [Math.min(c[0], y), Math.max(c[1], y)]);
+    });
+    const spans = [...cols.values()].map(([lo, hi]) => hi - lo).sort((a, b) => a - b);
+    return spans[Math.floor(spans.length / 2)];   // median column height
+  };
+
+  await L.newCanvas(page);
+  await L.sleep(150);
+  m = await L.metrics(page);
+  const SL = (x, y) => ({ x: m.stage.left + x * m.scale, y: m.stage.top + y * m.scale });
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
+  await page.keyboard.press('c');
+  const ARCH = [[200, 400], [320, 220], [460, 220], [580, 400]];
+  for (const [x, y] of ARCH) { const c = SL(x, y); await page.mouse.click(c.x, c.y); await L.sleep(50); }
+  await page.keyboard.press('Enter');
+  await L.sleep(150);
+  const preciseInk = await inkPixels(page);
+  const preciseBand = bandThickness(preciseInk);
+
+  await page.keyboard.press('v');
+  const onIt = preciseInk[Math.floor(preciseInk.length / 2)];
+  const mc = SL(onIt[0], onIt[1]);
+  await page.mouse.click(mc.x, mc.y);
+  await L.sleep(120);
+  const roughRowShown = await page.evaluate(() => !document.getElementById('rowRough').hidden);
+  check('the Stil schiță row shows for a selected spline', roughRowShown);
+
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="2"]').click());
+  await L.sleep(150);
+  const sketchInk = await inkPixels(page);
+  const sketchBand = bandThickness(sketchInk);
+  check('Cartoonist sloppiness makes the spline outline wobble',
+    sketchBand >= preciseBand + 2 && sketchInk.length > preciseInk.length * 1.25,
+    `band ${preciseBand}->${sketchBand}px, ink ${preciseInk.length}->${sketchInk.length}px`);
+
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
+  await L.sleep(150);
+  check('Architect makes the spline exact again',
+    bandThickness(await inkPixels(page)) <= preciseBand + 1);
 
   check('no page errors', errors.length === 0, errors.join(' | '));
   await browser.close();

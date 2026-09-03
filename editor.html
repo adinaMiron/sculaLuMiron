@@ -2952,10 +2952,12 @@ function drawSplineArrow(ctx, l){
      points always eventually do - make the curve overshoot into a cusp or a
      little self-intersecting loop. Centripetal Catmull-Rom provably cannot do
      either, at any spacing.
-   - **No smoothing pass and no roughness.** Unlike `freehand` / `splineArrow`,
-     nothing here runs through smoothPoints() or the hand-drawn wobble: this
-     shape is meant to be exact, repeatable and re-editable. That is also why
-     `spline` is absent from the sloppiness list in Toolbar wiring.
+   - **No smoothing pass.** Nothing here runs through smoothPoints(): the
+     curve is meant to be exact, repeatable and re-editable, and the vertex
+     list stays the whole truth. The "Stil schiță" (sloppiness) rows *do*
+     apply now — `drawSpline` flattens the exact curve and inks that twice
+     with a wobble when `l.roughness` is on, so `l.points` is untouched and
+     0 (Architect) is still the precise curve.
 
    The `polyline` type is this same machinery with straight spans instead of
    curved ones: the same vertex list, the same dragging, inserting, removing
@@ -3106,13 +3108,49 @@ function drawSpline(ctx, l){
   ctx.translate(c.x, c.y);
   ctx.rotate(toRad(l.rotation||0));
   ctx.translate(-c.x, -c.y);
-  ctx.beginPath();
-  traceSpline(ctx, l);
-  if (l.fill){ ctx.fillStyle = l.fill; ctx.fill(); }
+
+  // The fill always follows the exact curve, whatever the sloppiness.
+  if (l.fill){
+    ctx.beginPath();
+    traceSpline(ctx, l);
+    ctx.fillStyle = l.fill; ctx.fill();
+  }
+
   ctx.strokeStyle = l.color;
   ctx.lineWidth = l.strokeWidth;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.stroke();
+
+  const roughness = l.roughness || 0;
+  if (!roughness){
+    ctx.beginPath();
+    traceSpline(ctx, l);
+    ctx.stroke();
+  } else {
+    // Sloppy mode: flatten the curve to a dense point list and ink it twice
+    // with an independent wobble, the same "sketched twice" look the other
+    // shapes use. A polyline keeps its corners (straight lineTo through the
+    // jittered points); a spline is re-smoothed with smoothPathTo.
+    const segs = splineSegments(l);
+    const rng = mulberry32(l.seed || 1);
+    const flat = [];
+    if (segs.length){
+      flat.push({ x: segs[0].x1, y: segs[0].y1 });
+      const steps = l.type === 'polyline' ? 6 : 12;
+      segs.forEach(s => { for (let i = 1; i <= steps; i++) flat.push(splinePointAt(s, i/steps)); });
+    }
+    const wob = roughness * 4;
+    for (let pass = 0; pass < 2; pass++){
+      const pts = flat.map(p => ({ x: p.x + (rng()-0.5)*wob, y: p.y + (rng()-0.5)*wob }));
+      ctx.beginPath();
+      if (l.type === 'polyline'){
+        pts.forEach((p, i) => { i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); });
+        if (l.closed && pts.length > 2) ctx.closePath();
+      } else {
+        smoothPathTo(ctx, pts);
+      }
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
@@ -3199,8 +3237,9 @@ function startPendingSpline(p, e, type){
   const l = newBaseLayer(type || 'spline', p);
   Object.assign(l, {
     color: state.color, strokeWidth: state.strokeWidth, fill: state.fill,
-    tension: state.splineTension, closed: false, points: [],
-    roughness: 0   // deliberately exact - see the section comment above
+    tension: state.splineTension, closed: false, points: []
+    // roughness comes from newBaseLayer (state.roughness) - the "Stil schiță"
+    // row applies to vertex shapes too; 0 (Architect) is the exact curve
   });
   state.pendingSpline = { layer: l, abs: [], cursor: null, lastAdd: 0 };
   addPendingSplinePoint(p, e);
@@ -3708,7 +3747,7 @@ document.querySelectorAll('.rough-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     state.roughness = parseInt(btn.dataset.rough, 10);
     document.querySelectorAll('.rough-btn').forEach(b => b.classList.toggle('active', b===btn));
-    const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='ellipse' || l.type==='rhombus' || l.type==='line' || l.type==='splineArrow');
+    const sel = selectedLayers().filter(l => l.type==='rect' || l.type==='freehand' || l.type==='arrow' || l.type==='highlight' || l.type==='ellipse' || l.type==='rhombus' || l.type==='line' || l.type==='splineArrow' || isVertexShape(l));
     if (sel.length){ sel.forEach(l => l.roughness = state.roughness); pushHistory(); renderAll(); }
   });
 });
@@ -3993,9 +4032,7 @@ const ROW_TYPES = {
   // rowSplineEdit serves both vertex shapes, but needs a real layer to act on,
   // so syncSplineControls() below hides it again when nothing is selected
   rowSplineEdit: ['spline','polyline'],
-  // both vertex shapes are deliberately absent from rowRough: the hand-drawn
-  // wobble is the one thing they are defined by not having
-  rowRough:   ['rect','freehand','arrow','highlight','ellipse','rhombus','line','splineArrow'],
+  rowRough:   ['rect','freehand','arrow','highlight','ellipse','rhombus','line','splineArrow','spline','polyline'],
   rowOpacity: ALL_TYPES
 };
 // Shown when the Select tool is active with nothing selected: the settings

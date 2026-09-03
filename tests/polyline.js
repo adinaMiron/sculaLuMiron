@@ -54,6 +54,11 @@ function distToChain(qx, qy, poly, closed) {
 
   let m = await L.metrics(page);
   console.log(`start: stage=${m.stage.w.toFixed(0)}x${m.stage.h.toFixed(0)} scale=${m.scale.toFixed(3)}`);
+
+  // "Stil schiță" (the sloppiness styles) now applies to polylines too. Every
+  // "the spans are straight" check below is about Architect (0) - the precise
+  // shape - so pin it; section 9 covers the wobble the sketch styles add.
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
   const toClient = (x, y) => ({ x: m.stage.left + x * m.scale, y: m.stage.top + y * m.scale });
   const drag = async (from, to, steps = 8) => {
     const a = toClient(from[0], from[1]), b = toClient(to[0], to[1]);
@@ -191,6 +196,44 @@ function distToChain(qx, qy, poly, closed) {
     return d[3] > 40;
   });
   check('a closed polyline can be filled', filled);
+
+  // ---------- 9. Stil schiță: a sloppiness style wobbles the spans ----------
+  // A fresh open zigzag so no fill is in the way. Precise: every pixel sits on
+  // the chain. Cartoonist: the spans themselves wobble well off it, and switch
+  // back to Architect and it snaps to exact again.
+  await L.newCanvas(page);
+  await L.sleep(150);
+  m = await L.metrics(page);
+  const toCl = (x, y) => ({ x: m.stage.left + x * m.scale, y: m.stage.top + y * m.scale });
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
+  await page.keyboard.press('g');
+  const Z = [[200, 400], [340, 200], [480, 400], [620, 200]];
+  for (const [x, y] of Z) { const c = toCl(x, y); await page.mouse.click(c.x, c.y); await L.sleep(60); }
+  await page.keyboard.press('Enter');
+  await L.sleep(150);
+  let zInk = await inkPixels(page);
+  const preciseStray = Math.max(...zInk.map(([x, y]) => distToChain(x, y, Z, false)));
+
+  await page.keyboard.press('v');
+  const zMid = zInk[Math.floor(zInk.length / 2)];
+  const zc = toCl(zMid[0], zMid[1]);
+  await page.mouse.click(zc.x, zc.y);
+  await L.sleep(120);
+  const roughRowShown = await page.evaluate(() => !document.getElementById('rowRough').hidden);
+  check('the Stil schiță row shows for a selected polyline', roughRowShown);
+
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="2"]').click());
+  await L.sleep(150);
+  zInk = await inkPixels(page);
+  const sketchStray = Math.max(...zInk.map(([x, y]) => distToChain(x, y, Z, false)));
+  check('Cartoonist sloppiness pushes the spans off the exact chain',
+    sketchStray > preciseStray + 3, `worst stray ${preciseStray.toFixed(1)}px -> ${sketchStray.toFixed(1)}px`);
+
+  await page.evaluate(() => document.querySelector('.rough-btn[data-rough="0"]').click());
+  await L.sleep(150);
+  zInk = await inkPixels(page);
+  const backStray = Math.max(...zInk.map(([x, y]) => distToChain(x, y, Z, false)));
+  check('Architect restores the exact polyline', backStray < 3.5, `worst stray ${backStray.toFixed(1)}px`);
 
   check('no page errors', errors.length === 0, errors.join(' | '));
   await browser.close();

@@ -152,7 +152,7 @@ Script sections (banners `/* ===== Title ===== */`):
 | 3429 | Layer list (sidebar) — `renderLayerList` |
 | **3479** | **Toolbar wiring** — every button/handler (IDs unchanged by the panel move) |
 | **3785** | **Floating panels** — `placePanel` (clamps every edge inside the viewport), `defaultPos`, drag, persistence |
-| **3969** | **Selection panel contents** — `ROW_TYPES` (3983), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
+| **4008** | **Selection panel contents** — `ROW_TYPES` (4022), `pickedVertex`/`syncSplineControls`, `syncSelectionPanel` |
 | 4067 | Text box auto-fit |
 | 4078 | Pointer/canvas coords — `canvasPoint()`, which returns **world** coords |
 | **4120** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
@@ -199,7 +199,7 @@ reaches the scratch canvas's edge it widens and goes again. `exportRect()`
 adds `EXPORT_MARGIN` (10) px on each side, and that rectangle is the
 exported image's size. A fixed canvas still exports itself, to the pixel.
 
-### The `spline` and `polyline` layers (3018–3356)
+### The `spline` and `polyline` layers (3040–3395)
 
 The two shapes whose geometry is worth reading before touching. Unlike every
 other type they are **re-derived from their vertices on every repaint** and
@@ -216,7 +216,7 @@ anywhere the question is "does this layer have editable vertices".
 |---|---|
 | `isVertexShape(l)` | `spline` or `polyline` — the test every other part of the app should use |
 | `splineSegments(l)` | vertices → cubic Beziers. Centripetal Catmull-Rom (`SPLINE_ALPHA` 0.5) with non-uniform tangents; `l.tension` scales them, `p.corner` zeroes one side. For a `polyline`, control points sit on the chord at its thirds instead — the exact straight segment, uniformly parametrised |
-| `drawSpline` / `traceSpline` / `pointInSpline` | render, path-trace, and inside-test (the last borrows `baseCtx` as a geometry engine) |
+| `drawSpline` / `traceSpline` / `pointInSpline` | render, path-trace, and inside-test (the last borrows `baseCtx` as a geometry engine). `drawSpline` honours `l.roughness` ("Stil schiță"): non-zero flattens the exact curve and inks it twice with a wobble — a polyline keeps its corners, a spline is re-smoothed — while `l.points` and the fill stay exact |
 | `nearestOnSpline(l, q)` | closest point on the drawn curve — hit-testing *and* where an inserted vertex goes |
 | **`setSplinePoints(l, pts)`** | **the only writer of `l.points`.** Re-fits the box and re-normalises; the correction at its end is what stops the other vertices swinging when the box's centre (= the rotation pivot) moves |
 | `splineVertexAt` / `insertSplineVertex` / `removeSplineVertex` / `toggleSplineCorner` | the vertex edits, each ending in `pushHistory(); renderAll()` |
@@ -239,10 +239,12 @@ scaling the toolbar, panels and sidebar again. See `HANDOFF.md` § Zoom/Pan.
 pan clamp in `applyPan()` is the only thing deciding how far the view may
 travel.
 
-**Two lists must stay in step:** `ROW_TYPES` (3668) says which property
-rows show for which layer type, and the handlers in Toolbar wiring (3217)
+**Two lists must stay in step:** `ROW_TYPES` (4022) says which property
+rows show for which layer type, and the handlers in Toolbar wiring (3518)
 say which types each control actually writes to. Add a control → add it to
-both. `rowSplineEdit` is the one row that also needs a real layer, not just
+both. `rowRough` ("Stil schiță") is on every drawn shape including `spline`
+and `polyline` — its `.rough-btn` handler writes `l.roughness`, which
+`drawSpline` now honours. `rowSplineEdit` is the one row that also needs a real layer, not just
 a matching tool, so `syncSplineControls()` hides it again afterwards — that
 function also hides the Corner button and swaps the hint's `data-i` key for
 a `polyline`, whose vertices are all corners already.
