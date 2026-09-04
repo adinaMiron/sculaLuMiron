@@ -1590,6 +1590,7 @@
             <button type="button" class="btn primary" id="btnPick" data-i="pickFile">Alege fișier</button>
             <button type="button" class="btn" id="btnCam" data-i="camera">Fotografiază</button>
             <button type="button" class="btn ghost" id="btnPaste" data-i="pasteText">Lipesc textul</button>
+            <button type="button" class="btn ghost" id="btnManual" data-i="manualEntry">Introdu manual</button>
             <button type="button" class="btn ghost" id="btnMd" data-i="importMd">Importă .md</button>
           </div>
         </div>
@@ -1789,6 +1790,7 @@ const I18N = {
     pickFile:"Alege fișier",
     camera:"Fotografiază",
     pasteText:"Lipesc textul",
+    manualEntry:"Introdu manual",
     srcHintPdf:"Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.",
     ocrTitle:"Text din poze (OCR)",
     ocrIntro:"Pozele și PDF-urile scanate sunt citite cu Tesseract, chiar aici în pagină. Motorul se aduce o singură dată, la prima poză, și rămâne pregătit cât ține pagina deschisă; limbile se țin minte pe dispozitiv, așa că a doua oară pornește imediat. Nimic nu pleacă de pe dispozitiv.",
@@ -1804,8 +1806,8 @@ const I18N = {
     ocrAutoPh:"automat",
     ocrLocal:"Lăsate goale, adresele se caută întâi lângă pagină (<code>./ocr/…</code>) și abia apoi pe internet. Pune aici o cale proprie dacă ții motorul în altă parte.",
     stepText:"Textul citit",
-    textHint:"Corectează aici ce a citit greșit, apoi analizează din nou.",
-    rawPlaceholder:"Lipește aici textul rețetei…",
+    textHint:"Corectează aici ce a citit greșit, apoi analizează din nou. Sau scrie o rețetă direct: o listă de ingrediente cu cantități, urmată de metoda de preparare.",
+    rawPlaceholder:"Lipește aici textul rețetei, sau scrie-o direct, de exemplu:\n\nPiept de pui\n200g piept de pui\n1 lingură ulei de măsline\n1 cățel usturoi\nSare, piper\n\nMod de preparare:\n1. Tai pieptul de pui cuburi.\n2. Încinge uleiul și călește usturoiul.\n3. Adaugă puiul și prăjește 10 minute.",
     reparse:"Analizează textul",
     appendMode:"Adaugă la zilele deja extrase",
     stepCheck:"Verifică rețetele",
@@ -2022,6 +2024,7 @@ const I18N = {
     pickFile:"Choose file",
     camera:"Take a photo",
     pasteText:"Paste text",
+    manualEntry:"Enter manually",
     srcHintPdf:"A PDF with real text is read directly, with no library at all. A scanned PDF or a photo goes through optical recognition (OCR) on its own — there is nothing to press.",
     ocrTitle:"Text from pictures (OCR)",
     ocrIntro:"Photos and scanned PDFs are read with Tesseract, right here in the page. The engine is fetched once, on the first picture, and stays ready while the page is open; the languages are remembered on the device, so the second time starts instantly. Nothing leaves the device.",
@@ -2037,8 +2040,8 @@ const I18N = {
     ocrAutoPh:"automatic",
     ocrLocal:"Left empty, each address is looked for next to the page first (<code>./ocr/…</code>) and only then on the internet. Put a path here if you keep the engine somewhere else.",
     stepText:"The text that was read",
-    textHint:"Fix anything misread here, then analyse it again.",
-    rawPlaceholder:"Paste the recipe text here…",
+    textHint:"Fix anything misread here, then analyse it again. Or write a recipe straight in: a list of ingredients with quantities, followed by the cooking method.",
+    rawPlaceholder:"Paste the recipe text here, or type it directly, for example:\n\nChicken breast\n200g chicken breast\n1 tbsp olive oil\n1 clove garlic\nSalt, pepper\n\nMethod:\n1. Cube the chicken breast.\n2. Heat the oil and fry the garlic.\n3. Add the chicken and fry for 10 minutes.",
     reparse:"Analyse the text",
     appendMode:"Add to the days already extracted",
     stepCheck:"Check the recipes",
@@ -6303,7 +6306,7 @@ const model = { days: [], source: "" };
 const $ = id => document.getElementById(id);
 const els = {
   drop:$("drop"), file:$("file"), cam:$("cam"),
-  btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"),
+  btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"), btnManual:$("btnManual"),
   btnMd:$("btnMd"), mdFile:$("mdFile"),
   status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
   textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
@@ -8864,6 +8867,13 @@ els.btnMdHtml.addEventListener("click", () => {
   saveBlob(slug(title, "retete") + ".html", buildHtmlDoc(title), "text/html");
 });
 els.btnPaste.addEventListener("click", () => {
+  els.textCard.hidden = false;
+  els.rawText.focus();
+  els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
+});
+els.btnManual.addEventListener("click", () => {
+  // Same box as "Lipesc textul" — the parser doesn't care whether the
+  // ingredients+method came from a paste or were typed by hand.
   els.textCard.hidden = false;
   els.rawText.focus();
   els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });

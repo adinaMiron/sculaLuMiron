@@ -199,6 +199,17 @@ one button — which is the intended fix for anything the reader got wrong,
 OCR included: no OCR is perfect, and step 2 is where a stray `>` in front of
 `50g spanac` gets deleted before it reaches the markdown.
 
+### Manual entry — no file at all
+
+*Introdu manual* (next to *Lipesc textul*, card 1) opens the same step-2 box
+empty, ready to type. There is no separate manual-entry code path: it is the
+same `rawText` → `Recipes.parse()` → `Nutrition` pipeline every other route
+feeds, so typing "200g piept de pui" and a "Mod de preparare:" list gets the
+same USDA matching, per-ingredient and per-meal totals, and 38-nutrient
+detail panels as a plan read from a PDF. `rawPlaceholder` carries a worked
+example (ingredients, then method) so a person typing from scratch sees the
+expected shape before they start.
+
 ---
 
 ## B. The parser — `Recipes.parse(text)`
