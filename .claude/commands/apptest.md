@@ -11,8 +11,8 @@ First: `cd tests && ls node_modules >/dev/null 2>&1 || npm install --no-audit --
 
 Then, for `$ARGUMENTS`:
 
-- a name (`recipes`, `graph`, `find`, `nav`, `wbrename`, `voice`, `infinite`,
-  `flow`, `gestures`, `undoredo`, …):
+- a name (`recipes`, `mealplan`, `graph`, `find`, `nav`, `wbrename`, `voice`,
+  `infinite`, `flow`, `gestures`, `undoredo`, …):
   ```bash
   cd tests && PW_CHROME_PATH=/usr/bin/google-chrome-stable timeout 900 node <name>.js
   ```

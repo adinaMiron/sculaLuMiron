@@ -210,6 +210,18 @@ detail panels as a plan read from a PDF. `rawPlaceholder` carries a worked
 example (ingredients, then method) so a person typing from scratch sees the
 expected shape before they start.
 
+### A page this tool wrote — no re-reading at all
+
+The `.html` of § G is a source too. Drop one on card 1 (or pick it, or paste
+its text) and `Recipes.fromHtml()` takes it back: days, meals, flags,
+ingredients with their **groups**, methods, and the USDA food each row was
+matched to. Nothing is guessed, because nothing has to be — the markup is
+this page's own.
+
+That is what closes the loop the `.md` route opened. A plan can be sent to
+somebody as one readable file, and the person who receives it can edit it,
+add to it, or take one recipe out of it (§ H) rather than only read it.
+
 ---
 
 ## B. The parser — `Recipes.parse(text)`
@@ -226,13 +238,13 @@ Mic dejun: Terci de ovăz proteic
 | Piece | Rule |
 |---|---|
 | day | `ZIUA 3` / `Ziua 3` / `Day 3`, arabic or roman. No day header at all → everything lands in one day |
-| meal | `<word>:` where the word is a known meal (mic dejun, prânz, cina, gustare, desert, breakfast, lunch, dinner, snack, dessert). An unknown word before a colon is accepted as a custom meal name, but only if it is not prose and not a quantity |
+| meal | `<word>:` where the word is a known meal (mic dejun, **brunch**, prânz, cina, gustare, desert, breakfast, lunch, dinner, snack, dessert). An unknown word before a colon is accepted as a custom meal name, but only if it is not prose and not a quantity |
 | ingredient vs step | a line starting with a quantity is an ingredient; a line starting with an imperative (`Toarnă`, `Taie`, `Mix`, `Bake`, …), an impersonal `Se pune…`, two sentences, or one long sentence is a step. Once a meal is in its steps, later lines stay steps unless they start with a quantity |
 | quantity | leading number (`60`, `1,5`, `2-3`, `1/2`, `½`) then an optional unit from a fixed list, then the name. `60g fulgi de ovăz fini` → `60` · `g` · `fulgi de ovăz fini` |
 | one line, two ingredients | `250g broccoli, 150g cartofi` splits, because the piece after the comma starts with a number. `sos de iaurt cu usturoi` does not |
 | wrapped lines | a bulletless line that starts lowercase and follows an unfinished line is glued back onto it — that is what a PDF column break looks like |
 | noise | clock times, `◀ Files`, page numbers, bare URLs: dropped |
-| component | `Sos:`, `Dressing:`, `Topping:` name a *part of the dish being described*, not the next meal. They attach to the current meal as an ingredient group (`ing.group`). Either a known component word, or an unknown one arriving while the current meal has ingredients but no method yet |
+| component | `Sos:`, `Dressing:`, `Topping:` name a *part of the dish being described*, not the next meal. They attach to the current meal as an ingredient group (`ing.group`). Either a known component word, or an unknown one arriving while the current meal has ingredients but no method yet. A **known** component word is believed even with nothing after the colon — `Sos:` alone on its line with the sauce listed under it is how recipes are actually written, and the "something has to follow a colon" rule (which is what keeps `Notă: …` from being a header) used to read it as an ingredient called "Sos:" |
 | labelled | `Ingrediente:` / `Mod de preparare:` are believed when present, so a book that labels its two halves parses as well as one that leaves them to be guessed |
 | word quantity | `o conservă ton`, `un ou mare`, `two eggs`. Stored as the digit the word means — that column exists to be multiplied by, not read |
 | cedilla | `ş`/`ţ` are repaired to `ș`/`ț` on the way in. They are the wrong characters for Romanian and a great many PDFs are set in them |
@@ -358,8 +370,10 @@ workbook, the HTML page.
 the box in step 2. It wants a heading **and** either a numbered section or
 a table, so a plan with a stray `#` in it still goes to `parse()`.
 
-One thing does not survive the trip, because the table has no column for
-it: an ingredient's **group** (`Sos:`, `Topping:`). Everything else does —
+One thing does not survive **this** trip, because the table has no column
+for it: an ingredient's **group** (`Sos:`, `Topping:`). The other round
+trip, through the shareable page (§ G), does carry it — a page has a
+subheading to put it in. Everything else does —
 `tests/recipes.js` reads the page's own output back and asserts the file
 comes out byte-identical, and the 100-menu book of § B round-trips the same
 way, all 6,584 lines of it.
@@ -696,6 +710,7 @@ gets saved**, so there is no second renderer to keep in step with the first.
 | Decision | Why |
 |---|---|
 | built from the **model**, not from the markdown | an ingredient group (`Sos`, `Topping`) has no column in the table, and on a page it can simply be a subheading |
+| every ingredient `<li>` carries **`data-fdc`** | the USDA id the row resolved to, about fifteen bytes. It is the same thing the markdown's fourth column carries, and it is what lets the page be *read back* (below) with a hand-picked food intact rather than matched again from the name |
 | **totals only when there are totals** | when the USDA pass is off there is no totals table on the page: in a file meant for reading, five empty columns are furniture. When it is on, the day roll-up is there and so is a table under every method |
 | previewed in an **iframe**, `sandbox="allow-scripts"` | the file carries a whole document's worth of CSS — page background, print rules, its own type — and none of it may leak into `recipes.html` or be overwritten by it. The sandbox gives it an opaque origin; **no `allow-same-origin`**, so it keeps that origin even with scripts allowed, and the one script it has is the one this page wrote (§ E) |
 | the preview is a **fold** | building a second document the size of the page on every keystroke is not free. It is rebuilt only while the fold is open, and only after the typing stops (250 ms). The fold opens itself for eight days or fewer and stays shut for a book — the same size heuristic the day view uses |
@@ -712,6 +727,29 @@ underscores spaced out) rather than `htmlTitle()`'s source-line/page-name
 chain. `buildHtmlDoc(titleOverride)` takes the name; everything else is
 unchanged.
 
+### Read back — `Recipes.fromHtml(text)`
+
+A format only earns the name if it can be read as well as written, and the
+markdown has had its inverse since § C. The page has one now too:
+`fromHtml(text)` → `{ days, source }`, the same model, out of a file
+`buildHtmlDoc()` wrote. `looksLikeRecipeHtml()` is what `analyse()` asks
+first, so a page arriving by any route — picked, dropped, pasted, or handed
+to the library (§ H) — goes to it rather than to the parser.
+
+| Piece | Rule |
+|---|---|
+| reader | `DOMParser`, `text/html`. This is real HTML and the browser already has a reader for it; parsing markup runs no script and fetches nothing, so the file's own filter bar and totals script never execute here. An ingredient written `1 &amp; ½ linguri` comes back as the text it was |
+| sniff | `article.day` **and** `section.meal`, both matched on the raw string. A page that is not one of ours must not cost a DOM |
+| day | `article.day` ▸ its `h2`. Same rule as the markdown reader: `Ziua 7` with nothing after it is the *number*, not a name, so it goes on following the interface language |
+| meal | `section.meal[data-kind]` ▸ `h3` ▸ `.kind` and `.dish`. The kind is read off the section, never inferred from the words beside it — those are only the fallback for a meal that never had one |
+| ingredient | `ul.ing > li`. `li.grp` names the run under it (**the group, which markdown cannot carry**); `.q` is the quantity and unit, `.it` the name, `data-fdc` the USDA id |
+| quantity | with the USDA pass on, `.q` holds an `<input>` and the unit beside it — the two columns come straight back. With it off both are one string and `QTY_RE` splits them |
+| method | `ol.steps > li`, one step per item |
+| source | `header.book h1`, falling back to `<title>`. As with the markdown's `*Sursă: …*` line, the name inside the file beats the name of the file |
+
+A page written before `data-fdc` existed simply has its ingredients matched
+again — which is exactly what an empty fourth column means in the markdown.
+
 `Doar rețetele afișate` narrows this the same way it narrows the markdown:
 the page is built from `outputDays()`, so a search is also a way to share
 part of a book. The title field defaults to the source file's name with its
@@ -720,7 +758,95 @@ through `slug()`, so Romanian diacritics survive into the file name.
 
 ---
 
-## H. Testing
+## H. Composing a day — the library and the flags
+
+Everything above starts with a *file*: a plan arrives whole and this page
+takes it apart. That is the wrong shape for the other thing people do with
+recipes, which is build a day out of ones they already like. So there are
+three ways a meal reaches a plan now, not one:
+
+```
+a file read start to finish  ▸  a whole plan replaces what is on screen
+one recipe from the library  ▸  added to a day, under a flag
+"+ masă", typed by hand      ▸  an empty meal to fill in
+```
+
+### The flags
+
+`MEAL_KINDS` is the one list of meal kinds — the `<select>` in a meal
+header, the filter chips in card 5, the chips in the exported page and the
+picker's own row all read it. It is **breakfast · brunch · snack · lunch ·
+dinner · dessert · other**, and *brunch* is new: it is a meal word the
+parser knows (`brunch`, `brunchul`, `mic dejun târziu`), a label in both
+languages, and a flag the picker offers.
+
+`arrangeIntoDays` keeps **two** lists, because they answer two questions.
+`KINDS` names the meals of a flat recipe list laid out three to a day, and
+brunch is deliberately not in it — a page of recipes with no meal words on
+it is breakfast, lunch and dinner, never a brunch nobody wrote. `EAT_ORDER`
+is the order a day is read in, and brunch belongs there, between breakfast
+and lunch.
+
+### The library
+
+A flat collection of meals, kept between visits in the settings store under
+`scula:meals`, capped at 400 — a library is a picker, not an archive, and
+the oldest go first. An entry is `{ meal, src }`: the recipe, and where it
+came from.
+
+Three ways in, and they are the three the request asked for:
+
+| Route | What |
+|---|---|
+| **Adaugă din fișier** | an `.html` page written by this tool (§ G) or a `.md` (§ C). Every meal in it goes into the library, and **the plan on screen is not touched** — which is the difference between this and dropping the same file on card 1 |
+| **⊕ on any meal** in card 5 | keep this recipe. Whatever is on screen — read from a PDF, typed by hand, corrected — becomes a library entry |
+| **Scrie o rețetă** | closes the picker and points at the step-2 box. Typing a recipe is § A's job and always was; once it is parsed, ⊕ keeps it |
+
+Only the two readers fill it from a file. There is nothing dependable to
+take a *single* recipe out of a guessed parse, and a library of
+half-recognised prose would be worse than an empty one.
+
+Two entries are the same recipe when the **dish and its ingredients**
+match. Not the flag — the same soup is somebody's lunch and somebody else's
+dinner — and not the method, which is where two copies of one recipe differ
+by a comma.
+
+### The picker
+
+One sheet (`#pickModal`, the same chrome as the help sheet): the day, the
+flag, a search box, and a row per recipe. A row says the flag it was saved
+under, the dish, **what it comes to** — `520 kcal · P 50.6 · C 64.2 · G
+4.7` — and where it came from, which is enough to choose by without opening
+anything. Pressing it puts the recipe on the day under the chosen flag; the
+sheet stays open, because composing a day means adding several.
+
+The flag chips are `MEAL_KINDS` minus `other`, with **"Cum e salvată"**
+first and selected by default: a recipe that already knows it is a
+breakfast should not have to be told again, and the other chips are there
+for the times it does.
+
+Two decisions worth knowing:
+
+- **The recipe is copied, not referenced.** Editing Tuesday's lunch must
+  not rewrite the library entry that Wednesday's is also a copy of, so
+  `copyMeal()` copies the ingredient objects too — sharing them is exactly
+  the bug that would look like the page changing a recipe behind your back.
+- **The sum per day needed nothing added.** `totalsBlock` already adds up
+  whatever meals a day holds, so a day composed a recipe at a time sums
+  itself as it fills: the `TOTAL PE ZI` line moves on every meal added, and
+  `## Total pe zi` in the markdown and the day roll-up in the shareable page
+  follow from the same `Nutrition.forDay()`. Which is the point — a day can
+  be built up to a calorie number and read off as it goes.
+
+`libSum()` is the one concession to size: the picker redraws every row on
+every keystroke and `Nutrition.forMeal()` is a matcher run per ingredient,
+so four hundred recipes would be a stutter. The four numbers are memoised
+per entry and dropped whenever the ingredient book changes size — that is
+the only thing that can change what an already-saved recipe adds up to.
+
+---
+
+## I. Testing
 
 `tests/recipes.js` — a plain Node + Playwright script like the rest of that
 folder, but it serves the repo over `http://127.0.0.1` instead of `file://`
@@ -809,5 +935,17 @@ works. For that, serve the four npm packages listed above from a local
 `./ocr/`, point the field at it, and drop a photo — the numbers in § A were
 measured that way.
 
-Run: `/apptest recipes`. (Testing conventions: `HANDOFF.md` § "Testing
-approach used throughout".)
+`tests/mealplan.js` is the day composer's own script, same style, same
+server: brunch parsing as its own kind and reaching the picker's chips; the
+shareable page built and read straight back with `fromHtml`, asserted
+against the model it was built from (the group included, and the source
+line beating the file name); `analyse()` choosing that reader over the
+parser; the library taking a meal once and not twice, and keeping a *copy*
+— editing the plan must not reach back into it; the picker driven through
+real clicks (pick a flag, press a recipe, land it on a day it created), a
+second meal landing on the same day under its own flag; the day total being
+the meals on it added up **and** being on screen; and the library still
+being there after a reload.
+
+Run: `/apptest recipes` and `/apptest mealplan`. (Testing conventions:
+`HANDOFF.md` § "Testing approach used throughout".)

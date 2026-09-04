@@ -85,6 +85,43 @@
   .help-body b{color:var(--text)}
   .help-body kbd{font-family:var(--font-mono);font-size:.78rem;background:var(--surface-2);border:1px solid var(--border);border-radius:.35rem;padding:.05rem .35rem}
 
+  /* ---------- the meal picker ----------
+     Composing a day: the same modal chrome as the help sheet, and a row per
+     recipe in the library. A row has to carry enough to choose by without
+     opening anything — the flag it was saved under, the dish, what it comes
+     to, and where it came from. */
+  #pickModal .card{width:min(44rem,100%)}
+  #pickModal .hint{margin:0 0 .3rem}
+  .pickrow{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;margin:.7rem 0 0}
+  .pickrow .field{flex:1 1 14rem;margin:0}
+  .lib-search{display:block;position:relative;margin:.8rem 0 .5rem}
+  .lib-search input{
+    width:100%;background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:.55rem .7rem .55rem 2.2rem;font-family:inherit;font-size:.9rem;
+  }
+  .lib-search::before{
+    content:"⌕";position:absolute;left:.7rem;top:50%;transform:translateY(-50%);
+    color:var(--text-3);font-size:1.05rem;line-height:1;pointer-events:none;
+  }
+  #pickList{display:flex;flex-direction:column;gap:.35rem;max-height:24rem;overflow-y:auto}
+  .libmeal{display:flex;align-items:stretch;gap:.4rem}
+  .libmeal .go{
+    flex:1 1 auto;display:flex;gap:.25rem .6rem;align-items:baseline;flex-wrap:wrap;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:.6rem;
+    padding:.5rem .65rem;color:var(--text);font:inherit;font-size:.85rem;
+    text-align:left;cursor:pointer;
+  }
+  .libmeal .go:hover{border-color:var(--accent)}
+  .libmeal .kind{
+    font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--accent-2);flex:0 0 auto;
+  }
+  .libmeal .dish{font-weight:600}
+  .libmeal .meta{color:var(--text-3);font-size:.74rem;font-variant-numeric:tabular-nums}
+  .libmeal .src{color:var(--text-3);font-size:.7rem;flex:1 1 100%}
+  #pickList .empty{padding:1rem 0}
+
   .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:1rem;align-items:start}
   @media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr)} }
 
@@ -272,7 +309,10 @@
   .tot .kcal{color:var(--accent-2);font-weight:600}
   .tot .part{color:var(--text-3);cursor:help}
   .tot + .micro{grid-column:auto;margin:.25rem 0 0}
-  .daybody > .tot{background:var(--surface)}
+  /* totalsBlock() puts its line inside a wrapper (the detail panel goes
+     under it), so the day's own total is .daybody > div > .tot — a meal's
+     is one level deeper and keeps the surface-2 ground. */
+  .daybody > div > .tot{background:var(--surface)}
   .iconbtn{
     background:transparent;border:1px solid var(--border);color:var(--text-2);
     border-radius:.5rem;width:1.9rem;height:1.9rem;line-height:1;
@@ -1578,6 +1618,39 @@
     </div>
   </div>
 
+  <!-- Composing a day: pick a recipe out of the library, say which day and
+       which flag it goes on. The library is filled from a page this tool
+       wrote, from a .md, or from ⊕ on any meal in card 5. -->
+  <div class="modal" id="pickModal">
+    <div class="card">
+      <h2 data-i="pickTitle">Adaugă o masă</h2>
+      <p class="hint" data-i="pickIntro">Biblioteca ține rețete adunate din orice pagină HTML scrisă aici, dintr-un .md sau dintr-o zi de mai jos. Alege ziua și eticheta, apoi apasă rețeta.</p>
+      <div class="pickrow">
+        <label class="field">
+          <span data-i="pickDayLabel">Ziua</span>
+          <select id="pickDay"></select>
+        </label>
+      </div>
+      <p class="sub" data-i="pickFlagLabel">Eticheta</p>
+      <div class="chips" id="pickKinds"></div>
+      <div class="row" style="margin-top:.7rem">
+        <button type="button" class="btn mini" id="btnLibFile" data-i="pickFromFile">Adaugă din fișier</button>
+        <button type="button" class="btn mini ghost" id="btnLibManual" data-i="pickManual">Scrie o rețetă</button>
+        <span class="spacer"></span>
+        <span class="badge" id="libCount"></span>
+        <button type="button" class="btn mini danger ghost" id="btnLibClear" data-i="pickClearLib">Golește biblioteca</button>
+      </div>
+      <label class="search lib-search">
+        <input type="search" id="pickQ" spellcheck="false" data-i-placeholder="pickPh">
+      </label>
+      <div id="pickList"></div>
+      <div class="acts">
+        <span class="spacer"></span>
+        <button type="button" class="btn primary" id="btnPickClose" data-i="closeBtn">Închide</button>
+      </div>
+    </div>
+  </div>
+
   <div class="cols">
     <section>
       <!-- ===== 1. source ===== -->
@@ -1594,10 +1667,11 @@
             <button type="button" class="btn ghost" id="btnMd" data-i="importMd">Importă .md</button>
           </div>
         </div>
-        <input type="file" id="file" accept=".pdf,.txt,.md,.json,image/*,application/pdf" multiple>
+        <input type="file" id="file" accept=".pdf,.txt,.md,.html,.htm,.json,image/*,application/pdf" multiple>
         <input type="file" id="cam" accept="image/*" capture="environment" multiple>
         <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown" multiple>
         <input type="file" id="bookFile" accept=".json,application/json">
+        <input type="file" id="libFile" accept=".html,.htm,.md,.markdown,text/html,text/markdown" multiple>
         <div id="status" role="status"><span class="dot" hidden></span><span id="statusText"></span><button type="button" class="btn mini ghost" id="btnStop" hidden data-i="stopOcr">Oprește</button></div>
         <p class="hint" id="srcHint" data-i="srcHintPdf">Un PDF cu text se citește direct, fără nicio bibliotecă. Un PDF scanat sau o poză trec singure prin recunoaștere optică (OCR) — nu trebuie să apeși nimic.</p>
         <p class="hint" data-i="importMdHint">„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.</p>
@@ -1746,6 +1820,7 @@
         <p class="empty" id="daysEmpty" data-i="noDays">Încă nimic. Alege un PDF, o poză sau lipește textul unei rețete.</p>
         <div class="row" style="margin-top:.7rem">
           <button type="button" class="btn mini" id="btnAddDay" data-i="addDay">+ zi</button>
+          <button type="button" class="btn mini" id="btnPickMeal" data-i="addFromLib">+ din bibliotecă</button>
           <button type="button" class="btn mini ghost" id="btnArrange" data-i="arrange" data-i-title="arrangeHint" hidden>Așază pe zile</button>
           <span class="spacer"></span>
           <button type="button" class="btn mini danger ghost" id="btnClear" data-i="clearAll">Șterge tot</button>
@@ -1786,7 +1861,7 @@ const I18N = {
     intro:"Citește textul dintr-un PDF sau dintr-o poză, îl împarte pe zile și mese și scrie o rețetă curată în markdown: 1. Ingrediente, 2. Metoda de preparare. Fișierul rămâne la tine — nimic nu pleacă de pe dispozitiv.",
     stepSource:"Sursa",
     dropBig:"Trage aici un PDF sau o poză",
-    dropSub:"PDF (și scanat), JPG, PNG, WEBP, text sau un .md scris aici. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).",
+    dropSub:"PDF (și scanat), JPG, PNG, WEBP, text, un .md sau o pagină .html scrisă aici. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).",
     pickFile:"Alege fișier",
     camera:"Fotografiază",
     pasteText:"Lipesc textul",
@@ -1828,7 +1903,7 @@ const I18N = {
     saveHint:"„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.",
 
     /* meals */
-    mBreakfast:"Mic dejun", mSnack:"Gustare", mLunch:"Prânz",
+    mBreakfast:"Mic dejun", mBrunch:"Brunch", mSnack:"Gustare", mLunch:"Prânz",
     mDinner:"Cina", mDessert:"Desert", mOther:"Masă",
 
     /* review cards */
@@ -1842,6 +1917,29 @@ const I18N = {
     delMeal:"Șterge masa",
     delIng:"Șterge ingredientul",
     toMethod:"Mută la metoda de preparare",
+    toLib:"Pune rețeta în bibliotecă",
+    addFromLib:"+ din bibliotecă",
+
+    /* biblioteca de rețete și fereastra din care se compune o zi */
+    pickTitle:"Adaugă o masă",
+    pickIntro:"Biblioteca ține rețete adunate din orice pagină HTML scrisă aici, dintr-un .md sau dintr-o zi de mai jos. Alege ziua și eticheta, apoi apasă rețeta.",
+    pickDayLabel:"Ziua",
+    pickNewDay:"— o zi nouă —",
+    pickFlagLabel:"Eticheta",
+    pickKeep:"Cum e salvată",
+    pickFromFile:"Adaugă din fișier",
+    pickManual:"Scrie o rețetă",
+    pickClearLib:"Golește biblioteca",
+    pickPh:"Caută în bibliotecă…",
+    pickNone:"Biblioteca e goală. Adaugă o pagină HTML scrisă aici, un .md, sau pune ⊕ pe o masă din zilele de mai jos.",
+    pickNoMatch:"Nicio rețetă din bibliotecă nu se potrivește.",
+    libCount:n => n === 1 ? "o rețetă în bibliotecă" : n + " rețete în bibliotecă",
+    libRemove:"Scoate din bibliotecă",
+    askClearLib:"Golești toată biblioteca de rețete?",
+    stLibAdded:n => n === 1 ? "O rețetă adăugată în bibliotecă." : n + " rețete adăugate în bibliotecă.",
+    stLibNothing:"Fișierul acela nu are rețete de citit. Trebuie să fie o pagină HTML sau un .md scris de pagina asta.",
+    stLibHas:"Rețeta e deja în bibliotecă.",
+    stMealAdded:(name, day) => "„" + name + "” pusă la " + day + ".",
     colQty:"Cant.", colUnit:"Unit.", colItem:"Ingredient",
     colFood:"Aliment USDA — scrie ca să cauți",
     nUnknown:"Nerecunoscut. Scrie un aliment din tabel ca să-l legi.",
@@ -1933,7 +2031,7 @@ const I18N = {
       ? (a === 1 ? "Un ingredient nou învățat — " + n + " în bază."
                  : a + " ingrediente noi învățate — " + n + " în bază.")
       : "Nimic nou de învățat — " + n + " ingrediente în bază.",
-    importMdHint:"„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML.",
+    importMdHint:"„Importă .md” citește înapoi un fișier scris de pagina asta — sau de editorul Markdown: zilele, mesele, ingredientele și pașii se întorc întregi, gata de corectat, de salvat din nou sau de trimis mai departe ca pagină HTML. La fel se citește și o pagină .html scrisă aici: dă-i drumul peste zona de mai sus și se întoarce ca plan.",
     stepHtml:"Pagina HTML",
     htmlHint:"Aceleași rețete, așezate ca să fie citite: un singur fișier .html, cu tot ce-i trebuie înăuntru și nimic de adus de pe internet. Caută și filtrează după ingrediente chiar în pagină, ca aici. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.",
     htmlTitleLabel:"Titlul paginii",
@@ -1973,6 +2071,8 @@ const I18N = {
     stNothing:"Nu am recunoscut nicio rețetă. Verifică textul din pasul 2 — sau adaugă manual o zi.",
     stMdFound:n => n === 1 ? "Am citit o zi din markdown." : "Am citit " + n + " zile din markdown.",
     stMdNothing:"Fișierul e markdown, dar nu în forma pe care o scrie pagina asta: o zi cu „#”, o masă cu „##”, apoi „### 1. Ingrediente” și „### 2. Metoda de preparare”.",
+    stHtmlFound:n => n === 1 ? "Am citit o zi din pagina HTML." : "Am citit " + n + " zile din pagina HTML.",
+    stHtmlNothing:"Pagina aceea nu are rețete în forma pe care o scrie pagina asta. Deschide-o și copiază textul, sau folosește „Importă .md”.",
     stNoTab:"Fila nu s-a putut deschide (blocată de browser). Folosește „Exportă .html”.",
     stCopied:"Markdown copiat.",
     stCopyFailed:"Nu am putut copia. Selectează textul din fila „Markdown”.",
@@ -1998,12 +2098,22 @@ const I18N = {
         <li><b>Fotografiază</b> — folosește camera telefonului direct.</li>
         <li><b>Lipesc textul</b> — pentru un text copiat din altă parte.</li>
         <li><b>Importă .md</b> — aduce înapoi un fișier scris de pagina asta (sau de editorul Markdown): zilele, mesele, ingredientele și pașii se întorc întregi.</li>
+        <li><b>O pagină .html scrisă aici</b> — se citește la fel de întreagă: trage-o peste zona de sus și planul se întoarce cu tot cu etichete, grupuri („Sos:”) și alimentele USDA alese.</li>
+        <li><b>Introdu manual</b> — scrie rețeta direct: o listă de ingrediente cu cantități, apoi „Mod de preparare:”.</li>
         <li>O poză se poate lipi și direct din clipboard cu <kbd>Ctrl+V</kbd>.</li>
       </ul>
       <h3>Text din poze (OCR)</h3>
       <p>Pozele și PDF-urile scanate se citesc automat cu Tesseract, chiar în pagină. Motorul se aduce o singură dată, la prima poză, și rămâne pregătit — nimic nu pleacă de pe dispozitiv. Adresa lui e un câmp editabil, ca să poată fi îndreptat spre o copie locală, offline.</p>
       <h3>Cardurile de revizuire</h3>
       <p>Textul analizat apare împărțit pe zile și mese, gata de corectat: nume, ingrediente (cantitate, unitate, aliment) și pași. Fiecare ingredient arată alimentul USDA cu care a fost potrivit și ce valori nutriționale iese; o săgeată de la capătul liniei deschide celelalte 38 de valori (fibre, vitamine, minerale…). Potrivirile se țin minte între vizite, în cartea de ingrediente.</p>
+      <h3>Compune o zi — biblioteca de rețete</h3>
+      <p>O zi se poate construi masă cu masă, în loc să vină întreagă dintr-un fișier. <b>„+ din bibliotecă”</b> (sub zile, sau în fiecare zi) deschide un sertar cu rețetele adunate până acum.</p>
+      <ul>
+        <li><b>Ce intră în bibliotecă</b> — „Adaugă din fișier” citește o pagină .html sau un .md scris aici și pune fiecare masă din el în bibliotecă, fără să atingă planul de pe ecran. Sau apeși <b>⊕</b> pe orice masă din zilele de mai jos.</li>
+        <li><b>Eticheta</b> — mic dejun, brunch, prânz, cină (plus gustare și desert). Alegi eticheta, alegi ziua, apeși rețeta — și masa intră acolo. „Cum e salvată” o lasă cu eticheta ei.</li>
+        <li><b>Totalul zilei</b> se reface singur la fiecare masă adăugată, așa că poți compune o zi până la un număr de calorii.</li>
+        <li>Rețeta se <i>copiază</i> în zi: o modifici acolo fără să strici ce e în bibliotecă.</li>
+      </ul>
       <h3>Căutare și filtre</h3>
       <p>Caseta de căutare și lista de ingrediente (separate prin virgulă) restrâng ce se arată — bun pentru un plan lung de zile.</p>
       <h3>Salvare</h3>
@@ -2020,7 +2130,7 @@ const I18N = {
     intro:"Read the text out of a PDF or a photo, split it into days and meals and write a clean recipe in markdown: 1. Ingredients, 2. Method. The file stays with you — nothing leaves the device.",
     stepSource:"Source",
     dropBig:"Drop a PDF or a photo here",
-    dropSub:"PDF (scanned too), JPG, PNG, WEBP, text, or a .md written here. Several photos at once are fine. You can also paste a picture from the clipboard (Ctrl+V).",
+    dropSub:"PDF (scanned too), JPG, PNG, WEBP, text, a .md, or an .html page written here. Several photos at once are fine. You can also paste a picture from the clipboard (Ctrl+V).",
     pickFile:"Choose file",
     camera:"Take a photo",
     pasteText:"Paste text",
@@ -2061,7 +2171,7 @@ const I18N = {
     copyMd:"Copy",
     saveHint:"“Add to workbook” writes each day as a new chapter in the Markdown editor, on this device. From there you can sync it to your folder.",
 
-    mBreakfast:"Breakfast", mSnack:"Snack", mLunch:"Lunch",
+    mBreakfast:"Breakfast", mBrunch:"Brunch", mSnack:"Snack", mLunch:"Lunch",
     mDinner:"Dinner", mDessert:"Dessert", mOther:"Meal",
 
     dayName:"Day / chapter name",
@@ -2074,6 +2184,28 @@ const I18N = {
     delMeal:"Delete the meal",
     delIng:"Delete the ingredient",
     toMethod:"Move to the method",
+    toLib:"Put the recipe in the library",
+    addFromLib:"+ from the library",
+
+    pickTitle:"Add a meal",
+    pickIntro:"The library keeps recipes gathered from any HTML page written here, from a .md, or from a day below. Pick the day and the flag, then press a recipe.",
+    pickDayLabel:"Day",
+    pickNewDay:"— a new day —",
+    pickFlagLabel:"Flag",
+    pickKeep:"As saved",
+    pickFromFile:"Add from a file",
+    pickManual:"Write a recipe",
+    pickClearLib:"Empty the library",
+    pickPh:"Search the library…",
+    pickNone:"The library is empty. Add an HTML page written here, a .md, or press ⊕ on a meal in the days below.",
+    pickNoMatch:"No recipe in the library matches.",
+    libCount:n => n === 1 ? "one recipe in the library" : n + " recipes in the library",
+    libRemove:"Remove from the library",
+    askClearLib:"Empty the whole recipe library?",
+    stLibAdded:n => n === 1 ? "One recipe added to the library." : n + " recipes added to the library.",
+    stLibNothing:"That file has no recipes to read. It has to be an HTML page or a .md written by this page.",
+    stLibHas:"That recipe is already in the library.",
+    stMealAdded:(name, day) => "“" + name + "” added to " + day + ".",
     colQty:"Qty", colUnit:"Unit", colItem:"Ingredient",
     colFood:"USDA food — type to search",
     nUnknown:"No food yet. Type one from the table to link it.",
@@ -2162,7 +2294,7 @@ const I18N = {
       ? (a === 1 ? "One new ingredient learned — " + n + " in the book."
                  : a + " new ingredients learned — " + n + " in the book.")
       : "Nothing new to learn — " + n + " ingredients in the book.",
-    importMdHint:"“Import .md” reads back a file this page wrote — or one edited since in the Markdown editor: the days, the meals, the ingredients and the steps all come back whole, ready to correct, to save again, or to send on as an HTML page.",
+    importMdHint:"“Import .md” reads back a file this page wrote — or one edited since in the Markdown editor: the days, the meals, the ingredients and the steps all come back whole, ready to correct, to save again, or to send on as an HTML page. An .html page written here reads back the same way: drop it on the zone above and it comes back as a plan.",
     stepHtml:"HTML page",
     htmlHint:"The same recipes, laid out to be read: one .html file with everything it needs inside it and nothing to fetch from the internet. Search and filter it by ingredient right on the page, the way you do here. It opens from an e-mail, on a phone, and out of a printer.",
     htmlTitleLabel:"Page title",
@@ -2201,6 +2333,8 @@ const I18N = {
     stNothing:"No recipe recognised. Check the text in step 2 — or add a day by hand.",
     stMdFound:n => n === 1 ? "Read one day from the markdown." : "Read " + n + " days from the markdown.",
     stMdNothing:"That file is markdown, but not the shape this page writes: a day as “#”, a meal as “##”, then “### 1. Ingredients” and “### 2. Method”.",
+    stHtmlFound:n => n === 1 ? "Read one day from the HTML page." : "Read " + n + " days from the HTML page.",
+    stHtmlNothing:"That page holds no recipes in the shape this page writes. Open it and copy the text, or use “Import .md”.",
     stNoTab:"The tab couldn't be opened (the browser blocked it). Use “Export .html” instead.",
     stCopied:"Markdown copied.",
     stCopyFailed:"Couldn't copy. Select the text in the “Markdown” tab instead.",
@@ -2226,12 +2360,22 @@ const I18N = {
         <li><b>Camera</b> — use the phone's camera directly.</li>
         <li><b>Paste text</b> — for text copied from elsewhere.</li>
         <li><b>Import .md</b> — brings back a file this page wrote (or the Markdown editor did): days, meals, ingredients and steps come back whole.</li>
+        <li><b>An .html page written here</b> — reads back just as whole: drop it on the zone above and the plan comes back with its flags, its groups (“Sauce:”) and the USDA foods that were picked.</li>
+        <li><b>Enter manually</b> — write the recipe straight in: a list of ingredients with quantities, then “Method:”.</li>
         <li>A picture can also be pasted straight from the clipboard with <kbd>Ctrl+V</kbd>.</li>
       </ul>
       <h3>Text from photos (OCR)</h3>
       <p>Photos and scanned PDFs are read automatically with Tesseract, right on the page. The engine is fetched once, on the first photo, and stays ready — nothing leaves the device. Its address is an editable field, so it can be pointed at a local, offline copy.</p>
       <h3>The review cards</h3>
       <p>The parsed text shows up split into days and meals, ready to correct: name, ingredients (quantity, unit, food) and steps. Each ingredient shows the USDA food it was matched to and what it comes to; a caret at the end of the line opens the other 38 values (fibre, vitamins, minerals…). Matches are remembered between visits, in the ingredient book.</p>
+      <h3>Composing a day — the recipe library</h3>
+      <p>A day can be built a meal at a time instead of arriving whole in a file. <b>“+ from the library”</b> (under the days, or inside each day) opens a drawer of the recipes gathered so far.</p>
+      <ul>
+        <li><b>What goes in</b> — “Add from a file” reads an .html page or a .md written here and puts every meal in it into the library, without touching the plan on screen. Or press <b>⊕</b> on any meal in the days below.</li>
+        <li><b>The flag</b> — breakfast, brunch, lunch, dinner (plus snack and dessert). Pick the flag, pick the day, press the recipe, and the meal lands there. “As saved” leaves it with the flag it already had.</li>
+        <li><b>The day total</b> works itself out again on every meal added, so a day can be composed up to a calorie number.</li>
+        <li>The recipe is <i>copied</i> into the day: edit it there and the library entry stays as it was.</li>
+      </ul>
       <h3>Search and filters</h3>
       <p>The search box and the ingredient list (comma-separated) narrow what's shown — handy for a long book of days.</p>
       <h3>Saving</h3>
@@ -4326,6 +4470,7 @@ const Recipes = (function(){
 
   const MEALS = [
     { kind:"breakfast", re:/^(mic\s*dejun(ul)?|micul\s*dejun|breakfast)$/i },
+    { kind:"brunch",    re:/^(brunch(ul)?|mic\s*dejun\s*t[âa]rziu)$/i },
     { kind:"lunch",     re:/^(pr[âaă]nz(ul)?|lunch)$/i },
     { kind:"dinner",    re:/^(cin[aă]|dinner|supper)$/i },
     { kind:"snack",     re:/^(gustare(a)?\s*\d?|gustări|snack\s*\d?|snacks?)$/i },
@@ -4617,8 +4762,13 @@ const Recipes = (function(){
           }
           continue;
         }
-        // A colon inside prose ("Notă: …") is not a meal header.
-        if(kind || (head.split(" ").length <= 2 && rest.length && !isStep(text2) && !looksLikeQty(text2))){
+        // A colon inside prose ("Notă: …") is not a meal header — hence
+        // the `rest.length`: something has to follow the colon. A component
+        // word is the exception, because "Sos:" on a line of its own with
+        // the sauce listed under it is how recipes are actually written,
+        // and without this it was read as an ingredient called "Sos:".
+        const bareComponent = !kind && !rest && meal && COMPONENT_RE.test(head);
+        if(kind || bareComponent || (head.split(" ").length <= 2 && rest.length && !isStep(text2) && !looksLikeQty(text2))){
           // "Sos:", "Dressing:", "Topping:" name a *part of the dish being
           // described*, not the next meal of the day. Reading them as meals
           // is what used to leave the parent with no method and the part
@@ -4813,8 +4963,102 @@ const Recipes = (function(){
     return { days: days.filter(d => d.meals.length), source: source };
   }
 
+  /* ---------- the shareable page, read back — `fromHtml(text)` ----------
+     A person who has been handed one of the pages buildHtmlDoc() writes
+     (section 7, docs/RECIPES.md § G) already has a recipe collection: a
+     whole plan, its ingredients, its methods and its USDA matches, in one
+     file that opens anywhere. So that file is a source like any other, and
+     this is the reader for it — the same `{ days, source }` every other
+     route in this module hands back.
+
+     The markup is the contract:
+
+       article.day  ▸ h2                       the day
+       section.meal[data-kind] ▸ h3            .kind + .dish
+       ul.ing > li                             li.grp names a component;
+                                               .q is quantity + unit,
+                                               .it the ingredient
+       ol.steps > li                           one step per item
+
+     The USDA id rides on the `li` as `data-fdc` — the same thing the
+     markdown's fourth column carries. A page written before that attribute
+     existed simply has its ingredients matched again, which is what an
+     empty column means everywhere else too.
+
+     DOMParser, not a regex: this is real HTML, the browser already has a
+     reader for it, and an ingredient written "1 &amp; ½ linguri" has to
+     come back as the text it was. Parsing `text/html` builds a document
+     without running a script or fetching anything — the file's own filter
+     bar and totals script never execute here. */
+  function looksLikeRecipeHtml(text){
+    const s = String(text || "");
+    return /<article[^>]*\bclass="[^"]*\bday\b/i.test(s) &&
+           /<section[^>]*\bclass="[^"]*\bmeal\b/i.test(s);
+  }
+
+  // With the USDA pass on, the quantity is an <input> and the unit is the
+  // text beside it; with it off the two are one string. Either way they
+  // come back as the two columns the model keeps them in.
+  function htmlQty(q){
+    if(!q) return { qty:"", unit:"" };
+    const input = q.querySelector("input");
+    if(input) return { qty:(input.getAttribute("value") || "").trim(), unit:q.textContent.trim() };
+    const text = q.textContent.trim();
+    const m = QTY_RE.exec(text);
+    return m ? { qty:m[1].trim(), unit:text.slice(m[0].length).trim() }
+             : { qty:"", unit:text };
+  }
+
+  function fromHtml(text){
+    let doc = null;
+    try{ doc = new DOMParser().parseFromString(String(text || ""), "text/html"); }
+    catch(e){ return { days:[], source:"" }; }
+    if(!doc) return { days:[], source:"" };
+    const txt = el => el ? clean(el.textContent).replace(/\s+/g, " ").trim() : "";
+    const days = [];
+    Array.prototype.forEach.call(doc.querySelectorAll("article.day"), art => {
+      const title = txt(art.querySelector("h2"));
+      const d = DAY_HEAD.exec(title);
+      const n = d ? (/^\d+$/.test(d[1]) ? parseInt(d[1], 10) : romanToInt(d[1])) : null;
+      // Same rule as the markdown reader: "Ziua 7" with nothing after it is
+      // the number of the day, not a name for it, and left as a number it
+      // keeps following the interface language.
+      const day = newDay(n || days.length + 1, (d && !d[2].trim()) ? "" : title);
+      Array.prototype.forEach.call(art.querySelectorAll("section.meal"), sec => {
+        const label = txt(sec.querySelector("h3 .kind"));
+        const name  = txt(sec.querySelector("h3 .dish"));
+        // The kind is written on the section. The words beside it are only
+        // a fallback, and only for a meal that never had a kind of its own.
+        const kind = sec.getAttribute("data-kind") || mealKind(label) || "other";
+        const meal = newMeal(kind, kind === "other" ? label : "", name);
+        let group = "";
+        Array.prototype.forEach.call(sec.querySelectorAll("ul.ing > li"), li => {
+          // A component heading — "Sos:", "Topping:" — names the run under
+          // it. This is the one thing the markdown table cannot carry and
+          // the page can, so it survives the round trip through HTML.
+          if(li.classList.contains("grp")){ group = txt(li); return; }
+          const item = txt(li.querySelector(".it"));
+          const q = htmlQty(li.querySelector(".q"));
+          if(!item && !q.qty && !q.unit) return;
+          meal.ingredients.push({ qty:q.qty, unit:q.unit, item:item, group:group,
+                                  fdc:li.getAttribute("data-fdc") || "" });
+        });
+        Array.prototype.forEach.call(sec.querySelectorAll("ol.steps > li"), li => {
+          const step = txt(li);
+          if(step) meal.steps.push(step);
+        });
+        day.meals.push(meal);
+      });
+      if(day.meals.length) days.push(day);
+    });
+    // The file names itself in its own header, and that beats the name it
+    // arrived under — the same rule the markdown's "*Sursă: …*" line gets.
+    const source = txt(doc.querySelector("header.book h1")) || txt(doc.querySelector("title"));
+    return { days, source };
+  }
+
   return { parse, parseIngredient, splitSteps, splitIngredients, isStep, newDay, newMeal, mealKind,
-           fromMarkdown, looksLikeMarkdown, mdCells };
+           fromMarkdown, looksLikeMarkdown, mdCells, fromHtml, looksLikeRecipeHtml };
 })();
 
 /* ============================================================
@@ -6302,7 +6546,10 @@ const RO_ALIAS = {
    7. The app — state, review cards, markdown
    ============================================================ */
 var booted = false;                       // var: applyUILang() reads it early
-const model = { days: [], source: "" };
+// `days` is the plan being built; `library` is the loose collection of
+// recipes it can be built out of — gathered from a page this tool wrote, a
+// .md, or a meal already on screen, and kept between visits (LIB_KEY).
+const model = { days: [], source: "", library: [] };
 const $ = id => document.getElementById(id);
 const els = {
   drop:$("drop"), file:$("file"), cam:$("cam"),
@@ -6311,6 +6558,10 @@ const els = {
   status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
   textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
   days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
+  btnPickMeal:$("btnPickMeal"), pickModal:$("pickModal"), pickDay:$("pickDay"),
+  pickKinds:$("pickKinds"), pickQ:$("pickQ"), pickList:$("pickList"), libCount:$("libCount"),
+  btnLibFile:$("btnLibFile"), libFile:$("libFile"), btnLibManual:$("btnLibManual"),
+  btnLibClear:$("btnLibClear"), btnPickClose:$("btnPickClose"),
   filters:$("filters"), qBox:$("qBox"), ingBox:$("ingBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
   found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
@@ -6609,8 +6860,9 @@ function fold(s){ return String(s == null ? "" : s).toLowerCase().replace(FOLD_R
 const view = { q:"", ing:"", kinds:new Set(), open:new Set(), allOpen:false,
                micro:new Set(), tot:new Set() };
 
-const MEAL_KINDS = [["breakfast","mBreakfast"],["snack","mSnack"],["lunch","mLunch"],
-                    ["dinner","mDinner"],["dessert","mDessert"],["other","mOther"]];
+const MEAL_KINDS = [["breakfast","mBreakfast"],["brunch","mBrunch"],["snack","mSnack"],
+                    ["lunch","mLunch"],["dinner","mDinner"],["dessert","mDessert"],
+                    ["other","mOther"]];
 
 function mealHaystack(meal){
   const ing = meal.ingredients.map(i => [i.qty, i.unit, i.item, i.group].join(" ")).join(" ");
@@ -6878,7 +7130,12 @@ function arrangeIntoDays(perDay){
   const meals = [];
   model.days.forEach(d => d.meals.forEach(m => meals.push(m)));
   if(!meals.length) return 0;
+  // Two lists, because they answer two questions. KINDS names the meals of
+  // a flat recipe list, three to a day — a page of recipes with no meal
+  // words in it is breakfast, lunch, dinner, never a brunch nobody wrote.
+  // EAT_ORDER is the order a day is read in, and brunch belongs in that one.
   const KINDS = ["breakfast","lunch","dinner","snack","dessert"];
+  const EAT_ORDER = ["breakfast","brunch","lunch","dinner","snack","dessert"];
   const known = new Set(meals.map(m => m.kind).filter(k => k && k !== "other"));
   const days = [];
   if(known.size >= 2){
@@ -6889,7 +7146,7 @@ function arrangeIntoDays(perDay){
       cur.meals.push(m);
       used.add(k);
     }
-    const order = k => { const i = KINDS.indexOf(k); return i < 0 ? KINDS.length : i; };
+    const order = k => { const i = EAT_ORDER.indexOf(k); return i < 0 ? EAT_ORDER.length : i; };
     days.forEach(d => d.meals.sort((a, b) => order(a.kind) - order(b.kind)));
   }else{
     const n = Math.max(1, perDay || 3);
@@ -6987,6 +7244,13 @@ function renderDays(){
       mh.appendChild(sel);
       mh.appendChild(textInput(meal.name, t("mealName"), v => { meal.name = v; }, "mname"));
       mh.appendChild(daySelect(day, meal));
+      // Keep this recipe: it goes into the library, where it can be put on
+      // any other day under any flag without being typed again.
+      mh.appendChild(iconBtn("⊕", "toLib", () => {
+        const ok = libAdd(meal, model.source || "");
+        if(ok) saveLibrary();
+        say(ok ? t("stLibAdded", 1) : t("stLibHas"));
+      }));
       mh.appendChild(iconBtn("✕", "delMeal", () => { day.meals.splice(mi, 1); renderDays(); renderMarkdown(); }, true));
       box.appendChild(mh);
 
@@ -7073,6 +7337,8 @@ function renderDays(){
       body.appendChild(totalsBlock("mdTotals", rows, Nutrition.forDay({ meals: dayMeals }).sum, day));
     }
 
+    const addRow = document.createElement("div");
+    addRow.className = "row";
     const addMeal = document.createElement("button");
     addMeal.type = "button";
     addMeal.className = "btn mini";
@@ -7081,11 +7347,276 @@ function renderDays(){
       day.meals.push(Recipes.newMeal("other", "", ""));
       renderDays(); renderMarkdown();
     });
-    body.appendChild(addMeal);
+    addRow.appendChild(addMeal);
+    // The same picker as card 5's button, opened on this day.
+    const fromLib = document.createElement("button");
+    fromLib.type = "button";
+    fromLib.className = "btn mini ghost";
+    fromLib.textContent = t("addFromLib");
+    fromLib.addEventListener("click", () => openPicker(day));
+    addRow.appendChild(fromLib);
+    body.appendChild(addRow);
 
     card.appendChild(body);
     host.appendChild(card);
   });
+}
+
+/* ---------- the meal library, and composing a day out of it ----------
+
+   Three ways a recipe reaches a plan, and only the first one existed:
+
+     a file read start to finish   ▸  a whole plan replaces what is here
+     one recipe out of the library ▸  added to a day, under a flag
+     "+ masă", typed by hand       ▸  an empty meal to fill in
+
+   The middle one is what this block is. The library is a flat collection
+   of meals — gathered out of an HTML page this tool wrote, out of a .md,
+   or with ⊕ from a day already on screen — and the picker is where one is
+   chosen, given a day and a flag (mic dejun / brunch / prânz / cină), and
+   copied in. Copied, never referenced: the meal on the plan is edited from
+   then on, and editing Tuesday's lunch must not rewrite the library entry
+   Wednesday's is also a copy of.
+
+   The day's own total needs nothing added for any of this — `totalsBlock`
+   already adds up whatever meals a day holds, so a day composed a recipe
+   at a time sums itself as it fills. */
+
+const LIB_KEY = "scula:meals";
+// A library is a convenience, not an archive: past a few hundred recipes it
+// is a scrolling problem rather than a picker, and the settings store is
+// not the place for a book of a hundred days. The oldest go first.
+const LIB_MAX = 400;
+
+const pick = { day:null, kind:"", q:"" };
+
+// Deep enough: a meal is names, two flat arrays and plain fields. What must
+// not be shared is the ingredient objects — the copy on the plan gets its
+// quantity and its food edited, and the library's must not follow.
+function copyMeal(meal){
+  return {
+    kind: meal.kind || "other",
+    label: meal.label || "",
+    name: meal.name || "",
+    ingredients: (meal.ingredients || []).map(i => ({
+      qty:i.qty || "", unit:i.unit || "", item:i.item || "",
+      group:i.group || "", fdc:i.fdc || ""
+    })),
+    steps: (meal.steps || []).slice()
+  };
+}
+
+// What makes two library entries the same recipe: the dish and the
+// ingredients it is made of. Not the flag — the same soup is somebody's
+// lunch and somebody else's dinner — and not the method, which is where
+// two copies of one recipe differ by a comma.
+function mealSignature(meal){
+  return fold([meal.name || "", (meal.ingredients || [])
+    .map(i => [i.qty, i.unit, i.item].filter(Boolean).join(" ")).join("|")].join("|"));
+}
+
+function libAdd(meal, src){
+  if(!meal || (!meal.name && !(meal.ingredients || []).length)) return false;
+  const sig = mealSignature(meal);
+  if(model.library.some(e => mealSignature(e.meal) === sig)) return false;
+  model.library.push({ meal: copyMeal(meal), src: src || "" });
+  if(model.library.length > LIB_MAX) model.library.splice(0, model.library.length - LIB_MAX);
+  return true;
+}
+
+async function saveLibrary(){
+  // Written out as the two fields an entry is, so nothing worked out at
+  // draw time (see libSum) ever ends up on disk.
+  try{
+    await store.set(LIB_KEY, JSON.stringify(
+      model.library.map(e => ({ meal:e.meal, src:e.src || "" }))));
+  }catch(e){}
+}
+
+/* What one library recipe comes to, worked out once. The picker redraws
+   every row on every keystroke and Nutrition.forMeal() is a matcher run
+   per ingredient, so four hundred recipes would be a stutter without this.
+   The cache is dropped whenever the ingredient book changes size — that is
+   the only thing that can change what an already-saved recipe adds up
+   to. */
+const libSums = new Map();
+let libBookSize = -1;
+function libSum(entry){
+  if(!libSums.has(entry)) libSums.set(entry, Nutrition.forMeal(entry.meal).sum);
+  return libSums.get(entry);
+}
+async function loadLibrary(){
+  try{
+    const raw = await store.get(LIB_KEY);
+    const v = raw ? JSON.parse(raw) : null;
+    if(Array.isArray(v))
+      model.library = v.filter(e => e && e.meal && Array.isArray(e.meal.ingredients))
+                       .map(e => ({ meal: copyMeal(e.meal), src: e.src || "" }));
+  }catch(e){}
+}
+
+/* ---- the picker ---- */
+
+// The days on offer, plus one that does not exist yet: composing a plan
+// usually starts with nothing to add to.
+function fillPickDays(){
+  const sel = els.pickDay;
+  sel.textContent = "";
+  model.days.forEach((day, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = dayTitle(day, i);
+    sel.appendChild(o);
+  });
+  const o = document.createElement("option");
+  o.value = "new";
+  o.textContent = t("pickNewDay");
+  sel.appendChild(o);
+  const at = pick.day ? model.days.indexOf(pick.day) : -1;
+  sel.value = at >= 0 ? String(at) : "new";
+  if(at < 0) pick.day = null;
+}
+
+// The flags. "Cum e salvată" is first and is the default: a recipe that
+// already knows it is a breakfast should not have to be told again, and
+// the other chips are there for the times it does.
+function renderPickKinds(){
+  const host = els.pickKinds;
+  host.textContent = "";
+  const chip = (value, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = text;
+    b.setAttribute("aria-pressed", pick.kind === value ? "true" : "false");
+    b.addEventListener("click", () => { pick.kind = value; renderPickKinds(); });
+    host.appendChild(b);
+  };
+  chip("", t("pickKeep"));
+  MEAL_KINDS.filter(([k]) => k !== "other")
+            .forEach(([kind, key]) => chip(kind, t(key)));
+}
+
+function libMatches(entry){
+  const q = fold(pick.q).split(/\s+/).filter(Boolean);
+  if(!q.length) return true;
+  const hay = fold([entry.meal.name, entry.meal.label, mealLabel(entry.meal), entry.src,
+                    (entry.meal.ingredients || []).map(i => i.item).join(" ")].join(" "));
+  return q.every(w => hay.indexOf(w) >= 0);
+}
+
+function renderLibrary(){
+  const host = els.pickList;
+  host.textContent = "";
+  els.libCount.textContent = t("libCount", model.library.length);
+  const size = Nutrition.stats().total;
+  if(size !== libBookSize){ libBookSize = size; libSums.clear(); }
+  const shown = model.library.map((e, i) => ({ e, i })).filter(({ e }) => libMatches(e));
+  if(!shown.length){
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = t(model.library.length ? "pickNoMatch" : "pickNone");
+    host.appendChild(p);
+    return;
+  }
+  // Newest first: the page somebody just imported is the one they came to
+  // the picker for.
+  shown.reverse().forEach(({ e, i }) => {
+    const row = document.createElement("div");
+    row.className = "libmeal";
+
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "go";
+    const kind = document.createElement("span");
+    kind.className = "kind";
+    kind.textContent = mealLabel(e.meal);
+    go.appendChild(kind);
+    const dish = document.createElement("span");
+    dish.className = "dish";
+    dish.textContent = e.meal.name || t("unnamed");
+    go.appendChild(dish);
+    // What it comes to, so a day can be built to a number without opening
+    // anything: the same sum the day total will add this meal into.
+    const n = libSum(e);
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = (e.meal.ingredients.length
+        ? Nutrition.num(n.kcal, 0) + " kcal · P " + Nutrition.num(n.prot, 1) +
+          " · C " + Nutrition.num(n.carb, 1) + " · G " + Nutrition.num(n.fat, 1)
+        : "—");
+    go.appendChild(meta);
+    if(e.src){
+      const src = document.createElement("span");
+      src.className = "src";
+      src.textContent = e.src;
+      go.appendChild(src);
+    }
+    go.addEventListener("click", () => addFromLibrary(e));
+    row.appendChild(go);
+
+    row.appendChild(iconBtn("✕", "libRemove", () => {
+      model.library.splice(i, 1);
+      saveLibrary();
+      renderLibrary();
+    }, true));
+    host.appendChild(row);
+  });
+}
+
+function addFromLibrary(entry){
+  const at = els.pickDay.value;
+  let day = at === "new" ? null : model.days[parseInt(at, 10)];
+  if(!day){
+    day = Recipes.newDay(model.days.length + 1, "");
+    model.days.push(day);
+    fillPickDays();
+  }
+  pick.day = day;
+  els.pickDay.value = String(model.days.indexOf(day));
+  const meal = copyMeal(entry.meal);
+  if(pick.kind){
+    meal.kind = pick.kind;
+    meal.label = "";
+  }
+  day.meals.push(meal);
+  view.open.add(day);
+  // The book resolves an ingredient once, and a recipe arriving from the
+  // library is as good a place to learn one as a file is.
+  learnFrom([day], true);
+  renderDays(); renderMarkdown();
+  say(t("stMealAdded", meal.name || mealLabel(meal), dayTitle(day, model.days.indexOf(day))));
+}
+
+function openPicker(day){
+  pick.day = day || null;
+  fillPickDays();
+  renderPickKinds();
+  renderLibrary();
+  els.pickModal.classList.add("open");
+  els.pickQ.focus();
+}
+function closePicker(){ els.pickModal.classList.remove("open"); }
+
+// A file dropped into the library is read, never parsed: it has to be one
+// of the two shapes this page writes, or there is nothing dependable to
+// take a single recipe out of.
+async function readLibFile(file){
+  if(!file) return;
+  let read = null;
+  try{
+    const text = await file.text();
+    read = Recipes.looksLikeRecipeHtml(text) ? Recipes.fromHtml(text)
+         : Recipes.looksLikeMarkdown(text)   ? Recipes.fromMarkdown(text)
+                                             : null;
+  }catch(e){ read = null; }
+  if(!read || !read.days.length){ say(t("stLibNothing"), "err"); return; }
+  const src = read.source || file.name;
+  let added = 0;
+  read.days.forEach(d => d.meals.forEach(m => { if(libAdd(m, src)) added++; }));
+  await saveLibrary();
+  renderLibrary();
+  say(added ? t("stLibAdded", added) : t("stLibHas"));
 }
 
 /* ---------- markdown ----------
@@ -8131,7 +8662,13 @@ function mealHtml(meal){
         : '<span class="q">' +
           escHtml([ing.qty, ing.unit].map(v => String(v == null ? "" : v).trim()).filter(Boolean).join(" ")) +
           "</span>";
-      L.push("<li>" + qty + '<span class="it">' + escHtml(ing.item) + "</span></li>");
+      // The id the row was matched to, the same thing the markdown's
+      // fourth column carries — about fifteen bytes, and it is what lets
+      // Recipes.fromHtml() bring a hand-picked food back rather than
+      // guessing at the name a second time.
+      const id = nut.rows[i] && nut.rows[i].id;
+      L.push("<li" + (id ? ' data-fdc="' + escHtml(id) + '"' : "") + ">" +
+             qty + '<span class="it">' + escHtml(ing.item) + "</span></li>");
     });
     L.push("</ul>");
   }else L.push('<p class="none">—</p>');
@@ -8289,15 +8826,19 @@ function ingest(text, sourceName, forceAppend){
   analyse(append, append ? text : undefined);
 }
 
-// Text arrives here from three places — a PDF, OCR, the box in step 2 —
-// and now from a fourth: a .md file this page wrote earlier. That one is
-// not prose to be guessed at, it is the contract of docs/RECIPES.md § C,
-// so it goes to the reader that knows the contract instead of to the
-// parser that has to infer everything. Which one it is decides itself.
+// Text arrives here from a PDF, from OCR, from the box in step 2 — and
+// from two files this page wrote itself: a .md (the contract of
+// docs/RECIPES.md § C) and a .html (the page of § G). Neither of those is
+// prose to be guessed at, so each goes to the reader that knows its shape
+// instead of to the parser that has to infer everything. Which one it is
+// decides itself, and only free text falls through to parse().
 function analyse(append, only){
   const text = only === undefined ? els.rawText.value : only;
-  const isMd = Recipes.looksLikeMarkdown(text);
-  const read = isMd ? Recipes.fromMarkdown(text) : { days: Recipes.parse(text), source: "" };
+  const isHtml = Recipes.looksLikeRecipeHtml(text);
+  const isMd = !isHtml && Recipes.looksLikeMarkdown(text);
+  const read = isHtml ? Recipes.fromHtml(text)
+             : isMd  ? Recipes.fromMarkdown(text)
+                     : { days: Recipes.parse(text), source: "" };
   if(!append) model.days = [];
   read.days.forEach(d => model.days.push(d));
   // A file that names its own source knows better than the name it arrived
@@ -8308,8 +8849,9 @@ function analyse(append, only){
   learnFrom(read.days, true);
   renderDays();
   renderMarkdown();
-  setStatus(model.days.length ? t(isMd ? "stMdFound" : "stFound", model.days.length)
-                              : t(isMd ? "stMdNothing" : "stNothing"),
+  const found = isHtml ? "stHtmlFound" : isMd ? "stMdFound" : "stFound";
+  const none  = isHtml ? "stHtmlNothing" : isMd ? "stMdNothing" : "stNothing";
+  setStatus(t(model.days.length ? found : none, model.days.length),
             model.days.length ? "" : "err");
 }
 
@@ -8886,6 +9428,39 @@ els.btnAddDay.addEventListener("click", () => {
   view.open.add(day);
   renderDays(); renderMarkdown();
 });
+
+/* ---- the meal picker ---- */
+els.btnPickMeal.addEventListener("click", () => openPicker(null));
+els.btnPickClose.addEventListener("click", closePicker);
+els.pickModal.addEventListener("click", e => { if(e.target === els.pickModal) closePicker(); });
+els.pickDay.addEventListener("change", () => {
+  const at = els.pickDay.value;
+  pick.day = at === "new" ? null : model.days[parseInt(at, 10)] || null;
+});
+els.pickQ.addEventListener("input", () => { pick.q = els.pickQ.value; renderLibrary(); });
+els.pickQ.addEventListener("search", () => { pick.q = els.pickQ.value; renderLibrary(); });
+els.btnLibFile.addEventListener("click", () => els.libFile.click());
+els.libFile.addEventListener("change", async () => {
+  const files = Array.from(els.libFile.files || []);
+  els.libFile.value = "";
+  for(const f of files) await readLibFile(f);
+});
+els.btnLibManual.addEventListener("click", () => {
+  // Typing a recipe is step 2's job, and it always was — the picker only
+  // gets out of the way and points at the box. Once it is parsed, ⊕ on the
+  // meal puts it in the library for good.
+  closePicker();
+  els.textCard.hidden = false;
+  els.rawText.focus();
+  els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
+});
+els.btnLibClear.addEventListener("click", async () => {
+  if(!model.library.length || !confirm(t("askClearLib"))) return;
+  model.library = [];
+  await saveLibrary();
+  renderLibrary();
+});
+
 els.btnClear.addEventListener("click", () => {
   if(!model.days.length || !confirm(t("askClear"))) return;
   model.days = [];
@@ -9015,12 +9590,21 @@ function closeHelpModal(){ helpModal.classList.remove("open"); }
 document.getElementById("btnHelp").addEventListener("click", openHelpModal);
 document.getElementById("btnHelpClose").addEventListener("click", closeHelpModal);
 helpModal.addEventListener("click", e => { if(e.target === helpModal) closeHelpModal(); });
-document.addEventListener("keydown", e => { if(e.key === "Escape" && helpModal.classList.contains("open")) closeHelpModal(); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(helpModal.classList.contains("open")) closeHelpModal();
+  if(els.pickModal.classList.contains("open")) closePicker();
+});
 
 window.addEventListener("scula-ui-lang", ev => {
   UI = (ev.detail === "en" || ev.detail === "ro") ? ev.detail : UI;
   applyUILang();
   if(helpModal.classList.contains("open")) paintHelp();
+  // The picker builds its chips, its day list and its rows in script, so
+  // data-i cannot reach them — they are repainted here instead.
+  if(els.pickModal.classList.contains("open")){
+    fillPickDays(); renderPickKinds(); renderLibrary();
+  }
 });
 
 /* ---- init ---- */
@@ -9028,6 +9612,7 @@ window.addEventListener("scula-ui-lang", ev => {
   try{ UI = (await store.get(LANG_KEY)) === "en" ? "en" : "ro"; }catch(e){}
   await loadPrefs();
   await loadBook();
+  await loadLibrary();
   booted = true;
   applyUILang();
   paintOcrState();
@@ -9046,7 +9631,8 @@ window.addEventListener("scula-ui-lang", ev => {
 // own — tests/recipes.js drives them through this handle.
 window.ScuLaRecipes = { Recipes, PdfText, Jpx, Nutrition, model, analyse, allMarkdown,
                         buildDayMarkdown, buildHtmlDoc, renderDays, renderMarkdown,
-                        prepImage, OCR, saveBookFile, readBookFile, learnFrom };
+                        prepImage, OCR, saveBookFile, readBookFile, learnFrom,
+                        openPicker, closePicker, libAdd, saveLibrary, renderLibrary };
 
 })();
 </script>

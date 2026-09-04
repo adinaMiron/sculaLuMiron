@@ -677,6 +677,16 @@ controls on it. It goes through `ScuLaFolder.save()` like every
 other save in this repo (§ D), and card 5 previews it in a sandboxed
 `<iframe srcdoc>` holding the very string the file gets.
 
+**And that page reads back** (`Recipes.fromHtml`, § G there), which is what
+makes the fourth feature possible: a day can be *composed* rather than only
+extracted. § H there is the **recipe library** — meals gathered out of a
+page this tool wrote, out of a `.md`, or with ⊕ from a day on screen — and
+the picker that puts one on a chosen day under a chosen flag: **mic dejun,
+brunch, prânz, cină** (plus gustare and desert). The per-day sum needed
+nothing new: `Nutrition.forDay()` already adds up whatever a day holds, so
+the `TOTAL PE ZI` line, `## Total pe zi` in the markdown and the day
+roll-up in the shareable page all move on every meal added.
+
 ---
 
 ## G. The knowledge graph (`index.html`)

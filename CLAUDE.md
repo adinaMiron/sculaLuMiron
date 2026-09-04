@@ -9,7 +9,7 @@ file). Open in a browser; that's the whole toolchain.
 | `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` | 8961 | 77k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 9044 | 90k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition | dark (earth) |
+| `recipes.html` | 9637 | 96k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, and a day composed out of a recipe library | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
@@ -51,7 +51,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | New tool, button, or feature | `docs/FEATURES.md` |
 | Deep work inside `editor.html` | `HANDOFF.md` |
 | The infinite canvas, or what an export's size is | `docs/MAP.md` § "The infinite canvas" |
-| PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md`, the shareable HTML page, searching a big plan, **USDA nutrition** | `docs/RECIPES.md` |
+| PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md` **or a shareable HTML page written here**, searching a big plan, **USDA nutrition**, **the meal library / breakfast-brunch-lunch-dinner flags / the per-day sum** | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
@@ -166,7 +166,10 @@ the PDF reader including scanned pages, the parser, the markdown both
 written and read back, the shareable HTML page **driven in the file it
 ships in**, the USDA matcher and the ingredient book, **the 38-nutrient
 detail panels on both sides**, the whole OCR path against a stub engine,
-all three save routes), for `calendar.html` (`calendar.js` — the event
+all three save routes; and `mealplan.js` — the day composer: the `brunch`
+flag, the shareable page **read back** into the model it was built from,
+the recipe library, and the picker putting a meal on a day under a chosen
+flag with the day total following), for `calendar.html` (`calendar.js` — the event
 modal writing a real Google-shaped event, all four views including the
 week block's geometry and drag-to-create on the hour grid, search, the
 four facet filters, and both exports plus the `.ics` round-trip; it also
