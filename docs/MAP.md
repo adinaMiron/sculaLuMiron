@@ -23,7 +23,7 @@ Shared shape of all four files:
 
 From the `<nav id="site-nav">` line through `<!-- ===== end toolbar nav ===== -->`
 (~1120 lines). Rough starts: `voice.html:226` · `editor.html:430` ·
-`index.html:1548` · `recipes.html:408` · `calendar.html:248` — these drift;
+`index.html:1548` · `recipes.html:524` · `calendar.html:248` — these drift;
 grep the `<nav id="site-nav"` line.
 
 Three features share it, because all of them must exist before any app
@@ -486,7 +486,7 @@ literal hex, not `var(--…)`. **Do not migrate that block to theme tokens.**
 
 ---
 
-## recipes.html — 9637 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
+## recipes.html — 10022 lines · "Rețete" (PDF / photo → recipe markdown + USDA)
 
 `lang="ro"`. The *why*, the format contract and the USDA plan live in
 **`docs/RECIPES.md`** — read that before changing the markdown it writes.
@@ -494,25 +494,25 @@ Map only below.
 
 | Lines | Contents |
 |---|---|
-| 11–468 | App CSS. `:root` **12–51** (earth palette, semantic names). Help modal 65–87, **the meal picker `#pickModal` / `.pickrow` / `.lib-search` / `.libmeal` 88–125**, buttons 153–181, drop zone 182–195, day/meal cards 228–264 including **the per-ingredient USDA line `.ing + .nut` 242–258**, **the detail panels `.morebtn` / `.micro` / `.tot` 265–326**, **search / chips / collapsed days / `.grp` 327–388**, markdown preview 389–408, **`#htmlFrame` (the shareable page, previewed) 409–413**, tabs 415–422, folds + checkboxes + `.badge` 423–447, then the narrow and touch media blocks 448–467 |
-| 472–1599 | **Shared nav + `ScuLaFolder`** |
-| 1601–1831 | Markup: **five** numbered cards — left column: source ▸ text ▸ markdown ▸ `#htmlCard` (**Pagina HTML**, step 4); right column: review (step 5). `#helpModal` is at 1611 and **`#pickModal` — the meal picker — right after it at 1629**. The OCR fold is `#ocrBox` (1679–1714); `#optNutri` 1756, **the USDA fold `#nutriBox` 1765–1775**, `#onlyShownBox` 1759, the filter bar is `#filters` (1808, holds `#qBox` and the comma-separated `#ingBox`), `#found` 1818, **`#btnPickMeal` in the row under the days 1822**. `#btnMd` + `#mdFile` + `#bookFile` + **`#libFile`** are in card 1. `<datalist id="usdaList">` is at **1833**, after the wrap and filled once at init |
-| 1835–9635 | App script, numbered sections below |
+| 11–520 | App CSS. `:root` **12–51** (earth palette, semantic names). Help modal 65–87, **the meal picker `#pickModal` / `.pickrow` / `.lib-search` / `.libmeal` 88–125**, buttons 153–181, drop zone 182–195, day/meal cards 228–264 including **the per-ingredient USDA line `.ing + .nut` 242–258**, **the detail panels `.morebtn` / `.micro` / `.tot` 265–316**, **the daily targets `.tgrid` / `.goals` / `.dgoal` 317–369**, **search / chips / collapsed days / `.grp` 379–440**, markdown preview 441–460, **`#htmlFrame` (the shareable page, previewed) 461–465**, tabs 467–474, folds + checkboxes + `.badge` 476–495, then the narrow and touch media blocks 496–519 |
+| 524–1651 | **Shared nav + `ScuLaFolder`** |
+| 1653–1911 | Markup: **five** numbered cards — left column: source ▸ text ▸ markdown ▸ `#htmlCard` (**Pagina HTML**, step 4); right column: review (step 5). `#helpModal` is at 1662 and **`#pickModal` — the meal picker — right after it at 1676**. The OCR fold is `#ocrBox` (1731–1766); `#optNutri` 1808, **the USDA fold `#nutriBox` 1817–1827**, `#onlyShownBox` 1811, **the targets fold `#targetBox` 1860–1885** (the four `#tgKcal`/`#tgProt`/`#tgCarb`/`#tgFat` fields, `#tgNote`, `#btnTgClear`), the filter bar is `#filters` (1886, holds `#qBox` and the comma-separated `#ingBox`), `#found` 1896, **`#btnPickMeal` in the row under the days 1901**. `#btnMd` + `#mdFile` + `#bookFile` + **`#libFile`** are in card 1. `<datalist id="usdaList">` is at **1911**, after the wrap and filled once at init |
+| 1913–10020 | App script, numbered sections below |
 
 | Line | Section |
 |---|---|
-| 1856 | **1. i18n** — `I18N` (`ro:` 1858 / `en:` 2143), `t()` (variadic), `applyUILang()`. The 38 nutrient names are the `nut_*` keys, the five headings `gMacro`/`gCarb`/`gFat`/`gMin`/`gVit`/`gOther`; the picker's own words are the `pick*` / `lib*` keys |
-| 2417 | 2. Settings store (`scula:recipes`) |
-| **2443** | **3. `Jpx`** — the JPEG 2000 decoder |
-| **3493** | **4. `PdfText`** — the dependency-free PDF reader |
-| **4453** | **5. `Recipes`** — the parser, and the two readers that take its own output back (markdown, and the shareable page) |
-| **5065** | **6. `Nutrition`** — the two USDA tables, the Romanian names, and what a recipe adds up to |
-| 6546 | 7. The app — state, `setStatus`/**`say`**, **the detail panels**, **the day view**, **the meal library + picker**, review cards, markdown, **the shareable HTML page** |
-| 8813 | 8. Getting the text in — `ingest`/**`analyse`** (which of the three readers gets the text)/`handleFile(s)`, then OCR |
-| 9188 | 9. Saving — `.md`, **`.json` (the ingredient book)** and **`.html`** via `ScuLaFolder`, chapters via `scula-md` |
-| 9346 | 10. Wiring + init |
+| 1934 | **1. i18n** — `I18N` (`ro:` 1937 / `en:` 2226), `t()` (variadic), `applyUILang()`. The 38 nutrient names are the `nut_*` keys, the five headings `gMacro`/`gCarb`/`gFat`/`gMin`/`gVit`/`gOther`; the picker's own words are the `pick*` / `lib*` keys, **the daily targets' the `tg*` ones plus `mdTgTarget`/`mdTgDiff`** |
+| 2537 | 2. Settings store (`scula:recipes`) |
+| **2563** | **3. `Jpx`** — the JPEG 2000 decoder |
+| **3613** | **4. `PdfText`** — the dependency-free PDF reader |
+| **4573** | **5. `Recipes`** — the parser, and the two readers that take its own output back (markdown, and the shareable page) |
+| **5185** | **6. `Nutrition`** — the two USDA tables, the Romanian names, and what a recipe adds up to |
+| 6666 | 7. The app — state, `setStatus`/**`say`**, **the detail panels**, **the daily targets**, **the day view**, **the meal library + picker**, review cards, markdown, **the shareable HTML page** |
+| 9166 | 8. Getting the text in — `ingest`/**`analyse`** (which of the three readers gets the text)/`handleFile(s)`, then OCR |
+| 9541 | 9. Saving — `.md`, **`.json` (the ingredient book)** and **`.html`** via `ScuLaFolder`, chapters via `scula-md` |
+| 9699 | 10. Wiring + init |
 
-### `Jpx` (2443–3472)
+### `Jpx` (2585–3592)
 
 `decode(bytes, opts)` → `{ width, height, comps, siz, luma }` and
 `toRGBA(res)` → 8-bit RGBA. The only two entry points. It exists because no
@@ -544,7 +544,7 @@ lengths are what advance the stream — only tier-1 is skipped.
 | `decode` (3297) | markers ▸ tiles ▸ packets ▸ tier-1 ▸ wavelet ▸ MCT |
 | `toRGBA` (3456) | subsampled components stretched back up; grey, RGB, RGBA and CMYK |
 
-### `PdfText` (3493–4432)
+### `PdfText` (3628–4552)
 
 `extract(buffer)` (text) and `images(buffer)` (a scan's pictures) are the
 only entry points; everything else is one stage of one of them. Order
@@ -604,7 +604,7 @@ files rather than ones hand-built in a test:
   from the *real* advance width — hence `widthsOf`. With a guessed width
   the output reads "m in", "arom ă", "10m l".
 
-### `Recipes` (4469–5056)
+### `Recipes` (4589–5176)
 
 `parse(text)` → `[{ n, title, auto, meals:[{ kind, label, name,
 ingredients:[{ qty, unit, item, group, fdc }], steps:[] }] }]`. `toLines`
@@ -630,7 +630,7 @@ starts a meal; a known component word, *or* an unknown word arriving while
 the current meal has ingredients but no method yet, is a component of that
 meal. Anything else is still accepted as a custom meal.
 
-#### `fromMarkdown` (4873–4963) — the contract, read back
+#### `fromMarkdown` (4993–5083) — the contract, read back
 
 `fromMarkdown(text)` → `{ days, source }`: the inverse of
 `buildDayMarkdown()`, so a `.md` this page wrote comes back as the model it
@@ -639,34 +639,34 @@ is what `analyse()` asks to decide which reader gets the text.
 
 | Line | What |
 |---|---|
-| 4838 (`MD_SOURCE`, `MD_TOTALS`, `MD_RULE`, `MD_SEP_ROW`) | the four lines that are *not* content: the source note, the totals stub's heading, a `---`, and a table's `\| --- \|` row |
-| `mdCells` (4850) | one walk over the characters. `\|` is the only escape `cell()` writes, so it is the only one read |
-| `looksLikeMarkdown` (4867) | a heading **and** either a `### 1.`/`### 2.` section or a table row — a plan with a stray `#` in it still goes to `parse()` |
-| `fromMarkdown` (4873) | `#` day ▸ `##` meal (`## Total pe zi` skipped) ▸ `###` matched on its **leading digit**, so both languages read ▸ table rows below the separator ▸ `1. …` steps |
+| 4958 (`MD_SOURCE`, `MD_TOTALS`, `MD_RULE`, `MD_SEP_ROW`) | the four lines that are *not* content: the source note, the totals stub's heading, a `---`, and a table's `\| --- \|` row |
+| `mdCells` (4970) | one walk over the characters. `\|` is the only escape `cell()` writes, so it is the only one read |
+| `looksLikeMarkdown` (4987) | a heading **and** either a `### 1.`/`### 2.` section or a table row — a plan with a stray `#` in it still goes to `parse()` |
+| `fromMarkdown` (4993) | `#` day ▸ `##` meal (`## Total pe zi` skipped) ▸ `###` matched on its **leading digit**, so both languages read ▸ table rows below the separator ▸ `1. …` steps |
 
 The rules and the one thing that does not survive (an ingredient's group)
 are in `docs/RECIPES.md` § C, "Reading it back".
 
-#### `fromHtml` (4966–5058) — the shareable page, read back
+#### `fromHtml` (5086–5178) — the shareable page, read back
 
 `fromHtml(text)` → `{ days, source }`, the same shape, out of a page
 `buildHtmlDoc()` wrote. It is what lets a plan somebody was *sent* become a
 plan they can edit, and what fills the meal library (below).
-`looksLikeRecipeHtml` (4993) is the sniff `analyse()` asks first, ahead of
+`looksLikeRecipeHtml` (5113) is the sniff `analyse()` asks first, ahead of
 `looksLikeMarkdown`.
 
 | Line | What |
 |---|---|
-| `looksLikeRecipeHtml` (4993) | `article.day` **and** `section.meal` both present in the raw text. A regex, not a parse: a page that is not one of ours must not cost a DOM |
-| `htmlQty` (5002) | the `.q` span → the two columns. With the USDA pass on the quantity is an `<input>` and the unit is the text beside it; with it off both are one string, split on `QTY_RE` |
-| `fromHtml` (5012) | `DOMParser` on `text/html` — markup only, no script runs and nothing is fetched. `article.day` ▸ `h2` (the same "Ziua 7 alone is a number, not a name" rule as `fromMarkdown`) ▸ `section.meal[data-kind]` ▸ `h3 .kind`/`.dish` ▸ `ul.ing > li` (`li.grp` names the run under it, `.q` + `.it` are the row, `data-fdc` is the USDA id) ▸ `ol.steps > li` |
+| `looksLikeRecipeHtml` (5113) | `article.day` **and** `section.meal` both present in the raw text. A regex, not a parse: a page that is not one of ours must not cost a DOM |
+| `htmlQty` (5122) | the `.q` span → the two columns. With the USDA pass on the quantity is an `<input>` and the unit is the text beside it; with it off both are one string, split on `QTY_RE` |
+| `fromHtml` (5132) | `DOMParser` on `text/html` — markup only, no script runs and nothing is fetched. `article.day` ▸ `h2` (the same "Ziua 7 alone is a number, not a name" rule as `fromMarkdown`) ▸ `section.meal[data-kind]` ▸ `h3 .kind`/`.dish` ▸ `ul.ing > li` (`li.grp` names the run under it, `.q` + `.it` are the row, `data-fdc` is the USDA id) ▸ `ol.steps > li` |
 
 The ingredient **group** survives this trip and not the markdown one — the
 page has a subheading for it and the table has no column. `data-fdc` is
 written by `mealHtml` (below) and is the same id the markdown's fourth
 column carries.
 
-### `Nutrition` (5076–6509)
+### `Nutrition` (5196–6629)
 
 The USDA tables and everything that turns an ingredient into numbers. It
 sits between the parser and the app because both sides need it: the
@@ -676,24 +676,24 @@ book are `docs/RECIPES.md` § E.
 
 | Line | What |
 |---|---|
-| **`USDA_FOODS`** (5101) | 426 rows, `[id, description, kcal, protein, fat, carb, piece g, cup g, tbsp g]` per 100 g. 363 are FoodData Central's Foundation Foods, compiled out of `FoodData_Central_foundation_food_json_2026-04-30.json`; the 62 whose id starts **`L`** are the staples that set does not have — pâine, paste, miere, cașcaval. An `L` id can never be read as an fdcId |
-| **`MICRO_DEFS`** (5565) / **`MICRO_GROUPS`** (5572) | the **other 38** nutrients, `[key, unit, decimals]` in display order, and the five headings that group them (`gCarb`, `gFat`, `gMin`, `gVit`, `gOther`). `key` is the i18n suffix: `nut_fe`, `nut_b12`, … |
-| **`USDA_MICRO`** (5573) | 363 rows, `fdcId → the 38 values per 100 g`, **sparse** — a hole is the dataset not having measured that nutrient in that food, which is never read as nought. ~42 KB, only the FoodData rows; the 62 `L` staples have none. Fibre falls back `1550 ▸ 2504 (AOAC 2482.25)` and sugars `1534 ▸ the sugars added up`, or rolled oats would read as having no fibre |
-| **`RO_ALIAS`** (5946) | 601 Romanian (and some English) phrases → a row above. Written **already folded**, which is the shape `nfold()` puts a name in |
-| `nfold` (6115) | lowercase, no diacritics, punctuation to spaces; `%` and `.` survive because "lapte 1.5%" is a real ingredient. The cedilla forms are `\u`-escaped, same rule as everywhere else in this file |
-| `micros`/`microGroups` (6152) · **`microsOf`** (6157) · **`microRow`** (6168) · **`microSum`** (6181) | the second table's whole API. `microsOf(id)` is per 100 g, `microRow(row)` is a `forIngredient()` result scaled to its grams, `microSum(rows)` is `{ vals, have, counted, total }` — **`have[i]` is how many rows carried nutrient i**, which is what lets a total say it covers six of nine ingredients instead of quietly summing four. Deliberately **not** part of `forIngredient()`: one screen of a hundred-day book asks that 1,282 times |
-| `head` (6226) | what is left of a name once the notes come off: a `(…)` is a note, a `+`/`,`/`sau` is the parser having failed to split two ingredients, a leading `de ` is what "2 felii **de** pâine" leaves behind |
-| `byWords` (6238) | the English fallback: the words of the name against the words of the descriptions, first word of a description worth two. **Below 0.34 it returns nothing** — a wrong food is worse than none, because a wrong one is silent |
-| **`match`** (6261) | alias on the whole name ▸ the alias phrase that starts **earliest** (longest on a tie) ▸ `byWords`. Earliest because Romanian puts the food first: "morcov ras o conservă de fasole albă" is a row about the carrot |
-| `UNIT_G` (6285) / `qtyValue` (6310) / **`grams`** (6328) | unit → grams, the quantity column's six shapes (`60`, `1,5`, `1/2`, `½`, `1 ½`, `2-3`), and the two multiplied. A unit that names a *thing* — felie, bucată, cană, conservă — takes the food's own portion weight first and sets `guess` when there is none |
-| **the book** (6344–6489) | `learn` (6379) grows it from a plan, `remember` (6442) writes a hand-picked food into it, `rematch` (6460) resolves everything that is not hand-written again, `toJSON`/`fromJSON` (6406, 6421) are the file. An entry marked `hand` supplies its own numbers and is never written over |
-| `forIngredient` (6495) / `forMeal` (6515) / `forDay` (6520) | one row, one meal, one day. `ok` needs both a food **and** a weight; `known` counts the rows that have both, which is what lets a total say it is incomplete |
+| **`USDA_FOODS`** (5221) | 426 rows, `[id, description, kcal, protein, fat, carb, piece g, cup g, tbsp g]` per 100 g. 363 are FoodData Central's Foundation Foods, compiled out of `FoodData_Central_foundation_food_json_2026-04-30.json`; the 62 whose id starts **`L`** are the staples that set does not have — pâine, paste, miere, cașcaval. An `L` id can never be read as an fdcId |
+| **`MICRO_DEFS`** (5685) / **`MICRO_GROUPS`** (5692) | the **other 38** nutrients, `[key, unit, decimals]` in display order, and the five headings that group them (`gCarb`, `gFat`, `gMin`, `gVit`, `gOther`). `key` is the i18n suffix: `nut_fe`, `nut_b12`, … |
+| **`USDA_MICRO`** (5693) | 363 rows, `fdcId → the 38 values per 100 g`, **sparse** — a hole is the dataset not having measured that nutrient in that food, which is never read as nought. ~42 KB, only the FoodData rows; the 62 `L` staples have none. Fibre falls back `1550 ▸ 2504 (AOAC 2482.25)` and sugars `1534 ▸ the sugars added up`, or rolled oats would read as having no fibre |
+| **`RO_ALIAS`** (6066) | 601 Romanian (and some English) phrases → a row above. Written **already folded**, which is the shape `nfold()` puts a name in |
+| `nfold` (6235) | lowercase, no diacritics, punctuation to spaces; `%` and `.` survive because "lapte 1.5%" is a real ingredient. The cedilla forms are `\u`-escaped, same rule as everywhere else in this file |
+| `micros`/`microGroups` (6272) · **`microsOf`** (6277) · **`microRow`** (6288) · **`microSum`** (6301) | the second table's whole API. `microsOf(id)` is per 100 g, `microRow(row)` is a `forIngredient()` result scaled to its grams, `microSum(rows)` is `{ vals, have, counted, total }` — **`have[i]` is how many rows carried nutrient i**, which is what lets a total say it covers six of nine ingredients instead of quietly summing four. Deliberately **not** part of `forIngredient()`: one screen of a hundred-day book asks that 1,282 times |
+| `head` (6346) | what is left of a name once the notes come off: a `(…)` is a note, a `+`/`,`/`sau` is the parser having failed to split two ingredients, a leading `de ` is what "2 felii **de** pâine" leaves behind |
+| `byWords` (6358) | the English fallback: the words of the name against the words of the descriptions, first word of a description worth two. **Below 0.34 it returns nothing** — a wrong food is worse than none, because a wrong one is silent |
+| **`match`** (6381) | alias on the whole name ▸ the alias phrase that starts **earliest** (longest on a tie) ▸ `byWords`. Earliest because Romanian puts the food first: "morcov ras o conservă de fasole albă" is a row about the carrot |
+| `UNIT_G` (6405) / `qtyValue` (6430) / **`grams`** (6448) | unit → grams, the quantity column's six shapes (`60`, `1,5`, `1/2`, `½`, `1 ½`, `2-3`), and the two multiplied. A unit that names a *thing* — felie, bucată, cană, conservă — takes the food's own portion weight first and sets `guess` when there is none |
+| **the book** (6464–6609) | `learn` (6499) grows it from a plan, `remember` (6562) writes a hand-picked food into it, `rematch` (6580) resolves everything that is not hand-written again, `toJSON`/`fromJSON` (6526, 6541) are the file. An entry marked `hand` supplies its own numbers and is never written over |
+| `forIngredient` (6615) / `forMeal` (6635) / `forDay` (6640) | one row, one meal, one day. `ok` needs both a food **and** a weight; `known` counts the rows that have both, which is what lets a total say it is incomplete |
 
 `num(v, dp)` is the one rounding rule for the whole feature, so the
 markdown, the shareable page and the review cards never disagree about
 what 68.7968 is.
 
-### The detail panels (6589–6806)
+### The detail panels (6742–6910)
 
 The 38 numbers behind a caret, in the app. Both the review cards and the
 shareable page grew the same affordance; this is the app's half, and
@@ -701,13 +701,36 @@ shareable page grew the same affordance; this is the app's half, and
 
 | Line | What |
 |---|---|
-| **`microPanel`** (6643) | one panel: the five macros the row already shows, then the 38 headed by group. A group with nothing in it is left out; a nutrient missing from a group that has others is an **em-dash, never a nought**. `have`/`counted` are only passed for a total, and only a genuinely partial number is marked — mark everything and the mark means nothing |
-| `macroList` (6708) | the five, in the shape `microPanel` wants them |
-| **`moreBtn`** (6719) | the caret on any host. It remembers what was open in a `Set` of **model objects** (`view.micro` for ingredients, `view.tot` for meals and days) so a re-render does not shut it, and it **builds its panel the first time it is asked** — 1,282 ingredient rows apiece would be a hundred thousand nodes nobody has looked at |
-| `nutRow` (6742) | the USDA line under an ingredient, now ending in a caret |
-| **`totalsBlock`** (6795) | the `.tot` line — a meal's, then a day's — with the same four numbers, `known/total` when they differ, and the same caret onto `microSum()` |
+| **`microPanel`** (6765) | one panel: the five macros the row already shows, then the 38 headed by group. A group with nothing in it is left out; a nutrient missing from a group that has others is an **em-dash, never a nought**. `have`/`counted` are only passed for a total, and only a genuinely partial number is marked — mark everything and the mark means nothing |
+| `macroList` (6830) | the five, in the shape `microPanel` wants them |
+| **`moreBtn`** (6841) | the caret on any host. It remembers what was open in a `Set` of **model objects** (`view.micro` for ingredients, `view.tot` for meals and days) so a re-render does not shut it, and it **builds its panel the first time it is asked** — 1,282 ingredient rows apiece would be a hundred thousand nodes nobody has looked at |
+| `nutRow` (6864) | the USDA line under an ingredient, now ending in a caret |
+| **`totalsBlock`** (7052) | the `.tot` line — a meal's, then a day's — with the same four numbers, `known/total` when they differ, and the same caret onto `microSum()` |
 
-### The day view (6809–7302)
+### The daily targets (6912–7045)
+
+Four numbers a day is meant to come to, and every day on the list saying
+how close it came. The *why*, and what an empty field means, are
+`docs/RECIPES.md` § I.
+
+| Line | What |
+|---|---|
+| `TARGET_MACROS` (6919) / **`TARGET_BAND`** (6928) / `targets` (6929) / `targetsSet` (6931) | the four in one list — the field's id **is** its i18n key, which is what lets `goalsBlock` label a row without a second table — the ±10 % inside which a day counts as hit, and the values themselves. Each is a number or **`null`**; an empty field is "no opinion about this one" and must never be compared against, which is not the same as a target of nought |
+| **`goalOf(key, value)`** (6937) | the one comparison in the feature: `{ target, value, diff, state, pct }`, or `null` when that macro has no target. `state` is `met` / `under` / `over` and every caller — the block, the chip, the markdown, the shareable page — reads it rather than re-deciding |
+| `readTargets` (6946) / `paintTargets` (6953) | the fields into the values, and back. `paintTargets` is also what `loadPrefs` calls, so a reload puts the numbers back in the boxes |
+| **`paintTargetNote`** (6963) | Atwater in one line: the three macros priced at 4/4/9 against the energy target beside them. Four separate fields cannot show that the two halves of a target disagree, and a set of targets that disagrees with itself is the commonest thing wrong with one |
+| **`goalsBlock`** (6981) | the `.goals` box under a day's `totalsBlock`: one row per macro **that has a target**, each with `value / target`, the word for the gap, and a bar. A day whose ingredients are not all matched is marked `known/total` — part of any shortfall is the book's rather than the plan's |
+| `goalWord` (7028) | the one place a gap becomes words, so the block, the chip and their tooltips never disagree |
+| **`goalChip`** (7037) | the same verdict in one pill on a **collapsed** day (`daySummary`). Energy only: a collapsed day is a line of text, and four comparisons on it is a table |
+
+The targets reach the two files as well: `buildDayMarkdown` writes an
+**`Obiectiv`** and a **`Diferență`** row into `## Total pe zi` (skipped by
+`fromMarkdown`, so nothing has to read them back), and `dayHtml` puts them
+on `table.dtot` as `data-tk`/`data-tp`/`data-tc`/`data-tf` with both rows
+written out — `DOC_JS`'s **`goals()`** then keeps the difference following
+an edited quantity like every other number on that page.
+
+### The day view (7092–7640)
 
 A book of 100 menus is 300 meals — 14,274 DOM nodes and a page 140,729
 pixels tall if every one is rendered. The list is a **view** over
@@ -715,48 +738,48 @@ pixels tall if every one is rendered. The list is a **view** over
 
 | Line | What |
 |---|---|
-| 6846–6858 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
-| 6860 | **`view`** — `{ q, ing, kinds, open, allOpen, micro, tot }`. Every one of those five sets holds **model objects**, not indices: an index drifts the moment a day above it is deleted. `micro` is the ingredients whose detail panel is open, `tot` the meals and days whose totals panel is |
-| 6930 | `dayMatches(day, di)` → the indices of that day's meals that survive the search, the comma-separated ingredient filter (`ingredientTerms`/`mealIngredientHay`) and the chips. A day whose *title* matches keeps all of them — but the ingredient filter is still applied per meal. `termScore`/`markTerms`/`mealHits` (just above) are what a collapsed day uses to show *which* ingredient/step matched, filler words (`FILLER`) discounted |
-| 6957 / 6970 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
-| 6976 / 7004 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
-| 7027 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
-| 7051 | `daySummary` — a day nobody is editing, in one row |
-| 7091 | `daySelect` — move a meal to another day; options filled on first use |
-| **7129** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
-| **7164** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open. It is also what appends the per-meal and per-day `totalsBlock` |
-| 7814 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
+| 7108–7113 | `FOLD` / `fold()` — search folding. The cedilla forms are `\u`-escaped on purpose: they must not appear literally (tests/recipes.js checks) but real text is full of them |
+| 7117 | **`view`** — `{ q, ing, kinds, open, allOpen, micro, tot }`. Every one of those five sets holds **model objects**, not indices: an index drifts the moment a day above it is deleted. `micro` is the ingredients whose detail panel is open, `tot` the meals and days whose totals panel is |
+| 7187 | `dayMatches(day, di)` → the indices of that day's meals that survive the search, the comma-separated ingredient filter (`ingredientTerms`/`mealIngredientHay`) and the chips. A day whose *title* matches keeps all of them — but the ingredient filter is still applied per meal. `termScore`/`markTerms`/`mealHits` (just above) are what a collapsed day uses to show *which* ingredient/step matched, filler words (`FILLER`) discounted |
+| 7214 / 7227 | `shownDays()` — what is on screen; `outputDays()` — what the markdown is built from (the same, when "only the recipes shown" is ticked) |
+| 7233 / 7261 | `renderFilters` (chips, only for kinds the book has), `paintFound` |
+| 7284 | `markInto` — puts the search terms in `<mark>` without letting the text become HTML; matching on the folded string, marks on the original |
+| 7308 | `daySummary` — a day nobody is editing, in one row, ending in **`goalChip`**'s energy verdict when a kcal target is set |
+| 7361 | `daySelect` — move a meal to another day; options filled on first use |
+| **7399** | **`arrangeIntoDays(perDay)`** — a day ends where a meal kind repeats, or, for a flat list with no kinds, `perDay` to a day named in eating order |
+| **7434** | **`renderDays`** — collapsed rows, or the full editor for the days that are open. Eight or fewer just open. It is also what appends the per-meal and per-day `totalsBlock`, and the day's **`goalsBlock`** under it |
+| 8108 | `filtersChanged` — re-renders the markdown only when the output actually depends on the filter |
 
-**Two things must stay in step:** `MEAL_KINDS` (6863) is the one list of
+**Two things must stay in step:** `MEAL_KINDS` (7120) is the one list of
 meal kinds — the `<select>` in a meal header, the filter chips and
-`arrangeIntoDays` all read it. `mealLabel` (6600) is the one place a kind
+`arrangeIntoDays` all read it. `mealLabel` (6722) is the one place a kind
 becomes a word.
 
-### The meal library and the picker (7365–7617)
+### The meal library and the picker (7641–7897)
 
 Composing a day one recipe at a time, rather than reading a whole plan out
 of one file. The *why* is `docs/RECIPES.md` § H.
 
 | Line | What |
 |---|---|
-| `LIB_KEY` (7385) / `LIB_MAX` (7389) | `scula:meals` in the settings store, capped at 400 — a library is a picker, not an archive, and the oldest go first |
-| `pick` (7391) | `{ day, kind, q }` — which day is selected, which flag (empty = "as saved"), and the search box |
-| **`copyMeal`** (7396) | a deep copy of a meal. The ingredient objects must not be shared: the copy on the plan gets its quantity and its food edited and the library's must not follow |
-| `mealSignature` (7413) / **`libAdd`** (7418) | what makes two entries the same recipe (the dish and its ingredients — **not** the flag, and not the method), and the one way in |
-| `saveLibrary` (7427) / `loadLibrary` (7448) | the store, written as the two fields an entry is (`{ meal, src }`) |
-| **`libSum`** (7444) | one entry's four numbers, memoised. The picker redraws every row on every keystroke and `forMeal()` is a matcher run per ingredient; the cache is dropped when the ingredient book changes size |
-| `fillPickDays` (7462) / **`renderPickKinds`** (7483) | the day `<select>` (plus "a new day"), and the flag chips — `MEAL_KINDS` minus `other`, with "as saved" first and default |
-| `libMatches` (7500) / **`renderLibrary`** (7508) | the folded search over the library, and the rows: flag, dish, what it comes to, where it came from |
-| **`addFromLibrary`** (7567) | copy ▸ apply the flag ▸ push onto the chosen day (making one if "a new day") ▸ `learnFrom` ▸ re-render. The day's own `totalsBlock` needs nothing added — it already sums whatever the day holds |
-| `openPicker` (7591) / `closePicker` (7599) | the modal is `#pickModal`, the same chrome as `#helpModal` |
-| **`readLibFile`** (7604) | a file into the library: `fromHtml` or `fromMarkdown` only. There is nothing dependable to take a single recipe out of a guessed parse |
+| `LIB_KEY` (7661) / `LIB_MAX` (7665) | `scula:meals` in the settings store, capped at 400 — a library is a picker, not an archive, and the oldest go first |
+| `pick` (7667) | `{ day, kind, q }` — which day is selected, which flag (empty = "as saved"), and the search box |
+| **`copyMeal`** (7672) | a deep copy of a meal. The ingredient objects must not be shared: the copy on the plan gets its quantity and its food edited and the library's must not follow |
+| `mealSignature` (7689) / **`libAdd`** (7694) | what makes two entries the same recipe (the dish and its ingredients — **not** the flag, and not the method), and the one way in |
+| `saveLibrary` (7703) / `loadLibrary` (7724) | the store, written as the two fields an entry is (`{ meal, src }`) |
+| **`libSum`** (7720) | one entry's four numbers, memoised. The picker redraws every row on every keystroke and `forMeal()` is a matcher run per ingredient; the cache is dropped when the ingredient book changes size |
+| `fillPickDays` (7738) / **`renderPickKinds`** (7759) | the day `<select>` (plus "a new day"), and the flag chips — `MEAL_KINDS` minus `other`, with "as saved" first and default |
+| `libMatches` (7776) / **`renderLibrary`** (7784) | the folded search over the library, and the rows: flag, dish, what it comes to, where it came from |
+| **`addFromLibrary`** (7843) | copy ▸ apply the flag ▸ push onto the chosen day (making one if "a new day") ▸ `learnFrom` ▸ re-render. The day's own `totalsBlock` needs nothing added — it already sums whatever the day holds |
+| `openPicker` (7867) / `closePicker` (7875) | the modal is `#pickModal`, the same chrome as `#helpModal` |
+| **`readLibFile`** (7880) | a file into the library: `fromHtml` or `fromMarkdown` only. There is nothing dependable to take a single recipe out of a guessed parse |
 
 `⊕` in a meal header (`renderDays`) and `+ din bibliotecă` (per day, and
 `#btnPickMeal` under the list) are the two ways in from card 5. The
 picker's own words are built in script, so `data-i` cannot reach them — the
 `scula-ui-lang` handler repaints them instead.
 
-### The markdown (`buildDayMarkdown`, 7648)
+### The markdown (`buildDayMarkdown`, 7927)
 
 The output shape is a contract (`docs/RECIPES.md` § C): `#` day, `##` meal,
 `### 1. Ingrediente` as a four-column table whose last column is the USDA
@@ -766,7 +789,7 @@ totals — which are now numbers rather than a stub. Its third argument is
 the list of meal indices to write, which is how "only the recipes shown"
 narrows a day. Change the shape here and in that doc together.
 
-`macro(v, dp, known)` (7629) and `fdcCell(v)` (7639) are what fills the new
+`macro(v, dp, known)` (7908) and `fdcCell(v)` (7918) are what fills the new
 cells. `macro`'s third argument is the whole point of it: olive oil really
 does have no protein and that cell must say `0`, while an ingredient nobody
 matched has no protein *number* and that cell must stay empty. `fdcCell`
@@ -774,7 +797,7 @@ puts the id first and alone — everything after the `·` is worked out again
 from it and the quantity beside it, which is why the file still round-trips
 byte-identically.
 
-### The shareable HTML page (7841–8802)
+### The shareable HTML page (8123–9164)
 
 One self-contained `.html` file — one stylesheet of its own, one script of
 its own, nothing to fetch — built from the model rather than from the
@@ -782,17 +805,17 @@ markdown. The *why* is `docs/RECIPES.md` § G.
 
 | Line | What |
 |---|---|
-| **`DOC_JS`** (8032) | the totals half of the one script the file carries, and the reason the preview iframe is `sandbox="allow-scripts"` now. Plain ES5: this document may be opened years from now. Everything it needs is on the elements — grams per unit and the four values per 100 g, as `data-` attributes — so there is no table embedded a second time and still nothing to fetch. It is an **array of lines, not a joined string**: `docNutriJs()` (7677) splices the panel half into the same closure, so both share `qty()`/`num()` and `all()` still runs last |
-| **`docMicroTexts`** (8142) / **`docMicroJs`** (8172) | the panel half. The 38 nutrient names, units and group headings cross in already localised, and `nHave` as a `%a`/`%b` template. What ships in the markup is the **data** — one `data-m` per quantity field, the same sparse "index:value per 100 g" (`microAttr`, 7933), ~130 bytes a row — and the panel is built when somebody asks. A written-out panel per ingredient would be 1.5 KB, which on a hundred-day book is two megabytes nobody opens |
-| **`filterHtml`** (8350) / **`docFilterJs`** (8384) | the other half: the search bar under the header — the same two boxes and chips as card 5 — and the ES5 that drives it. It reads the markup it is filtering (`h3`, `ul.ing`, `ol.steps`, `data-kind`), deliberately **not** the nutrition table, or "oil" would answer with every row whose USDA food is named one. The bar ships `hidden` and the script un-hides it, so a page opened with scripting off has no dead box |
-| `jsonForScript` (8314) / `docFilterTexts` (8325) | what crosses into that script: every value escaped past ASCII (the cedilla forms must not appear literally — `tests/recipes.js` checks the preview too), and the counted phrases as templates, so the plural rules of both languages stay in `I18N` |
-| `qtyHtml` (8564) / **`nutriHtml`** (8590) | the quantity as a field, and the table under the method that follows it. An ingredient with no food gets the field but no `data-k`, which is what keeps it out of the total. `nutriHtml` also writes the per-row caret and the empty `tr.mrow` its panel goes into, plus one `details.mtot` for the meal — all `hidden`, un-hidden by the script |
-| `DOC_CSS` (7845) | the whole document's stylesheet as an array of lines: earth palette on screen, `@media print` turning it back into ink, `@page` margins. Kept as strings, like every other builder in this file |
-| `escHtml` (8304) | the only defence the page has. An ingredient name is user text and goes through it |
-| `htmlTitle` (8538) | the field, or the source file's name with its extension and dashes taken off, or the page's own name. Also what `saveHtml()` names the file after |
-| `mealHtml` (8642) / `dayHtml` (8687) | a meal is its kind chip, its dish, an ingredient list and an ordered method; ingredient **groups** become subheadings, which is the thing the markdown table cannot carry. Each `<li>` also carries **`data-fdc`**, the USDA id the row resolved to — the same thing the markdown's fourth column holds, and what `Recipes.fromHtml` reads back |
-| **`buildHtmlDoc`** (8736) | the whole file as one string — the same string the preview iframe shows and the export saves. Order inside `<body>`: header ▸ **filter bar** ▸ contents ▸ days ▸ footer ▸ the one `<script>`, which holds whichever halves this page needs (no bar under two recipes, no totals with the USDA pass off — and no `<script>` at all when neither) |
-| `paintHtml` (8799) | shows or hides card 5, and rebuilds the preview: only while the fold is open, and 250 ms after the typing stops. The fold decides itself once — open at eight days or fewer |
+| **`DOC_JS`** (8339) | the totals half of the one script the file carries, and the reason the preview iframe is `sandbox="allow-scripts"` now. Plain ES5: this document may be opened years from now. Everything it needs is on the elements — grams per unit and the four values per 100 g, as `data-` attributes — so there is no table embedded a second time and still nothing to fetch. It is an **array of lines, not a joined string**: `docNutriJs()` (8629) splices the panel half into the same closure, so both share `qty()`/`num()` and `all()` still runs last |
+| **`docMicroTexts`** (8471) / **`docMicroJs`** (8501) | the panel half. The 38 nutrient names, units and group headings cross in already localised, and `nHave` as a `%a`/`%b` template. What ships in the markup is the **data** — one `data-m` per quantity field, the same sparse "index:value per 100 g" (`microAttr`, 8885), ~130 bytes a row — and the panel is built when somebody asks. A written-out panel per ingredient would be 1.5 KB, which on a hundred-day book is two megabytes nobody opens |
+| **`filterHtml`** (8679) / **`docFilterJs`** (8713) | the other half: the search bar under the header — the same two boxes and chips as card 5 — and the ES5 that drives it. It reads the markup it is filtering (`h3`, `ul.ing`, `ol.steps`, `data-kind`), deliberately **not** the nutrition table, or "oil" would answer with every row whose USDA food is named one. The bar ships `hidden` and the script un-hides it, so a page opened with scripting off has no dead box |
+| `jsonForScript` (8643) / `docFilterTexts` (8654) | what crosses into that script: every value escaped past ASCII (the cedilla forms must not appear literally — `tests/recipes.js` checks the preview too), and the counted phrases as templates, so the plural rules of both languages stay in `I18N` |
+| `qtyHtml` (8893) / **`nutriHtml`** (8919) | the quantity as a field, and the table under the method that follows it. An ingredient with no food gets the field but no `data-k`, which is what keeps it out of the total. `nutriHtml` also writes the per-row caret and the empty `tr.mrow` its panel goes into, plus one `details.mtot` for the meal — all `hidden`, un-hidden by the script |
+| `DOC_CSS` (8139) | the whole document's stylesheet as an array of lines: earth palette on screen, `@media print` turning it back into ink, `@page` margins. Kept as strings, like every other builder in this file |
+| `escHtml` (8633) | the only defence the page has. An ingredient name is user text and goes through it |
+| `htmlTitle` (8867) | the field, or the source file's name with its extension and dashes taken off, or the page's own name. Also what `saveHtml()` names the file after |
+| `mealHtml` (8971) / `dayHtml` (9016) | a meal is its kind chip, its dish, an ingredient list and an ordered method; ingredient **groups** become subheadings, which is the thing the markdown table cannot carry. Each `<li>` also carries **`data-fdc`**, the USDA id the row resolved to — the same thing the markdown's fourth column holds, and what `Recipes.fromHtml` reads back |
+| **`buildHtmlDoc`** (9089) | the whole file as one string — the same string the preview iframe shows and the export saves. Order inside `<body>`: header ▸ **filter bar** ▸ contents ▸ days ▸ footer ▸ the one `<script>`, which holds whichever halves this page needs (no bar under two recipes, no totals with the USDA pass off — and no `<script>` at all when neither) |
+| `paintHtml` (9152) | shows or hides card 5, and rebuilds the preview: only while the fold is open, and 250 ms after the typing stops. The fold decides itself once — open at eight days or fewer |
 
 `dayHtml` also writes a `table.nutri.dtot` per day — the roll-up the
 markdown has always had a place for and never had anything to put in — and
@@ -801,7 +824,7 @@ adding the meals together rather than walking every field twice.
 `mealHtml` puts the meal's kind on the section as `data-kind`, which is
 what the chips in the exported page match against.
 
-`saveHtml` (9220) and `openHtml` (9228) are the two ways out, both in
+`saveHtml` (9573) and `openHtml` (9581) are the two ways out, both in
 section 9: `ScuLaFolder.save()` for the file, a `blob:` URL for a tab (which
 is also how it reaches a printer).
 
@@ -809,10 +832,10 @@ is also how it reaches a printer).
 
 | Line | What |
 |---|---|
-| `nutRow` (6742) | the line under every ingredient in the review cards: the food it matched (an `<input list="usdaList">`, not a `<select>` — 426 options under each of a hundred days' ingredients would be tens of thousands of nodes), and what the quantity comes to |
-| `fillUsdaList` (7773) / `paintNutri` (7784) | the one datalist, filled once at init; the "418 of 444 have a food" line in `#nutriBox` |
-| `learnFrom` (7797) | called from `analyse()` on **every** route in — a PDF, a photo, a paste, an imported `.md` — because the point of the book is that a name is resolved once |
-| `BOOK_KEY` (9243) | `scula:nutrition` in the settings store is where it lives between visits; `saveBookFile`/`readBookFile` (9254, 9260) are how it moves to another device. A `.json` picked or dropped goes there rather than to the parser |
+| `nutRow` (6864) | the line under every ingredient in the review cards: the food it matched (an `<input list="usdaList">`, not a `<select>` — 426 options under each of a hundred days' ingredients would be tens of thousands of nodes), and what the quantity comes to |
+| `fillUsdaList` (8067) / `paintNutri` (8078) | the one datalist, filled once at init; the "418 of 444 have a food" line in `#nutriBox` |
+| `learnFrom` (8091) | called from `analyse()` on **every** route in — a PDF, a photo, a paste, an imported `.md` — because the point of the book is that a name is resolved once |
+| `BOOK_KEY` (9596) | `scula:nutrition` in the settings store is where it lives between visits; `saveBookFile`/`readBookFile` (9607, 9613) are how it moves to another device. A `.json` picked or dropped goes there rather than to the parser |
 
 ---
 

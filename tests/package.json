@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Ad-hoc Playwright checks for editor.html, recipes.html, index.html, calendar.html and voice.html (see README.md). Not part of the apps themselves - see the root CLAUDE.md for why the apps stay dependency-free.",
   "scripts": {
-    "test": "for f in flow stuck gestures stress regression desktop extras withimage infinite undoredo spline spline-touch polyline recipes mealplan graph find nav wbrename wbsaveall wbtodo importance idea mdundo mdlines paste codecopy color calendar drive voice dictate; do node $f.js || exit 1; done"
+    "test": "for f in flow stuck gestures stress regression desktop extras withimage infinite undoredo spline spline-touch polyline recipes mealplan targets graph find nav wbrename wbsaveall wbtodo importance idea mdundo mdlines paste codecopy color calendar drive voice dictate; do node $f.js || exit 1; done"
   },
   "dependencies": {
     "playwright": "^1.62.1"

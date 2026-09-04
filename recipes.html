@@ -313,6 +313,58 @@
      under it), so the day's own total is .daybody > div > .tot — a meal's
      is one level deeper and keeps the surface-2 ground. */
   .daybody > div > .tot{background:var(--surface)}
+
+  /* ---------- daily targets ----------
+     Four numbers somebody wants a day to come to, and every day on the
+     list saying how close it came. A macro with no target set is left out
+     of the comparison entirely: this is an opinion the page is asked for,
+     never one it volunteers. */
+  .tgrid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));
+    gap:.6rem;margin:.7rem 0 .2rem;
+  }
+  .tgrid label.field{margin:0}
+  .goals{
+    margin:.4rem 0 0;padding:.45rem .55rem;border:1px solid var(--border);
+    border-radius:.6rem;background:var(--surface-2);
+    font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--text-2);
+  }
+  .daybody > .goals{background:var(--surface)}
+  .goals .lbl{
+    display:block;font-size:.66rem;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--text-3);
+  }
+  .goals .g{
+    display:grid;
+    grid-template-columns:minmax(5.5rem,auto) auto auto minmax(3rem,1fr);
+    gap:.15rem .6rem;align-items:center;margin:.3rem 0 0;
+  }
+  .goals .gn{color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .goals .gv{color:var(--text)}
+  .goals .gd{font-size:.95em;color:var(--text-2)}
+  .goals .bar{height:.35rem;border-radius:999px;background:var(--border);overflow:hidden}
+  .goals .bar > i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+  .goals .met .gd{color:var(--ok)}
+  .goals .met .bar > i{background:var(--ok)}
+  .goals .over .gd{color:var(--danger)}
+  .goals .over .bar > i{background:var(--danger)}
+  /* An incomplete day is a day whose total is already known to be short —
+     saying it missed the target would be blaming the plan for the book. */
+  .goals .part{display:block;margin:.35rem 0 0;color:var(--text-3);cursor:help}
+  @media (max-width:520px){
+    .goals .g{grid-template-columns:1fr auto auto}
+    .goals .bar{grid-column:1/-1}
+  }
+  /* The same verdict on a day nobody has opened, so a hundred-day book can
+     be scanned for the days that miss. */
+  .daysum .dgoal{
+    margin-left:auto;flex:0 0 auto;font-size:.75rem;font-variant-numeric:tabular-nums;
+    color:var(--text-2);border:1px solid var(--border);border-radius:999px;
+    padding:.05rem .45rem;
+  }
+  .daysum .dgoal.met{color:var(--ok);border-color:var(--ok)}
+  .daysum .dgoal.over{color:var(--danger);border-color:var(--danger)}
+
   .iconbtn{
     background:transparent;border:1px solid var(--border);color:var(--text-2);
     border-radius:.5rem;width:1.9rem;height:1.9rem;line-height:1;
@@ -1805,6 +1857,32 @@
       <!-- ===== 5. review ===== -->
       <div class="card">
         <h2><span class="step">5</span><span data-i="stepCheck">Verifică rețetele</span></h2>
+        <details class="more" id="targetBox">
+          <summary data-i="tgTitle">Obiective zilnice</summary>
+          <p class="hint" data-i="tgIntro">Scrie cât vrei să adune o zi. Fiecare zi se compară singură cu ele — cât s-a strâns, cât mai lipsește, cu cât s-a depășit. Un câmp lăsat gol înseamnă că pentru acel macronutrient nu ai nicio țintă, și nu se compară nimic.</p>
+          <div class="tgrid">
+            <label class="field">
+              <span data-i="tgKcal">kcal</span>
+              <input type="number" id="tgKcal" min="0" step="10" inputmode="numeric" data-i-placeholder="tgPh">
+            </label>
+            <label class="field">
+              <span data-i="tgProt">Proteine (g)</span>
+              <input type="number" id="tgProt" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+            </label>
+            <label class="field">
+              <span data-i="tgCarb">Carbohidrați (g)</span>
+              <input type="number" id="tgCarb" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+            </label>
+            <label class="field">
+              <span data-i="tgFat">Grăsimi (g)</span>
+              <input type="number" id="tgFat" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+            </label>
+          </div>
+          <p class="found" id="tgNote"></p>
+          <div class="row">
+            <button type="button" class="btn mini ghost" id="btnTgClear" data-i="tgClear">Șterge obiectivele</button>
+          </div>
+        </details>
         <div class="filters" id="filters" hidden>
           <label class="search">
             <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
@@ -1956,6 +2034,24 @@ const I18N = {
     nHave:(h, n) => h === n
       ? (n === 1 ? "din singurul ingredient recunoscut" : "din toate cele " + n + " ingrediente recunoscute")
       : "din " + h + " din " + n + " ingrediente recunoscute",
+
+    /* obiectivele zilei — cele patru ținte și verdictul de sub fiecare zi */
+    tgTitle:"Obiective zilnice",
+    tgIntro:"Scrie cât vrei să adune o zi. Fiecare zi se compară singură cu ele — cât s-a strâns, cât mai lipsește, cu cât s-a depășit. Un câmp lăsat gol înseamnă că pentru acel macronutrient nu ai nicio țintă, și nu se compară nimic.",
+    tgKcal:"kcal", tgProt:"Proteine (g)", tgCarb:"Carbohidrați (g)", tgFat:"Grăsimi (g)",
+    tgPh:"fără țintă",
+    tgClear:"Șterge obiectivele",
+    tgNone:"Niciun obiectiv scris încă. Zilele se arată doar cu totalurile lor.",
+    tgSome:n => n === 1 ? "Un obiectiv scris." : n + " obiective scrise.",
+    tgImplied:k => "Cele trei macronutriente fac " + k + " kcal.",
+    tgImpliedOff:(k, d) => "Cele trei macronutriente fac " + k + " kcal, cu " + d + " față de ținta de energie.",
+    tgGoals:"Față de obiective",
+    tgLeft:v => "încă " + v,
+    tgOver:v => v + " peste",
+    tgMet:"la țintă",
+    tgPartial:"Ziua are ingrediente fără aliment, deci totalul ei e sub ce mănânci cu adevărat.",
+    mdTgTarget:"Obiectiv",
+    mdTgDiff:"Diferență",
     gMacro:"Macronutrienți",
     gCarb:"Carbohidrați, în detaliu",
     gFat:"Grăsimi, în detaliu",
@@ -2114,6 +2210,8 @@ const I18N = {
         <li><b>Totalul zilei</b> se reface singur la fiecare masă adăugată, așa că poți compune o zi până la un număr de calorii.</li>
         <li>Rețeta se <i>copiază</i> în zi: o modifici acolo fără să strici ce e în bibliotecă.</li>
       </ul>
+      <h3>Obiective zilnice</h3>
+      <p>Scrie în „Obiective zilnice” cât vrei să adune o zi — calorii, proteine, carbohidrați, grăsimi — și fiecare zi se compară singură cu ele: cât s-a strâns din fiecare, cât mai lipsește sau cu cât s-a depășit. Un câmp lăsat gol nu e o țintă de zero, ci înseamnă că pentru acel macronutrient nu se compară nimic. O zi strânsă arată doar verdictul pe calorii, ca să poți parcurge un plan lung dintr-o privire. Obiectivele ajung și în .md și în pagina .html, ca două rânduri sub totalul zilei.</p>
       <h3>Căutare și filtre</h3>
       <p>Caseta de căutare și lista de ingrediente (separate prin virgulă) restrâng ce se arată — bun pentru un plan lung de zile.</p>
       <h3>Salvare</h3>
@@ -2221,6 +2319,24 @@ const I18N = {
     nHave:(h, n) => h === n
       ? (n === 1 ? "from the one ingredient matched" : "from all " + n + " ingredients matched")
       : "from " + h + " of " + n + " ingredients matched",
+
+    /* the day's targets — the four of them, and the verdict under a day */
+    tgTitle:"Daily targets",
+    tgIntro:"Write what you want a day to come to. Every day compares itself against them — what it has gathered, what is still missing, what it went over by. A field left empty means there is no target for that macro, and nothing is compared.",
+    tgKcal:"kcal", tgProt:"Protein (g)", tgCarb:"Carbohydrate (g)", tgFat:"Fat (g)",
+    tgPh:"no target",
+    tgClear:"Clear the targets",
+    tgNone:"No target set yet. Days show their totals only.",
+    tgSome:n => n === 1 ? "One target set." : n + " targets set.",
+    tgImplied:k => "The three macros come to " + k + " kcal.",
+    tgImpliedOff:(k, d) => "The three macros come to " + k + " kcal, " + d + " off the energy target.",
+    tgGoals:"Against the targets",
+    tgLeft:v => v + " to go",
+    tgOver:v => v + " over",
+    tgMet:"on target",
+    tgPartial:"This day has ingredients with no food matched, so its total is below what is actually eaten.",
+    mdTgTarget:"Target",
+    mdTgDiff:"Difference",
     gMacro:"Macronutrients",
     gCarb:"Carbohydrate, in detail",
     gFat:"Fat, in detail",
@@ -2376,6 +2492,8 @@ const I18N = {
         <li><b>The day total</b> works itself out again on every meal added, so a day can be composed up to a calorie number.</li>
         <li>The recipe is <i>copied</i> into the day: edit it there and the library entry stays as it was.</li>
       </ul>
+      <h3>Daily targets</h3>
+      <p>Write what you want a day to come to under “Daily targets” — calories, protein, carbohydrate, fat — and every day compares itself against them: what it has gathered of each, what is still missing, or what it went over by. A field left empty is not a target of zero; it means nothing is compared for that macro. A collapsed day shows the energy verdict alone, so a long plan can be scanned at a glance. The targets reach the .md and the .html page too, as two rows under the day total.</p>
       <h3>Search and filters</h3>
       <p>The search box and the ingredient list (comma-separated) narrow what's shown — handy for a long book of days.</p>
       <h3>Saving</h3>
@@ -2411,6 +2529,8 @@ function applyUILang(){
   if(local) local.innerHTML = t("ocrLocal");
   if(typeof renderDays === "function" && booted){ renderDays(); renderMarkdown(); }
   if(typeof paintOcrState === "function") paintOcrState();
+  // Built in script, so the data-i loop above cannot reach it.
+  if(typeof paintTargetNote === "function" && booted) paintTargetNote();
 }
 
 /* ============================================================
@@ -6562,6 +6682,8 @@ const els = {
   pickKinds:$("pickKinds"), pickQ:$("pickQ"), pickList:$("pickList"), libCount:$("libCount"),
   btnLibFile:$("btnLibFile"), libFile:$("libFile"), btnLibManual:$("btnLibManual"),
   btnLibClear:$("btnLibClear"), btnPickClose:$("btnPickClose"),
+  targetBox:$("targetBox"), tgKcal:$("tgKcal"), tgProt:$("tgProt"),
+  tgCarb:$("tgCarb"), tgFat:$("tgFat"), tgNote:$("tgNote"), btnTgClear:$("btnTgClear"),
   filters:$("filters"), qBox:$("qBox"), ingBox:$("ingBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
   found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
@@ -6785,6 +6907,141 @@ function nutRow(ing){
   }
   wrap.appendChild(macros);
   return wrap;
+}
+
+/* ---------- daily targets ----------
+   The four numbers a day is meant to come to. They belong to the reader,
+   not to the table: nothing is guessed and nothing is filled in, so a page
+   nobody has told what to aim for behaves exactly as it did before this
+   existed. Each is a number or null — an empty field is "no opinion about
+   this one", which is not the same as a target of nought and must never be
+   compared against. */
+const TARGET_MACROS = [
+  { key:"kcal", el:"tgKcal", dp:0 },
+  { key:"prot", el:"tgProt", dp:1 },
+  { key:"carb", el:"tgCarb", dp:1 },
+  { key:"fat",  el:"tgFat",  dp:1 }
+];
+// A day is never going to land on 2000 kcal exactly, and a page that says
+// so is a page nobody believes. Ten per cent either way is the band inside
+// which a day counts as hit rather than missed.
+const TARGET_BAND = 0.1;
+const targets = { kcal:null, prot:null, carb:null, fat:null };
+
+function targetsSet(){ return TARGET_MACROS.filter(m => targets[m.key] > 0).length; }
+
+/* One number against its target: how far along it is, by how much it is
+   short or over, and which of the three verdicts that makes. `null` when
+   there is no target for this macro — the caller shows nothing at all
+   rather than a comparison against a number the reader never gave. */
+function goalOf(key, value){
+  const tgt = targets[key];
+  if(!(tgt > 0)) return null;
+  const v = value || 0;
+  const diff = v - tgt;
+  const state = Math.abs(diff) <= tgt * TARGET_BAND ? "met" : (diff > 0 ? "over" : "under");
+  return { target:tgt, value:v, diff, state, pct:Math.max(0, v / tgt) };
+}
+
+function readTargets(){
+  TARGET_MACROS.forEach(m => {
+    const raw = String(els[m.el].value || "").replace(",", ".").trim();
+    const v = parseFloat(raw);
+    targets[m.key] = (raw && isFinite(v) && v > 0) ? v : null;
+  });
+}
+function paintTargets(){
+  TARGET_MACROS.forEach(m => {
+    els[m.el].value = targets[m.key] == null ? "" : String(targets[m.key]);
+  });
+  paintTargetNote();
+}
+/* Atwater in one line: the three macros the reader typed, priced at 4/4/9,
+   against the energy they also typed. Four separate fields cannot show
+   that the two halves of a target disagree, and a set of targets that
+   disagrees with itself is the commonest thing wrong with one. */
+function paintTargetNote(){
+  const n = targetsSet();
+  if(!n){ els.tgNote.textContent = t("tgNone"); return; }
+  const parts = [t("tgSome", n)];
+  if(targets.prot > 0 && targets.carb > 0 && targets.fat > 0){
+    const k = targets.prot * 4 + targets.carb * 4 + targets.fat * 9;
+    const d = targets.kcal > 0 ? k - targets.kcal : 0;
+    parts.push(targets.kcal > 0 && Math.abs(d) > targets.kcal * 0.02
+      ? t("tgImpliedOff", Nutrition.num(k, 0),
+          (d > 0 ? "+" : "\u2212") + Nutrition.num(Math.abs(d), 0))
+      : t("tgImplied", Nutrition.num(k, 0)));
+  }
+  els.tgNote.textContent = parts.join(" ");
+}
+
+/* What a day came to, laid beside what it was meant to come to. Only the
+   macros that have a target appear; a day with no target anywhere gets no
+   block at all rather than an empty one. */
+function goalsBlock(sum){
+  const rows = TARGET_MACROS
+    .map(m => ({ m, g:goalOf(m.key, sum[m.key]) }))
+    .filter(r => r.g);
+  if(!rows.length) return null;
+  const box = document.createElement("div");
+  box.className = "goals";
+  const lbl = document.createElement("span");
+  lbl.className = "lbl";
+  lbl.textContent = t("tgGoals");
+  box.appendChild(lbl);
+  rows.forEach(({ m, g }) => {
+    const r = document.createElement("div");
+    r.className = "g " + g.state;
+    const nm = document.createElement("span");
+    nm.className = "gn";
+    nm.textContent = t(m.el);   // the field's id is also its i18n key
+    r.appendChild(nm);
+    const v = document.createElement("span");
+    v.className = "gv";
+    v.textContent = Nutrition.num(g.value, m.dp) + " / " + Nutrition.num(g.target, m.dp);
+    r.appendChild(v);
+    const d = document.createElement("span");
+    d.className = "gd";
+    d.textContent = goalWord(g, m.dp);
+    r.appendChild(d);
+    const bar = document.createElement("span");
+    bar.className = "bar";
+    const fill = document.createElement("i");
+    fill.style.width = Math.min(100, g.pct * 100) + "%";
+    bar.appendChild(fill);
+    r.appendChild(bar);
+    box.appendChild(r);
+  });
+  // A day some of whose ingredients matched no food has a total that is
+  // already short, so part of any shortfall here is the book's rather than
+  // the plan's. Saying which is the difference between a verdict and a
+  // guess dressed up as one.
+  if(sum.known < sum.total){
+    const w = document.createElement("span");
+    w.className = "part";
+    w.textContent = sum.known + "/" + sum.total;
+    w.title = t("tgPartial");
+    box.appendChild(w);
+  }
+  return box;
+}
+function goalWord(g, dp){
+  if(g.state === "met") return t("tgMet");
+  return g.diff > 0 ? t("tgOver", Nutrition.num(g.diff, dp))
+                    : t("tgLeft", Nutrition.num(-g.diff, dp));
+}
+
+/* The same verdict in one chip, for a day nobody has opened. Energy only:
+   a collapsed day is a line of text, and four comparisons on it is a
+   table nobody asked to read. */
+function goalChip(sum){
+  const g = goalOf("kcal", sum.kcal);
+  if(!g) return null;
+  const s = document.createElement("span");
+  s.className = "dgoal " + g.state;
+  s.textContent = Nutrition.num(g.value, 0) + " / " + Nutrition.num(g.target, 0) + " kcal";
+  s.title = goalWord(g, 0);
+  return s;
 }
 
 /* ---------- what a meal, and then a day, comes to ----------
@@ -7065,6 +7322,10 @@ function daySummary(day, di, meals){
   nm.className = "dname";
   markInto(nm, dayTitle(day, di), marks);
   row.appendChild(nm);
+  // The hits are `flex:1 1 100%` and wrap onto their own lines, so they go
+  // on after the chip below rather than interleaved with the meal names —
+  // otherwise the chip's `margin-left:auto` lands it under them.
+  const hits = [];
   meals.forEach(mi => {
     const m = day.meals[mi];
     const s = document.createElement("span");
@@ -7077,9 +7338,18 @@ function daySummary(day, di, meals){
       const h = document.createElement("span");
       h.className = "dhit";
       markInto(h, line, marks);
-      row.appendChild(h);
+      hits.push(h);
     });
   });
+  // How this day did against the energy target, so a hundred-day book can
+  // be scanned for the days that miss without opening one of them.
+  if(targets.kcal > 0){
+    const chip = goalChip(Nutrition.forDay({
+      meals: meals.map(mi => day.meals[mi]).filter(Boolean)
+    }).sum);
+    if(chip) row.appendChild(chip);
+  }
+  hits.forEach(h => row.appendChild(h));
   row.addEventListener("click", () => { view.open.add(day); renderDays(); });
   card.appendChild(row);
   return card;
@@ -7334,7 +7604,13 @@ function renderDays(){
     if(dayMeals.some(m => m.ingredients.length)){
       const rows = [];
       dayMeals.forEach(m => Nutrition.forMeal(m).rows.forEach(r => rows.push(r)));
-      body.appendChild(totalsBlock("mdTotals", rows, Nutrition.forDay({ meals: dayMeals }).sum, day));
+      const dsum = Nutrition.forDay({ meals: dayMeals }).sum;
+      body.appendChild(totalsBlock("mdTotals", rows, dsum, day));
+      // And, when the reader has said what a day should come to, how this
+      // one measures up. Under the total rather than inside it: the total
+      // is what the food is, this is an opinion about it.
+      const goals = goalsBlock(dsum);
+      if(goals) body.appendChild(goals);
     }
 
     const addRow = document.createElement("div");
@@ -7716,6 +7992,21 @@ function buildDayMarkdown(day, di, only){
     L.push("| **" + t("mdTotalRow") + "** | " +
            [macro(day.sum.kcal, 0, dayAny), macro(day.sum.prot, 1, dayAny),
             macro(day.sum.carb, 1, dayAny), macro(day.sum.fat, 1, dayAny)].join(" | ") + " |");
+    // Two more rows in the same five columns when the reader has set
+    // targets: what the day was meant to be, and what it missed by. A macro
+    // with no target leaves both cells empty, which is the same "not known"
+    // an empty cell means everywhere else in this file. `## Total pe zi` is
+    // skipped by fromMarkdown(), so the round trip does not have to read
+    // either of them back.
+    if(targetsSet()){
+      L.push("| " + cell(t("mdTgTarget")) + " | " +
+             TARGET_MACROS.map(m => macro(targets[m.key], m.dp, targets[m.key] > 0)).join(" | ") + " |");
+      L.push("| " + cell(t("mdTgDiff")) + " | " +
+             TARGET_MACROS.map(m => {
+               const g = dayAny ? goalOf(m.key, day.sum[m.key]) : null;
+               return g ? (g.diff > 0 ? "+" : "") + Nutrition.num(g.diff, m.dp) : "";
+             }).join(" | ") + " |");
+    }
     L.push("");
   }
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
@@ -7850,6 +8141,7 @@ const DOC_CSS = [
   "  --bg:#14201A; --surface:#1B2A22; --surface-2:#22342A; --border:#2E4739;",
   "  --text:#F3EEE1; --text-2:#9FB3A5; --text-3:#5A6A60;",
   "  --accent:#C1BB45; --accent-2:#D3CD7C; --on-accent:#1A2117;",
+  "  --ok:#7FA05A; --danger:#C4643C;",
   '  --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;',
   '  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;',
   "}",
@@ -7958,6 +8250,18 @@ const DOC_CSS = [
   "table.nutri tr.miss th,table.nutri tr.miss td{color:var(--text-3)}",
   "table.nutri tfoot th,table.nutri tfoot td{font-weight:700;border-bottom:0;",
   "  border-top:2px solid var(--accent)}",
+  /* ---- the day against its targets ----
+     Two more rows under the total, in the same five columns: what the day
+     was meant to come to, and what it missed by. The accent rule above is
+     the total's alone — these two sit under it quietly, and only the
+     difference is coloured, because that is the only cell with a verdict
+     in it. */
+  "table.nutri tfoot tr.goal th,table.nutri tfoot tr.goal td,",
+  "table.nutri tfoot tr.gdiff th,table.nutri tfoot tr.gdiff td{border-top:0;",
+  "  font-weight:400;color:var(--text-2)}",
+  "table.nutri tfoot tr.goal td.kc,table.nutri tfoot tr.gdiff td.kc{color:var(--text-2);font-weight:400}",
+  "table.nutri tfoot tr.gdiff td.met{color:var(--ok)}",
+  "table.nutri tfoot tr.gdiff td.over{color:var(--danger)}",
   "p.nnote{margin:.5rem 0 0;color:var(--text-3);font-size:.72rem}",
   /* ---- the 38 numbers under the four ----
      A caret on every ingredient row and one under the table, each onto a
@@ -8107,7 +8411,29 @@ const DOC_JS = [
   "    var foot = day.querySelector('table.dtot tfoot tr');",
   "    put(foot, 'kc', num(tot.k, 0)); put(foot, 'pr', num(tot.p, 1));",
   "    put(foot, 'ca', num(tot.c, 1)); put(foot, 'fa', num(tot.f, 1));",
+  "    goals(day, tot);",
   "    microInto(day.querySelector('details.dtotm'), tot, mv, mh, mn);",
+  "  }",
+  "  // The day beside the targets the page was written with, when it was",
+  "  // written with any. The targets themselves are on the table as data",
+  "  // attributes; the difference is worked out here so it follows an",
+  "  // edited quantity like every other number on the page does.",
+  "  var TB = " + TARGET_BAND + ";",
+  "  function goals(day, tot){",
+  "    var tb = day.querySelector('table.dtot');",
+  "    var row = tb && tb.querySelector('tfoot tr.gdiff');",
+  "    if(!row) return;",
+  "    var K = ['kc','pr','ca','fa'], A = ['tk','tp','tc','tf'];",
+  "    var V = [tot.k, tot.p, tot.c, tot.f], D = [0, 1, 1, 1], i;",
+  "    for(i = 0; i < 4; i++){",
+  "      var el = row.querySelector('.' + K[i]);",
+  "      if(!el) continue;",
+  "      var g = parseFloat(tb.getAttribute('data-' + A[i]));",
+  "      if(!(g > 0)){ el.textContent = ''; el.className = K[i]; continue; }",
+  "      var d = V[i] - g;",
+  "      el.textContent = (d > 0 ? '+' : '') + num(d, D[i]);",
+  "      el.className = K[i] + ' ' + (Math.abs(d) <= g * TB ? 'met' : (d > 0 ? 'over' : 'under'));",
+  "    }",
   "  }",
   "  function all(){",
   "    var days = document.querySelectorAll('article.day'), i;",
@@ -8698,7 +9024,15 @@ function dayHtml(slice, i){
   if(els.optNutri.checked && meals.length){
     const day = Nutrition.forDay({ meals: meals });
     L.push('<div class="nwrap">');
-    L.push('<table class="nutri dtot">');
+    // The targets ride on the table rather than in the script, the same
+    // bargain every other number in this file strikes: the markup carries
+    // the data, the script only does arithmetic with it.
+    const tAttr = targetsSet()
+      ? TARGET_MACROS.map((m, i) => targets[m.key] > 0
+          ? ' data-' + ["tk", "tp", "tc", "tf"][i] + '="' + Nutrition.num(targets[m.key], m.dp) + '"'
+          : "").join("")
+      : "";
+    L.push('<table class="nutri dtot"' + tAttr + ">");
     L.push("<caption>" + escHtml(t("mdTotals")) + "</caption>");
     L.push("<thead><tr>" + ["mdColMeal", "mdColKcal", "mdColProt", "mdColCarb", "mdColFat"]
              .map(k => "<th>" + escHtml(t(k)) + "</th>").join("") + "</tr></thead>");
@@ -8718,7 +9052,23 @@ function dayHtml(slice, i){
            '<td class="kc">' + Nutrition.num(day.sum.kcal, 0) + "</td>" +
            '<td class="pr">' + Nutrition.num(day.sum.prot, 1) + "</td>" +
            '<td class="ca">' + Nutrition.num(day.sum.carb, 1) + "</td>" +
-           '<td class="fa">' + Nutrition.num(day.sum.fat, 1) + "</td></tr></tfoot>");
+           '<td class="fa">' + Nutrition.num(day.sum.fat, 1) + "</td></tr>");
+    if(tAttr){
+      // Written out with the numbers an untouched page already shows, so a
+      // file opened with scripting off is right rather than blank; the
+      // script only keeps them right afterwards.
+      L.push('<tr class="goal"><th>' + escHtml(t("mdTgTarget")) + "</th>" +
+             TARGET_MACROS.map((m, i) => '<td class="' + ["kc", "pr", "ca", "fa"][i] + '">' +
+               (targets[m.key] > 0 ? Nutrition.num(targets[m.key], m.dp) : "") + "</td>").join("") +
+             "</tr>");
+      L.push('<tr class="gdiff"><th>' + escHtml(t("mdTgDiff")) + "</th>" +
+             TARGET_MACROS.map((m, i) => {
+               const g = goalOf(m.key, day.sum[m.key]);
+               return '<td class="' + ["kc", "pr", "ca", "fa"][i] + (g ? " " + g.state : "") + '">' +
+                      (g ? (g.diff > 0 ? "+" : "") + Nutrition.num(g.diff, m.dp) : "") + "</td>";
+             }).join("") + "</tr>");
+    }
+    L.push("</tfoot>");
     L.push("</table>");
     L.push("</div>");
     // The day, nutrient by nutrient: the meals above added together rather
@@ -9361,7 +9711,11 @@ async function savePrefs(){
       warmAsked: warmAsked,
       source: els.optSource.checked,
       totals: els.optTotals.checked,
-      nutri: els.optNutri.checked
+      nutri: els.optNutri.checked,
+      // Written whole rather than as four keys, so "no target for this
+      // one" stays a null in the file instead of a missing key that reads
+      // the same as a key this version has not heard of yet.
+      targets: { kcal:targets.kcal, prot:targets.prot, carb:targets.carb, fat:targets.fat }
     }));
   }catch(e){}
 }
@@ -9381,6 +9735,15 @@ async function loadPrefs(){
   if(p && typeof p.source === "boolean") els.optSource.checked = p.source;
   if(p && typeof p.totals === "boolean") els.optTotals.checked = p.totals;
   if(p && typeof p.nutri === "boolean") els.optNutri.checked = p.nutri;
+  const tg = p && p.targets;
+  TARGET_MACROS.forEach(m => {
+    const v = tg ? Number(tg[m.key]) : NaN;
+    targets[m.key] = isFinite(v) && v > 0 ? v : null;
+  });
+  paintTargets();
+  // A reader who has set targets wants to see them; one who has not should
+  // not have to shut a fold they never opened.
+  els.targetBox.open = targetsSet() > 0;
 }
 
 els.btnPick.addEventListener("click", () => els.file.click());
@@ -9427,6 +9790,24 @@ els.btnAddDay.addEventListener("click", () => {
   model.days.push(day);
   view.open.add(day);
   renderDays(); renderMarkdown();
+});
+
+/* ---- the daily targets ---- */
+TARGET_MACROS.forEach(m => {
+  els[m.el].addEventListener("input", () => {
+    readTargets();
+    paintTargetNote();
+    // Every day on the list is measured against these, and so are the
+    // markdown and the shareable page — all three follow the same numbers.
+    renderDays();
+    renderMarkdown();
+    savePrefs();
+  });
+});
+els.btnTgClear.addEventListener("click", () => {
+  TARGET_MACROS.forEach(m => { targets[m.key] = null; });
+  paintTargets();
+  renderDays(); renderMarkdown(); savePrefs();
 });
 
 /* ---- the meal picker ---- */
@@ -9632,7 +10013,8 @@ window.addEventListener("scula-ui-lang", ev => {
 window.ScuLaRecipes = { Recipes, PdfText, Jpx, Nutrition, model, analyse, allMarkdown,
                         buildDayMarkdown, buildHtmlDoc, renderDays, renderMarkdown,
                         prepImage, OCR, saveBookFile, readBookFile, learnFrom,
-                        openPicker, closePicker, libAdd, saveLibrary, renderLibrary };
+                        openPicker, closePicker, libAdd, saveLibrary, renderLibrary,
+                        targets, readTargets, paintTargets, goalOf, targetsSet };
 
 })();
 </script>

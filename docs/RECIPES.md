@@ -309,6 +309,8 @@ choice. One file per day:
 | --- | --- | --- | --- | --- |
 | Mic dejun: Terci de ovăz proteic | 341 | 31.5 | 43.6 | 5 |
 | **Total** | 341 | 31.5 | 43.6 | 5 |
+| Obiectiv | 2000 | 150 | 200 | 60 |
+| Diferență | -1659 | -118.5 | -156.4 | -55 |
 ```
 
 Fixed points:
@@ -336,6 +338,12 @@ Fixed points:
 - `## Total pe zi` / `## Day total` has one row per meal plus a `**Total**`
   row. It used to be an empty stub waiting for this pass; it now carries
   the numbers. It can be turned off.
+- **`Obiectiv` / `Diferență`** (`Target` / `Difference`) are two further
+  rows in that same table, and only when the reader has set daily targets
+  (§ I). Same five columns; a macro with no target leaves both cells empty,
+  which is the same "not known" an empty cell means everywhere else here.
+  Nothing reads them back — `fromMarkdown` skips the whole `## Total pe zi`
+  section — so they cost the round trip nothing.
 - **An empty cell means "not known", not "zero".** Olive oil really does
   have no protein and that cell says `0`; an ingredient nothing matched has
   no protein *number* and its cells stay blank, and it is left out of the
@@ -846,7 +854,79 @@ the only thing that can change what an already-saved recipe adds up to.
 
 ---
 
-## I. Testing
+## I. Daily targets — what a day was meant to come to
+
+§ E turns a day into four numbers. That is only half of what somebody
+composing a plan wants to know: the other half is *whether those numbers
+are the ones they were aiming at*. The targets are that half. Four fields
+in card 5 — **kcal, proteine, carbohidrați, grăsimi** — and every day on
+the list measured against them.
+
+They are the reader's numbers, not the table's. **Nothing is guessed and
+nothing is filled in by default**: a page nobody has told what to aim for
+behaves exactly as it did before this existed — no block under a day, no
+chip on a collapsed one, no extra rows in either file it writes. There is
+no default target because there is no such thing as a default person, and a
+page that invented one would be handing out dietary advice it is in no
+position to give.
+
+### An empty field is not a target of nought
+
+Each target is a number **or `null`**. An empty field means "I have no
+opinion about this macro", and a macro with no opinion is left out of every
+comparison rather than compared against zero — which would mark every day
+as wildly over. It is the same rule the whole feature already runs on: in
+the ingredient table an empty cell means *not known*, never *nought*
+(§ C).
+
+### The three verdicts
+
+`goalOf(key, value)` is the one comparison, and everything reads its answer
+rather than deciding again:
+
+| State | When | Shown as |
+|---|---|---|
+| `met` | within **±10 %** of the target (`TARGET_BAND`) | *la țintă* · green |
+| `under` | more than 10 % below | *încă 160* · plain |
+| `over` | more than 10 % above | *160 peste* · red |
+
+The band exists because a day is never going to land on 2000 kcal exactly,
+and a page that says a day of 1994 missed is a page nobody believes twice.
+
+### Where the verdict shows
+
+| Where | What |
+|---|---|
+| under a day, in card 5 | a `.goals` block beneath the day's own `TOTAL PE ZI`: one row per macro that has a target — `value / target`, the gap in words, and a bar. Under the total rather than inside it, because the total is what the food *is* and this is an opinion about it |
+| a **collapsed** day | one pill: `1840 / 2000 kcal`, coloured by the same three states. Energy only — a collapsed day is a line of text, and four comparisons on it is a table nobody asked to read. It is what lets a hundred-day book be scanned for the days that miss |
+| the markdown | an `Obiectiv` and a `Diferență` row in `## Total pe zi` (§ C) |
+| the shareable page | the same two rows under the day table, **and the difference follows an edited quantity** — the targets ride on `table.dtot` as `data-tk`/`data-tp`/`data-tc`/`data-tf` and the file's own script does the arithmetic, the same bargain § E's totals strike |
+
+A day some of whose ingredients matched no food is marked `known/total`
+beside the comparison. Part of any shortfall there is the ingredient
+book's rather than the plan's, and saying which is the difference between a
+verdict and a guess dressed up as one.
+
+### The note under the fields
+
+Four separate boxes cannot show that the two halves of a target disagree,
+and that is the commonest thing wrong with a set of targets. So the fields
+are priced back: protein and carbohydrate at 4 kcal/g, fat at 9, added up
+and put beside the energy target — *"Cele trei macronutriente fac 1940
+kcal, cu −60 față de ținta de energie."* Nothing is corrected; the reader
+is simply told, which is all the page is in a position to do.
+
+### Where they live
+
+In the same settings record as everything else on the page
+(`scula:recipes`, § E), written whole as a `targets` object so that "no
+target for this one" stays a `null` in the file rather than a missing key.
+They come back into the fields on the next visit, and the fold opens by
+itself for somebody who has set them.
+
+---
+
+## J. Testing
 
 `tests/recipes.js` — a plain Node + Playwright script like the rest of that
 folder, but it serves the repo over `http://127.0.0.1` instead of `file://`
@@ -947,5 +1027,23 @@ second meal landing on the same day under its own flag; the day total being
 the meals on it added up **and** being on screen; and the library still
 being there after a reload.
 
-Run: `/apptest recipes` and `/apptest mealplan`. (Testing conventions:
-`HANDOFF.md` § "Testing approach used throughout".)
+`tests/targets.js` is the daily targets' own script (§ I), same style and
+same server. It types into the four fields for real, so the input listener
+and `savePrefs()` are on the path rather than bypassed, and then checks
+what the numbers are worth: that a page with no targets set shows no
+comparison anywhere and writes no extra markdown rows; that an **empty
+field stays out of the comparison** rather than being read as a target of
+nought; all three verdicts against a day whose own totals set them up, with
+the words and the bar under each; the note pricing the three macros at
+4/4/9 and catching a set of targets that disagrees with the energy beside
+it; the `Obiectiv` and `Diferență` rows in `## Total pe zi`, with the same
+markdown still reading back as its days; the energy chip on a day nobody
+has opened; the exported page carrying `data-tk`…`data-tf` on the day table
+with both foot rows written out — and, **driven inside the exported file
+itself**, its difference row following an edited quantity and turning red
+once the day has gone past; the four numbers surviving a reload into the
+fields; and *Șterge obiectivele* putting the page back exactly where it
+started.
+
+Run: `/apptest recipes`, `/apptest mealplan` and `/apptest targets`.
+(Testing conventions: `HANDOFF.md` § "Testing approach used throughout".)
