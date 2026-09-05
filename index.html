@@ -3001,6 +3001,7 @@ Use the toolbar above to insert formatting.
     </div>
     <div class="field-hint" id="idea-hint"></div>
     <div class="modal-actions">
+      <button class="btn" id="btn-idea-dictate" onclick="toggleIdeaDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
       <button class="btn" onclick="closeIdeaModal()" data-i="cancelBtn">Cancel</button>
       <button class="btn btn-primary" onclick="saveIdea()" data-i="ideaSaveBtn" data-i-title="ideaSaveTip" title="File this idea (Ctrl+Enter)">Save idea</button>
     </div>
@@ -6245,7 +6246,10 @@ function openIdeaModal() {
     el.selectionStart = el.selectionEnd = el.value.length;
   }, 40);
 }
-function closeIdeaModal() { document.getElementById('idea-modal').classList.remove('open'); }
+function closeIdeaModal() {
+  document.getElementById('idea-modal').classList.remove('open');
+  if (document.getElementById('btn-idea-dictate').classList.contains('active')) toggleIdeaDictation();
+}
 
 // Says where the idea will land, updated on every keystroke — the whole
 // point of the box is that you can fire it off without thinking.
@@ -8632,28 +8636,32 @@ document.addEventListener('keydown', e => {
     return { mime:"", ext:"webm" };
   }
 
-  /* ── where dictated text goes ── */
+  /* ── where dictated text goes ──
+     Defaults to the main editor textarea, but toggleDictation() accepts an
+     override target — the 💡 idea modal points it at #idea-text so the same
+     engine/queue/pill machinery can dictate into either box. */
   const ins = { mode:"append", pos:0, emitted:false };
   let lastCaret = null;   // editor selection captured the moment focus leaves it
+  let target = editor;
   editor.addEventListener("blur", () => {
     lastCaret = { start: editor.selectionStart, end: editor.selectionEnd };
   });
   function beginInsert(){
     ins.emitted = false;
-    if(document.activeElement === editor){
-      ins.mode = "cursor"; ins.pos = editor.selectionEnd;
-    } else if(lastCaret){
+    if(document.activeElement === target){
+      ins.mode = "cursor"; ins.pos = target.selectionEnd;
+    } else if(target === editor && lastCaret){
       ins.mode = "cursor"; ins.pos = Math.min(lastCaret.end, editor.value.length);
     } else {
-      ins.mode = "append"; ins.pos = editor.value.length;
+      ins.mode = "append"; ins.pos = target.value.length;
     }
   }
   function emit(raw){
     const text = (raw || "").replace(/\s+/g, " ").trim();
     if(!text) return;
-    const val = editor.value;
-    const at = (ins.mode === "cursor" && document.activeElement === editor)
-      ? editor.selectionEnd
+    const val = target.value;
+    const at = (ins.mode === "cursor" && document.activeElement === target)
+      ? target.selectionEnd
       : Math.min(ins.pos, val.length);
     const before = val.slice(0, at);
     let prefix = "";
@@ -8663,16 +8671,17 @@ document.addEventListener('keydown', e => {
       prefix = " ";
     }
     const chunk = prefix + text;
-    editor.setRangeText(chunk, at, at, "end");
+    target.setRangeText(chunk, at, at, "end");
     ins.pos = at + chunk.length;
     ins.emitted = true;
-    editor.selectionStart = editor.selectionEnd = ins.pos;
-    editor.scrollTop = editor.scrollHeight;
-    updatePreview(); updateStatus(); scheduleAutosave();
+    target.selectionStart = target.selectionEnd = ins.pos;
+    target.scrollTop = target.scrollHeight;
+    if(target === editor){ updatePreview(); updateStatus(); scheduleAutosave(); }
+    else { target.dispatchEvent(new Event("input", { bubbles:true })); }
   }
   function tailPrompt(){
-    const upto = ins.pos || editor.value.length;
-    const tail = editor.value.slice(Math.max(0, upto - 400), upto).trim();
+    const upto = ins.pos || target.value.length;
+    const tail = target.value.slice(Math.max(0, upto - 400), upto).trim();
     const bits = [];
     if(S.hint) bits.push(S.hint);
     if(tail) bits.push(tail);
@@ -8687,7 +8696,8 @@ document.addEventListener('keydown', e => {
   }
   function hidePill(){ document.getElementById("dictate-pill").hidden = true; }
   function setBtn(on){
-    const b = document.getElementById("btn-dictate");
+    const id = target === editor ? "btn-dictate" : "btn-idea-dictate";
+    const b = document.getElementById(id);
     if(b) b.classList.toggle("active", on);
   }
   function toast(msg){ try{ if(window.ScuLaFolder) window.ScuLaFolder.toast(msg); }catch(e){} }
@@ -8855,17 +8865,26 @@ document.addEventListener('keydown', e => {
     live.active = false; setBtn(false); hidePill();
   }
 
-  /* ── the one entry point, wired to the toolbar button ── */
+  /* ── the one entry point, wired to the toolbar button and the 💡 idea
+     modal alike — an optional target textarea points dictated text at
+     something other than the main editor. ── */
   let opening = false;
-  window.toggleDictation = async function(){
-    if(rec.active){ stopApi(); return; }
-    if(live.active){ stopLive(); return; }
+  window.toggleDictation = async function(targetEl){
+    if(rec.active || live.active){
+      if(rec.active) stopApi();
+      if(live.active) stopLive();
+      return;
+    }
     if(opening) return;
     if(!window.isSecureContext){ fail(t("dictateInsecure")); return; }
+    target = targetEl || editor;
     opening = true;
     try{ await loadSettings(); } finally { opening = false; }
     if(S.engine === "live") startLive();
     else startApi();
+  };
+  window.toggleIdeaDictation = function(){
+    window.toggleDictation(document.getElementById("idea-text"));
   };
 })();
 
