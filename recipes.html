@@ -1804,7 +1804,7 @@
       <!-- ===== 3. raw text ===== -->
       <div class="card" id="textCard" hidden>
         <h2><span class="step">3</span><span data-i="stepText">Textul citit</span></h2>
-        <p class="hint" style="margin:0 0 .5rem" data-i="textHint">Corectează aici ce a citit greșit, apoi analizează din nou.</p>
+        <p class="hint" id="textHint" style="margin:0 0 .5rem" data-i="textHint">Corectează aici ce a citit greșit, apoi analizează din nou.</p>
         <textarea id="rawText" spellcheck="false" data-i-placeholder="rawPlaceholder"></textarea>
         <div class="row" style="margin-top:.6rem">
           <button type="button" class="btn primary" id="btnParse" data-i="reparse">Analizează textul</button>
@@ -1972,8 +1972,12 @@ const I18N = {
     ocrAutoPh:"automat",
     ocrLocal:"Lăsate goale, adresele se caută întâi lângă pagină (<code>./ocr/…</code>) și abia apoi pe internet. Pune aici o cale proprie dacă ții motorul în altă parte.",
     stepText:"Textul citit",
-    textHint:"Corectează aici ce a citit greșit, apoi analizează din nou. Sau scrie o rețetă direct: o listă de ingrediente cu cantități, urmată de metoda de preparare.",
+    textHint:"Corectează aici ce a citit greșit, apoi analizează din nou.",
+    textHintPaste:"Lipește aici textul rețetei, apoi apasă „Analizează textul”.",
+    textHintManual:"Scrie rețeta direct: o listă de ingrediente cu cantități, apoi „Mod de preparare:” urmat de pași. Apasă „Analizează textul” când ai terminat.",
     rawPlaceholder:"Lipește aici textul rețetei, sau scrie-o direct, de exemplu:\n\nPiept de pui\n200g piept de pui\n1 lingură ulei de măsline\n1 cățel usturoi\nSare, piper\n\nMod de preparare:\n1. Tai pieptul de pui cuburi.\n2. Încinge uleiul și călește usturoiul.\n3. Adaugă puiul și prăjește 10 minute.",
+    rawPlaceholderPaste:"Lipește aici textul rețetei.",
+    rawPlaceholderManual:"Scrie rețeta direct, de exemplu:\n\nPiept de pui\n200g piept de pui\n1 lingură ulei de măsline\n1 cățel usturoi\nSare, piper\n\nMod de preparare:\n1. Tai pieptul de pui cuburi.\n2. Încinge uleiul și călește usturoiul.\n3. Adaugă puiul și prăjește 10 minute.",
     reparse:"Analizează textul",
     appendMode:"Adaugă la zilele deja extrase",
     stepCheck:"Verifică rețetele",
@@ -2261,8 +2265,12 @@ const I18N = {
     ocrAutoPh:"automatic",
     ocrLocal:"Left empty, each address is looked for next to the page first (<code>./ocr/…</code>) and only then on the internet. Put a path here if you keep the engine somewhere else.",
     stepText:"The text that was read",
-    textHint:"Fix anything misread here, then analyse it again. Or write a recipe straight in: a list of ingredients with quantities, followed by the cooking method.",
+    textHint:"Fix anything misread here, then analyse it again.",
+    textHintPaste:"Paste the recipe text here, then press “Analyse the text”.",
+    textHintManual:"Write the recipe straight in: a list of ingredients with quantities, then “Method:” followed by the steps. Press “Analyse the text” when you're done.",
     rawPlaceholder:"Paste the recipe text here, or type it directly, for example:\n\nChicken breast\n200g chicken breast\n1 tbsp olive oil\n1 clove garlic\nSalt, pepper\n\nMethod:\n1. Cube the chicken breast.\n2. Heat the oil and fry the garlic.\n3. Add the chicken and fry for 10 minutes.",
+    rawPlaceholderPaste:"Paste the recipe text here.",
+    rawPlaceholderManual:"Write the recipe straight in, for example:\n\nChicken breast\n200g chicken breast\n1 tbsp olive oil\n1 clove garlic\nSalt, pepper\n\nMethod:\n1. Cube the chicken breast.\n2. Heat the oil and fry the garlic.\n3. Add the chicken and fry for 10 minutes.",
     reparse:"Analyse the text",
     appendMode:"Add to the days already extracted",
     stepCheck:"Check the recipes",
@@ -6689,7 +6697,7 @@ const els = {
   btnPick:$("btnPick"), btnCam:$("btnCam"), btnPaste:$("btnPaste"), btnManual:$("btnManual"),
   btnMd:$("btnMd"), mdFile:$("mdFile"),
   status:$("status"), statusText:$("statusText"), btnStop:$("btnStop"),
-  textCard:$("textCard"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
+  textCard:$("textCard"), textHint:$("textHint"), rawText:$("rawText"), btnParse:$("btnParse"), appendMode:$("appendMode"),
   days:$("days"), daysEmpty:$("daysEmpty"), btnAddDay:$("btnAddDay"), btnClear:$("btnClear"),
   btnPickMeal:$("btnPickMeal"), pickModal:$("pickModal"), pickDay:$("pickDay"),
   pickKinds:$("pickKinds"), pickQ:$("pickQ"), pickList:$("pickList"), libCount:$("libCount"),
@@ -9195,9 +9203,23 @@ function paintHtml(){
 /* ============================================================
    8. Getting the text in
    ============================================================ */
+// Card 3's own text changes with how it got opened: something already read
+// (PDF, OCR, a .md/.html import) is there to correct; "Lipesc textul" and
+// "Introdu manual" open an empty box with nothing yet to correct, so the
+// hint — and the placeholder, while the box is still empty — explain what
+// to do instead of how to fix a read that never happened.
+function paintTextStep(mode){
+  const hintKey = mode === "manual" ? "textHintManual" : mode === "paste" ? "textHintPaste" : "textHint";
+  const phKey   = mode === "manual" ? "rawPlaceholderManual" : mode === "paste" ? "rawPlaceholderPaste" : "rawPlaceholder";
+  els.textHint.dataset.i = hintKey;
+  els.textHint.textContent = t(hintKey);
+  els.rawText.dataset.iPlaceholder = phKey;
+  els.rawText.setAttribute("placeholder", t(phKey));
+}
 function ingest(text, sourceName, forceAppend){
   const append = !!(forceAppend || (els.appendMode.checked && model.days.length > 0));
   els.textCard.hidden = false;
+  paintTextStep("read");
   els.rawText.value = append && els.rawText.value ? els.rawText.value + "\n\n" + text : text;
   if(sourceName) model.source = sourceName;
   // Appending parses only the piece that was added: the days already on
@@ -9800,6 +9822,7 @@ els.btnMdHtml.addEventListener("click", () => {
 });
 els.btnPaste.addEventListener("click", () => {
   els.textCard.hidden = false;
+  paintTextStep("paste");
   els.rawText.focus();
   els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
 });
@@ -9807,6 +9830,7 @@ els.btnManual.addEventListener("click", () => {
   // Same box as "Lipesc textul" — the parser doesn't care whether the
   // ingredients+method came from a paste or were typed by hand.
   els.textCard.hidden = false;
+  paintTextStep("manual");
   els.rawText.focus();
   els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
 });
@@ -9862,6 +9886,7 @@ els.btnLibManual.addEventListener("click", () => {
   // meal puts it in the library for good.
   closePicker();
   els.textCard.hidden = false;
+  paintTextStep("manual");
   els.rawText.focus();
   els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
 });

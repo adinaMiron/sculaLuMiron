@@ -31,7 +31,7 @@ work happens in:
 |---|---|---|
 | 1 | **Obiective zilnice** — what a day should come to (§ I) | always. It is the measure everything below is read against, so it is asked before anything arrives, and answered once for the whole plan |
 | 2 | **Sursa** — the file, the photo, the paste, the `.md` | always. The way in |
-| 3 | **Textul citit** — the raw text, correctable | something has been read, or *Lipesc textul* / *Introdu manual* opened the box |
+| 3 | **Textul citit** — the raw text, correctable | something has been read, or *Lipesc textul* / *Introdu manual* opened the box. The hint and the placeholder change with what opened it — "fix what was misread" after a PDF/photo/`.md`/`.html` import (`paintTextStep("read")`, the default inside `ingest()`), "paste it, then analyse" for *Lipesc textul* (`"paste"`), and the ingredients-then-"Mod de preparare:" shape for *Introdu manual*, from either card 2 or the library drawer's own manual entry (`"manual"`) — an empty box has nothing yet to *correct* |
 | 4 | **Markdown** (§ C) | there is at least one day |
 | 5 | **Pagina HTML** (§ G) | there is at least one day |
 | 6 | **Verifică rețetele** — the days, the filters, the totals | something has arrived: a day, **any text in the box**, or a meal library saved on an earlier visit |
