@@ -316,7 +316,7 @@ a `polyline`, whose vertices are all corners already.
 | 4939 | `renderCodeBlock(codeLines, codeLang, forExport)` — plain `<pre><code>` for preview; wrapped with a "Copiază" button for export |
 | **4945** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
 | 5059–5094 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation (checkbox · wikilink · `#tag` · importance pill) |
-| **5097** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 4800) and the textarea to the line (`gotoSourceHeading` 4821) |
+| **5265** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 4963) and the textarea to the line (`gotoSourceHeading` 4988) |
 | 5158 | `updateStatus` |
 | **5146–5971** | **Workbooks** — see the sub-table below |
 | **5973–6115** | **Quick idea capture** — see the sub-table below |
@@ -398,8 +398,8 @@ the preview and the export go through it, and so does the graph scanner.
 | 4551–4563 | `renderAssignee(name, gap)` — the `Name>> ` marker |
 | **4720–4775** | **Importance markers** — `renderImportance` 4720 (the pill; `data-i` on the label in the preview, baked in for the export), `impSetLine` 4735 (put the marker after the bullet / `[ ]` / hashes / assignee, replace or remove), `setImportance` 4744 (what the select and Ctrl+Alt+0..3 call), `impFind` 4765 (a click on a pill searches for its own level) |
 | 4776–4783 | `takeBlockId` / `liWithBlockId` — `…text ^anchor` becomes `id="block-anchor"` |
-| **4800** | **`gotoPreviewAnchor(id)`** — the single jump-to-anchor path: nav panel, wikilinks and the graph all land here |
-| **4821** | **`gotoSourceHeading(line)`** — the same jump for the **Markdown source**: selects the heading's line in the textarea and scrolls to it via `editorMirrorAt` (7843). Nav-panel clicks only; a phone has one pane on screen, so there it does nothing |
+| **4963** | **`gotoPreviewAnchor(id, keepSource)`** — the single jump-to-anchor path: nav panel, wikilinks and the graph all land here. A phone shows one pane at a time (`view-source`/`view-preview` CSS): normally this pulls Preview forward, but the nav panel passes `keepSource: true` so a tap while Source is open stays on Source instead of yanking the reader to Preview |
+| **4988** | **`gotoSourceHeading(line)`** — the same jump for the **Markdown source**: selects the heading's line in the textarea and scrolls to it via `editorMirrorAt` (7843). Nav-panel clicks only; on a phone it runs only when Source is the visible tab (paired with `gotoPreviewAnchor`'s `keepSource`), otherwise it would move the caret and pop the keyboard behind a Preview the reader is looking at |
 | 4809+ | `followWikiLink(name, heading, block)`, `offerToCreateNote(name)` 4827, `createChapterNamed(...)` 4849 |
 
 **The tag pattern runs last in `applyInline`, on purpose.** By then every

@@ -4955,11 +4955,20 @@ function liWithTodo(mark, text, opts, lineIdx) {
 // The one place that jumps the preview to a heading or a ^block. The nav
 // panel, every [[wikilink]] and the graph all land here, so they cannot
 // drift apart on which element is "the" heading with that text.
-function gotoPreviewAnchor(id) {
+// `keepSource` is set only by the nav panel, which is also about to run
+// gotoSourceHeading(): it lets a tap stay on the Source tab instead of
+// forcing Preview forward, since only one pane is on screen on a phone.
+// Wikilinks and the graph always want Preview pulled forward — the target
+// only exists rendered — so they leave it unset.
+function gotoPreviewAnchor(id, keepSource) {
   if (!id) return false;
   const el = preview.querySelector('[id="' + String(id).replace(/["\\]/g, '\\$&') + '"]');
   if (!el) return false;
   if (isMobile()) {
+    if (keepSource && document.body.classList.contains('view-source')) {
+      closeAllPanels();
+      return true;
+    }
     setView('preview');
     closeAllPanels();
   }
@@ -4978,10 +4987,11 @@ function gotoPreviewAnchor(id) {
 // same way fdGoto() shows a search hit.
 function gotoSourceHeading(line) {
   if (typeof line !== 'number' || line < 0) return false;
-  // On a phone only one pane is on screen, and gotoPreviewAnchor() has just
-  // claimed it. Moving the caret there too would raise the keyboard over a
-  // preview the reader asked for, so the source is left alone.
-  if (isMobile()) return false;
+  // On a phone only one pane is on screen. gotoPreviewAnchor() switches to
+  // Preview when that isn't already the open tab, so only move the caret
+  // here when Source is the one visible — otherwise it would raise the
+  // keyboard behind a Preview the reader is looking at.
+  if (isMobile() && !document.body.classList.contains('view-source')) return false;
   const start = fdOffsetOfLine(editor.value, line);
   const nl = editor.value.indexOf('\n', start);
   editor.focus();
@@ -5301,9 +5311,11 @@ function updateNav() {
     item.appendChild(label);
 
     // clicking takes both panes to that heading: the preview by its id,
-    // the Markdown source by the line it was read from
+    // the Markdown source by the line it was read from. On a phone this
+    // stays on whichever tab is already open instead of always jumping to
+    // Preview — see gotoPreviewAnchor()'s `keepSource`.
     item.addEventListener('click', () => {
-      gotoPreviewAnchor(slug);
+      gotoPreviewAnchor(slug, true);
       gotoSourceHeading(line);
       navTree.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       item.classList.add('active');
