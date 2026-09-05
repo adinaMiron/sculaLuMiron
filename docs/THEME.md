@@ -40,18 +40,24 @@ have. Copy one of their `:root` blocks when starting a new page.
 | `--danger` | `#C4643C` | `#C4643C` | `#C4643C` |
 | `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
-| `--graph-*` | — | — | 8 node-role tokens, see below |
+| `--graph-*` | — | — | 13 node-role tokens, see below |
 | `--imp-*` | — | — | 3 importance levels, see below |
 
-`index.html` alone carries a `--graph-*` block (`:root` 25-35):
+`index.html` alone carries a `--graph-*` block (`:root` 30-48):
 one token per kind of node in the knowledge graph — `--graph-note`,
 `--graph-active`, `--graph-heading`, `--graph-block`, `--graph-tag`,
-`--graph-unresolved`, `--graph-attachment`, `--graph-edge`. Every value is
+`--graph-unresolved`, `--graph-attachment`, `--graph-edge` — plus five for
+the **causality diagram** beside it (`docs/FEATURES.md` § M):
+`--graph-keyword`, `--graph-cause-pos` and `--graph-cause-neg` (the two
+signs an arrow can carry: the mossy teal for "more → more", the shared
+terracotta for "more → less"), and `--graph-loop-r` / `--graph-loop-b` (a
+reinforcing feedback loop and a balancing one — the amber the importance
+markers use, and the mist). Every value is
 drawn from the same earth palette (olive, paper, mist, terracotta, and a
 mossy teal for tags), so the graph reads as part of the app rather than as
 a chart pasted into it. They are tokens rather than literals for one
 reason: the canvas resolves them **once**, and the day a light theme lands
-they are the only eight values that need a `[data-theme="light"]` entry.
+they are the only thirteen values that need a `[data-theme="light"]` entry.
 
 `index.html` also carries `--imp-nice` `#6E9E8A` / `--imp-important`
 `#D9A441` / `--imp-vital` `#C4643C` — the three importance markers
@@ -265,7 +271,7 @@ UI chrome, so it should stay a predictable white regardless of what
 theme the app happens to be in when you hit export.
 
 The graph has no such exception: every colour it draws is app chrome, not
-document content, so all eight `--graph-*` tokens are read through
+document content, so all thirteen `--graph-*` tokens are read through
 `GRAPH_COLORS`. The one thing that is *not* a token there is a **group
 colour** — those come from an `<input type="color">` and are the reader's
 own choice about their own notes, the same carve-out `PALETTE` gets.

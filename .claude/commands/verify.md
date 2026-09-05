@@ -45,7 +45,7 @@ needs a UTF-8 PCRE build and dies with *"character code point value in
 \x{} is too large"* where it does not have one.
 
 Expect **only** one known-good hit, prose *about* the cedilla rather than a
-user-facing string: `index.html:~7365` (a comment). `recipes.html` has none
+user-facing string: `index.html:~8005` (a comment). `recipes.html` has none
 (it uses `\u` escapes). Anything else in markup or a UI string is a bug —
 replace ş→ș (U+0219), ţ→ț (U+021B).
 

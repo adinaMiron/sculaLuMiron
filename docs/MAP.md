@@ -290,12 +290,12 @@ a `polyline`, whose vertices are all corners already.
 
 | Lines | Contents |
 |---|---|
-| 8–1544 | App CSS. `:root` **9–47** (earth-palette tokens + `--danger`, the `--graph-*` node roles, and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1145–1189**, **importance markers 1192–1243**, **knowledge graph 1137–1543** |
-| 1559 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone (Google Drive loads its scripts on demand now, from `editor.html` only — see that file's § Google Drive) |
-| 1551–2209 | **Shared nav + `ScuLaFolder`** |
-| 2211–3029 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**), workspace 2784, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
-| **3031–3156** | Markup: **`#graph-view`** overlay + `#wiki-modal` 3132 + `#wiki-suggest` 3152 |
-| 3158–8766 | App script |
+| 8–1671 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1176–1244**, **importance markers 1247–1300**, **causal lines 1304–1327** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1330–1655** (the mode switch **1426**, the `data-gv-only` halves **1428–1431**, the loop rows **1551–1586**) |
+| 1672 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone (Google Drive loads its scripts on demand now, from `editor.html` only — see that file's § Google Drive) |
+| 1674–2800 | **Shared nav + `ScuLaFolder`** |
+| 2802–3166 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**), workspace 2784, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
+| **3168–3287** | Markup: **`#graph-view`** overlay — the scope switch **3175**, the **mode switch `#gv-mode` 3182** (Legături / Cauzalitate), the palette **3206** with its `data-gv-only` halves and the **`#gv-loops`** section **3225–3231** — + `#wiki-modal` 3289 + `#wiki-suggest` 3309 |
+| 3316–9734 | App script |
 
 | Line | Function / region |
 |---|---|
@@ -310,14 +310,15 @@ a `polyline`, whose vertices are all corners already.
 | 4059–4061 | `workingFolderHandle`, `IMAGE_EXTS` — the image **explorer**'s own read-only picker, unrelated to `ScuLaFolder` |
 | 4069–4166 | Responsive: `isSmallScreen`, `isMobile`, `setView`, **`PANELS`** (4080) + `togglePanelById` (4100), `toggleFind`/`findIsOpen` (4155) — one map drives all four side panels |
 | 4253–4306 | Image tree: `createImageItem`, `showImageDetail` 4290, `insertSelectedImage` 4298 |
-| **4319–4812** | **Wikilinks, tags, importance and block anchors** — see the sub-table below |
-| 4901 | `resolveImageSrc` — image-path rewrite, export-only |
-| **4907** | **`applyInline(text, opts)`** |
-| 4939 | `renderCodeBlock(codeLines, codeLang, forExport)` — plain `<pre><code>` for preview; wrapped with a "Copiază" button for export |
-| **4945** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export |
-| 5059–5094 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation (checkbox · wikilink · `#tag` · importance pill) |
-| **5265** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 4963) and the textarea to the line (`gotoSourceHeading` 4988) |
-| 5158 | `updateStatus` |
+| **4646–5075** | **Wikilinks, tags, importance and block anchors** — see the sub-table below |
+| 5077–5121 | `takeBlockId` 5077, **`liWithBlockId`** 5081 (a bullet holding a causal chain keeps its list and gets the chain inside — § M), **`mdCausalHtml`** 5093 (the chips and the signed glyphs the preview draws), `liWithTodo` 5107 |
+| 5230 | `resolveImageSrc` — image-path rewrite, export-only |
+| **5236** | **`applyInline(text, opts)`** |
+| 5268 | `renderCodeBlock(codeLines, codeLang, forExport)` — plain `<pre><code>` for preview; wrapped with a "Copiază" button for export |
+| **5274** | **`parseMarkdown(md, opts)`** — single parser, shared by preview and export. The **causal-line branch is at 5338**, before the heading and list branches, because a chain is a whole line |
+| 5400–5435 | `updatePreview` (+ the graph and search refreshes), the `#preview` click delegation (checkbox · wikilink · `#tag` · importance pill) |
+| **5438** | **`updateNav()`** — the navigation panel. Each heading remembers its **slug and its source line**; a click takes the preview to the slug (`gotoPreviewAnchor` 5124) and the textarea to the line (`gotoSourceHeading` 5149) |
+| 5501 | `updateStatus` |
 | **5146–5971** | **Workbooks** — see the sub-table below |
 | **5973–6115** | **Quick idea capture** — see the sub-table below |
 | 6118–6182 | `loadWorkbooks` 6118 (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
@@ -378,7 +379,7 @@ chapter and written out exactly as Ctrl+S would write it.
 | 6110–6140 | The modal: `openIdeaModal`/`closeIdeaModal`, **`ideaPaintHint`** 6123 (says where the idea will land, on every keystroke) |
 | **6097** | **`saveIdea()`** — the "Chapter:" prefix is stripped **only** when it found a chapter; otherwise Idei keeps the text whole |
 
-### Wikilinks, tags, importance and block anchors (4319–4812) — `docs/FEATURES.md` § C, § G
+### Wikilinks, tags, importance and block anchors (4646–5075) — `docs/FEATURES.md` § C, § G
 
 Obsidian's link syntax, and the only reason the graph has any edges. Both
 the preview and the export go through it, and so does the graph scanner.
@@ -409,41 +410,48 @@ the preview and the export go through it, and so does the graph scanner.
 pass to hide behind, so it blanks the `[[links]]` itself before scanning
 tags; without that, `[[#Inertia]]` mints a tag called `Inertia`.
 
-### Knowledge graph (6185–7156) — `docs/FEATURES.md` § G
+### Knowledge graph (6538–7960) — `docs/FEATURES.md` § G and § M
 
 One `<canvas>`, one force simulation, no library. Obsidian's palette
 (Filters · Groups · Display · Forces) drives `gvSettings`, which persists
-under `scula:graph`.
+under `scula:graph`. **Two modes** share all of it: `links` (§ G — notes and
+`[[links]]`) and `cause` (§ M — key words and what causes what).
 
 | Line | Region |
 |---|---|
-| 6230–6243 | **`GRAPH_COLORS`** — the `--graph-*` tokens resolved **once**; canvas cannot use `var()`. Same rule as `editor.html`'s `CHROME`, see `docs/THEME.md` |
-| 6245–6248 | `GV_BASE_R`, **`GV_STRUCTURAL`** — the settings that change *which* nodes exist (those rebuild; everything else only repaints) |
-| 6251–6271 | `GV_DEFAULTS`, `gvSettings`, `gvLangReady` (a **`var`** — `applyUILang` reads it early) |
-| 6273–6289 | `gv` — the whole live state: nodes, links, `pos` (survives a rebuild), transform, pointers |
-| **6291** | **`scanNote(md)`** — one pass over a note: headings, `^blocks`, `#tags`, `[[links]]`, images, each tagged with the section it sat in |
-| 6348–6366 | `scanNoteCached`, `noteText` 6356 (the open note reads from the **editor**, saved or not), `gvCurrentBookId` |
-| **6368** | **`buildGraph()`** — dispatches on scope |
-| **6398** | **`buildNoteScope`** — the note, its headings as an outline, its blocks, its tags, and `[[#Section]]` links as section-to-section edges |
-| 6471 | `buildNotesScope` — chapters as nodes (`workbook` and `vault`) |
-| 6509–6580 | `gvMatches` 6509, **`applyGraphFilters`** 6513 (search → kinds → local-graph depth → orphans, in that order), `gvNodeColor` 6562 (groups first) |
-| 6582–6634 | **`gvKick`/`gvStep`** (6585) — the four forces and the alpha decay |
-| 6637–6737 | `gvSX`/`gvSY` 6638, `gvRadius` 6639, **`gvDraw`** 6647 (hover dims the unconnected), `gvArrow` 6720 |
-| **6740** | **`gvRebuild()`** — filter, recompute degrees, keep old positions, re-link |
-| 6790–6828 | `gvFit` 6790, `gvZoomAt` 6804/`gvZoomBy`, `gvResize` 6814 (dpr-aware) |
-| **6830–6949** | **`gvHit` + `gvBindStage`** (6854) — the one pointer route: drag a node, drag the background to pan, two fingers to pinch, wheel to zoom |
-| 6901 | `gvOpenNode` — note opens, heading/block jumps, tag becomes the search, unresolved offers to be created |
-| 6968–7043 | Settings: `gvSaveSettings` 6968/load, `gvPaintControls` 6985, `gvBindControls` 7002 (generic over `[data-gv]`), `setGraphScope` 7020 |
-| 7045–7105 | `renderGvGroups`, `renderGvLegend` 7088 |
-| 7107–7175 | `gvLoop` 7107, **`openGraph`** 7113/`closeGraph` 7145/`toggleGraph`, `openGraphForTag` 7157, `gvRefresh` 7164 (debounced; the graph follows the editor) |
-| 7177 | `gvRepaintLang` — what `applyUILang` calls for the generated legend/groups/counts |
+| 6576–6595 | **`GRAPH_COLORS`** — the `--graph-*` tokens resolved **once**; canvas cannot use `var()`. Same rule as `editor.html`'s `CHROME`, see `docs/THEME.md`. Carries the five causal roles (`keyword`, `causePos`, `causeNeg`, `loopR`, `loopB`) |
+| 6596–6599 | `GV_BASE_R`, **`GV_STRUCTURAL`** — the settings that change *which* nodes exist (those rebuild; everything else only repaints); `mode` and `loopsOnly` are both in it |
+| 6602–6626 | `GV_DEFAULTS` (incl. **`mode: 'links'`**, `loopsOnly`), `gvSettings`, `gvLangReady` (a **`var`** — `applyUILang` reads it early) |
+| 6627–6641 | `gv` — the whole live state: nodes, links, `pos` (survives a rebuild), transform, pointers, and **`loops` / `loopPin` / `loopHot`** |
+| **6643–6704** | **Causal statements** (§ M): `CAUSAL_ARROW_RE` **6658** (`->`, `-|`, `~>`, `~|` — it matches `&gt;` too, so the escaped parser path reads the same grammar), `CAUSAL_BULLET_RE`, `causalTerm` **6665** (`raw` keeps the syntax, `label`/`key` are what the diagram needs — folded through `fdFold`), **`parseCausalLine`** **6681**: the whole line has to be a chain |
+| **6706** | **`scanNote(md)`** — one pass over a note: headings, `^blocks`, `#tags`, `[[links]]`, images and **causal chains**, each tagged with the section it sat in |
+| 6770–6788 | `scanNoteCached`, `noteText` 6778 (the open note reads from the **editor**, saved or not), `gvCurrentBookId` |
+| **6790** | **`buildGraph()`** — dispatches on **mode** first, then scope |
+| 6825 | `gvScopeNotes` — the notes the scope covers, as a plain list |
+| **6841** | **`buildCauseScope`** — key words as nodes, one signed (and possibly delayed) arrow per relation; the same relation twice counts once |
+| **6897–6977** | **Circular causality**: `GV_MAX_LOOPS`/`GV_MAX_LOOP_LEN` 6897, **`gvFindLoops`** 6900 (elementary cycles, each started only at its lowest-numbered node; sign = the product of its arrows' signs → R or B; every node and link keeps a `loops` set), `gvLoopColor`/`gvCauseGlyph` 6957, **`gvBowLinks`** 6961 (two arrows between one pair bowed apart) |
+| **6979** | **`buildNoteScope`** — the note, its headings as an outline, its blocks, its tags, and `[[#Section]]` links as section-to-section edges |
+| 7052 | `buildNotesScope` — chapters as nodes (`workbook` and `vault`) |
+| 7090–7161 | `gvMatches` 7090, **`applyGraphFilters`** 7094 (search → kinds → local-graph depth → orphans, in that order), `gvNodeColor` 7143 (groups first) |
+| 7163–7215 | **`gvKick`/`gvStep`** (7166) — the four forces and the alpha decay |
+| 7218–7406 | `gvSX`/`gvSY` 7218, `gvRadius` 7220, **`gvDraw`** 7228 (hover dims the unconnected; a focused loop dims everything else), **`gvDrawCause`** 7326 (sign as colour and as `+`/`−`, dashed with the delay marks, arrowhead on the curve's tangent), `gvArrow` 7388 |
+| **7408** | **`gvRebuild()`** — filter, find the loops (cause mode), apply *only what is in a loop*, recompute degrees, keep old positions, re-link |
+| 7480–7518 | `gvFit` 7480, `gvZoomAt` 7494/`gvZoomBy`, `gvResize` 7504 (dpr-aware) |
+| **7520–7639** | **`gvHit` + `gvBindStage`** (7544) — the one pointer route: drag a node, drag the background to pan, two fingers to pinch, wheel to zoom |
+| 7641 | `gvOpenNode` — note opens, heading/block jumps, tag becomes the search, unresolved offers to be created; a key word falls through to its chapter and section |
+| 7658–7759 | Settings: `gvSaveSettings` 7658/load, `gvPaintControls` 7675, **`gvPaintMode`** 7696 (the `cause` class the `data-gv-only` CSS reads), `gvBindControls` 7701 (generic over `[data-gv]`), `setGraphScope` 7722, **`setGraphMode`** 7735 |
+| 7762–7873 | `renderGvGroups`, **`renderGvLoops`** 7808 (the loop rows — hover lights the loop, click pins it), `gvLoopText` 7847, `renderGvLegend` 7854 (different kinds per mode) |
+| 7875–7947 | `gvLoop` 7875, **`openGraph`** 7881/`closeGraph` 7914/`toggleGraph`, `openGraphForTag` 7926 (forces links mode), `gvRefresh` 7936 (debounced; the graph follows the editor) |
+| 7949 | `gvRepaintLang` — what `applyUILang` calls for the generated legend/groups/loops/counts |
 
 **Two lists must stay in step:** a new setting needs a control in the
 `#graph-view` markup carrying `data-gv="<key>"` **and** an entry in
 `GV_DEFAULTS`; add it to `GV_STRUCTURAL` too if changing it changes which
-nodes exist. `gvBindControls`/`gvPaintControls` then need no edit at all.
+nodes exist, and mark the control `data-gv-only="links"` / `"cause"` when it
+only answers one of the two modes. `gvBindControls`/`gvPaintControls` then
+need no edit at all.
 
-### Search & filter (7152–7673) — `docs/FEATURES.md` § H
+### Search & filter (7962–8480) — `docs/FEATURES.md` § H
 
 One query, the same three scopes the graph has (open chapter · this
 workbook · every workbook), then two rows of chips that narrow what it

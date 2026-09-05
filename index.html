@@ -37,6 +37,16 @@
     --graph-attachment: #C4643C;  /* an image or other attachment           */
     --graph-edge: #3C5A49;        /* a link between two nodes               */
 
+    /* Causality diagram — the graph's second mode. A keyword node, the two
+       signs a causal arrow carries, and the two kinds of feedback loop.
+       Same earth palette, same reason for being tokens: the canvas reads
+       them once. See docs/FEATURES.md § M. */
+    --graph-keyword: #D3CD7C;     /* a key word in a causal statement       */
+    --graph-cause-pos: #6E9E8A;   /* "A -> B": more A, more B               */
+    --graph-cause-neg: #C4643C;   /* "A -| B": more A, less B               */
+    --graph-loop-r: #D9A441;      /* a reinforcing loop (R) — it amplifies  */
+    --graph-loop-b: #9FB3A5;      /* a balancing loop (B) — it damps        */
+
     /* Importance markers (!nice / !important / !vital). Three escalating
        levels, drawn from the same earth palette: the mossy teal the tags
        use, an amber between it and the accent, and the shared terracotta.
@@ -1287,6 +1297,35 @@
     background: color-mix(in srgb, var(--imp-c) 8%, transparent);
   }
 
+  /* A causal line — "stres -> insomnie -| concentrare". The preview draws the
+     chain the graph reads, so the logic is legible in the document too, and
+     the sign of each arrow is a colour rather than a convention to remember.
+     docs/FEATURES.md § M. */
+  .md-causal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin: 10px 0;
+    padding: 7px 10px;
+    border-left: 3px solid var(--graph-keyword);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--graph-keyword) 7%, transparent);
+  }
+  .md-cause-term {
+    padding: 1px 9px;
+    border-radius: 10px;
+    font-size: 0.92em;
+    color: var(--text);
+    background: color-mix(in srgb, var(--graph-keyword) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--graph-keyword) 38%, transparent);
+  }
+  .md-cause-arrow { font-family: var(--font-mono); font-weight: 700; }
+  .md-cause-pos { color: var(--graph-cause-pos); }
+  .md-cause-neg { color: var(--graph-cause-neg); }
+  .md-cause-delay { opacity: 0.75; }
+  li > .md-causal { margin: 4px 0; }
+
   /* Where a heading/block link lands. Ordinary CSS animation rather than the
      inline style the nav panel used to set, so two jumps in a row re-fire. */
   #preview .md-target { animation: mdFlash 1.1s ease-out; border-radius: 4px; }
@@ -1381,6 +1420,15 @@
   .gv-scope button:hover { color: var(--text); }
   .gv-scope button.active { background: var(--accent); color: var(--on-accent); }
   .gv-spacer { flex: 1; }
+  /* The mode switch is the same segmented control as the scope switch —
+     they sit side by side, and the two questions ("which notes?" / "which
+     picture?") deserve the same shape. */
+  .gv-mode button.active { background: var(--graph-keyword); color: var(--on-accent); }
+  /* Half the palette answers only one of the two modes; the other half is
+     meaningless there. Hide rather than disable — a dead slider reads as a
+     bug (see the GV_STRUCTURAL note in docs/FEATURES.md § G). */
+  #graph-view:not(.cause) [data-gv-only="cause"],
+  #graph-view.cause [data-gv-only="links"] { display: none; }
   .gv-stats { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); }
   .gv-bar .btn { padding: 5px 11px; font-size: 11px; }
 
@@ -1496,6 +1544,43 @@
     cursor: pointer;
   }
   .gv-add:hover { border-color: var(--accent); color: var(--accent-2); }
+
+  /* The feedback loops the causality mode found. Hovering a row lights that
+     loop on the canvas; clicking pins it. A loop is either reinforcing (an
+     even number of negative arrows, so it amplifies itself) or balancing. */
+  #gv-loops { display: flex; flex-direction: column; gap: 6px; }
+  .gv-loop {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    width: 100%;
+    padding: 6px 7px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-2);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    line-height: 1.55;
+    text-align: left;
+    cursor: pointer;
+  }
+  .gv-loop:hover { border-color: var(--loop-c); color: var(--text); }
+  .gv-loop.on { border-color: var(--loop-c); background: color-mix(in srgb, var(--loop-c) 14%, var(--bg)); color: var(--text); }
+  .gv-loop-r { --loop-c: var(--graph-loop-r); }
+  .gv-loop-b { --loop-c: var(--graph-loop-b); }
+  .gv-badge {
+    flex-shrink: 0;
+    min-width: 20px;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--on-accent);
+    background: var(--loop-c);
+  }
 
   .gv-legend {
     position: absolute;
@@ -3092,6 +3177,12 @@ Use the toolbar above to insert formatting.
       <button type="button" data-scope="workbook" data-i="scopeWorkbook" data-i-title="scopeWorkbookTip" title="Chapters of this workbook">Workbook</button>
       <button type="button" data-scope="vault" data-i="scopeVault" data-i-title="scopeVaultTip" title="Every workbook">All</button>
     </div>
+    <!-- Two questions, two switches: the scope picks which notes are read,
+         the mode picks which picture is drawn out of them. -->
+    <div class="gv-scope gv-mode" id="gv-mode">
+      <button type="button" data-mode="links" data-i="modeLinks" data-i-title="modeLinksTip" title="Notes and the links between them">🕸 Links</button>
+      <button type="button" data-mode="cause" data-i="modeCause" data-i-title="modeCauseTip" title="Key words and what causes what">⇄ Causality</button>
+    </div>
     <button class="btn" id="gv-settings-btn" onclick="gvToggleSettings()" data-i="gvSettingsBtn" data-i-title="gvSettingsTip" title="Filters, groups, display, forces">⚙ Settings</button>
     <span class="gv-spacer"></span>
     <span class="gv-stats" id="gv-stats"></span>
@@ -3117,15 +3208,25 @@ Use the toolbar above to insert formatting.
         <summary data-i="gvFilters">Filters</summary>
         <div class="gv-body">
           <input type="text" data-gv="search" data-i-placeholder="gvSearchPlaceholder" placeholder="Search notes…">
-          <div class="gv-row"><label for="gv-showTags" data-i="gvTags">Tags</label><input type="checkbox" id="gv-showTags" data-gv="showTags"></div>
-          <div class="gv-row"><label for="gv-showAttachments" data-i="gvAttachments">Attachments</label><input type="checkbox" id="gv-showAttachments" data-gv="showAttachments"></div>
-          <div class="gv-row"><label for="gv-existingOnly" data-i="gvExistingOnly">Existing notes only</label><input type="checkbox" id="gv-existingOnly" data-gv="existingOnly"></div>
-          <div class="gv-row"><label for="gv-showOrphans" data-i="gvOrphans">Orphans</label><input type="checkbox" id="gv-showOrphans" data-gv="showOrphans"></div>
-          <div class="gv-row"><label for="gv-focus" data-i="gvFocus">Only what is connected to this note</label><input type="checkbox" id="gv-focus" data-gv="focus"></div>
-          <div class="gv-field">
+          <div class="gv-row" data-gv-only="links"><label for="gv-showTags" data-i="gvTags">Tags</label><input type="checkbox" id="gv-showTags" data-gv="showTags"></div>
+          <div class="gv-row" data-gv-only="links"><label for="gv-showAttachments" data-i="gvAttachments">Attachments</label><input type="checkbox" id="gv-showAttachments" data-gv="showAttachments"></div>
+          <div class="gv-row" data-gv-only="links"><label for="gv-existingOnly" data-i="gvExistingOnly">Existing notes only</label><input type="checkbox" id="gv-existingOnly" data-gv="existingOnly"></div>
+          <div class="gv-row" data-gv-only="links"><label for="gv-showOrphans" data-i="gvOrphans">Orphans</label><input type="checkbox" id="gv-showOrphans" data-gv="showOrphans"></div>
+          <div class="gv-row" data-gv-only="links"><label for="gv-focus" data-i="gvFocus">Only what is connected to this note</label><input type="checkbox" id="gv-focus" data-gv="focus"></div>
+          <div class="gv-field" data-gv-only="links">
             <span class="gv-lab"><span data-i="gvDepth">Depth</span><span class="gv-val" data-gv-val="depth"></span></span>
             <input type="range" data-gv="depth" min="1" max="5" step="1">
           </div>
+          <div class="gv-row" data-gv-only="cause"><label for="gv-loopsOnly" data-i="gvLoopsOnly">Only what is in a loop</label><input type="checkbox" id="gv-loopsOnly" data-gv="loopsOnly"></div>
+        </div>
+      </details>
+
+      <!-- Causality: the loops the diagram found. Only this mode has them. -->
+      <details class="gv-sec" data-gv-only="cause" open>
+        <summary data-i="gvLoops">Feedback loops</summary>
+        <div class="gv-body">
+          <div class="gv-hint" data-i="gvCauseHint">Write a line like “stress -> insomnia -> stress”. Use -&gt; for “more of”, -| for “less of”, ~&gt; for a delayed effect.</div>
+          <div id="gv-loops"></div>
         </div>
       </details>
 
@@ -3354,6 +3455,20 @@ const I18N = {
     gvAttachmentHint:p=>`Atașament: ${p}`,
     gvLegend_note:"notiță", gvLegend_active:"notița curentă", gvLegend_heading:"secțiune",
     gvLegend_block:"bloc", gvLegend_tag:"etichetă", gvLegend_unresolved:"inexistentă",
+
+    /* ── Diagrama cauzalității (docs/FEATURES.md § M) ── */
+    modeLinks:"🕸 Legături", modeLinksTip:"Notițe și legăturile dintre ele",
+    modeCause:"⇄ Cauzalitate", modeCauseTip:"Cuvinte-cheie și ce pe ce influențează",
+    gvLoopsOnly:"Doar ce intră într-o buclă", gvLoops:"Bucle de reacție",
+    gvCauseHint:"Scrie o linie ca „stres -> insomnie -> stres”. -> înseamnă „mai mult”, -| înseamnă „mai puțin”, ~> un efect întârziat.",
+    gvStatsCause:([n,l,c])=>`${n} ${n===1?'cuvânt':'cuvinte'} · ${l} ${l===1?'relație':'relații'} · ${c} ${c===1?'buclă':'bucle'}`,
+    gvEmptyCause:"Nicio relație de cauzalitate încă. Scrie o linie ca „stres -> insomnie -| concentrare”.",
+    gvLoopNone:"Nicio buclă închisă încă. O buclă apare când un lanț se întoarce de unde a plecat.",
+    gvLoopR:"buclă care se amplifică (R)", gvLoopB:"buclă care se echilibrează (B)",
+    gvCauseTip:([a,b,s])=>`${a} ${s} ${b}`,
+    gvLegend_keyword:"cuvânt-cheie", gvLegend_causePos:"mai mult → mai mult",
+    gvLegend_causeNeg:"mai mult → mai puțin", gvLegend_loopR:"buclă R (amplifică)",
+    gvLegend_loopB:"buclă B (echilibrează)",
     modalTitleNoteLink:"Leagă o notiță", lblLinkTarget:"Țintă", lblAliasOptional:"Text afișat (opțional)",
     wikiFilterPlaceholder:"Filtrează notițe, secțiuni și blocuri…",
     wikiAliasPlaceholder:"Cum să se citească legătura",
@@ -3432,6 +3547,13 @@ const I18N = {
       </ul>
       <h3>Graful de cunoștințe</h3>
       <p>Butonul „Graf” sau <kbd>Ctrl+3</kbd> arată notițele ca noduri legate — poți privi doar notița curentă, tot caietul sau tot ce ai scris. Panoul din stânga are Filtre, Grupuri, Afișare și Forțe.</p>
+      <h3>Diagrama cauzalității</h3>
+      <ul>
+        <li>În graf, comutatorul „⇄ Cauzalitate” desenează cuvintele-cheie și ce pe ce influențează, în loc de notițe și legături.</li>
+        <li>Scrie relația pe un rând singur: <code>stres -&gt; insomnie -&gt; stres</code>. <code>-&gt;</code> înseamnă „mai mult duce la mai mult”, <code>-|</code> înseamnă „mai mult duce la mai puțin”, iar <code>~&gt;</code> / <code>~|</code> marchează un efect care vine mai târziu.</li>
+        <li>Un lanț care se închide e o buclă: <b>R</b> dacă se amplifică singură (cerc vicios sau virtuos), <b>B</b> dacă se echilibrează. Buclele sunt listate în panou — treci cu mouse-ul peste una ca s-o vezi pe desen, apasă ca s-o fixezi.</li>
+        <li>Un cuvânt poate fi scris și ca <code>[[Notiță]]</code> sau <code>#etichetă</code> — diagrama ia cuvântul, previzualizarea păstrează legătura.</li>
+      </ul>
       <h3>Căutare și filtrare</h3>
       <p>🔍 Find, <kbd>Ctrl+4</kbd> sau <kbd>Ctrl+Shift+F</kbd> deschide căutarea: capitol / caiet / tot ce ai scris, cu comutatoarele Aa (majuscule), ⌈ab⌉ (cuvinte întregi), .* (expresie regulată) și ăâ (ignoră diacriticele, activ implicit), plus filtre pe tipul liniei și pe etichete.</p>
       <h3>Idee rapidă</h3>
@@ -3595,6 +3717,20 @@ const I18N = {
     gvAttachmentHint:p=>`Attachment: ${p}`,
     gvLegend_note:"note", gvLegend_active:"current note", gvLegend_heading:"section",
     gvLegend_block:"block", gvLegend_tag:"tag", gvLegend_unresolved:"does not exist",
+
+    /* ── Causality diagram (docs/FEATURES.md § M) ── */
+    modeLinks:"🕸 Links", modeLinksTip:"Notes and the links between them",
+    modeCause:"⇄ Causality", modeCauseTip:"Key words and what causes what",
+    gvLoopsOnly:"Only what is in a loop", gvLoops:"Feedback loops",
+    gvCauseHint:"Write a line like “stress -> insomnia -> stress”. -> means “more of”, -| means “less of”, ~> a delayed effect.",
+    gvStatsCause:([n,l,c])=>`${n} key word${n===1?'':'s'} · ${l} relation${l===1?'':'s'} · ${c} loop${c===1?'':'s'}`,
+    gvEmptyCause:"No causal relations yet. Write a line like “stress -> insomnia -| focus”.",
+    gvLoopNone:"No closed loop yet. A loop appears when a chain comes back to where it started.",
+    gvLoopR:"reinforcing loop (R)", gvLoopB:"balancing loop (B)",
+    gvCauseTip:([a,b,s])=>`${a} ${s} ${b}`,
+    gvLegend_keyword:"key word", gvLegend_causePos:"more → more",
+    gvLegend_causeNeg:"more → less", gvLegend_loopR:"R loop (amplifies)",
+    gvLegend_loopB:"B loop (balances)",
     modalTitleNoteLink:"Link to a note", lblLinkTarget:"Target", lblAliasOptional:"Display text (optional)",
     wikiFilterPlaceholder:"Filter notes, sections and blocks…",
     wikiAliasPlaceholder:"How the link should read",
@@ -3673,6 +3809,13 @@ const I18N = {
       </ul>
       <h3>The knowledge graph</h3>
       <p>The "Graph" button or <kbd>Ctrl+3</kbd> shows notes as connected nodes — look at just the open note, the whole workbook, or everything you've written. The panel on the left has Filters, Groups, Display and Forces.</p>
+      <h3>Causality diagram</h3>
+      <ul>
+        <li>Inside the graph, the "⇄ Causality" switch draws key words and what causes what, instead of notes and links.</li>
+        <li>Write the relation on a line of its own: <code>stress -&gt; insomnia -&gt; stress</code>. <code>-&gt;</code> means "more of this, more of that", <code>-|</code> means "more of this, less of that", and <code>~&gt;</code> / <code>~|</code> mark an effect that arrives later.</li>
+        <li>A chain that closes on itself is a loop: <b>R</b> if it amplifies itself (a vicious or virtuous circle), <b>B</b> if it balances itself. Loops are listed in the panel — rest on one to light it up on the canvas, click to pin it.</li>
+        <li>A key word may also be written as <code>[[Note]]</code> or <code>#tag</code> — the diagram takes the word, the preview keeps the link.</li>
+      </ul>
       <h3>Search and filter</h3>
       <p>🔍 Find, <kbd>Ctrl+4</kbd> or <kbd>Ctrl+Shift+F</kbd> opens search: chapter / workbook / everything, with Aa (match case), ⌈ab⌉ (whole words), .* (regular expression) and ăâ (ignore diacritics, on by default) toggles, plus filters by line kind and by tag.</p>
       <h3>Quick idea capture</h3>
@@ -4937,7 +5080,25 @@ function takeBlockId(line) {
 }
 function liWithBlockId(text, opts) {
   const b = takeBlockId(text);
-  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''}>${applyInline(b.text, opts)}</li>`;
+  // A bullet may hold a causal chain; it stays a bullet, and the chain is
+  // drawn inside it. docs/FEATURES.md § M.
+  const cz = parseCausalLine(b.text);
+  const body = cz ? mdCausalHtml(cz, opts) : applyInline(b.text, opts);
+  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''}>${body}</li>`;
+}
+
+/* The chain as the preview draws it: a chip per key word, a coloured glyph
+   per arrow. The terms go through applyInline, so one written [[like this]]
+   is still a link and one written #like-this is still a tag. */
+function mdCausalHtml(cz, opts) {
+  const html = cz.terms.map((term, i) => {
+    const chip = `<span class="md-cause-term">${applyInline(term.raw, opts)}</span>`;
+    if (i >= cz.arrows.length) return chip;
+    const a = cz.arrows[i];
+    const cls = 'md-cause-arrow ' + (a.sign < 0 ? 'md-cause-neg' : 'md-cause-pos') + (a.delay ? ' md-cause-delay' : '');
+    return chip + `<span class="${cls}">${(a.delay ? '⋯' : '') + (a.sign < 0 ? '⊣' : '→')}</span>`;
+  }).join('');
+  return `<div class="md-causal">${html}</div>`;
 }
 
 // lineIdx is the source line number in editor.value (so a click on the
@@ -5172,6 +5333,18 @@ function parseMarkdown(md, opts) {
       continue;
     } else {
       flushTable();
+    }
+
+    // A causal chain is a whole line — "stres -> insomnie -| concentrare" —
+    // so it is decided before the heading and list branches, and closes an
+    // open list the way any other block does. A bullet holding one is
+    // handled inside liWithBlockId, which keeps it in its list.
+    const cz = parseCausalLine(line);
+    if (cz) {
+      if (inUL) { out.push('</ul>'); inUL = false; }
+      if (inOL) { out.push('</ol>'); inOL = false; }
+      out.push(mdCausalHtml(cz, opts));
+      continue;
     }
 
     const hm = line.match(/^(#{1,6})\s+(.*)/);
@@ -6409,20 +6582,28 @@ const GRAPH_COLORS = {
   unresolved: gvToken('--graph-unresolved'),
   attachment: gvToken('--graph-attachment'),
   edge: gvToken('--graph-edge'),
+  keyword: gvToken('--graph-keyword'),
+  causePos: gvToken('--graph-cause-pos'),
+  causeNeg: gvToken('--graph-cause-neg'),
+  loopR: gvToken('--graph-loop-r'),
+  loopB: gvToken('--graph-loop-b'),
   accent: gvToken('--accent'),
   text: gvToken('--text-2'),
   textStrong: gvToken('--text'),
   fontUI: gvToken('--font-ui') || 'sans-serif'
 };
 // How big a node of each kind starts, before degree and the size slider.
-const GV_BASE_R = { note: 6, heading: 5, block: 4, tag: 4.5, unresolved: 4, attachment: 4.5 };
+const GV_BASE_R = { note: 6, heading: 5, block: 4, tag: 4.5, unresolved: 4, attachment: 4.5, keyword: 5.5 };
 // Changing one of these changes *which* nodes exist, so the graph is rebuilt.
 // Everything else only changes how the same graph looks or moves.
-const GV_STRUCTURAL = new Set(['search', 'showTags', 'showAttachments', 'existingOnly', 'showOrphans', 'focus', 'depth']);
+const GV_STRUCTURAL = new Set(['search', 'showTags', 'showAttachments', 'existingOnly', 'showOrphans', 'focus', 'depth', 'mode', 'loopsOnly']);
 
 const GV_KEY = 'scula:graph';
 const GV_DEFAULTS = {
   scope: 'note',
+  mode: 'links',            // 'links' — notes and [[links]]
+                            // 'cause' — key words and what causes what
+  loopsOnly: false,
   search: '',
   showTags: true,
   showAttachments: false,
@@ -6446,6 +6627,8 @@ var gvLangReady = false;      // var: applyUILang() reads it before this runs
 const gv = {
   open: false, booted: false,
   nodes: [], links: [], byId: new Map(),
+  loops: [], loopPin: -1, loopHot: -1,   // causality mode: the feedback loops
+                                          // found, and the one being lit up
   pos: new Map(),                 // survives a rebuild, so a filter toggle
                                   // does not reshuffle the whole picture
   alpha: 0, scale: 1, tx: 0, ty: 0,
@@ -6455,6 +6638,65 @@ const gv = {
   pointers: new Map(), pinch: null,
   raf: 0, refreshTimer: 0, fitPending: false
 };
+
+/* ── Causal statements ─────────────────────────────────────────────────
+   A second thing a note can say, beside "this links to that": *this causes
+   that*. One line, a chain of key words joined by arrows —
+
+     stres -> insomnie -> stres          a circle: each one feeds the next
+     efort -| oboseală                   more effort, less tiredness
+     investiție ~> profit                the effect arrives later
+
+   Four arrows, two questions each. `>` means the effect moves the same way
+   as its cause (more → more), `|` means it moves the other way (more →
+   less). A `~` instead of the dash means the effect is delayed — the thing
+   that makes a loop oscillate instead of just running away. `-->` reads the
+   same as `->`, because that is what people type.
+
+   The *whole line* has to be a chain, so an arrow inside a sentence is left
+   alone and nothing here fires by accident. docs/FEATURES.md § M. */
+const CAUSAL_ARROW_RE = /\s*(-{1,2}|~)(&gt;|>|\|)\s*/;
+const CAUSAL_BULLET_RE = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/;
+const CAUSAL_MAX_TERM = 64;     // a key word, not a sentence
+const CAUSAL_MAX_TERMS = 12;    // a chain, not a whole essay on one line
+
+// A key word may be written as a [[link]] or a #tag — the diagram wants the
+// word, not the syntax around it.
+function causalTerm(input) {
+  const raw = String(input || '').trim();
+  const label = raw
+    .replace(new RegExp(WIKI_RE.source, 'g'), (m, bang, name, alias) => alias || name)
+    .replace(/^[\s#*_~`"'“„([]+/, '')
+    .replace(/[\s*_`"'”)\].,;:!?]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // `raw` keeps the syntax so the preview can still render a term written
+  // as a [[link]] or a #tag; `label`/`key` are what the diagram needs.
+  return { raw, label, key: fdFold(label.toLowerCase()) };
+}
+
+/* One line in, either a chain or null. `text` must already have any list
+   bullet removed — scanNote and the list branch of parseMarkdown each strip
+   their own, because only they know they had one. */
+function parseCausalLine(text) {
+  const body = String(text || '').trim();
+  // A heading is a heading and a task is a task; a line still carrying its
+  // list marker belongs to the list branch, which strips it and asks again.
+  if (!body || /^#{1,6}\s/.test(body) || /^\[[ xX]\]/.test(body) || CAUSAL_BULLET_RE.test(body)) return null;
+  const re = new RegExp(CAUSAL_ARROW_RE.source, 'g');
+  const terms = [], arrows = [];
+  let m, last = 0;
+  while ((m = re.exec(body)) !== null) {
+    terms.push(causalTerm(body.slice(last, m.index)));
+    arrows.push({ sign: m[2] === '|' ? -1 : 1, delay: m[1] === '~' });
+    last = m.index + m[0].length;
+    if (arrows.length > CAUSAL_MAX_TERMS) return null;
+  }
+  if (!arrows.length) return null;
+  terms.push(causalTerm(body.slice(last)));
+  if (terms.some(t => !t.key || t.label.length > CAUSAL_MAX_TERM)) return null;
+  return { terms, arrows };
+}
 
 /* ── Reading a note ────────────────────────────────────────────────────
    Everything the graph knows about one note's text, in one pass: its
@@ -6476,7 +6718,7 @@ function scanNote(md) {
   const hexRe = new RegExp(HEX_COLOR_RE.source, 'g');
   const imgRe = /!\[[^\]]*\]\(([^)\s"]+)(?:\s+"[^"]*")?\)/g;
 
-  const headings = [], blocks = [], tags = [], links = [], images = [];
+  const headings = [], blocks = [], tags = [], links = [], images = [], causal = [];
   const slugSeen = {};
   let section = null;
 
@@ -6510,9 +6752,16 @@ function scanNote(md) {
     while ((m = tagRe.exec(noWiki)) !== null) tags.push({ tag: m[2], line: i, section });
     imgRe.lastIndex = 0;
     while ((m = imgRe.exec(text)) !== null) images.push({ src: m[1], line: i, section });
+
+    // A causal chain is a whole line, so a heading never is one; a bullet
+    // may be, which is why the marker comes off first.
+    if (!hm) {
+      const cz = parseCausalLine(text.replace(CAUSAL_BULLET_RE, ''));
+      if (cz) causal.push({ terms: cz.terms, arrows: cz.arrows, line: i, section });
+    }
   });
 
-  return { headings, blocks, tags, links, images };
+  return { headings, blocks, tags, links, images, causal };
 }
 
 // Re-scanning every chapter on every keystroke would be wasteful; the text
@@ -6557,10 +6806,169 @@ function buildGraph() {
   const attNode = src => add({ id: 'att:' + src, kind: 'attachment', label: src.split('/').pop(), path: src });
   const unresNode = name => add({ id: 'unres:' + name.toLowerCase(), kind: 'unresolved', label: name, path: name });
 
+  // Causality is a second picture of the same notes, not a fourth scope:
+  // every scope can be read either way.
+  if (gvSettings.mode === 'cause') {
+    const causal = buildCauseScope(nodes, add);
+    return { nodes: Array.from(nodes.values()), links: causal };
+  }
+
   if (gvSettings.scope === 'note') buildNoteScope(nodes, add, join, tagNode, attNode, unresNode);
   else buildNotesScope(gvSettings.scope, add, join, tagNode, attNode, unresNode);
 
   return { nodes: Array.from(nodes.values()), links };
+}
+
+/* The notes the current scope covers — the open one, its workbook, or all
+   of them. The link scopes each build this inline because they need more
+   than the list; causality only needs the list. */
+function gvScopeNotes() {
+  if (gvSettings.scope === 'note') {
+    const home = wikiHome(wbCurrentId);
+    return home ? [home] : [];
+  }
+  const all = wikiNotes();
+  if (gvSettings.scope === 'vault') return all;
+  const bookId = gvCurrentBookId();
+  return all.filter(n => (bookId ? n.bookId === bookId : n.loose));
+}
+
+/* Mode "cause": the nodes are key words rather than notes, and every edge
+   is one arrow of one causal statement — signed, possibly delayed, and
+   pointing the way the writer wrote it. The same relation written twice
+   counts once; the same pair with opposite signs stays two arrows, because
+   "A helps B" and "A hurts B" are two different claims about the world. */
+function buildCauseScope(nodes, add) {
+  const links = [];
+  const seen = new Map();
+
+  const kwNode = (term, note, st) => {
+    if (!term.key) return null;
+    const id = 'kw:' + term.key;
+    const had = nodes.get(id);
+    if (had) { had.notes.add(note.title); return had; }
+    return add({
+      id, kind: 'keyword', label: term.label, path: term.label,
+      noteId: note.id, chapterId: note.chapterId,
+      anchor: st.section ? st.section.slug : '',
+      notes: new Set([note.title])
+    });
+  };
+
+  gvScopeNotes().forEach(note => {
+    scanNoteCached(note.id, noteText(note)).causal.forEach(st => {
+      st.arrows.forEach((arrow, i) => {
+        const a = kwNode(st.terms[i], note, st);
+        const b = kwNode(st.terms[i + 1], note, st);
+        if (!a || !b || a === b) return;      // "x -> x" says nothing
+        const key = a.id + ' ' + b.id + ' ' + arrow.sign + (arrow.delay ? 'd' : '');
+        const had = seen.get(key);
+        if (had) { had.count++; return; }
+        const l = { from: a.id, to: b.id, kind: 'cause', sign: arrow.sign, delay: !!arrow.delay, count: 1 };
+        seen.set(key, l);
+        links.push(l);
+      });
+    });
+  });
+
+  // Outside the note scope the same word can come from several chapters,
+  // and which ones is exactly what the tooltip should say.
+  if (gvSettings.scope !== 'note') {
+    nodes.forEach(n => {
+      if (!n.notes || n.notes.size === 0) return;
+      const from = Array.from(n.notes);
+      n.path = n.label + ' · ' + from.slice(0, 3).join(', ') + (from.length > 3 ? ' …' : '');
+    });
+  }
+  return links;
+}
+
+/* ── Circular causality ───────────────────────────────────────────────
+   A feedback loop is a cycle in the directed graph, and system dynamics
+   reads its sign by multiplying the signs of its arrows: an even number of
+   negative arrows leaves the product positive, and the loop feeds itself
+   (reinforcing, R — a vicious or virtuous circle); an odd number makes it
+   negative, and the loop damps itself (balancing, B — a thermostat).
+
+   Enumeration is a depth-first walk that only ever *starts* a cycle at its
+   lowest-numbered node, which is what stops one loop from being reported
+   once per member. Both caps are there so a dense diagram cannot hang the
+   page — the interesting loops in a hand-written note are short ones. */
+const GV_MAX_LOOPS = 40;
+const GV_MAX_LOOP_LEN = 8;
+
+function gvFindLoops(g) {
+  const order = new Map();
+  g.nodes.forEach((n, i) => order.set(n.id, i));
+  const out = new Map();
+  g.links.forEach(l => {
+    const a = order.get(l.from), b = order.get(l.to);
+    if (a == null || b == null) return;
+    if (!out.has(a)) out.set(a, []);
+    out.get(a).push({ to: b, link: l });
+  });
+
+  const found = [];
+  const path = [], onPath = new Set();
+  let stop = false;
+
+  const walk = (start, at) => {
+    for (const e of (out.get(at) || [])) {
+      if (stop) return;
+      if (e.to < start) continue;                 // its own turn comes later
+      if (e.to === start) {
+        found.push({ start, edges: path.concat([e]) });
+        if (found.length >= GV_MAX_LOOPS) { stop = true; return; }
+        continue;
+      }
+      if (onPath.has(e.to) || path.length + 1 >= GV_MAX_LOOP_LEN) continue;
+      onPath.add(e.to); path.push(e);
+      walk(start, e.to);
+      path.pop(); onPath.delete(e.to);
+    }
+  };
+
+  for (let i = 0; i < g.nodes.length && !stop; i++) {
+    path.length = 0; onPath.clear(); onPath.add(i);
+    walk(i, i);
+  }
+
+  const loops = found.map(f => {
+    const links = f.edges.map(e => e.link);
+    const nodes = [g.nodes[f.start]].concat(f.edges.slice(0, -1).map(e => g.nodes[e.to]));
+    return {
+      links, nodes,
+      sign: links.reduce((p, l) => p * (l.sign || 1), 1),
+      delay: links.some(l => l.delay)
+    };
+  }).sort((a, b) => a.links.length - b.links.length || b.sign - a.sign);
+
+  // Every node and every arrow remembers which loops it belongs to; that is
+  // what the canvas draws with and what "only what is in a loop" filters on.
+  g.nodes.forEach(n => { n.loops = new Set(); });
+  g.links.forEach(l => { l.loops = new Set(); });
+  loops.forEach((loop, i) => {
+    loop.nodes.forEach(n => n.loops.add(i));
+    loop.links.forEach(l => l.loops.add(i));
+  });
+  return loops;
+}
+const gvLoopColor = loop => (loop && loop.sign > 0) ? GRAPH_COLORS.loopR : GRAPH_COLORS.loopB;
+const gvCauseGlyph = l => (l.delay ? '⋯' : '') + (l.sign < 0 ? '⊣' : '→');
+
+/* Two arrows between the same pair — "A feeds B, B feeds A", the shortest
+   circle there is — would be one line drawn straight. Bow them apart. */
+function gvBowLinks(links) {
+  const pairs = new Map();
+  links.forEach(l => {
+    const k = l.from < l.to ? l.from + ' ' + l.to : l.to + ' ' + l.from;
+    if (!pairs.has(k)) pairs.set(k, []);
+    pairs.get(k).push(l);
+  });
+  pairs.forEach(arr => {
+    if (arr.length === 1) { arr[0].bow = 0; return; }
+    arr.forEach((l, i) => { l.bow = (i % 2 ? -1 : 1) * (0.16 + Math.floor(i / 2) * 0.13); });
+  });
 }
 
 /* Scope "note": the inside of one note. The note is the root, its headings
@@ -6835,11 +7243,19 @@ function gvDraw() {
     });
   }
 
+  // Causality mode: one loop can be lit up, pinned by a click in the palette
+  // or lit for as long as the pointer rests on its row.
+  const focus = gv.loops.length ? (gv.loopPin >= 0 ? gv.loopPin : gv.loopHot) : -1;
+
   ctx.lineCap = 'round';
   for (const l of gv.links) {
     const a = l.a, b = l.b;
     if (!a || !b) continue;
     const on = !hot || (lit.has(a.id) && lit.has(b.id));
+    if (l.kind === 'cause') {
+      gvDrawCause(ctx, l, gvSX(a.x), gvSY(a.y), gvSX(b.x), gvSY(b.y), on, focus);
+      continue;
+    }
     ctx.globalAlpha = on ? (hot ? 0.95 : 0.55) : 0.08;
     ctx.strokeStyle = on && hot ? GRAPH_COLORS.accent : GRAPH_COLORS.edge;
     ctx.lineWidth = gvSettings.linkThickness * (l.kind === 'outline' ? 0.9 : 1.3);
@@ -6857,7 +7273,8 @@ function gvDraw() {
   ctx.textBaseline = 'top';
 
   for (const n of gv.nodes) {
-    const on = !hot || lit.has(n.id);
+    const inFocus = focus < 0 || (n.loops && n.loops.has(focus));
+    const on = (!hot || lit.has(n.id)) && inFocus;
     const x = gvSX(n.x), y = gvSY(n.y), r = Math.max(1.5, gvRadius(n) * gv.scale);
     ctx.globalAlpha = on ? 1 : 0.12;
     ctx.fillStyle = gvNodeColor(n);
@@ -6871,6 +7288,17 @@ function gvDraw() {
       ctx.beginPath();
       ctx.arc(x, y, Math.max(0.5, r - 1.6), 0, Math.PI * 2);
       ctx.fill();
+    }
+    // A key word that sits on a feedback loop wears that loop's colour, so
+    // a circle reads as a circle before anyone opens the loop list.
+    if (n.loops && n.loops.size) {
+      const li = (focus >= 0 && n.loops.has(focus)) ? focus : Math.min.apply(null, Array.from(n.loops));
+      ctx.globalAlpha = on ? 1 : 0.12;
+      ctx.strokeStyle = gvLoopColor(gv.loops[li]);
+      ctx.lineWidth = (focus >= 0 && n.loops.has(focus)) ? 2.4 : 1.4;
+      ctx.beginPath();
+      ctx.arc(x, y, r + 3.5, 0, Math.PI * 2);
+      ctx.stroke();
     }
     if (n === hot || n.active) {
       ctx.globalAlpha = on ? 1 : 0.2;
@@ -6888,6 +7316,73 @@ function gvDraw() {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+/* One causal arrow, drawn the way a causal-loop diagram draws one: its sign
+   is a colour and a glyph (+ / −), a delayed effect is dashed and carries
+   the two cross-strokes that mean "later", and an arrow that closes a
+   feedback loop is heavier than one that does not. Curved rather than
+   straight when it has a twin going the other way. */
+function gvDrawCause(ctx, l, x1, y1, x2, y2, on, focus) {
+  const inFocus = focus >= 0 && l.loops && l.loops.has(focus);
+  const inLoop = !!(l.loops && l.loops.size);
+  const dim = !on || (focus >= 0 && !inFocus);
+  const col = inFocus ? gvLoopColor(gv.loops[focus])
+    : l.sign < 0 ? GRAPH_COLORS.causeNeg : GRAPH_COLORS.causePos;
+
+  const dx = x2 - x1, dy = y2 - y1;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / d, uy = dy / d;               // along the arrow
+  const nx = -uy, ny = ux;                      // across it
+  const bow = (l.bow || 0) * d;
+  const cx = (x1 + x2) / 2 + nx * bow, cy = (y1 + y2) / 2 + ny * bow;
+
+  ctx.globalAlpha = dim ? 0.09 : inLoop ? 0.95 : 0.6;
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = gvSettings.linkThickness * (inFocus ? 2.4 : inLoop ? 1.7 : 1.1);
+  if (l.delay) ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cx, cy, x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // The head sits on the tangent at the far end, backed off the node.
+  const back = Math.max(2, gvRadius(l.b) * gv.scale) + 1;
+  let tx = x2 - cx, ty = y2 - cy;
+  const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+  tx /= tl; ty /= tl;
+  if (d > back + 8) {
+    const hx = x2 - tx * back, hy = y2 - ty * back;
+    const size = 5 + gvSettings.linkThickness * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(hx - tx * size + ty * size * 0.55, hy - ty * size - tx * size * 0.55);
+    ctx.lineTo(hx - tx * size - ty * size * 0.55, hy - ty * size + tx * size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Midpoint of the curve (t = 0.5 on a quadratic), where both marks go.
+  const mx = 0.25 * x1 + 0.5 * cx + 0.25 * x2;
+  const my = 0.25 * y1 + 0.5 * cy + 0.25 * y2;
+  if (l.delay && d > 44) {
+    ctx.lineWidth = Math.max(1.2, gvSettings.linkThickness * 1.4);
+    ctx.beginPath();
+    ctx.moveTo(mx - ux * 2.5 + nx * 5, my - uy * 2.5 + ny * 5);
+    ctx.lineTo(mx - ux * 2.5 - nx * 5, my - uy * 2.5 - ny * 5);
+    ctx.moveTo(mx + ux * 2.5 + nx * 5, my + uy * 2.5 + ny * 5);
+    ctx.lineTo(mx + ux * 2.5 - nx * 5, my + uy * 2.5 - ny * 5);
+    ctx.stroke();
+  }
+  if (!dim && gv.scale > 0.5) {
+    ctx.globalAlpha = 1;
+    ctx.font = 'bold 12px ' + GRAPH_COLORS.fontUI;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(l.sign < 0 ? '−' : '+', mx + nx * 10, my + ny * 10);
+  }
 }
 
 function gvArrow(ctx, x1, y1, x2, y2, back) {
@@ -6914,6 +7409,22 @@ function gvRebuild() {
   if (!gv.open) return;
   invalidateWikiIndex();
   const g = applyGraphFilters(buildGraph());
+
+  // Loops are found *after* the filters, because a search that drops a key
+  // word genuinely opens the circle it was part of.
+  if (gvSettings.mode === 'cause') {
+    gv.loops = gvFindLoops(g);
+    if (gvSettings.loopsOnly) {
+      g.nodes = g.nodes.filter(n => n.loops.size);
+      const ids = new Set(g.nodes.map(n => n.id));
+      g.links = g.links.filter(l => l.loops.size && ids.has(l.from) && ids.has(l.to));
+    }
+    gvBowLinks(g.links);
+  } else {
+    gv.loops = [];
+  }
+  if (gv.loopPin >= gv.loops.length) gv.loopPin = -1;
+  gv.loopHot = -1;
 
   const deg = new Map();
   g.links.forEach(l => {
@@ -6942,12 +7453,16 @@ function gvRebuild() {
   gvKick(0.9);
   gvPaintStats();
   gvPaintEmpty();
+  renderGvLoops();
   if (gv.fitPending) { gv.fitPending = false; setTimeout(gvFit, 420); }
 }
 
 function gvPaintStats() {
   const el = document.getElementById('gv-stats');
-  if (el) el.textContent = t('gvStats', [gv.nodes.length, gv.links.length]);
+  if (!el) return;
+  el.textContent = gvSettings.mode === 'cause'
+    ? t('gvStatsCause', [gv.nodes.length, gv.links.length, gv.loops.length])
+    : t('gvStats', [gv.nodes.length, gv.links.length]);
 }
 function gvPaintEmpty() {
   const el = document.getElementById('gv-empty');
@@ -6956,7 +7471,9 @@ function gvPaintEmpty() {
   el.classList.toggle('show', !has);
   if (!has) el.textContent = gvSettings.scope === 'workbook' && !gvCurrentBookId()
     ? t('gvEmptyWorkbook')
-    : (gvSettings.search ? t('gvEmptySearch') : t('gvEmpty'));
+    : gvSettings.search ? t('gvEmptySearch')
+      : gvSettings.mode === 'cause' ? t('gvEmptyCause')
+        : t('gvEmpty');
 }
 
 /* ── View: fit, zoom, pan ─────────────────────────────────────────── */
@@ -7169,7 +7686,16 @@ function gvPaintControls() {
   });
   document.querySelectorAll('#gv-scope button').forEach(b =>
     b.classList.toggle('active', b.dataset.scope === gvSettings.scope));
+  document.querySelectorAll('#gv-mode button').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === gvSettings.mode));
   renderGvGroups();
+}
+
+// Which half of the palette applies is a CSS question (see [data-gv-only]),
+// so the mode lives on the overlay as a class.
+function gvPaintMode() {
+  const view = document.getElementById('graph-view');
+  if (view) view.classList.toggle('cause', gvSettings.mode === 'cause');
 }
 
 function gvBindControls() {
@@ -7188,6 +7714,9 @@ function gvBindControls() {
   document.querySelectorAll('#gv-scope button').forEach(b => {
     b.addEventListener('click', () => setGraphScope(b.dataset.scope));
   });
+  document.querySelectorAll('#gv-mode button').forEach(b => {
+    b.addEventListener('click', () => setGraphMode(b.dataset.mode));
+  });
 }
 
 function setGraphScope(scope) {
@@ -7197,6 +7726,21 @@ function setGraphScope(scope) {
   gvSaveSettings();
   gvPaintControls();
   renderGvLegend();               // a different scope has different kinds in it
+  gv.fitPending = true;
+  gvRebuild();
+}
+
+// Same shape as setGraphScope: a different mode is a different picture too,
+// so the remembered positions go with it.
+function setGraphMode(mode) {
+  if (!mode || mode === gvSettings.mode) return;
+  gvSettings.mode = mode;
+  gv.pos.clear();
+  gv.loopPin = -1; gv.loopHot = -1;
+  gvSaveSettings();
+  gvPaintControls();
+  gvPaintMode();
+  renderGvLegend();
   gv.fitPending = true;
   gvRebuild();
 }
@@ -7258,13 +7802,64 @@ function gvAddGroup() {
   renderGvGroups();
 }
 
+/* The feedback loops the diagram found, shortest first. Resting on a row
+   lights that loop on the canvas; clicking pins it, so you can let go of
+   the mouse and still read the circle. */
+function renderGvLoops() {
+  const box = document.getElementById('gv-loops');
+  if (!box) return;
+  box.textContent = '';
+  if (gvSettings.mode !== 'cause') return;
+  if (!gv.loops.length) {
+    const hint = document.createElement('div');
+    hint.className = 'gv-hint';
+    hint.textContent = t('gvLoopNone');
+    box.appendChild(hint);
+    return;
+  }
+  gv.loops.forEach((loop, i) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'gv-loop ' + (loop.sign > 0 ? 'gv-loop-r' : 'gv-loop-b');
+    row.classList.toggle('on', gv.loopPin === i);
+    row.title = loop.sign > 0 ? t('gvLoopR') : t('gvLoopB');
+
+    const badge = document.createElement('span');
+    badge.className = 'gv-badge';
+    badge.textContent = (loop.sign > 0 ? 'R' : 'B') + (i + 1);
+    const text = document.createElement('span');
+    text.textContent = gvLoopText(loop);
+    row.appendChild(badge);
+    row.appendChild(text);
+
+    row.addEventListener('mouseenter', () => { gv.loopHot = i; gvDraw(); });
+    row.addEventListener('mouseleave', () => { gv.loopHot = -1; gvDraw(); });
+    row.addEventListener('click', () => {
+      gv.loopPin = gv.loopPin === i ? -1 : i;
+      renderGvLoops();
+      gvDraw();
+    });
+    box.appendChild(row);
+  });
+}
+// "stres → insomnie ⊣ odihnă → stres" — the circle written out, closing on
+// the word it started from so it reads as a circle rather than a list.
+function gvLoopText(loop) {
+  const parts = [];
+  loop.nodes.forEach((n, i) => { parts.push(n.label, gvCauseGlyph(loop.links[i])); });
+  parts.push(loop.nodes[0].label);
+  return parts.join(' ');
+}
+
 function renderGvLegend() {
   const box = document.getElementById('gv-legend');
   if (!box) return;
   box.textContent = '';
-  const kinds = gvSettings.scope === 'note'
-    ? ['note', 'heading', 'block', 'tag', 'unresolved']
-    : ['note', 'active', 'tag', 'unresolved'];
+  const kinds = gvSettings.mode === 'cause'
+    ? ['keyword', 'causePos', 'causeNeg', 'loopR', 'loopB']
+    : gvSettings.scope === 'note'
+      ? ['note', 'heading', 'block', 'tag', 'unresolved']
+      : ['note', 'active', 'tag', 'unresolved'];
   kinds.forEach(k => {
     const span = document.createElement('span');
     const dot = document.createElement('span');
@@ -7303,6 +7898,7 @@ function openGraph(scope) {
     gv.booted = true;
   }
   gvPaintControls();
+  gvPaintMode();
   renderGvLegend();
   // On a phone the palette is a bottom sheet over the canvas, so it starts
   // closed and the ⚙ button brings it up — the same call the side panels
@@ -7329,6 +7925,9 @@ function toggleGraph() {
 }
 function openGraphForTag(tag) {
   gvSettings.search = tag ? '#' + tag : '';
+  // A tag is a link-mode notion; opening the causality diagram on it would
+  // answer a question nobody asked.
+  if (gvSettings.mode !== 'links') { gvSettings.mode = 'links'; gv.pos.clear(); }
   openGraph(wbCurrentId ? 'workbook' : 'note');
 }
 
@@ -7351,6 +7950,7 @@ function gvRepaintLang() {
   if (!gv.open) return;
   renderGvLegend();
   renderGvGroups();
+  renderGvLoops();
   gvPaintStats();
   gvPaintEmpty();
 }
@@ -8354,6 +8954,13 @@ function exportHtml() {
     :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-nice) { border-left: 3px solid #6E9E8A; padding-left: 10px; }
     :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-important) { border-left: 3px solid #D9A441; padding-left: 10px; }
     :is(p, li, h1, h2, h3, h4, h5, h6):has(> .md-imp-vital) { border-left: 3px solid #C4643C; padding-left: 10px; }
+    .md-causal { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 10px 0; padding: 7px 10px; border-left: 3px solid #B8B04A; border-radius: 4px; background: #FAF8E9; }
+    li > .md-causal { margin: 4px 0; }
+    .md-cause-term { padding: 1px 9px; border-radius: 10px; font-size: 0.92em; background: #F2EFD6; border: 1px solid #DDD7A8; }
+    .md-cause-arrow { font-family: 'Courier New', monospace; font-weight: 700; }
+    .md-cause-pos { color: #3F7A63; }
+    .md-cause-neg { color: #A1421C; }
+    .md-cause-delay { opacity: 0.75; }
     strong { font-weight: 700; }
     em { font-style: italic; }
     img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }

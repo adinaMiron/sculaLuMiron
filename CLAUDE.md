@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 8961 | 77k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
+| `index.html` | 9736 | 84k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram | dark (earth) |
 | `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
@@ -53,6 +53,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The infinite canvas, or what an export's size is | `docs/MAP.md` § "The infinite canvas" |
 | PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md` **or a shareable HTML page written here**, searching a big plan, **USDA nutrition**, **the meal library / breakfast-brunch-lunch-dinner flags / the per-day sum**, **the daily calorie/macro targets a day is measured against** | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
+| The **causality diagram** — `a -> b` / `-\|` / `~>`, key words, feedback loops, circular causality | `docs/FEATURES.md` § M |
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
@@ -178,7 +179,10 @@ week block's geometry and drag-to-create on the hour grid, search, the
 four facet filters, and both exports plus the `.ics` round-trip; it also
 covers the `@date` markdown marker and the 📅 push in `index.html`),
 and for
-`index.html`'s knowledge graph (`graph.js`), its search &
+`index.html`'s knowledge graph (`graph.js`), the **causality diagram** in
+the same view (`cause.js` — the `->`/`-|`/`~>` syntax in the preview and in
+the diagram, the mode switch, the signed and delayed arrows on the canvas,
+and the feedback loops found and classified R/B), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
@@ -233,11 +237,15 @@ change, not "later":
 ## Known issues (unfixed — confirm before "fixing" something else)
 
 1. `README.md` is a stub.
-2. `tests/nav.js` fails one check — "and the preview too": clicking the
-   first heading scrolls the source back to the top but leaves `#preview`
-   at ~700px. Reproduces on the `index.html` in `HEAD`, so it is not
-   whatever you just changed. The other 15 checks pass.
-3. **Not** an issue, though it reads like one: the calendar never talks to
+2. `tests/nav.js` fails two checks — the phone pass: "on a phone the click
+   shows the preview" and "and leaves the source (and the keyboard) alone".
+   A click on a nav item leaves the view on `view-source` and flashes
+   nothing. Reproduces on the `index.html` in `HEAD`, so it is not whatever
+   you just changed. Every other check passes.
+3. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
+   now sits between them. Also reproduces on `HEAD`; either the button moved
+   or the check is stale. Its other checks pass.
+4. **Not** an issue, though it reads like one: the calendar never talks to
    Google. Events reach Google Calendar as an export the person carries
    over — the `.ics` through its Import screen, or the JSON through the
    API. No OAuth, no network call, deliberately — see Rule 3.

@@ -1371,6 +1371,113 @@ against the rows still there.
 
 ---
 
+## M. The causality diagram (`index.html`)
+
+The graph view's **second mode**. § G draws notes and the `[[links]]`
+between them; this draws **key words and what causes what**, out of the
+same notes, in whichever scope is selected. The switch sits beside the
+scope switch in the graph bar: 🕸 Legături / ⇄ Cauzalitate.
+
+Two questions, two switches — the scope picks *which notes are read*, the
+mode picks *which picture is drawn out of them*. Every scope works in both
+modes.
+
+### The syntax
+
+One line, a chain of key words joined by arrows. Four arrows, two questions
+each — does the effect move the same way as its cause, and does it arrive
+now or later:
+
+```
+stres -> insomnie -> stres      more of this, more of that
+efort -| oboseală               more of this, less of that
+investiție ~> profit            …and the effect arrives later
+mâncat ~| foame                 the same, downward
+```
+
+- `-->` reads the same as `->`, because that is what people type.
+- A **bullet may hold one** (`- somn bun -> dispoziție`): it stays a bullet
+  and the chain is drawn inside it.
+- The **whole line** has to be a chain, so an arrow inside a sentence is
+  left alone and nothing fires by accident. A term longer than 64
+  characters is a sentence, not a key word, and disqualifies the line.
+- Code — fenced or inline — mints nothing, the same blanking pass § G
+  already does for `[[links]]` and `#tags`.
+- A term written `[[Notiță]]` or `#etichetă` counts as the word inside it.
+  The **diagram takes the word; the preview keeps the link.**
+- Identity is case- and diacritic-folded (`fdFold`, the search panel's —
+  § H), so `Stres` and `stres` are one key word. The first spelling seen is
+  the label.
+
+The preview draws the chain it read: a chip per key word, a coloured glyph
+per arrow (`→` / `⊣`, with a leading `⋯` when the effect is delayed). The
+HTML export carries the same shape in literal hex, like the rest of that
+template.
+
+### Circular causality
+
+A chain that closes on itself is a **feedback loop**, and its sign is the
+product of the signs of its arrows — system dynamics' own rule:
+
+| Negative arrows | Product | Loop | What it does |
+|---|---|---|---|
+| even (0, 2, …) | **+** | **R** — reinforcing | feeds itself: a vicious or a virtuous circle |
+| odd (1, 3, …) | **−** | **B** — balancing | damps itself: a thermostat |
+
+`gvFindLoops()` enumerates every elementary cycle with a depth-first walk
+that only ever **starts a cycle at its lowest-numbered node** — that is what
+keeps one loop from being reported once per member. Two caps
+(`GV_MAX_LOOPS` 40, `GV_MAX_LOOP_LEN` 8) stop a dense diagram from hanging
+the page; the loops worth reading in a hand-written note are short.
+
+Loops are found **after the filters**, on purpose: a search that drops a key
+word genuinely opens the circle it was part of.
+
+Every node and every arrow remembers which loops it belongs to
+(`n.loops` / `l.loops`, sets of indices). That is what the canvas draws
+with — a key word on a loop wears the loop's colour, an arrow that closes
+one is heavier — and what *Doar ce intră într-o buclă* filters on.
+
+The palette lists the loops, shortest first, badged `R1` / `B2` and spelled
+out (`stres → insomnie ⊣ odihnă → stres`, closing on the word it started
+from). Resting on a row lights that loop and dims everything else; clicking
+pins it, so you can let go of the mouse and still read the circle.
+
+### Drawing
+
+- **Arrowheads are the point**, so they are drawn from the tangent at the
+  far end of the curve rather than the straight line between centres.
+- **Two arrows between one pair** — "A feeds B, B feeds A", the shortest
+  circle there is — would be one line drawn straight, so `gvBowLinks()`
+  bows them apart into a quadratic each.
+- A **delayed** arrow is dashed and carries the two cross-strokes a causal
+  loop diagram puts on one.
+- The sign is drawn as `+` / `−` beside the midpoint, above a zoom
+  threshold, because colour alone is not a legend anybody remembers.
+
+### Adding to it
+
+- **A fifth arrow.** One entry in `CAUSAL_ARROW_RE`'s two groups, and
+  whatever `gvDrawCause` should do with it. The scanner, the preview and
+  the loop sign all read the same `{sign, delay}` pair.
+- **A setting.** Exactly as § G: a control carrying `data-gv="<key>"` plus
+  a `GV_DEFAULTS` entry, and `GV_STRUCTURAL` if it changes which nodes
+  exist (`mode` and `loopsOnly` both do). Mark it `data-gv-only="cause"`
+  so it hides in link mode — half the palette answers only one of the two
+  modes, and a dead control reads as a bug.
+- **Colours** are `--graph-keyword` / `--graph-cause-pos` /
+  `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b`, resolved once
+  into `GRAPH_COLORS` like every other graph colour (`docs/THEME.md`).
+
+### Testing
+
+`tests/cause.js` — the syntax in the preview and in the diagram, the mode
+switch, folding, signs and delays on the canvas, the three loops of a
+worked example with their R/B verdicts, the loop rows, pinning one asserted
+on real pixels, the loops-only filter, both languages. Run: `/apptest cause`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
