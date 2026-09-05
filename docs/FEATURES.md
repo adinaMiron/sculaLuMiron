@@ -1087,6 +1087,17 @@ editor alone.
 
 Run: `/apptest idea`.
 
+### Dictating into it
+
+`#btn-idea-dictate` (🎤, next to Cancel/Save idea) reuses the main editor's
+voice dictation engine — same Caiet vocal settings, same `PROVIDERS`/queue/
+Web Speech code, same status pill — through `window.toggleIdeaDictation()`,
+which calls `window.toggleDictation(targetEl)` with `#idea-text` as the
+target instead of the default editor. See `docs/MAP.md` § "Voice dictation"
+for how the shared engine's `target` swap works. Closing the modal
+(`closeIdeaModal()`) stops an active dictation so it never keeps recording
+into a hidden box.
+
 ---
 
 ## K. Undo / redo (`index.html`)
