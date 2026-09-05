@@ -426,16 +426,19 @@ handle (`scula-fs` → `handles` → `mode`) and is shared by all pages. On
 desktop the `📁` button goes straight to the picker; everywhere else it
 opens the chooser sheet (`#scula-sheet`) instead.
 
-**The `📁` button is hidden on phones and tablets.** With no
-`showDirectoryPicker` it could only ever name the fallback route, so the
-shared nav CSS drops it under `@media (hover: none) and (pointer: coarse)`
-and `#navLangBtn` inherits the `margin-left:auto` that used to push it
-right. Nothing else changes: `currentMode()` already prefers `share` when
-there is no picker, so saves go to the OS share sheet on their own, and
-`ScuLaFolder.chooser()` still opens `#scula-sheet` for any page that wants
-to offer the choice (`index.html` does, from its workbook sync).
-A page that needs the destination chooser on a phone must call
-`chooser()` — do not count on the nav button being there.
+**The `📁` button stays in the nav on phones and tablets too** — it used to
+be dropped there (`@media (hover: none) and (pointer: coarse)`), which meant
+no way back into `#scula-sheet` from the nav on a phone. With no
+`showDirectoryPicker`, `supported()` is false, so the button's label already
+paints the fallback route's name (`Fișiere`/`Files` or
+`Descărcări`/`Downloads` — `paintFolder()`) instead of inviting a pick, and
+its own click handler already opens the sheet there
+(`if(supported()) pick(); else openSheet();`) rather than the picker. Nothing
+about routing changes: `currentMode()` still prefers `share` when there is
+no picker, so saves go to the OS share sheet on their own even without a
+tap. `ScuLaFolder.chooser()` still opens `#scula-sheet` directly for any
+page that wants to offer the choice without going through the nav
+(`index.html` does, from its workbook sync).
 
 ### Adding a save, or a page
 
