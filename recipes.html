@@ -123,6 +123,9 @@
   #pickList .empty{padding:1rem 0}
 
   .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:1rem;align-items:start}
+  /* Nothing has arrived yet, so the right column holds nothing: two
+     columns would be one card and an empty half-page beside it. */
+  .cols.solo{grid-template-columns:minmax(0,1fr)}
   @media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr)} }
 
   .card{
@@ -1703,11 +1706,43 @@
     </div>
   </div>
 
-  <div class="cols">
+  <!-- ===== 1. the daily targets =====
+       The measure every day further down is read against, so it is asked
+       first and asked once — not a fold inside the card that shows the
+       answer. Left empty it costs a reader nothing: no target, no verdict. -->
+  <div class="card" id="targetCard">
+    <h2><span class="step">1</span><span data-i="tgTitle">Obiective zilnice</span></h2>
+    <p class="hint" style="margin:0 0 .2rem" data-i="tgIntro">Scrie cât vrei să adune o zi. Fiecare zi se compară singură cu ele — cât s-a strâns, cât mai lipsește, cu cât s-a depășit. Un câmp lăsat gol înseamnă că pentru acel macronutrient nu ai nicio țintă, și nu se compară nimic.</p>
+    <div class="tgrid">
+      <label class="field">
+        <span data-i="tgKcal">kcal</span>
+        <input type="number" id="tgKcal" min="0" step="10" inputmode="numeric" data-i-placeholder="tgPh">
+      </label>
+      <label class="field">
+        <span data-i="tgProt">Proteine (g)</span>
+        <input type="number" id="tgProt" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+      </label>
+      <label class="field">
+        <span data-i="tgCarb">Carbohidrați (g)</span>
+        <input type="number" id="tgCarb" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+      </label>
+      <label class="field">
+        <span data-i="tgFat">Grăsimi (g)</span>
+        <input type="number" id="tgFat" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
+      </label>
+    </div>
+    <div class="row" style="margin-top:.5rem">
+      <p class="found" id="tgNote" style="margin:0"></p>
+      <span class="spacer"></span>
+      <button type="button" class="btn mini ghost" id="btnTgClear" data-i="tgClear">Șterge obiectivele</button>
+    </div>
+  </div>
+
+  <div class="cols" id="cols">
     <section>
-      <!-- ===== 1. source ===== -->
+      <!-- ===== 2. source ===== -->
       <div class="card">
-        <h2><span class="step">1</span><span data-i="stepSource">Sursa</span></h2>
+        <h2><span class="step">2</span><span data-i="stepSource">Sursa</span></h2>
         <div id="drop">
           <p class="big" data-i="dropBig">Trage aici un PDF sau o poză</p>
           <p class="dsub" data-i="dropSub">PDF (și scanat), JPG, PNG, WEBP, text sau un .md scris aici. Mai multe poze deodată merg. Poți și să lipești o poză din clipboard (Ctrl+V).</p>
@@ -1766,9 +1801,9 @@
         </details>
       </div>
 
-      <!-- ===== 2. raw text ===== -->
+      <!-- ===== 3. raw text ===== -->
       <div class="card" id="textCard" hidden>
-        <h2><span class="step">2</span><span data-i="stepText">Textul citit</span></h2>
+        <h2><span class="step">3</span><span data-i="stepText">Textul citit</span></h2>
         <p class="hint" style="margin:0 0 .5rem" data-i="textHint">Corectează aici ce a citit greșit, apoi analizează din nou.</p>
         <textarea id="rawText" spellcheck="false" data-i-placeholder="rawPlaceholder"></textarea>
         <div class="row" style="margin-top:.6rem">
@@ -1781,9 +1816,9 @@
         </div>
       </div>
 
-      <!-- ===== 3. markdown ===== -->
+      <!-- ===== 4. markdown ===== -->
       <div class="card" id="mdCard" hidden>
-        <h2><span class="step">3</span><span data-i="stepSave">Markdown</span></h2>
+        <h2><span class="step">4</span><span data-i="stepSave">Markdown</span></h2>
         <div class="tabs">
           <button type="button" id="tabPreview" aria-pressed="true" data-i="tabPreview">Previzualizare</button>
           <button type="button" id="tabSource" aria-pressed="false" data-i="tabSource">Markdown</button>
@@ -1834,9 +1869,9 @@
         <p class="hint" data-i="saveHint">„Adaugă în caiet” scrie fiecare zi ca un capitol nou în editorul Markdown, pe acest dispozitiv. De acolo îl poți sincroniza în dosarul tău.</p>
       </div>
 
-      <!-- ===== 4. the shareable page ===== -->
+      <!-- ===== 5. the shareable page ===== -->
       <div class="card" id="htmlCard" hidden>
-        <h2><span class="step">4</span><span data-i="stepHtml">Pagina HTML</span></h2>
+        <h2><span class="step">5</span><span data-i="stepHtml">Pagina HTML</span></h2>
         <p class="hint" style="margin:0 0 .8rem" data-i="htmlHint">Aceleași rețete, așezate ca să fie citite: un singur fișier .html, cu tot ce-i trebuie înăuntru și nimic de adus de pe internet. Caută și filtrează după ingrediente chiar în pagină, ca aici. Se deschide dintr-un e-mail, de pe telefon sau la imprimantă.</p>
         <label class="field">
           <span data-i="htmlTitleLabel">Titlul paginii</span>
@@ -1854,35 +1889,13 @@
     </section>
 
     <section>
-      <!-- ===== 5. review ===== -->
-      <div class="card">
-        <h2><span class="step">5</span><span data-i="stepCheck">Verifică rețetele</span></h2>
-        <details class="more" id="targetBox">
-          <summary data-i="tgTitle">Obiective zilnice</summary>
-          <p class="hint" data-i="tgIntro">Scrie cât vrei să adune o zi. Fiecare zi se compară singură cu ele — cât s-a strâns, cât mai lipsește, cu cât s-a depășit. Un câmp lăsat gol înseamnă că pentru acel macronutrient nu ai nicio țintă, și nu se compară nimic.</p>
-          <div class="tgrid">
-            <label class="field">
-              <span data-i="tgKcal">kcal</span>
-              <input type="number" id="tgKcal" min="0" step="10" inputmode="numeric" data-i-placeholder="tgPh">
-            </label>
-            <label class="field">
-              <span data-i="tgProt">Proteine (g)</span>
-              <input type="number" id="tgProt" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
-            </label>
-            <label class="field">
-              <span data-i="tgCarb">Carbohidrați (g)</span>
-              <input type="number" id="tgCarb" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
-            </label>
-            <label class="field">
-              <span data-i="tgFat">Grăsimi (g)</span>
-              <input type="number" id="tgFat" min="0" step="1" inputmode="numeric" data-i-placeholder="tgPh">
-            </label>
-          </div>
-          <p class="found" id="tgNote"></p>
-          <div class="row">
-            <button type="button" class="btn mini ghost" id="btnTgClear" data-i="tgClear">Șterge obiectivele</button>
-          </div>
-        </details>
+      <!-- ===== 6. review =====
+           Hidden until something has actually arrived: an empty page has
+           nothing to verify, and the four buttons under an empty list are
+           noise. A saved meal library counts as something — it is the one
+           way in that lives inside this card. -->
+      <div class="card" id="reviewCard" hidden>
+        <h2><span class="step">6</span><span data-i="stepCheck">Verifică rețetele</span></h2>
         <div class="filters" id="filters" hidden>
           <label class="search">
             <input type="search" id="qBox" spellcheck="false" data-i-placeholder="searchPh">
@@ -6682,10 +6695,11 @@ const els = {
   pickKinds:$("pickKinds"), pickQ:$("pickQ"), pickList:$("pickList"), libCount:$("libCount"),
   btnLibFile:$("btnLibFile"), libFile:$("libFile"), btnLibManual:$("btnLibManual"),
   btnLibClear:$("btnLibClear"), btnPickClose:$("btnPickClose"),
-  targetBox:$("targetBox"), tgKcal:$("tgKcal"), tgProt:$("tgProt"),
+  targetCard:$("targetCard"), tgKcal:$("tgKcal"), tgProt:$("tgProt"),
   tgCarb:$("tgCarb"), tgFat:$("tgFat"), tgNote:$("tgNote"), btnTgClear:$("btnTgClear"),
   filters:$("filters"), qBox:$("qBox"), ingBox:$("ingBox"), kindChips:$("kindChips"), btnExpand:$("btnExpand"),
   found:$("found"), btnArrange:$("btnArrange"), optOnlyShown:$("optOnlyShown"),
+  reviewCard:$("reviewCard"), cols:$("cols"),
   mdCard:$("mdCard"), mdPreview:$("mdPreview"), mdText:$("mdText"),
   tabPreview:$("tabPreview"), tabSource:$("tabSource"),
   wbName:$("wbName"), optSource:$("optSource"), optTotals:$("optTotals"), optNutri:$("optNutri"),
@@ -7431,9 +7445,25 @@ function arrangeIntoDays(perDay){
   return days.length;
 }
 
+/* Which of the six sections are worth showing yet.
+   Cards 4, 5 and 6 all answer a question about recipes, so none of them has
+   anything to say before a recipe exists: an empty page is card 1 (what a
+   day should come to) and card 2 (bring something in), and nothing else.
+   The one exception is a meal library saved from an earlier visit — the
+   button that opens it lives inside card 6, so hiding the card on a page
+   that has a library would hide the library with it. */
+function paintFlow(){
+  const started = model.days.length > 0 ||
+                  els.rawText.value.trim() !== "" ||
+                  model.library.length > 0;
+  els.reviewCard.hidden = !started;
+  els.cols.classList.toggle("solo", !started);
+}
+
 function renderDays(){
   const host = els.days;
   host.textContent = "";
+  paintFlow();
   els.daysEmpty.hidden = model.days.length > 0;
   els.mdCard.hidden = model.days.length === 0;
   renderFilters();
@@ -9741,9 +9771,6 @@ async function loadPrefs(){
     targets[m.key] = isFinite(v) && v > 0 ? v : null;
   });
   paintTargets();
-  // A reader who has set targets wants to see them; one who has not should
-  // not have to shut a fold they never opened.
-  els.targetBox.open = targetsSet() > 0;
 }
 
 els.btnPick.addEventListener("click", () => els.file.click());
@@ -9784,6 +9811,9 @@ els.btnManual.addEventListener("click", () => {
   els.rawText.scrollIntoView({ behavior:"smooth", block:"center" });
 });
 els.btnParse.addEventListener("click", () => analyse(false));
+// Typed or pasted by hand, the text is "something added in Sursa" the
+// moment there is any of it — that is when card 6 has a reason to exist.
+els.rawText.addEventListener("input", paintFlow);
 els.btnAddDay.addEventListener("click", () => {
   const day = Recipes.newDay(model.days.length + 1, "");
   day.meals.push(Recipes.newMeal("breakfast", "", ""));
@@ -9840,6 +9870,7 @@ els.btnLibClear.addEventListener("click", async () => {
   model.library = [];
   await saveLibrary();
   renderLibrary();
+  paintFlow();
 });
 
 els.btnClear.addEventListener("click", () => {
@@ -10013,7 +10044,7 @@ window.addEventListener("scula-ui-lang", ev => {
 window.ScuLaRecipes = { Recipes, PdfText, Jpx, Nutrition, model, analyse, allMarkdown,
                         buildDayMarkdown, buildHtmlDoc, renderDays, renderMarkdown,
                         prepImage, OCR, saveBookFile, readBookFile, learnFrom,
-                        openPicker, closePicker, libAdd, saveLibrary, renderLibrary,
+                        openPicker, closePicker, libAdd, saveLibrary, renderLibrary, paintFlow,
                         targets, readTargets, paintTargets, goalOf, targetsSet };
 
 })();

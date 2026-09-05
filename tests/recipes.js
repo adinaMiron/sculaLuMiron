@@ -320,12 +320,39 @@ function serve() {
      `hidden` is only a UA rule of display:none, and any class that sets its
      own display outranks it. Every one of these carries such a class. */
   const leaked = await page.evaluate(() =>
-    ['filters', 'found', 'onlyShownBox', 'btnStop', 'textCard', 'mdCard']
+    ['filters', 'found', 'onlyShownBox', 'btnStop', 'textCard', 'mdCard', 'reviewCard']
       .filter(id => {
         const el = document.getElementById(id);
         return el && el.hidden && getComputedStyle(el).display !== 'none';
       }));
   check('nothing marked hidden is actually visible', leaked.length === 0, leaked.join(', '));
+
+  /* An empty page is two sections: what a day should come to, and the way
+     in. The three that answer a question about recipes wait for one. */
+  const start = await page.evaluate(() => ({
+    targets: !document.getElementById('targetCard').hidden,
+    source:  !document.querySelector('#drop').closest('.card').hidden,
+    md:      document.getElementById('mdCard').hidden,
+    html:    document.getElementById('htmlCard').hidden,
+    review:  document.getElementById('reviewCard').hidden
+  }));
+  check('an untouched page shows the targets and the source, and nothing else',
+        start.targets && start.source && start.md && start.html && start.review,
+        JSON.stringify(start));
+
+  /* Typing into the source is "something added" — the review card is what
+     that opens, and it is the only one of the three that a bare text can. */
+  await page.click('#btnPaste');                       // opens the text box
+  await page.fill('#rawText', 'Ziua 1\nMic dejun\nIngrediente\n- 2 ouă\n');
+  const typed = await page.evaluate(() => ({
+    review: !document.getElementById('reviewCard').hidden,
+    md: document.getElementById('mdCard').hidden
+  }));
+  check('text in the source brings the review card out, the markdown card still waits',
+        typed.review && typed.md, JSON.stringify(typed));
+  await page.fill('#rawText', '');
+  check('and emptying it puts the review card away again',
+        await page.evaluate(() => document.getElementById('reviewCard').hidden));
 
   /* ---- 1. the parser ---- */
   const parsed = await page.evaluate(s => {

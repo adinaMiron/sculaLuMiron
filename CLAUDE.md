@@ -9,7 +9,7 @@ file). Open in a browser; that's the whole toolchain.
 | `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` | 8961 | 77k | Markdown editor + preview + workbooks + search + knowledge graph | dark (earth) |
-| `recipes.html` | 10022 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
+| `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":

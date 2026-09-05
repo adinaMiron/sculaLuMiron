@@ -37,11 +37,15 @@ pick one as canonical without checking which is correct.
 ## 3. No cedilla diacritics (must be comma-below ș/ț, not ş/ţ)
 
 ```bash
-grep -nP '[\x{015F}\x{0163}]' voice.html editor.html index.html recipes.html calendar.html
+grep -n 'ş\|ţ' voice.html editor.html index.html recipes.html calendar.html
 ```
 
-Expect **only** these two known-good hits (both are prose *about* the
-cedilla, not user-facing strings): `index.html:~6446` (a comment)
-and none in `recipes.html` (it uses `\u` escapes). Anything else in markup
-or a UI string is a bug — replace ş→ș (U+0219), ţ→ț (U+021B).
+The literal characters, not `grep -P '[\x{015F}\x{0163}]'` — that form
+needs a UTF-8 PCRE build and dies with *"character code point value in
+\x{} is too large"* where it does not have one.
+
+Expect **only** one known-good hit, prose *about* the cedilla rather than a
+user-facing string: `index.html:~7365` (a comment). `recipes.html` has none
+(it uses `\u` escapes). Anything else in markup or a UI string is a bug —
+replace ş→ș (U+0219), ţ→ț (U+021B).
 

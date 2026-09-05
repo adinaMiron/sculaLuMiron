@@ -90,7 +90,6 @@ async function typeTargets(page, v) {
         await page.evaluate(() => window.ScuLaRecipes.allMarkdown().indexOf('Obiectiv') < 0));
 
   /* ---- 2. an empty field is "no opinion", not a target of nought ---- */
-  await page.evaluate(() => document.getElementById('targetBox').open = true);
   await typeTargets(page, { tgKcal: 2000, tgProt: '', tgCarb: '', tgFat: '' });
   const one = await page.evaluate(() => {
     const box = document.querySelector('#days .goals');
@@ -209,13 +208,13 @@ async function typeTargets(page, v) {
   const back = await page.evaluate(() => ({
     t: window.ScuLaRecipes.targets,
     fields: ['tgKcal', 'tgProt', 'tgCarb', 'tgFat'].map(id => document.getElementById(id).value),
-    open: document.getElementById('targetBox').open
+    shown: !!document.getElementById('targetCard').offsetParent
   }));
   check('the four targets are still there after a reload, in the fields too',
         back.t.kcal === 2000 && back.t.fat === 60 && back.fields.join(',') === '2000,150,200,60',
         JSON.stringify(back));
-  check('and the fold opens by itself for somebody who has set them',
-        back.open === true);
+  check('and the section stands on its own, above the source, with nothing to open',
+        back.shown === true);
 
   /* ---- 9. clearing them puts the page back where it started ---- */
   await page.click('#btnTgClear');

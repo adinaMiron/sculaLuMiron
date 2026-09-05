@@ -22,6 +22,30 @@ file ──► text ──► model ──► markdown ──► .md file  /  wo
 Line anchors are in `docs/MAP.md`. This doc is the *why* and the format
 contract.
 
+### The six cards, and which of them are on screen
+
+The page reads top-down, and the numbers on the cards are the order the
+work happens in:
+
+| # | Card | On screen when |
+|---|---|---|
+| 1 | **Obiective zilnice** — what a day should come to (§ I) | always. It is the measure everything below is read against, so it is asked before anything arrives, and answered once for the whole plan |
+| 2 | **Sursa** — the file, the photo, the paste, the `.md` | always. The way in |
+| 3 | **Textul citit** — the raw text, correctable | something has been read, or *Lipesc textul* / *Introdu manual* opened the box |
+| 4 | **Markdown** (§ C) | there is at least one day |
+| 5 | **Pagina HTML** (§ G) | there is at least one day |
+| 6 | **Verifică rețetele** — the days, the filters, the totals | something has arrived: a day, **any text in the box**, or a meal library saved on an earlier visit |
+
+Cards 4, 5 and 6 each answer a question *about recipes*, so none of them
+has anything to say before a recipe exists — an untouched page is card 1
+and card 2 and nothing else. The library clause on card 6 is not a
+special case so much as a consequence: `+ din bibliotecă` is the only door
+to the library and it is inside that card, so hiding the card on a page
+whose only content *is* a library would hide the content with it.
+
+`paintFlow()` is the whole rule for card 6; `#mdCard` and `#htmlCard` are
+set where they are built (`renderDays`/`renderMarkdown` and `paintHtml`).
+
 ---
 
 ## A. Getting the text in
@@ -194,14 +218,14 @@ used to do whenever *Adaugă la zilele deja extrase* was ticked.
 ### Pasted text
 
 `Ctrl+V` anywhere on the page takes either a picture (→ OCR) or text (→
-straight into step 2). Text is also editable in step 2 and re-analysed with
+straight into step 3). Text is also editable in step 3 and re-analysed with
 one button — which is the intended fix for anything the reader got wrong,
-OCR included: no OCR is perfect, and step 2 is where a stray `>` in front of
+OCR included: no OCR is perfect, and step 3 is where a stray `>` in front of
 `50g spanac` gets deleted before it reaches the markdown.
 
 ### Manual entry — no file at all
 
-*Introdu manual* (next to *Lipesc textul*, card 1) opens the same step-2 box
+*Introdu manual* (next to *Lipesc textul*, card 2) opens the same step-3 box
 empty, ready to type. There is no separate manual-entry code path: it is the
 same `rawText` → `Recipes.parse()` → `Nutrition` pipeline every other route
 feeds, so typing "200g piept de pui" and a "Mod de preparare:" list gets the
@@ -212,7 +236,7 @@ expected shape before they start.
 
 ### A page this tool wrote — no re-reading at all
 
-The `.html` of § G is a source too. Drop one on card 1 (or pick it, or paste
+The `.html` of § G is a source too. Drop one on card 2 (or pick it, or paste
 its text) and `Recipes.fromHtml()` takes it back: days, meals, flags,
 ingredients with their **groups**, methods, and the USDA food each row was
 matched to. Nothing is guessed, because nothing has to be — the markup is
@@ -263,7 +287,7 @@ here is the `NOT_LETTER` lookahead instead — keep it that way when adding
 verbs or units.
 
 Nothing is guessed silently. Every decision the parser makes is shown in
-step 5 (*Verifică rețetele*) as an editable field, and the ↧ button moves a
+step 6 (*Verifică rețetele*) as an editable field, and the ↧ button moves a
 line the parser put in the wrong half. The markdown is regenerated on every
 keystroke there.
 
@@ -375,7 +399,7 @@ workbook, the HTML page.
 
 `looksLikeMarkdown(text)` is what decides which reader gets the text, and
 `analyse()` asks it on every route in — a picked file, a drop, a paste,
-the box in step 2. It wants a heading **and** either a numbered section or
+the box in step 3. It wants a heading **and** either a numbered section or
 a table, so a plan with a stray `#` in it still goes to `parse()`.
 
 One thing does not survive **this** trip, because the table has no column
@@ -688,7 +712,7 @@ to sift. Neither, and the file has no script at all.
 
 **The filter bar, directly under the header and above the contents.** A
 hundred days sent to somebody else are no smaller than a hundred days on
-this page, so the export carries card 5's search: the same two boxes — a
+this page, so the export carries card 6's search: the same two boxes — a
 word or two over the whole recipe, a comma-separated list over the
 ingredient names only, every term having to be present — and the same meal
 chips, only for the kinds the file actually holds. What matched is tinted
@@ -729,7 +753,7 @@ gets saved**, so there is no second renderer to keep in step with the first.
 
 When a plan is brought in through *Importă .md* (`#btnMd`), the markdown
 card grows a **Salvează .html** button of its own beside *Salvează .md*. It
-writes the very same document `buildHtmlDoc()` builds for card 4, only its
+writes the very same document `buildHtmlDoc()` builds for card 5, only its
 `<title>`/`<h1>` is the **name of the imported `.md` file** (dashes and
 underscores spaced out) rather than `htmlTitle()`'s source-line/page-name
 chain. `buildHtmlDoc(titleOverride)` takes the name; everything else is
@@ -782,7 +806,7 @@ one recipe from the library  ▸  added to a day, under a flag
 ### The flags
 
 `MEAL_KINDS` is the one list of meal kinds — the `<select>` in a meal
-header, the filter chips in card 5, the chips in the exported page and the
+header, the filter chips in card 6, the chips in the exported page and the
 picker's own row all read it. It is **breakfast · brunch · snack · lunch ·
 dinner · dessert · other**, and *brunch* is new: it is a meal word the
 parser knows (`brunch`, `brunchul`, `mic dejun târziu`), a label in both
@@ -806,9 +830,9 @@ Three ways in, and they are the three the request asked for:
 
 | Route | What |
 |---|---|
-| **Adaugă din fișier** | an `.html` page written by this tool (§ G) or a `.md` (§ C). Every meal in it goes into the library, and **the plan on screen is not touched** — which is the difference between this and dropping the same file on card 1 |
-| **⊕ on any meal** in card 5 | keep this recipe. Whatever is on screen — read from a PDF, typed by hand, corrected — becomes a library entry |
-| **Scrie o rețetă** | closes the picker and points at the step-2 box. Typing a recipe is § A's job and always was; once it is parsed, ⊕ keeps it |
+| **Adaugă din fișier** | an `.html` page written by this tool (§ G) or a `.md` (§ C). Every meal in it goes into the library, and **the plan on screen is not touched** — which is the difference between this and dropping the same file on card 2 |
+| **⊕ on any meal** in card 6 | keep this recipe. Whatever is on screen — read from a PDF, typed by hand, corrected — becomes a library entry |
+| **Scrie o rețetă** | closes the picker and points at the step-3 box. Typing a recipe is § A's job and always was; once it is parsed, ⊕ keeps it |
 
 Only the two readers fill it from a file. There is nothing dependable to
 take a *single* recipe out of a guessed parse, and a library of
@@ -859,8 +883,14 @@ the only thing that can change what an already-saved recipe adds up to.
 § E turns a day into four numbers. That is only half of what somebody
 composing a plan wants to know: the other half is *whether those numbers
 are the ones they were aiming at*. The targets are that half. Four fields
-in card 5 — **kcal, proteine, carbohidrați, grăsimi** — and every day on
-the list measured against them.
+— **kcal, proteine, carbohidrați, grăsimi** — and every day on the list
+measured against them.
+
+They are **card 1**, a section of their own above the source, because they
+are the measure the rest of the page is read against and they are answered
+once for the whole plan rather than once per recipe. They used to be a fold
+inside card 6, which put the question inside the card that shows the
+answer — and left it shut on the one page that had nothing else on it.
 
 They are the reader's numbers, not the table's. **Nothing is guessed and
 nothing is filled in by default**: a page nobody has told what to aim for
@@ -897,7 +927,7 @@ and a page that says a day of 1994 missed is a page nobody believes twice.
 
 | Where | What |
 |---|---|
-| under a day, in card 5 | a `.goals` block beneath the day's own `TOTAL PE ZI`: one row per macro that has a target — `value / target`, the gap in words, and a bar. Under the total rather than inside it, because the total is what the food *is* and this is an opinion about it |
+| under a day, in card 6 | a `.goals` block beneath the day's own `TOTAL PE ZI`: one row per macro that has a target — `value / target`, the gap in words, and a bar. Under the total rather than inside it, because the total is what the food *is* and this is an opinion about it |
 | a **collapsed** day | one pill: `1840 / 2000 kcal`, coloured by the same three states. Energy only — a collapsed day is a line of text, and four comparisons on it is a table nobody asked to read. It is what lets a hundred-day book be scanned for the days that miss |
 | the markdown | an `Obiectiv` and a `Diferență` row in `## Total pe zi` (§ C) |
 | the shareable page | the same two rows under the day table, **and the difference follows an edited quantity** — the targets ride on `table.dtot` as `data-tk`/`data-tp`/`data-tc`/`data-tf` and the file's own script does the arithmetic, the same bargain § E's totals strike |
@@ -921,8 +951,9 @@ is simply told, which is all the page is in a position to do.
 In the same settings record as everything else on the page
 (`scula:recipes`, § E), written whole as a `targets` object so that "no
 target for this one" stays a `null` in the file rather than a missing key.
-They come back into the fields on the next visit, and the fold opens by
-itself for somebody who has set them.
+They come back into the fields on the next visit. There is no fold to
+open: card 1 is always on screen, so a set of targets is visible the moment
+the page loads.
 
 ---
 
@@ -998,6 +1029,11 @@ front matter, cedilla repair), and so does the day view: forty days
 rendering collapsed, a search narrowing and opening what is left, the
 diacritic folding, *only the recipes shown* narrowing the markdown, a meal
 chip, and both halves of *Așază pe zile*.
+
+The card flow has its own three checks at the top of the file: an untouched
+page showing cards 1 and 2 and nothing else, typing into the source box
+bringing card 6 out while card 4 keeps waiting for a parsed day, and
+emptying the box putting card 6 away again.
 
 **The OCR path is tested end to end without an engine.** The address field
 is what makes that possible: the checks point it at
