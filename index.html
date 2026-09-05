@@ -2707,6 +2707,7 @@
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
+    <button class="btn" onclick="openHtmlPage()" data-i="openHtmlBtn" data-i-title="openHtmlTip" title="Open an exported HTML page from the folder set with 📁">🌐 Open HTML</button>
     <button class="btn" onclick="saveFile()" data-i="saveFileBtn" data-i-title="saveFileTip" title="Save a copy of the file (Ctrl+Shift+S)">Save ↓</button>
     <button class="btn" id="btn-save-all-modified" onclick="saveAllModifiedChapters()" data-i="saveAllModifiedBtn" data-i-title="saveAllModifiedTip" title="Save every modified chapter in every workbook (Ctrl+Alt+S)">📚 Save all modified</button>
     <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
@@ -3189,6 +3190,7 @@ Use the toolbar above to insert formatting.
 
 <input type="file" id="file-input" accept=".md,.txt" style="display:none" onchange="handleFileOpen(event)">
 <input type="file" id="docx-input" accept=".docx" style="display:none" onchange="handleDocxImport(event)">
+<input type="file" id="html-page-input" accept=".html,.htm,text/html" style="display:none" onchange="handleHtmlPageOpen(event)">
 <input type="file" id="img-local-input" accept="image/*" style="display:none" onchange="handleLocalImage(event)">
 
 <script>
@@ -3202,6 +3204,8 @@ const I18N = {
   ro:{
     newFileBtn:"Nou", openFileBtn:"Deschide .md", importDocxBtn:"Importă DOCX",
     exportHtmlBtn:"Exportă HTML", saveFileBtn:"Salvează fisierul",
+    openHtmlBtn:"🌐 Deschide HTML", openHtmlTip:"Deschide o pagină HTML exportată din folderul ales cu 📁",
+    openHtmlBlocked:"Fereastra a fost blocată — permite ferestrele pop-up pentru această pagină și încearcă din nou.",
     headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
     undoBtn:"↶ Anulează", undoTip:"Anulează ultima modificare (Ctrl+Z)",
     redoBtn:"↷ Refă", redoTip:"Refă modificarea anulată (Ctrl+Shift+Z sau Ctrl+Y)",
@@ -3444,6 +3448,8 @@ const I18N = {
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
     exportHtmlBtn:"Export HTML", saveFileBtn:"Save ↓",
+    openHtmlBtn:"🌐 Open HTML", openHtmlTip:"Open an exported HTML page from the folder set with 📁",
+    openHtmlBlocked:"Pop-up blocked — allow pop-ups for this page and try again.",
     headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
     undoBtn:"↶ Undo", undoTip:"Undo the last change (Ctrl+Z)",
     redoBtn:"↷ Redo", redoTip:"Redo the undone change (Ctrl+Shift+Z or Ctrl+Y)",
@@ -8358,6 +8364,48 @@ ${bodyHtml}
 </body>
 </html>`;
   saveOut(htmlFilename, new Blob([fullHtml], { type: 'text/html' }));
+}
+
+// Opens an .html page that lives in the folder set with the nav 📁 button
+// (the same "markdown" subfolder "Export HTML" above writes into) — a
+// shareable page exported earlier, from here or from recipes.html. Picking
+// straight from that folder needs the File System Access API; where it is
+// missing (Firefox, Safari, phones) an ordinary file input still lets the
+// person browse to the file by hand.
+async function openHtmlPage() {
+  if (window.showOpenFilePicker) {
+    try {
+      const opts = {
+        types: [{ description: 'HTML page', accept: { 'text/html': ['.html', '.htm'] } }],
+        excludeAcceptAllOption: false
+      };
+      if (typeof ScuLaFolder !== 'undefined') {
+        const d = await ScuLaFolder.dir();
+        if (d) opts.startIn = d;
+      }
+      const [handle] = await window.showOpenFilePicker(opts);
+      openHtmlFile(await handle.getFile());
+    } catch (e) {
+      if (e.name !== 'AbortError') { console.error(e); document.getElementById('html-page-input').click(); }
+    }
+    return;
+  }
+  document.getElementById('html-page-input').click();
+}
+function handleHtmlPageOpen(event) {
+  const file = event.target.files[0]; if (!file) return;
+  openHtmlFile(file);
+  event.target.value = '';
+}
+function openHtmlFile(file) {
+  const url = URL.createObjectURL(file);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    if (typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(t('openHtmlBlocked'));
+    URL.revokeObjectURL(url);
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 /* ── Table builder ── */

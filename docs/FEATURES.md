@@ -445,6 +445,20 @@ page that wants to offer the choice without going through the nav
 Build the `Blob`, call `ScuLaFolder.save()`, print `r.message`. A new page
 also needs an entry in `SUBDIR` — in all copies of the block.
 
+### Reading back: "🌐 Open HTML" in `index.html`
+
+The read counterpart to the folder route. `openHtmlPage()`, in the header
+next to `exportHtml()`, opens a page that was written into that same
+folder — its own `Export HTML` output, or one `recipes.html` wrote — in a
+new tab. It calls `ScuLaFolder.dir()` for this page's subfolder handle and
+passes it as `startIn` to `showOpenFilePicker`, so the picker opens already
+inside `markdown/`; where the File System Access API is missing (Firefox,
+Safari, phones) it falls back to the hidden `#html-page-input` file input,
+which has no folder to start in. Either path ends at `openHtmlFile()`,
+which turns the chosen `File` into an object URL and `window.open()`s it —
+revoked after a minute, or immediately if the popup was blocked (a status
+toast says so, via `openHtmlBlocked`).
+
 ### Google Drive — a fourth destination, `editor.html` only
 
 Deliberately *not* a `ScuLaFolder` mode. `ScuLaFolder` is the shared block
