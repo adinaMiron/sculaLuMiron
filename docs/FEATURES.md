@@ -1478,6 +1478,91 @@ on real pixels, the loops-only filter, both languages. Run: `/apptest cause`.
 
 ---
 
+## N. The garden toolbox (`index.html`)
+
+A garden log is prose, not a form. The 🌱 **Grădina** button
+(<kbd>Ctrl+5</kbd>) reads that prose back as records and lays three tables
+over them. Nothing is written: the markdown stays the source of truth, the
+way § H's search panel treats it.
+
+The overlay is `#garden-view`. It borrows the graph bar's chrome
+(`.gv-bar`, `.gv-scope`, `.gv-title`) on purpose — two full-surface
+overlays that read as one surface — and adds only the filter row, the
+table and the totals foot.
+
+### What a line has to carry
+
+One `@date` marker per day (**the calendar's marker**, § L — one syntax per
+page, so a day header written for the calendar already works here), then a
+line per thing done. A line becomes a record when it carries **an interval,
+water, or a verb the toolbox knows**. That rule is the whole noise filter:
+`fitbit 13457 pasi, 9,6 km`, a list of seed-tray codes and
+`Castraveti: 19 buc` under `Plante in solarul mare:` all fail it.
+
+| It reads | Out of |
+|---|---|
+| **duration** | `06:02 - 06:30` → 28 m. A dash between two clock times is required — without it `am plecat la 4:33 … am ajuns la 4:55` would read as an interval. Past midnight wraps. |
+| **water** | `250 l apa`, `150 l de apa`. Only where the line says the litres *are* water, so `am ramas cu 60 l` (what was left in the tank) stays out. |
+| **place** | the codes in `GD_PLACES`, longest alias first and each hit blanked out of the haystack, so `gp nord` never also reports a bare `gp`. A line may name two (`s1 si s2`) and then counts under each. |
+| **harvest** | `cules din s1: 340 g vinete, 800 g ardei` → one row per plant, in grams. Also `zucchini 450 g` (the other order), `cules din sm 5,3 kg rosii` (no colon), and `s1: 1 kg ardei` (no verb — a known code, a colon, quantities). |
+| **mowing** | `cosit 4 ture … din gg`, `cosit 4 gn`, `5 ture de cosit` → sessions *and* rounds. `\bcosit\b` at both ends: `iarba cosita` in a sentence about a wheelbarrow is a noun, not a session. |
+| **category** | `GD_CATS`, first match wins: cules · cosit · udat · semănat · întreținere · construit, else *altele*. |
+
+### The two tables to extend, and nothing else
+
+`GD_PLACES` teaches it a plot, `GD_PLANTS` a plant — **not** the regexes.
+Both match on the *whole* folded name, which is what keeps `rosii cherry`
+out of the `rosii` total while `dovlecel`/`dovlecei`/`zucchini` sum as one.
+A name on neither list is kept exactly as written (`gradina socru`), so
+nothing is ever silently dropped.
+
+### The three tabs
+
+| Tab | Row | Total |
+|---|---|---|
+| **Activități** | date · category · place · interval · duration · water · the line | records, duration, litres |
+| **Recoltă** | date · place · plant · quantity | records, kg (+ pieces) |
+| **Cosit** | date · place · rounds · the line | sessions, rounds |
+
+Filters: from / **up to** / place / plant (harvest) / activity (activities)
+/ group by / contains. **"Up to" defaults to today**, so the number in the
+foot is a running total up to now until the reader says otherwise — that is
+what the feature is for. Group by day · month · place · plant · activity
+sums the same records instead of listing them; a line naming two plots is
+counted under each, which is what `s1 si s2` meant.
+
+Each dropdown is counted **one step before it filters**, the way § H counts
+its kind chips — otherwise picking a place would empty the place list down
+to that one place.
+
+Scope: **Grădina** (every workbook whose name matches `GD_BOOK_RE`) · notiță
+· caiet · tot. Garden is the default and falls back to *tot* when no
+workbook is named for a garden. A row click goes to the line it was read
+from, through § H's own `fdGoto`.
+
+`⇩ CSV` saves what is on screen through `ScuLaFolder.save` (§ D),
+semicolon-separated with a decimal comma — the European convention a
+Romanian Excel opens natively.
+
+| Where | What |
+|---|---|
+| `GD_PLACES` / `GD_PLANTS` / `GD_CATS` | the three tables above |
+| `gdScan(text)` | one note in, records out |
+| `gdCompute()` | scope ▸ tab ▸ date ▸ text ▸ place ▸ plant/category |
+| `gdRender()` | the table, the foot, the filter row |
+| `scula:garden` | tab, scope, "from" and grouping persist; "up to" is always today on load |
+
+### Testing
+
+`tests/garden.js` — the real log this was written for, typos included: the
+per-plant rows and their total, the plant and place synonyms, the noise
+lines that must *not* become records, intervals and durations, the water
+that counts and the water that does not, mowing sessions and rounds, every
+filter, both groupings, the scope, a row click landing in the editor, both
+languages and the CSV. Run: `/apptest garden`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors

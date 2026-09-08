@@ -284,16 +284,17 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## index.html — 8961 lines · Markdown editor
+## index.html — 10722 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
-| 8–1671 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1176–1244**, **importance markers 1247–1300**, **causal lines 1304–1327** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1330–1655** (the mode switch **1426**, the `data-gv-only` halves **1428–1431**, the loop rows **1551–1586**) |
+| 8–1671 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1176–1244**, **importance markers 1247–1300**, **causal lines 1304–1327** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1330–1655** (the mode switch **1426**, the `data-gv-only` halves **1428–1431**, the loop rows **1551–1586**), **garden toolbox 1672–1800** (`#garden-view` reuses `.gv-bar`/`.gv-scope`; `.gd-filters`, `#gd-table`, and the two `.gd-col-*` classes a phone drops) |
 | 1672 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone (Google Drive loads its scripts on demand now, from `editor.html` only — see that file's § Google Drive) |
 | 1674–2800 | **Shared nav + `ScuLaFolder`** |
-| 2802–3166 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**), workspace 2784, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
+| 2802–3166 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**, **`#btn-garden` 3037**, beside the graph button), workspace 2784, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
+| **3428–3474** | Markup: **`#garden-view`** overlay — the tab switch **3434**, the scope switch **3439**, the one filter row **3452–3461**, `#gd-table` + the totals foot |
 | **3168–3287** | Markup: **`#graph-view`** overlay — the scope switch **3175**, the **mode switch `#gv-mode` 3182** (Legături / Cauzalitate), the palette **3206** with its `data-gv-only` halves and the **`#gv-loops`** section **3225–3231** — + `#wiki-modal` 3289 + `#wiki-suggest` 3309 |
 | 3316–9734 | App script |
 
@@ -324,6 +325,7 @@ a `polyline`, whose vertices are all corners already.
 | 6118–6182 | `loadWorkbooks` 6118 (boot + resume last chapter, reloads `wbPendingIds`), `scula-folder`/visibility/unload hooks |
 | **6185–7156** | **Knowledge graph** — see the sub-table below |
 | **7152–7673** | **Search & filter** — see the sub-table below |
+| **8759–9478** | **The garden toolbox** — see the sub-table below |
 | **7738–7927** | **Writing a `[[link]]`**: `wikiCandidates` 7738, the modal 7673–7791, the `[[` suggester 7801–7877 (incl. **`editorMirrorAt`** 7843, shared with the search panel) |
 | 7879–7900 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
 | 7901 | `importDocx` |
@@ -378,6 +380,41 @@ chapter and written out exactly as Ctrl+S would write it.
 | **6043** | **`ideaAppendTo(ch, line)`** — the two writes Ctrl+S makes, for a chapter that is usually *not* the open one. When it **is** the open one, `editor.value` moves with it or the next autosave writes the idea back out |
 | 6110–6140 | The modal: `openIdeaModal`/`closeIdeaModal`, **`ideaPaintHint`** 6123 (says where the idea will land, on every keystroke) |
 | **6097** | **`saveIdea()`** — the "Chapter:" prefix is stripped **only** when it found a chapter; otherwise Idei keeps the text whole |
+
+### The garden toolbox (8759–9478) — `docs/FEATURES.md` § N
+
+A garden log read back as records: durations, water, harvest per plant,
+mowing per plot. Reads `wikiNotes()`/`noteText()` — the graph's — and jumps
+through `fdGoto` — the search panel's — so "a note" and "go there" mean one
+thing across all three.
+
+| Line | Region |
+|---|---|
+| 8780–8840 | `GD_KEY` (`scula:garden`), and the three tables that are the only thing to extend: **`GD_PLACES`** 8786 (a plot and its aliases), **`GD_PLANTS`** 8804 (a plant and its synonyms — matched on the *whole* name, which is what keeps `rosii cherry` out of the `rosii` total), **`GD_CATS`** 8829 (first match names the line; `\bcosit\b` at both ends so `iarba cosita` is not a session) |
+| 8841–8855 | The patterns: **`GD_INTERVAL_RE`** 8842 (a dash between two clock times — required, or `am plecat la 4:33 … la 4:55` reads as an interval), `GD_LITRE_RE` (litres only where the line says they are water), `GD_QTY_RE`, `GD_ROUNDS_RE`, `GD_HARVEST_RE`, `GD_DATE_RE` (**`ScuLaCal`'s own `@date`**, § L) |
+| 8857–8869 | `gdFold` (wraps the search panel's `fdFold`, plus ș/ț), `gdNum`, the alias index |
+| **8871** | **`gdPlacesIn(line)`** — every plot a line names, longest alias first, each hit blanked out so `gp nord` never also reports a bare `gp` |
+| 8895–8908 | `gdPlaceOf` (an unlisted plot keeps its own words), `gdPlantOf` |
+| **8910** | **`gdItems(text)`** — `6 kg rosii` and `zucchini 450 g` are one item two ways. Splits on a comma **not followed by a digit**: `7,7 kg rosii, 400 g` is one decimal comma and one list comma |
+| **8936** | **`gdParseHarvest(line)`** — verb, then the plot up to the first `:` or the first quantity, then the list. A line with no verb still counts when it opens with a known code (`s1: 1 kg ardei`) |
+| **8968** | **`gdScan(text)`** — one note in, records out. At most one activity per line, plus a harvest row per plant. **The noise filter is one rule**: a line needs an interval, water, or a known verb |
+| 9032–9065 | `GD_BOOK_RE`/`gdIsGardenBook`, `gdScopeNotes` 9038 (garden · note · workbook · vault), `gdRecords` 9053 (cached per note text) |
+| 9066–9095 | `gdState`, `gdToday`, `gdInRange` (an undated record is dropped by a date filter, never guessed) |
+| **9096** | **`gdCompute()`** — scope ▸ tab ▸ date ▸ text ▸ place ▸ plant/category. Each dropdown is counted **one step before it filters**, as § H counts its chips |
+| 9143 | `gdGroups(rows)` — day · month · place · plant · activity; a line naming two plots counts under each |
+| 9170–9187 | `gdDate`/`gdMass`/`gdDur`/`gdLitres` |
+| 9189–9200 | `GD_COLS` / `GD_GROUP_COLS` — the columns per tab, grouped or not |
+| **9207** | **`gdRender()`** — the table, the empty state, the foot, `.gd-grouped` |
+| 9295 | `gdPaintFilters()` — the tabs, the scope, and every `<select>` rebuilt from `gdLast` |
+| 9341–9366 | `gdSet`/`gdResetFilters`, **`gdGoto`** 9357 (a row → its line, through `fdGoto`) |
+| **9368** | **`gdCsv()`** — semicolons and a decimal comma, through `ScuLaFolder.save` (§ D) |
+| 9398–9445 | `gdBind` (delegated; bound once, on first open), `openGarden` 9429 / `closeGarden` / `toggleGarden` |
+| 9449–9478 | `gdRefresh` (debounced, called from `updatePreview`), `gdRepaintLang`, `gdSaveSettings`/`gdLoadSettings` — **"up to" is always today on load**, whatever was saved |
+
+**Two lists must stay in step:** a new tab needs an entry in `GD_TABS`,
+`GD_COLS` and `GD_GROUP_COLS`, plus its own branch in `gdRender`,
+`gdFootText` and `gdCsv`. A new *place* or *plant* needs only a row in
+`GD_PLACES` / `GD_PLANTS` — never a regex edit.
 
 ### Wikilinks, tags, importance and block anchors (4646–5075) — `docs/FEATURES.md` § C, § G
 

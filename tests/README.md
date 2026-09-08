@@ -5,9 +5,10 @@ infinite canvas and what an export's size is) and `recipes.html` (with
 `mealplan.js` for its day composer — the flags, the HTML page read back, and
 the recipe library, and `targets.js` for the daily calorie and macro
 targets a day is measured against), and — in
-`graph.js`, `cause.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
+`graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
 `importance.js`, `idea.js`, `mdundo.js`, `paste.js` and `calendar.js` — for
-`index.html`'s knowledge graph, the causality diagram beside it, its search panel, its navigation
+`index.html`'s knowledge graph, the causality diagram beside it, its search panel, its garden
+toolbox, its navigation
 panel, renaming a workbook or chapter in place, "Save all modified" and the
 pending-edit tracking under it, the TODO-workbook chapter filter, the
 `!nice`/`!important`/`!vital` importance markers, quick idea capture, its
@@ -53,7 +54,7 @@ for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
   build of `editor.html` living somewhere other than the repo root, or at a
   copy on a different commit for a before/after comparison.
 - `VOICE_URL` — the same, for `voice.js`, which drives `voice.html`.
-- `MD_URL` — the same, for `graph.js`, `cause.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js`, which drive
+- `MD_URL` — the same, for `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js`, which drive
   `index.html` instead. Both open their own browser context rather
   than using `lib.js`'s `open()` (which is hard-wired to `editor.html`);
   `graph.js` runs a desktop pass followed by a phone pass with a real touch
@@ -90,6 +91,7 @@ viewport without editing it:
 | `cause.js` | `index.html`'s **causality diagram** (`docs/FEATURES.md` § M): the `->` / `-|` / `~>` syntax read out of a note and drawn in the preview as chips and signed glyphs (a bullet keeping its list, an arrow inside a sentence and one inside a fence left alone), the mode switch rebuilding the graph out of key words rather than notes, `Stres` and `stres` folding to one node, the sign and the delay reaching the canvas, two arrows between one pair bowed apart, **circular causality** — three closed loops found, sorted shortest-first and classified reinforcing (R) / balancing (B) — the loop rows, pinning one asserted on real pixels, "only what is in a loop", the palette hiding the half that does not apply, both languages, and the links graph coming back unchanged |
 | `graph.js` | `index.html`'s knowledge graph and the `[[wikilink]]` syntax under it: the parser (links, tags, `^block` anchors, heading ids, and a fenced block minting neither), jumping to an anchor, all three scopes, every filter, the simulation actually settling, resolution across chapters, the `[[` suggester and the note-link modal, both languages, the export fallback, and the same graph on a phone with a real touch drag. The canvas is asserted on pixels |
 | `find.js` | `index.html`'s search & filter panel: all three scopes (open chapter, one workbook, every workbook), the four toggles (match case, whole word, regex — including a broken one — and diacritic folding, which has to find "măsură" from "masura" and stop when turned off), the kind of every line counted and filtered on, the tag chips narrowing to the chapters carrying a `#tag`, a hit opening another chapter and landing selected in the textarea, a hit below the fold scrolling to itself through wrapped lines, a line of literal HTML shown rather than run, both languages, and `Ctrl+4` |
+| `garden.js` | `index.html`'s garden toolbox: the real garden log this was written for, typos included — every harvest item as its own row and their total in kg, `dovlecel`/`zucchini` summing as one plant while `rosii cherry` stays out of the `rosii` total, an unlisted plot keeping its own words, the lines that must *not* become records (a plant count, a wheelbarrow of mown grass, a step counter, two clock times with no dash between them), an interval becoming a duration, the litres that are water and the "am ramas cu 60 l" that is not, mowing counted as sessions and as rounds, every filter and both groupings, the Garden scope leaving another workbook out, a row click opening its chapter at that line, both languages, and the semicolon-separated CSV |
 | `nav.js` | `index.html`'s navigation panel: every heading listed (and a `#` inside a fence not counted as one), a click taking the **preview** to the heading's id and the **Markdown source** to the line it was read from — selected in the textarea and scrolled to through wrapped lines — the repeated heading that has to reach its own line and its own `…-1` anchor, the clicked item becoming the active one, and a phone, where the click shows the preview and deliberately leaves the source (and the keyboard) alone |
 | `wbrename.js` | `index.html`'s in-place rename of a workbook or chapter name in the panel: a double-click (and one click then `F2`) turning the name `contenteditable`, Enter and blur committing while the chapter file name follows the title, Escape restoring, an emptied name rejected, and the plain single click still toggling the workbook / opening the chapter after its short delay |
 | `wbsaveall.js` | `index.html`'s "Save all modified" button and the pending-edit tracking behind it: editing a chapter records it in `wbPendingIds` and the `pending` object store and shows a `•` on the chapter and workbook rows, `Ctrl+S` clears only the open chapter, `Ctrl+Alt+S` writes every pending chapter and clears them all (content asserted on the real records), a marker created by switching away from an edited chapter, and a marker surviving a page reload. Drives the in-memory document on `file://` but does depend on the IndexedDB writes landing |
@@ -116,7 +118,7 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `mealplan.js`, `targets.js`, `graph.js`, `cause.js`, `find.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `calendar.js`, `drive.js` and `voice.js` are the scripts that do **not** use
+`recipes.js`, `mealplan.js`, `targets.js`, `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `calendar.js`, `drive.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
@@ -125,7 +127,7 @@ own browser context. `recipes.js` goes one further and does not use a
 for the same reason — Chrome gives a `file://` page no `localStorage`, and
 the stored Google token is what the connected states are made of. It checks
 the `file://` case too, on purpose: that is the one where the button has to
-explain itself instead of opening a popup that cannot work. `graph.js`, `cause.js`, `find.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js` stay on `file://` — all nine drive the
+explain itself instead of opening a popup that cannot work. `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js` stay on `file://` — all ten drive the
 in-memory document, so none depends on a write landing. (`idea.js` files
 ideas without a folder handle, so `wbMirrorWrite` is a no-op and the
 assertions are on the records, which is where a phone's ideas live too.) `wbsaveall.js` also

@@ -184,6 +184,12 @@ the same view (`cause.js` — the `->`/`-|`/`~>` syntax in the preview and in
 the diagram, the mode switch, the signed and delayed arrows on the canvas,
 and the feedback loops found and classified R/B), its search &
 filter panel (`find.js`), its navigation panel (`nav.js`), the
+**garden toolbox** in the same file (`garden.js` — the real garden log with
+its typos: the harvest rows and their per-plant total, the plot and plant
+synonyms, the lines that must *not* become records, an interval turned into
+a duration, the water that counts and the "60 l left in the tank" that does
+not, mowing sessions and rounds, every filter and both groupings, a row
+click landing in the editor, both languages and the CSV), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
 the TODO-workbook chapter filter (`wbtodo.js`), the
