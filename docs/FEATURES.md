@@ -459,13 +459,16 @@ which turns the chosen `File` into an object URL and `window.open()`s it —
 revoked after a minute, or immediately if the popup was blocked (a status
 toast says so, via `openHtmlBlocked`).
 
-### Google Drive — a fourth destination, `editor.html` only
+### Google Drive — a fourth destination, per page
 
 Deliberately *not* a `ScuLaFolder` mode. `ScuLaFolder` is the shared block
-copied into all four files and it must keep working from `file://` with no
-network; Google needs neither of those to be true. So the Drive button
-(`#driveBtn`, next to the other save actions) lives in `editor.html`'s own
-script — `docs/MAP.md` § Google Drive for the line anchors.
+copied into all five files and it must keep working from `file://` with no
+network; Google needs neither of those to be true. So each page that wants
+Drive carries its own: the button `#driveBtn` in `editor.html`'s script
+(`docs/MAP.md` § Google Drive), and `index.html`'s chapter sync
+(**§ O**), which reuses the same OAuth client, scope and stored token —
+same origin, so connecting on one page connects the other. The rest of this
+section describes `editor.html`'s; § O describes the differences.
 
 Sign-in is **Google Identity Services in a popup**
 (`google.accounts.oauth2.initTokenClient`). The earlier attempt sent the whole
@@ -1560,6 +1563,109 @@ lines that must *not* become records, intervals and durations, the water
 that counts and the water that does not, mowing sessions and rounds, every
 filter, both groupings, the scope, a row click landing in the editor, both
 languages and the CSV. Run: `/apptest garden`.
+
+---
+
+## O. Google Drive sync — the chapters follow the Google account (`index.html`)
+
+The ask was "like bookmarks": open Chrome on another machine, sign into the
+same Gmail account, and the markdown files are there.
+
+**Chrome's bookmark sync itself is out of reach.** No web API exposes it —
+it is browser-internal, and a page cannot read or write it. The
+account-shaped store a page *can* write to is **Google Drive**, so that is
+what this is: the same account, the same files, one sign-in.
+
+The button is `#btn-wb-cloud`, in the workbooks panel under
+`⇩ Sync to folder`. Left-click connects, then syncs; right-click forgets the
+connection, the same gesture the folder button and `editor.html`'s Drive
+button use. The line under it always says where the chapters are — local
+only, connected, syncing, synced at a time, or *sign-in expired*.
+
+### What lands in Drive
+
+The folder mirror, one file per chapter — real `.md` files, readable in
+Drive itself rather than one opaque blob:
+
+```
+Scula Markdown/
+  index.json                       ← the manifest
+  <workbook folder>/<chapter>.md
+```
+
+`index.json` is what makes this a *sync* and not an upload. It carries the
+stable ids both devices already agree on (`wb_…`, `ch_…` — § E), every
+record's `updated` stamp, the Drive file id to overwrite, and the
+tombstones:
+
+```json
+{ "v": 1, "updated": 1757370000000,
+  "books":    [{ "id": "wb_fiz", "name": "Fizică", "folder": "fizica", "updated": 1000, "order": 0, "driveId": "…" }],
+  "chapters": [{ "id": "ch_mec", "workbookId": "wb_fiz", "title": "Mecanica", "file": "mecanica.md", "updated": 2000, "order": 0, "driveId": "…" }],
+  "deleted":  { "ch_opt": 1757369000000 } }
+```
+
+### The merge rule, and the one thing it needs
+
+**Newest `updated` wins, per record.** A chapter present on both sides is
+compared by its stamp: remote newer → its body is downloaded and replaces
+the local one (and the editor is reloaded if that chapter is open); local
+newer → the `.md` file is overwritten. Present on one side only → copied to
+the other. Because the ids are the ones IndexedDB already uses, the same
+chapter never arrives twice.
+
+The one thing a stamp cannot express is a **delete** — remove a chapter and
+a plain merge sees "the other browser has one you don't" and hands it back.
+So every delete leaves a **tombstone**: `cloudTombstone(id)` records it in
+the `meta` store under `deleted`, and the manifest carries the union of both
+sides' graves. A grave deletes the record wherever it still exists, unless
+that copy's `updated` is *newer* than the grave — that is a deliberate
+re-creation, and it wins. Graves are dropped after 90 days
+(`GSYNC.GRAVE_MS`), so the manifest does not grow forever.
+
+A **rename** is not a delete: the Drive file is PATCHed, so `gsWrite()`
+overwrites and renames in the same call and the file moves instead of
+duplicating.
+
+The manifest is written **last**. A run that dies halfway leaves the old one
+in place, so the next run redoes the work rather than losing track of a file
+it had already uploaded.
+
+IndexedDB stays the source of truth on each device — Drive is a third mirror
+beside the markdown folder (§ D), never ahead of it. A pulled chapter is
+marked **pending** (§ E), so the next explicit save writes it to disk too.
+
+### Sign-in, and why a background sync never asks for one
+
+Sign-in is the same **Google Identity Services popup** `editor.html` uses,
+with the same OAuth client, the same `drive.file` scope and the same
+`gdrive_token` / `gdrive_token_exp` in `localStorage` — same origin, so
+connecting on either page connects both. Only the folder differs
+(`gdrive_md_folder`). The GIS script is fetched on the first click, never at
+page load. The Google-side requirements are § D's, unchanged.
+
+A token lasts about an hour. Three things sync on their own — a debounced
+push 6 s after typing stops, a pull every 2 minutes while the tab is
+visible, and a pull on coming back to the tab — and **none of them may open
+a popup**: nobody asked for one and a popup blocker would eat it anyway. So
+the interactive flag travels with the call (`gsAuth(interactive)`); a
+background run whose token has lapsed skips and paints
+`☁ sign-in expired — press again` instead. One 401 mid-run still buys
+exactly one silent re-auth and retry.
+
+`drive.file` means the page only ever sees files it made itself — which is
+also why searching Drive by name is safe here: the search cannot see, or
+collide with, anything else in the account.
+
+### Testing
+
+`tests/gdsync.js` — the whole path against an in-memory fake Drive (the four
+REST verbs the page uses, with multipart uploads parsed for real): lazy
+script loading, both languages, the `file://` refusal, the push down to the
+file bodies and the manifest, the pull into an empty database, newest-wins
+in both directions, a rename keeping its Drive file, a delete travelling and
+staying deleted on the other browser, and disconnecting. No Google account
+is involved. Run: `/apptest gdsync`.
 
 ---
 

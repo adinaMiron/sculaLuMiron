@@ -258,6 +258,27 @@
     white-space: nowrap;
   }
 
+  /* ── Drive sync (docs/FEATURES.md § O) ──
+     The cloud button carries the whole "you are connected" signal the way
+     editor.html's Drive button does: an accent fill, nothing else. */
+  #btn-wb-cloud.connected {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+  #btn-wb-cloud.syncing { opacity: 0.65; }
+  #wb-cloud-where {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The token lapses after about an hour — that is a "press me", not an error. */
+  #wb-cloud-where.warn { color: var(--accent-2); }
+
   #wb-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
   #wb-tree::-webkit-scrollbar { width: 4px; }
   #wb-tree::-webkit-scrollbar-track { background: transparent; }
@@ -3065,6 +3086,12 @@
       <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
       <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Write every chapter into the markdown folder">⇩ Sync to folder</button>
       <div id="wb-where"></div>
+      <!-- Google Drive sync: the chapters follow the Google account, so every
+           Chrome signed into it has them — docs/FEATURES.md § O. No data-i:
+           the label depends on the connection, so paintCloud() writes both
+           halves and applyUILang() must not overwrite one of them. -->
+      <button class="btn" id="btn-wb-cloud" onclick="cloudButton()" oncontextmenu="cloudForgetAsk(event)">☁ Google account</button>
+      <div id="wb-cloud-where"></div>
     </div>
     <div id="wb-tree"></div>
     <div id="wb-resize-handle" title="Drag to resize"></div>
@@ -3615,6 +3642,23 @@ const I18N = {
     needWorkbookName:"Dă un nume caietului.", needChapterTitle:"Dă un titlu capitolului.",
     saveBtn:"Salvează", wbPathHint:p=>`Fișier: ${p}`,
 
+    /* ── Sincronizare cu contul Google (docs/FEATURES.md § O) ── */
+    cloudBtn:"☁ Cont Google", cloudBtnOn:"☁ Sincronizează acum",
+    cloudTip:"Ține capitolele în contul tău Google, ca să le găsești în orice Chrome conectat la el",
+    cloudTipOn:f=>`Sincronizează cu dosarul „${f}” din Google Drive (clic dreapta ca să te deconectezi)`,
+    cloudOff:"☁ doar pe acest dispozitiv",
+    cloudReady:"☁ conectat, încă nesincronizat",
+    cloudAt:h=>`☁ sincronizat la ${h}`,
+    cloudStale:"☁ conectarea a expirat — apasă din nou",
+    cloudSyncing:"☁ se sincronizează…",
+    cloudConnected:f=>`Cont Google conectat. Capitolele merg în „${f}”.`,
+    cloudDone:r=>`Sincronizat: ${r.up} trimise, ${r.down} primite.`,
+    cloudNothing:"Sincronizat — nimic de schimbat.",
+    cloudError:m=>`Google Drive: ${m}`,
+    cloudNoFile:"Sincronizarea nu merge cu pagina deschisă direct de pe disc (file://). Deschide-o prin http(s) — de pe site, de exemplu — și încearcă din nou.",
+    cloudForgetAsk:"Uiți conexiunea cu contul Google? Capitolele rămân și aici, și în Drive.",
+    cloudForgot:"Cont Google deconectat.",
+
     /* ── Graful cunoștințelor (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Notiță", wikilinkTip:"Leagă o notiță sau o secțiune (Ctrl+Shift+L)",
     graphBtn:"🕸 Graf", graphTip:"Graful cunoștințelor (Ctrl+3)", graphTitle:"Graful cunoștințelor",
@@ -3913,6 +3957,23 @@ const I18N = {
     needWorkbookName:"Give the workbook a name.", needChapterTitle:"Give the chapter a title.",
     saveBtn:"Save", wbPathHint:p=>`File: ${p}`,
 
+    /* ── Google account sync (docs/FEATURES.md § O) ── */
+    cloudBtn:"☁ Google account", cloudBtnOn:"☁ Sync now",
+    cloudTip:"Keep these chapters on your Google account, so every Chrome signed into it has them",
+    cloudTipOn:f=>`Sync with the “${f}” folder in Google Drive (right-click to disconnect)`,
+    cloudOff:"☁ this device only",
+    cloudReady:"☁ connected, not synced yet",
+    cloudAt:h=>`☁ synced at ${h}`,
+    cloudStale:"☁ sign-in expired — press again",
+    cloudSyncing:"☁ syncing…",
+    cloudConnected:f=>`Google account connected. Chapters go to “${f}”.`,
+    cloudDone:r=>`Synced: ${r.up} sent, ${r.down} received.`,
+    cloudNothing:"Synced — nothing to change.",
+    cloudError:m=>`Google Drive: ${m}`,
+    cloudNoFile:"Sync can't work when the page is opened straight off disk (file://). Serve it over http(s) — from the site, say — and try again.",
+    cloudForgetAsk:"Forget the Google account connection? The chapters stay both here and in Drive.",
+    cloudForgot:"Google account disconnected.",
+
     /* ── Knowledge graph (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Note link", wikilinkTip:"Link to a note or a section (Ctrl+Shift+L)",
     graphBtn:"🕸 Graph", graphTip:"Knowledge graph (Ctrl+3)", graphTitle:"Knowledge graph",
@@ -4155,6 +4216,9 @@ function applyUILang(){
   if(typeof gdRepaintLang === "function" && gdReady) gdRepaintLang();
   // And for the "@date" pills, whose label is a formatted date, not a key.
   if(typeof calRepaintLang === "function") calRepaintLang();
+  // The Drive-sync button's label depends on the connection, not on a
+  // data-i key, so it repaints itself — docs/FEATURES.md § O.
+  if(typeof paintCloud === "function") paintCloud();
 }
 window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); store.set(LANG_KEY, UI); if (document.getElementById('help-modal').classList.contains('open')) paintHelp(); });
 (async function initUILang(){
@@ -6243,12 +6307,17 @@ async function deleteWorkbook(id) {
   }
   await wbMirrorRemove(book.folder, null);
   try { await wbDrop(WB_BOOKS, book.id); } catch (e) {}
+  // A grave per record, so the delete travels instead of being undone by the
+  // next sync pulling it back from another browser — docs/FEATURES.md § O.
+  for (const ch of chapters) await cloudTombstone(ch.id);
+  await cloudTombstone(book.id);
   wbChapters = wbChapters.filter(c => c.workbookId !== book.id);
   wbBooks = wbBooks.filter(b => b.id !== book.id);
   wbOpenBooks.delete(book.id);
   if (chapters.some(c => c.id === wbCurrentId)) detachChapter();
   renderWorkbooks();
   wbSay(t('wbRemoved'));
+  cloudAutoSync();
 }
 
 async function newChapter(workbookId) {
@@ -6321,8 +6390,10 @@ async function deleteChapter(id) {
   if (book) await wbMirrorRemove(book.folder, ch.file);
   wbChapters = wbChapters.filter(c => c.id !== ch.id);
   if (ch.id === wbCurrentId) detachChapter();
+  await cloudTombstone(ch.id);          // docs/FEATURES.md § O
   renderWorkbooks();
   wbSay(t('wbRemoved'));
+  cloudAutoSync();
 }
 
 // Reorder a workbook among its siblings. Chapters keep their workbookId and
@@ -6407,6 +6478,7 @@ async function flushChapter() {
     await wbPendingMark(ch);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot
     wbSay(t('wbAutosaved'));
+    cloudAutoSync();                      // and, debounced, up to Drive — § O
   }
 }
 function detachChapter() {
@@ -6440,6 +6512,7 @@ async function saveToWorkbook() {
   await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
   renderWorkbooks();
+  cloudAutoSync();
 }
 
 /* Save every chapter edited since its last save — write each one's .md
@@ -6462,6 +6535,7 @@ async function saveAllModifiedChapters() {
   }
   wbSay(failed ? t('wbSavedSomeModified', done) : t('wbSavedAllModified', done), true);
   renderWorkbooks();
+  cloudAutoSync();
 }
 
 function openWorkbookModal() {
@@ -10697,7 +10771,7 @@ function initWbPanelDrag() {
 
 setView('source');
 applyResponsiveDefaults();
-loadWorkbooks();
+loadWorkbooks().then(cloudBoot, cloudBoot);   // § O: the tree first, then Drive
 initToolbarCollapse();
 initWbPanelResize();
 initWbPanelDrag();
@@ -10717,6 +10791,433 @@ window.addEventListener('resize', () => {
     placeWbPanel(parseFloat(wbPanel.style.left) || 0, parseFloat(wbPanel.style.top) || 0);
   }
 });
+
+/* ═══════════════════ Google Drive sync — docs/FEATURES.md § O ═══════════════
+   "Like bookmarks": the chapters follow the Google account, so every Chrome
+   signed into it opens the same workbooks.
+
+   Chrome's own bookmark sync is not reachable from a page — nothing exposes
+   it — so the account-shaped store a page *can* write to is Drive. Same OAuth
+   client, same lazily-fetched Google Identity Services popup and the same
+   localStorage token as editor.html's Drive button (docs/FEATURES.md § D), so
+   connecting on one page connects the other; only the folder differs.
+
+   What lands in Drive is the folder mirror, one file per chapter:
+
+       Scula Markdown/
+         index.json                     ← the manifest
+         <workbook folder>/<chapter>.md
+
+   — real .md files, readable in Drive itself rather than one opaque blob.
+   The manifest is what makes this a *sync* and not an upload: it carries the
+   stable ids both devices agree on, each record's `updated` stamp, and the
+   Drive file id to overwrite. Merge is per record, newest `updated` wins, and
+   a delete leaves a tombstone so a chapter deleted here does not come back
+   from the other browser.
+
+   IndexedDB stays the source of truth on each device; Drive is a third mirror
+   beside the markdown folder, never ahead of it. A pulled chapter is marked
+   *pending* (§ E), so the next explicit save writes it to disk too. */
+
+const GSYNC = {
+  CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
+  SCOPE: "https://www.googleapis.com/auth/drive.file",
+  FOLDER_NAME: "Scula Markdown",
+  MANIFEST: "index.json",
+  POLL_MS: 120000,      // pull what the other browsers wrote, while the tab is open
+  DEBOUNCE_MS: 6000,    // push, once typing has stopped
+  GRAVE_MS: 90 * 24 * 3600 * 1000   // how long a tombstone is worth carrying
+};
+
+let gsToken = null, gsTokenExp = 0, gsFolder = null, gsClient = null;
+let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
+let gsGraves = {};                    // id → deleted-at, books and chapters alike
+
+// The token is editor.html's — same origin, same OAuth client, same scope —
+// so connecting on either page connects both. Only the folder is ours.
+try {
+  const tk = localStorage.getItem('gdrive_token');
+  const ex = Number(localStorage.getItem('gdrive_token_exp')) || 0;
+  if (tk && ex > Date.now() + 60000) { gsToken = tk; gsTokenExp = ex; }
+  gsFolder = JSON.parse(localStorage.getItem('gdrive_md_folder') || 'null');
+  gsLastAt = Number(localStorage.getItem('gdrive_md_at')) || 0;
+} catch (e) {}
+
+function gsLive() { return !!gsToken && gsTokenExp > Date.now() + 60000; }
+// Connected means "set up here" — a stored folder outlives the hour-long
+// token, and that is the difference between "sign in" and "sign in again".
+function gsConnected() { return !!(gsFolder && gsFolder.id) || gsLive(); }
+
+function gsLoadScript(src) {
+  return new Promise((resolve, reject) => {
+    const found = document.querySelector('script[data-src="' + src + '"]');
+    if (found) {
+      if (found.dataset.loaded) return resolve();
+      found.addEventListener('load', () => resolve());
+      found.addEventListener('error', () => reject(new Error(src)));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.dataset.src = src;
+    s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); });
+    s.addEventListener('error', () => reject(new Error(src)));
+    document.head.appendChild(s);
+  });
+}
+
+function gsForget(tokenOnly) {
+  if (gsToken && window.google && google.accounts && google.accounts.oauth2)
+    try { google.accounts.oauth2.revoke(gsToken, () => {}); } catch (e) {}
+  gsToken = null; gsTokenExp = 0;
+  try {
+    localStorage.removeItem('gdrive_token');
+    localStorage.removeItem('gdrive_token_exp');
+    if (!tokenOnly) { localStorage.removeItem('gdrive_md_folder'); localStorage.removeItem('gdrive_md_at'); }
+  } catch (e) {}
+  if (!tokenOnly) { gsFolder = null; gsLastAt = 0; }
+}
+
+/* A background sync must never open a popup — nobody asked for one, and a
+   popup blocker would eat it anyway. So the interactive flag travels with the
+   call: without it an expired token is an error to report quietly, not a
+   sign-in to demand. */
+async function gsAuth(interactive) {
+  if (gsLive()) return gsToken;
+  if (!interactive) throw new Error('stale');
+  await gsLoadScript('https://accounts.google.com/gsi/client');
+  return new Promise((resolve, reject) => {
+    if (!gsClient) {
+      gsClient = google.accounts.oauth2.initTokenClient({
+        client_id: GSYNC.CLIENT_ID, scope: GSYNC.SCOPE, callback: () => {}
+      });
+    }
+    gsClient.callback = (resp) => {
+      if (resp.error) return reject(new Error(resp.error_description || resp.error));
+      gsToken = resp.access_token;
+      gsTokenExp = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+      try {
+        localStorage.setItem('gdrive_token', gsToken);
+        localStorage.setItem('gdrive_token_exp', String(gsTokenExp));
+      } catch (e) {}
+      resolve(gsToken);
+    };
+    // Closing the popup is an answer, not a failure to shout about.
+    gsClient.error_callback = (err) => reject(new Error((err && err.type) || 'cancelled'));
+    gsClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// Every Drive call goes through here, so one expired token buys exactly one
+// silent re-auth and retry rather than surfacing as a bare 401.
+async function gsRaw(url, opts, retried) {
+  const token = await gsAuth(gsInteractive);
+  const o = Object.assign({}, opts || {});
+  o.headers = Object.assign({}, o.headers || {}, { Authorization: 'Bearer ' + token });
+  const r = await fetch(url, o);
+  if (r.status === 401 && !retried) { gsForget(true); return gsRaw(url, opts, true); }
+  if (!r.ok) {
+    let msg = r.status + '';
+    try { const e = await r.json(); msg = (e.error && e.error.message) || msg; } catch (e) {}
+    const err = new Error(msg); err.status = r.status; throw err;
+  }
+  return r;
+}
+const gsJson = (url, opts) => gsRaw(url, opts).then(r => r.json());
+const gsText = (url, opts) => gsRaw(url, opts).then(r => r.text());
+
+const GS_FILES = 'https://www.googleapis.com/drive/v3/files';
+const GS_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+const GS_DIR_MIME = 'application/vnd.google-apps.folder';
+
+/* drive.file only ever lists what this page itself made, so a name search is
+   already scoped to our own files — it cannot see, or collide with, anything
+   else in the account. */
+async function gsChild(name, parentId, isFolder) {
+  const q = "name='" + String(name).replace(/'/g, "\\'") + "' and trashed=false"
+          + (parentId ? " and '" + parentId + "' in parents" : '')
+          + (isFolder ? " and mimeType='" + GS_DIR_MIME + "'" : '');
+  const r = await gsJson(GS_FILES + '?pageSize=1&fields=files(id,name)&q=' + encodeURIComponent(q));
+  return (r.files && r.files[0]) || null;
+}
+function gsMakeFolder(name, parentId) {
+  const body = { name: name, mimeType: GS_DIR_MIME };
+  if (parentId) body.parents = [parentId];
+  return gsJson(GS_FILES + '?fields=id,name', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+}
+function gsRename(id, name) {
+  return gsJson(GS_FILES + '/' + id + '?fields=id,name', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name })
+  });
+}
+const gsDownload = id => gsText(GS_FILES + '/' + id + '?alt=media');
+const gsTrash = id => gsRaw(GS_FILES + '/' + id, { method: 'DELETE' }).then(() => true, () => false);
+
+// One call for both halves of "write a file": POST creates, PATCH overwrites
+// and renames in the same breath, which is what makes a renamed chapter move
+// rather than duplicate.
+async function gsWrite(name, parentId, blob, fileId) {
+  const meta = fileId ? { name: name } : { name: name, parents: [parentId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', blob);
+  const url = GS_UPLOAD + (fileId ? '/' + fileId : '') + '?uploadType=multipart&fields=id,name';
+  try {
+    return await gsJson(url, { method: fileId ? 'PATCH' : 'POST', body: form });
+  } catch (e) {
+    // The file was removed in Drive since we last saw it — make a new one
+    // rather than losing the chapter. Only on a 404: a 403 is usually a rate
+    // limit, and re-creating there would duplicate the chapter instead.
+    if (fileId && e.status === 404) return gsWrite(name, parentId, blob, null);
+    throw e;
+  }
+}
+
+async function gsRoot() {
+  if (gsFolder && gsFolder.id) return gsFolder;
+  gsFolder = (await gsChild(GSYNC.FOLDER_NAME, null, true)) || (await gsMakeFolder(GSYNC.FOLDER_NAME, null));
+  try { localStorage.setItem('gdrive_md_folder', JSON.stringify(gsFolder)); } catch (e) {}
+  return gsFolder;
+}
+
+/* ── Tombstones ──
+   Without one, deleting a chapter here and syncing would simply pull it back
+   from the other browser's copy. The grave outlives the record, on both
+   sides, and is dropped after GRAVE_MS. */
+async function gsGravesLoad() {
+  try { gsGraves = (await wbMetaGet('deleted')) || {}; } catch (e) { gsGraves = {}; }
+}
+async function cloudTombstone(id) {
+  if (!id) return;
+  gsGraves[id] = Date.now();
+  try { await wbMetaSet('deleted', gsGraves); } catch (e) {}
+}
+
+/* ── The sync ──
+   One pass: read the manifest, merge it against IndexedDB record by record,
+   move only what differs, write the manifest back. Returns {up, down} so the
+   caller can say what happened. */
+async function cloudSync(interactive) {
+  if (gsBusy) return null;
+  if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
+  if (!interactive && !gsLive()) { paintCloud(); return null; }
+
+  gsBusy = true; gsInteractive = !!interactive; paintCloud();
+  let up = 0, down = 0;
+  try {
+    await flushChapter();                        // the open chapter's latest text counts
+    const rootId = (await gsRoot()).id;
+
+    /* 1. the manifest */
+    let man = { v: 1, books: [], chapters: [], deleted: {} }, manId = null;
+    const found = await gsChild(GSYNC.MANIFEST, rootId, false);
+    if (found) {
+      manId = found.id;
+      try { man = JSON.parse(await gsDownload(found.id)) || man; } catch (e) {}
+    }
+    const remBooks = new Map((man.books || []).map(b => [b.id, b]));
+    const remChaps = new Map((man.chapters || []).map(c => [c.id, c]));
+
+    /* 2. tombstones, merged both ways, then applied to both sides */
+    const graves = Object.assign({}, man.deleted || {});
+    for (const id in gsGraves) if (!(id in graves) || gsGraves[id] > graves[id]) graves[id] = gsGraves[id];
+    const cutoff = Date.now() - GSYNC.GRAVE_MS;
+    for (const id in graves) if (graves[id] < cutoff) delete graves[id];
+
+    for (const id in graves) {
+      const when = graves[id];
+      const rc = remChaps.get(id);
+      if (rc) { if (rc.driveId) await gsTrash(rc.driveId); remChaps.delete(id); }
+      const rb = remBooks.get(id);
+      if (rb) { if (rb.driveId) await gsTrash(rb.driveId); remBooks.delete(id); }
+      // A local record edited *after* the delete was recorded elsewhere is a
+      // deliberate re-creation, and wins over the grave.
+      const lc = wbChapter(id);
+      if (lc && (lc.updated || 0) <= when) {
+        try { await wbDrop(WB_CHAPTERS, id); } catch (e) {}
+        await wbPendingClear(id);
+        wbChapters = wbChapters.filter(c => c.id !== id);
+        if (id === wbCurrentId) detachChapter();
+      }
+      const lb = wbBook(id);
+      if (lb && (lb.updated || 0) <= when) {
+        try { await wbDrop(WB_BOOKS, id); } catch (e) {}
+        wbBooks = wbBooks.filter(b => b.id !== id);
+        wbOpenBooks.delete(id);
+      }
+    }
+    gsGraves = graves;
+    try { await wbMetaSet('deleted', gsGraves); } catch (e) {}
+
+    /* 3. workbooks — newest `updated` wins, in both directions */
+    for (const rb of remBooks.values()) {
+      const lb = wbBook(rb.id);
+      if (!lb) {
+        const book = { id: rb.id, name: rb.name, folder: rb.folder, created: rb.created || Date.now(),
+                       updated: rb.updated || Date.now(), order: rb.order || 0 };
+        wbBooks.push(book);
+        await wbPersist(WB_BOOKS, book);
+        down++;
+      } else if ((rb.updated || 0) > (lb.updated || 0)) {
+        lb.name = rb.name; lb.folder = rb.folder; lb.order = rb.order || 0; lb.updated = rb.updated;
+        await wbPersist(WB_BOOKS, lb);
+        down++;
+      }
+    }
+    const outBooks = [];
+    const dirOf = new Map();          // book id → its Drive folder id, this pass
+    for (const lb of wbBooks) {
+      const rb = remBooks.get(lb.id);
+      let driveId = rb && rb.driveId;
+      if (driveId && rb.folder !== lb.folder && (lb.updated || 0) > (rb.updated || 0)) {
+        try { await gsRename(driveId, lb.folder); } catch (e) {}
+      }
+      if (!driveId) {
+        const dir = (await gsChild(lb.folder, rootId, true)) || (await gsMakeFolder(lb.folder, rootId));
+        driveId = dir.id;
+      }
+      dirOf.set(lb.id, driveId);
+      outBooks.push({ id: lb.id, name: lb.name, folder: lb.folder, created: lb.created || 0,
+                      updated: lb.updated || 0, order: lb.order || 0, driveId: driveId });
+    }
+
+    /* 4. chapters — the same rule, plus the file body either way */
+    for (const rc of remChaps.values()) {
+      const lc = wbChapter(rc.id);
+      if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
+      if (!wbBook(rc.workbookId)) continue;                          // its workbook is gone here
+      let text = '';
+      try { text = await gsDownload(rc.driveId); } catch (e) { continue; }
+      const ch = lc || { id: rc.id, workbookId: rc.workbookId, created: rc.created || Date.now(), order: 0 };
+      ch.workbookId = rc.workbookId;
+      ch.title = rc.title; ch.file = rc.file;
+      ch.order = rc.order || 0;
+      ch.content = text;
+      ch.updated = rc.updated || Date.now();
+      if (!lc) wbChapters.push(ch);
+      if (!await wbPersist(WB_CHAPTERS, ch)) continue;
+      await wbPendingMark(ch);          // so the markdown folder catches up too
+      if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
+      down++;
+    }
+    const outChaps = [];
+    for (const lc of wbChapters) {
+      const rc = remChaps.get(lc.id);
+      const dir = dirOf.get(lc.workbookId);
+      if (!dir) continue;               // an orphan chapter has nowhere to go
+      let driveId = rc && rc.driveId;
+      if (!rc || (lc.updated || 0) > (rc.updated || 0)) {
+        const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }), driveId);
+        driveId = file.id;
+        up++;
+      }
+      outChaps.push({ id: lc.id, workbookId: lc.workbookId, title: lc.title, file: lc.file,
+                      created: lc.created || 0, updated: lc.updated || 0, order: lc.order || 0,
+                      driveId: driveId });
+    }
+
+    /* 5. the manifest goes back last, so a run that died halfway leaves the
+       old one in place and the next run redoes the work rather than losing
+       track of a file it had already written. */
+    const out = { v: 1, updated: Date.now(), books: outBooks, chapters: outChaps, deleted: graves };
+    const mf = await gsWrite(GSYNC.MANIFEST, rootId,
+                             new Blob([JSON.stringify(out)], { type: 'application/json' }), manId);
+    if (mf && mf.id) manId = mf.id;
+
+    gsLastAt = Date.now();
+    try { localStorage.setItem('gdrive_md_at', String(gsLastAt)); } catch (e) {}
+    renderWorkbooks();
+    return { up: up, down: down };
+  } finally {
+    gsBusy = false; gsInteractive = false;
+    paintCloud();
+  }
+}
+
+/* ── The button ── */
+function paintCloud() {
+  const btn = document.getElementById('btn-wb-cloud');
+  if (!btn) return;
+  const on = gsConnected();
+  btn.textContent = on ? t('cloudBtnOn') : t('cloudBtn');
+  btn.title = on ? t('cloudTipOn', (gsFolder && gsFolder.name) || GSYNC.FOLDER_NAME) : t('cloudTip');
+  btn.setAttribute('aria-label', btn.title);
+  btn.classList.toggle('connected', on);
+  btn.classList.toggle('syncing', gsBusy);
+  const where = document.getElementById('wb-cloud-where');
+  if (!where) return;
+  const stale = on && !gsLive();
+  where.classList.toggle('warn', stale);
+  where.textContent = !on ? t('cloudOff')
+    : gsBusy ? t('cloudSyncing')
+    : stale ? t('cloudStale')
+    : gsLastAt ? t('cloudAt', new Date(gsLastAt).toLocaleTimeString())
+    : t('cloudReady');
+}
+
+function cloudError(err) {
+  const m = (err && err.message) || String(err);
+  if (m === 'cancelled' || m === 'popup_closed' || m === 'popup_failed_to_open' || m === 'stale') {
+    paintCloud();
+    return;
+  }
+  wbSay(t('cloudError', m), true);
+}
+
+async function cloudButton() {
+  if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
+  if (gsBusy) return;
+  const first = !gsConnected();
+  try {
+    if (first || !gsLive()) {
+      gsInteractive = true;
+      await gsAuth(true);
+      const f = await gsRoot();
+      if (first) ScuLaFolder.toast(t('cloudConnected', f.name));
+    }
+    const r = await cloudSync(true);
+    if (r) wbSay(r.up || r.down ? t('cloudDone', r) : t('cloudNothing'), true);
+  } catch (err) {
+    cloudError(err);
+  } finally {
+    gsInteractive = false;
+    paintCloud();
+  }
+}
+
+// The same gesture the folder button and editor.html's Drive button use.
+function cloudForgetAsk(ev) {
+  if (ev) ev.preventDefault();
+  if (!gsConnected()) return;
+  if (!confirm(t('cloudForgetAsk'))) return;
+  gsForget(false);
+  paintCloud();
+  wbSay(t('cloudForgot'), true);
+}
+
+/* ── Keeping up on its own ──
+   A push once typing settles, a pull every couple of minutes and one on
+   coming back to the tab. All of them are silent: they skip rather than ask
+   for a sign-in, which is what keeps a background timer from throwing a
+   popup at someone who is reading. */
+function cloudAutoSync() {
+  if (!gsConnected() || !gsLive()) return;
+  clearTimeout(gsTimer);
+  gsTimer = setTimeout(() => { cloudSync(false).catch(cloudError); }, GSYNC.DEBOUNCE_MS);
+}
+function cloudBoot() {
+  gsGravesLoad().then(() => {
+    paintCloud();
+    if (!gsConnected() || !gsLive()) return;
+    cloudSync(false).catch(cloudError);
+    setInterval(() => { if (!document.hidden && gsLive()) cloudSync(false).catch(cloudError); }, GSYNC.POLL_MS);
+  });
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && gsConnected() && gsLive()) cloudSync(false).catch(cloudError);
+});
+window.addEventListener('scula-ui-lang', () => setTimeout(paintCloud, 0));
 </script>
 </body>
 </html>

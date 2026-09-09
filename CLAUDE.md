@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 9736 | 84k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram | dark (earth) |
+| `index.html` | 11224 | 97k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + Google Drive sync | dark (earth) |
 | `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 
@@ -53,6 +53,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The infinite canvas, or what an export's size is | `docs/MAP.md` § "The infinite canvas" |
 | PDF/OCR reading, JPEG 2000, recipe markdown, importing a `.md` **or a shareable HTML page written here**, searching a big plan, **USDA nutrition**, **the meal library / breakfast-brunch-lunch-dinner flags / the per-day sum**, **the daily calorie/macro targets a day is measured against** | `docs/RECIPES.md` |
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
+| **Google Drive / the Gmail account** — the chapters following the account across browsers, the manifest, tombstones, or anything OAuth | `docs/FEATURES.md` § O (`index.html`) and § D (`editor.html`) |
 | The **causality diagram** — `a -> b` / `-\|` / `~>`, key words, feedback loops, circular causality | `docs/FEATURES.md` § M |
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
@@ -86,7 +87,11 @@ block's `SUBDIR` map, so the new page gets its own folder.
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `index.html:1390` (docx import). Don't add more. The OCR
+  CDN in `index.html:1390` (docx import). Don't add more. (Google Identity
+  Services is fetched on demand by the two Drive features — `editor.html`'s
+  button and `index.html`'s chapter sync — and is a `<script>` tag in no
+  file; there is no signing into a Google account without Google's own code,
+  and every page still works from `file://` without it.) The OCR
   engine in `recipes.html` is the one deliberate exception, and it is still
   not a file in this repo: Tesseract is fetched on first use from an address
   that is a visible, editable field, the page reads PDFs and takes pasted
@@ -189,7 +194,12 @@ its typos: the harvest rows and their per-plant total, the plot and plant
 synonyms, the lines that must *not* become records, an interval turned into
 a duration, the water that counts and the "60 l left in the tank" that does
 not, mowing sessions and rounds, every filter and both groupings, a row
-click landing in the editor, both languages and the CSV), the
+click landing in the editor, both languages and the CSV), the **Google
+Drive sync** that makes the chapters follow the Gmail account (`gdsync.js` —
+an in-memory fake Drive: the push down to the file bodies and the manifest,
+the pull into an empty database, newest-`updated`-wins both ways, a rename
+keeping its Drive file, a delete travelling and staying deleted, and
+disconnecting), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
 the TODO-workbook chapter filter (`wbtodo.js`), the

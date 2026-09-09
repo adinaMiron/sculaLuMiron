@@ -37,12 +37,17 @@ pick one as canonical without checking which is correct.
 ## 3. No cedilla diacritics (must be comma-below ș/ț, not ş/ţ)
 
 ```bash
-grep -n 'ş\|ţ' voice.html editor.html index.html recipes.html calendar.html
+grep -an 'ş\|ţ' voice.html editor.html index.html recipes.html calendar.html
 ```
 
 The literal characters, not `grep -P '[\x{015F}\x{0163}]'` — that form
 needs a UTF-8 PCRE build and dies with *"character code point value in
 \x{} is too large"* where it does not have one.
+
+`-a` is not optional: `index.html` holds four deliberate `\0` bytes (the
+separator in the graph's pair keys), so without it grep calls the file
+binary and reports "binary file matches" instead of the line — a hit you
+cannot read looks the same as the known-good one.
 
 Expect **only** one known-good hit, prose *about* the cedilla rather than a
 user-facing string: `index.html:~8005` (a comment). `recipes.html` has none

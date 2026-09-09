@@ -284,23 +284,23 @@ a `polyline`, whose vertices are all corners already.
 
 ---
 
-## index.html — 10722 lines · Markdown editor
+## index.html — 11224 lines · Markdown editor
 
 `lang="en"`. No section banners — this table is the only map.
 
 | Lines | Contents |
 |---|---|
-| 8–1671 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1176–1244**, **importance markers 1247–1300**, **causal lines 1304–1327** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1330–1655** (the mode switch **1426**, the `data-gv-only` halves **1428–1431**, the loop rows **1551–1586**), **garden toolbox 1672–1800** (`#garden-view` reuses `.gv-bar`/`.gv-scope`; `.gd-filters`, `#gd-table`, and the two `.gd-col-*` classes a phone drops) |
-| 1672 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone (Google Drive loads its scripts on demand now, from `editor.html` only — see that file's § Google Drive) |
+| 8–1671 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **500–557** (`.field input, .field select, .field textarea` — `#idea-text` **522**), navigation panel **656**, **search & filter panel 784–985** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1176–1244**, **importance markers 1247–1300**, **causal lines 1304–1327** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1330–1655** (the mode switch **1426**, the `data-gv-only` halves **1428–1431**, the loop rows **1551–1586**), **Drive-sync button 264–283** (`#btn-wb-cloud.connected`, `#wb-cloud-where`), **garden toolbox 1672–1800** (`#garden-view` reuses `.gv-bar`/`.gv-scope`; `.gd-filters`, `#gd-table`, and the two `.gd-col-*` classes a phone drops) |
+| 1672 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone — Google's scripts are fetched on demand now, by `editor.html`'s § Google Drive and by this file's § Google Drive sync, never at page load) |
 | 1674–2800 | **Shared nav + `ScuLaFolder`** |
-| 2802–3166 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**, **`#btn-garden` 3037**, beside the graph button), workspace 2784, panels (`#wb-panel`, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
+| 2802–3166 | Markup: header (**`#btn-idea`** 2215, right of "New"), **toolbar 2696–2779** (**`#btn-undo`/`#btn-redo` 2701–2702**, first in the group; the `#importance-select` is at **2728**, **`#btn-garden` 3037**, beside the graph button), workspace 2784, panels (`#wb-panel` — its `.panel-actions` carry **`#btn-wb-cloud` 3093** + `#wb-cloud-where`, § O —, `#img-panel`, **`#find-panel` 2848**, `#nav-panel` 2882), modals — `#image-modal` 2907, `#workbook-modal` 2940, **`#idea-modal` 2971**, `#link-modal` 2987, `#table-modal` 3010 |
 | **3428–3474** | Markup: **`#garden-view`** overlay — the tab switch **3434**, the scope switch **3439**, the one filter row **3452–3461**, `#gd-table` + the totals foot |
 | **3168–3287** | Markup: **`#graph-view`** overlay — the scope switch **3175**, the **mode switch `#gv-mode` 3182** (Legături / Cauzalitate), the palette **3206** with its `data-gv-only` halves and the **`#gv-loops`** section **3225–3231** — + `#wiki-modal` 3289 + `#wiki-suggest` 3309 |
 | 3316–9734 | App script |
 
 | Line | Function / region |
 |---|---|
-| 3183 | `I18N` (`ro:` 3166 / `en:` 3344; the `idea*` keys at **3330** / **3510**), `t()`, `store`, `applyUILang` **3579** |
+| 3183 | `I18N` (`ro:` 3166 / `en:` 3344; the `idea*` keys at **3330** / **3510**, the **`cloud*`** ones at **3646** / **3961**), `t()`, `store`, `applyUILang` **3579** — its tail repaints what has no `data-i` key: the garden, the `@date` pills, and **`paintCloud()` 4221** |
 | 3608–3610 | `editor`, `preview` refs, `savedRange` |
 | 3613–3627 | Selection: `saveSelection`, `restoreSelection` |
 | **3642–3729** | **Undo / redo** — the editor's own history, because the textarea's is unusable here (toolbar actions edit through `setRangeText`, which Chrome does not record, and opening a chapter replaces `.value`). `undoMark(coalesce)` **3642** records the state *before* an edit; two hooks feed it and catch every edit there is — the `beforeinput` listener **3675** (typing, paste, cut, and the browser's own history events, routed here) and the `editor.setRangeText` override **3686**, which is what makes every toolbar action, line move, Tab, `[[` completion and dictated word one undo step without any of them knowing. `undoReset()` **3654** on a whole-document swap (chapter open, New, import, an idea appended to the open chapter — that one is already on disk). `paintUndo()` **3682** disables the buttons. Shortcuts at **8347** |
@@ -326,6 +326,7 @@ a `polyline`, whose vertices are all corners already.
 | **6185–7156** | **Knowledge graph** — see the sub-table below |
 | **7152–7673** | **Search & filter** — see the sub-table below |
 | **8759–9478** | **The garden toolbox** — see the sub-table below |
+| **10795–11224** | **Google Drive sync** — see the sub-table below |
 | **7738–7927** | **Writing a `[[link]]`**: `wikiCandidates` 7738, the modal 7673–7791, the `[[` suggester 7801–7877 (incl. **`editorMirrorAt`** 7843, shared with the search panel) |
 | 7879–7900 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
 | 7901 | `importDocx` |
@@ -415,6 +416,32 @@ thing across all three.
 `GD_COLS` and `GD_GROUP_COLS`, plus its own branch in `gdRender`,
 `gdFootText` and `gdCsv`. A new *place* or *plant* needs only a row in
 `GD_PLACES` / `GD_PLANTS` — never a regex edit.
+
+### Google Drive sync (10795–11224) — `docs/FEATURES.md` § O
+
+The chapters follow the Google account, so every Chrome signed into it has
+them. Chrome's own bookmark sync is not reachable from a page; Drive is the
+account-shaped store that is. What goes up is the folder mirror — one `.md`
+per chapter — plus `index.json`, the manifest that carries the ids, the
+`updated` stamps, the Drive file ids and the tombstones.
+
+Appended at the **end of the app script**, so nothing above it moved.
+
+| Line | Region |
+|---|---|
+| **10822** | **`GSYNC`** — the OAuth client (`editor.html`'s, same origin and scope), `FOLDER_NAME` (`Scula Markdown`), `MANIFEST`, and the three timings: `POLL_MS` 2 min, `DEBOUNCE_MS` 6 s, `GRAVE_MS` 90 days |
+| 10845–10880 | State + the `localStorage` read. **The token is `editor.html`'s** (`gdrive_token`/`gdrive_token_exp`), so connecting on one page connects the other; only `gdrive_md_folder`/`gdrive_md_at` are ours. `gsLive()` (token good for another minute) vs **`gsConnected()`** (set up here — a stored folder outlives the hour-long token, and that is the difference between "sign in" and "sign in again"). `gsLoadScript` 10851, `gsForget` 10871 |
+| **10884** | **`gsAuth(interactive)`** — Google Identity Services in a popup, script fetched here and nowhere else. **The flag is the whole safety rule**: a background run must never open a popup, so without it an expired token throws `stale` instead |
+| **10912** | **`gsRaw`** (one 401 → one silent re-auth and retry) + `gsJson`/`gsText` |
+| 10935–10986 | Drive REST: `gsChild` (a name search — safe because `drive.file` only ever lists what this page made), `gsMakeFolder`, `gsRename`, `gsDownload`, `gsTrash`, **`gsWrite` 10960** (POST creates, PATCH overwrites *and renames*, which is what makes a renamed chapter move rather than duplicate; a 404 falls back to a create, a 403 deliberately does not), `gsRoot` 10977 |
+| 10988–10999 | **Tombstones**: `gsGravesLoad` reads the `meta` store's `deleted` map, **`cloudTombstone(id)`** writes one. Called from `deleteChapter`/`deleteWorkbook` — without it a delete is undone by the next sync |
+| **11001** | **`cloudSync(interactive)`** — the one pass, in five numbered steps: read the manifest · merge the graves both ways and apply them to both sides (a record `updated` *after* the grave is a re-creation and wins) · workbooks · chapters, newest `updated` wins · **the manifest written last**, so a half-finished run redoes work rather than losing a file it already wrote. Returns `{up, down}` |
+| **11139** | **`paintCloud()`** — the label, the tip, the `.connected` fill and the status line (local only / connected / syncing / synced at / sign-in expired). Called from `applyUILang`'s tail, since the button has no `data-i` |
+| 11160–11202 | `cloudError` (a closed popup and a `stale` token are answers, not errors to shout about), **`cloudButton()`** 11168, `cloudForgetAsk` 11190 (right-click, the folder button's gesture) |
+| 11204–11224 | **Keeping up on its own**: `cloudAutoSync()` (debounced push — hooked into `flushChapter`, `saveToWorkbook`, `saveAllModifiedChapters` and both deletes), `cloudBoot()` 11209 (called from `loadWorkbooks().then(...)` at **10774**, so the tree is loaded first), the poll, and the visibility pull. All silent — they skip rather than ask for a sign-in |
+
+Tested by `tests/gdsync.js` against an in-memory fake Drive — push, pull,
+newest-wins both ways, rename, delete, disconnect. No Google account needed.
 
 ### Wikilinks, tags, importance and block anchors (4646–5075) — `docs/FEATURES.md` § C, § G
 
