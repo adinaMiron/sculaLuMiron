@@ -170,6 +170,7 @@
   .btn:active{background:var(--surface-2)}
   .btn.ghost{background:transparent}
   .btn.danger{color:#E9B79F;border-color:rgba(196,100,60,.45)}
+  .btn:disabled{opacity:.45;cursor:default}
 
   .status{
     font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--text-2);
@@ -195,7 +196,7 @@
   label.stack > span{
     font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);
   }
-  input[type=text],input[type=password],select,textarea.hint{
+  input[type=text],input[type=password],input[type=number],select,textarea.hint{
     width:100%;font-size:16px;font-family:var(--font-ui);
     background:var(--bg);color:var(--text);
     border:1px solid var(--border);border-radius:12px;padding:12px 13px;min-height:48px;
@@ -211,6 +212,29 @@
   .tiny a{color:var(--accent)}
   hr.sep{border:0;border-top:1px solid var(--border);margin:16px 0}
   .sheet-foot{display:flex;gap:8px;margin-top:18px}
+
+  /* ---------- melodie: the recording turned into music ---------- */
+  .melody-card{
+    border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);margin-top:18px;overflow:hidden;
+  }
+  .melody-head{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:transparent;border:0;color:var(--text);cursor:pointer;text-align:left;
+    padding:14px;min-height:52px;font-size:15px;font-family:var(--font-ui);
+  }
+  .melody-head .mel-name{display:flex;align-items:center;gap:9px;min-width:0}
+  .melody-head .chev{color:var(--text-2);flex:0 0 auto;transition:transform .16s ease}
+  .melody-card.open .melody-head .chev{transform:rotate(180deg)}
+  .melody-body{padding:2px 14px 16px;border-top:1px solid var(--border)}
+  .chips.wrap .chip{flex:1 1 28%;min-width:96px;min-height:42px;font-size:14px;padding:8px 6px}
+  .mel-grid{display:grid;gap:12px;grid-template-columns:1fr 1fr;margin-top:16px}
+  @media (max-width:520px){ .mel-grid{grid-template-columns:1fr} }
+  .mel-roll{
+    display:block;width:100%;height:132px;margin-top:16px;
+    border:1px solid var(--border);border-radius:10px;background:var(--bg);
+  }
+  #melInfo{margin-top:8px;min-height:18px}
 
   /* ---------- help ---------- */
   .help-body h3{font-family:var(--font-display);font-weight:400;font-size:16px;margin:16px 0 6px;color:var(--text)}
@@ -1394,6 +1418,12 @@
   </label>
   <p class="tiny rec-opt-tip" data-i="keepAudioTip">Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.</p>
 
+  <label class="toggle rec-opt">
+    <input type="checkbox" id="melodyArm">
+    <span data-i="melodyArmLabel">Păstrează sunetul și pentru melodie</span>
+  </label>
+  <p class="tiny rec-opt-tip" data-i="melodyArmTip">Bifează înainte de a înregistra. Sunetul rămâne în pagină, ca să poată fi transformat în melodie mai jos.</p>
+
   <p class="field-label" data-i="langLabel">Limba vorbită</p>
   <div class="chips" role="group" id="langChips">
     <button class="chip" type="button" data-lang="ro" aria-pressed="true">Română</button>
@@ -1426,6 +1456,81 @@
     <button class="btn ghost danger" id="clearBtn" type="button" data-i="clear">Șterge tot</button>
   </div>
   <input type="file" id="fileInput" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+
+  <section class="melody-card" id="melodyCard">
+    <button class="melody-head" id="melodyToggle" type="button" aria-expanded="false" aria-controls="melodyBody">
+      <span class="mel-name">🎵 <span data-i="melodyTitle">Melodie din înregistrare</span></span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div class="melody-body hidden" id="melodyBody">
+      <p class="tiny" data-i="melodyIntro">Pagina caută notele și bătaia din ce ai înregistrat și le dă instrumentelor alese.</p>
+
+      <p class="field-label" data-i="melodyLead">Instrumentul melodiei</p>
+      <div class="chips wrap" role="group" id="leadChips"></div>
+
+      <p class="field-label" data-i="melodyBacking">Acompaniament</p>
+      <div class="chips" role="group" id="backChips">
+        <button class="chip" type="button" data-back="drums" aria-pressed="true" data-i="melodyDrums">Tobe</button>
+        <button class="chip" type="button" data-back="bass" aria-pressed="true" data-i="melodyBass">Bas</button>
+        <button class="chip" type="button" data-back="chords" aria-pressed="true" data-i="melodyChords">Acorduri</button>
+      </div>
+
+      <div class="mel-grid">
+        <label class="stack">
+          <span data-i="melodyChordInst">Instrument pentru acorduri</span>
+          <select id="melChordInst"></select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyScale">Gamă</span>
+          <select id="melScale">
+            <option value="auto" data-i="melodyScaleAuto">Automat (detectată)</option>
+            <option value="major" data-i="melodyScaleMajor">Major</option>
+            <option value="minor" data-i="melodyScaleMinor">Minor</option>
+            <option value="penta" data-i="melodyScalePenta">Pentatonic</option>
+            <option value="chrom" data-i="melodyScaleChrom">Fără potrivire</option>
+          </select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyGrid">Așezare pe ritm</span>
+          <select id="melGrid">
+            <option value="0" data-i="melodyGridFree">Liberă</option>
+            <option value="1" data-i="melodyGrid4">Pătrimi</option>
+            <option value="2" data-i="melodyGrid8">Optimi</option>
+            <option value="4" data-i="melodyGrid16">Șaisprezecimi</option>
+          </select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyTempo">Tempo (BPM)</span>
+          <input type="number" id="melTempo" min="40" max="220" step="1" inputmode="numeric">
+        </label>
+        <label class="stack">
+          <span data-i="melodyOct">Octava melodiei</span>
+          <select id="melOct">
+            <option value="-2">−2</option>
+            <option value="-1">−1</option>
+            <option value="0">0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+          </select>
+        </label>
+      </div>
+
+      <canvas class="mel-roll" id="melRoll" aria-hidden="true"></canvas>
+      <p class="tiny" id="melInfo"></p>
+
+      <div class="actions">
+        <button class="btn" id="melMakeBtn" type="button" data-i="melodyMake" disabled>Fă melodia</button>
+        <button class="btn" id="melPlayBtn" type="button" disabled>Ascultă</button>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="melWavBtn" type="button" data-i="melodySaveWav" disabled>Salvează WAV</button>
+        <button class="btn ghost" id="melMidiBtn" type="button" data-i="melodySaveMidi" disabled>Salvează MIDI</button>
+        <button class="btn ghost" id="melFileBtn" type="button" data-i="melodyFromFile">Dintr-un fișier</button>
+      </div>
+      <input type="file" id="melFile" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+      <p class="tiny" data-i="melodyRights">Totul e sintetizat aici, în pagină.</p>
+    </div>
+  </section>
 
   <p class="status" id="status"></p>
 </main>
@@ -1525,6 +1630,40 @@ const I18N = {
     keepAudioLabel:"Salvează și sunetul înregistrării",
     keepAudioTip:"Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.",
     noAudio:"Nu s-a păstrat niciun fișier audio pentru acest text.",
+    melodyArmLabel:"Păstrează sunetul și pentru melodie",
+    melodyArmTip:"Bifează înainte de a înregistra. Sunetul rămâne în pagină, ca să poată fi transformat în melodie mai jos.",
+    melodyTitle:"Melodie din înregistrare",
+    melodyIntro:"Pagina caută notele și bătaia din ce ai înregistrat și le dă instrumentelor alese.",
+    melodyLead:"Instrumentul melodiei", melodyBacking:"Acompaniament",
+    melodyDrums:"Tobe", melodyBass:"Bas", melodyChords:"Acorduri",
+    melodyChordInst:"Instrument pentru acorduri",
+    melodyScale:"Gamă", melodyScaleAuto:"Automat (detectată)", melodyScaleMajor:"Major",
+    melodyScaleMinor:"Minor", melodyScalePenta:"Pentatonic", melodyScaleChrom:"Fără potrivire",
+    melodyGrid:"Așezare pe ritm", melodyGridFree:"Liberă", melodyGrid4:"Pătrimi",
+    melodyGrid8:"Optimi", melodyGrid16:"Șaisprezecimi",
+    melodyTempo:"Tempo (BPM)", melodyOct:"Octava melodiei",
+    melodyMake:"Fă melodia", melodyPlay:"Ascultă", melodyStop:"Oprește",
+    melodySaveWav:"Salvează WAV", melodySaveMidi:"Salvează MIDI", melodyFromFile:"Dintr-un fișier",
+    melodyMajor:"major", melodyMinor:"minor",
+    melodyRollEmpty:"Aici apar notele găsite.",
+    melodyNoSrc:"Nu am niciun sunet. Bifează „Păstrează sunetul și pentru melodie” înainte de a înregistra, sau alege „Dintr-un fișier”.",
+    melodySrcRec:"Am sunetul înregistrării. Apasă „Fă melodia”.",
+    melodySrcFile:"Am fișierul ales. Apasă „Fă melodia”.",
+    melodyDecoding:"Se citește sunetul…",
+    melodyBeatStep:"Caut bătaia…",
+    melodyPitchStep:p=>"Caut notele… "+p+"%",
+    melodyArranging:"Aleg acordurile…",
+    melodyRendering:"Se cântă la instrumente…",
+    melodyDone:o=>o.n+" note · "+o.bpm+" BPM · "+o.key+" · "+o.bars+" măsuri · "+o.len,
+    melodyStale:"S-au schimbat setările. Apasă „Fă melodia” din nou.",
+    melodyNoNotes:"N-am găsit note cântate. Încearcă să fredonezi o linie melodică, nu doar să vorbești.",
+    melodyTrimmed:m=>"am folosit primele "+m+" minute",
+    melodyFailed:"Nu am putut folosi sunetul acesta.",
+    melodyRights:"Totul e sintetizat aici, în pagină: fără sample-uri, fără biblioteci, fără sunet luat de la altcineva. Melodia iese din vocea ta, deci o poți folosi în clipuri YouTube fără drepturi de autor sau redevențe către terți.",
+    instPiano:"Pian", instGuitar:"Chitară", instViolin:"Vioară", instCello:"Violoncel",
+    instFlute:"Flaut", instClarinet:"Clarinet", instTrumpet:"Trompetă", instOrgan:"Orgă",
+    instHarp:"Harpă", instXylo:"Xilofon", instBox:"Cutie muzicală", instStrings:"Corzi",
+    instSynth:"Sintetizator", instBass:"Bas",
     setHelp:"Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.",
     provider:"Furnizor", ownServer:"Server propriu (proxy)", endpoint:"Adresa proxy-ului",
     apiKey:"Cheie API", show:"Arată", hide:"Ascunde", model:"Model",
@@ -1578,6 +1717,16 @@ const I18N = {
       <p>Bifează căsuța <i>„Salvează și sunetul înregistrării”</i> <b>înainte</b> de a apăsa Înregistrează — nu în timpul înregistrării. Fișierul audio se salvează odată cu textul, sub același nume.</p>
       <h3>După transcriere</h3>
       <p>Copiază, trimite (share), descarcă sau șterge textul cu butoanele de sub el. Poți transcrie și un fișier audio existent cu „Transcrie un fișier audio”.</p>
+      <h3>Melodie din înregistrare</h3>
+      <p>Bifează <i>„Păstrează sunetul și pentru melodie”</i> <b>înainte</b> de a înregistra, apoi deschide panoul <b>🎵 Melodie din înregistrare</b> și apasă <b>Fă melodia</b>. Pagina urmărește înălțimea vocii cadru cu cadru, taie linia în note, găsește bătaia și le cântă la instrumentul ales, cu tobe, bas și acorduri sub ele.</p>
+      <ul>
+        <li><b>Gama</b> potrivește notele pe o gamă, ca să nu sune fals; „Fără potrivire” le lasă exact cum au fost cântate.</li>
+        <li><b>Așezarea pe ritm</b> mută începuturile notelor pe pătrimi, optimi sau șaisprezecimi.</li>
+        <li><b>Tempo</b> se completează singur cu bătaia găsită; poți scrie altul.</li>
+        <li><b>Salvează WAV</b> dă fișierul audio; <b>Salvează MIDI</b> dă notele, ca să le duci în orice program muzical și să schimbi instrumentele acolo.</li>
+        <li>Poți porni și de la un fișier audio, cu <b>Dintr-un fișier</b>. Se folosesc primele 3 minute.</li>
+      </ul>
+      <p>Tot sunetul e sintetizat aici — fără sample-uri, fără biblioteci, fără nimic luat de la altcineva — deci melodia care iese e a ta și o poți folosi în clipuri fără probleme de drepturi de autor sau redevențe.</p>
       <h3>Unde ajung fișierele</h3>
       <p>Butonul 📁 din bara de navigare alege unde se salvează: un folder de pe calculator, ecranul de partajare al telefonului, sau o descărcare simplă — totul ajunge în folderul <code>transcript</code>.</p>
       <h3>Scurtături</h3>
@@ -1594,6 +1743,40 @@ const I18N = {
     keepAudioLabel:"Also save the sound of the recording",
     keepAudioTip:"Tick this before recording. The audio file is saved on “Download”, under the same name as the text.",
     noAudio:"No audio was kept for this text.",
+    melodyArmLabel:"Also keep the sound for the melody",
+    melodyArmTip:"Tick this before recording. The sound stays in the page, so it can be turned into a melody below.",
+    melodyTitle:"Melody from the recording",
+    melodyIntro:"The page finds the notes and the beat in what you recorded and hands them to the instruments you pick.",
+    melodyLead:"Melody instrument", melodyBacking:"Backing",
+    melodyDrums:"Drums", melodyBass:"Bass", melodyChords:"Chords",
+    melodyChordInst:"Chord instrument",
+    melodyScale:"Scale", melodyScaleAuto:"Auto (detected)", melodyScaleMajor:"Major",
+    melodyScaleMinor:"Minor", melodyScalePenta:"Pentatonic", melodyScaleChrom:"No snapping",
+    melodyGrid:"Snap to the beat", melodyGridFree:"Free", melodyGrid4:"Quarters",
+    melodyGrid8:"Eighths", melodyGrid16:"Sixteenths",
+    melodyTempo:"Tempo (BPM)", melodyOct:"Melody octave",
+    melodyMake:"Make the melody", melodyPlay:"Play", melodyStop:"Stop",
+    melodySaveWav:"Save WAV", melodySaveMidi:"Save MIDI", melodyFromFile:"From a file",
+    melodyMajor:"major", melodyMinor:"minor",
+    melodyRollEmpty:"The notes found will show up here.",
+    melodyNoSrc:"There is no sound yet. Tick “Also keep the sound for the melody” before recording, or pick “From a file”.",
+    melodySrcRec:"Got the sound of the recording. Press “Make the melody”.",
+    melodySrcFile:"Got the file you picked. Press “Make the melody”.",
+    melodyDecoding:"Reading the sound…",
+    melodyBeatStep:"Looking for the beat…",
+    melodyPitchStep:p=>"Looking for the notes… "+p+"%",
+    melodyArranging:"Choosing the chords…",
+    melodyRendering:"Playing it on the instruments…",
+    melodyDone:o=>o.n+" notes · "+o.bpm+" BPM · "+o.key+" · "+o.bars+" bars · "+o.len,
+    melodyStale:"The settings changed. Press “Make the melody” again.",
+    melodyNoNotes:"No sung notes found. Try humming a melodic line rather than just speaking.",
+    melodyTrimmed:m=>"used the first "+m+" minutes",
+    melodyFailed:"Could not use this sound.",
+    melodyRights:"Every sound here is synthesised in this page: no samples, no libraries, nothing borrowed from anyone else. The melody comes out of your own voice, so you can use it in YouTube videos with no third-party copyright or royalty claims.",
+    instPiano:"Piano", instGuitar:"Guitar", instViolin:"Violin", instCello:"Cello",
+    instFlute:"Flute", instClarinet:"Clarinet", instTrumpet:"Trumpet", instOrgan:"Organ",
+    instHarp:"Harp", instXylo:"Xylophone", instBox:"Music box", instStrings:"Strings",
+    instSynth:"Synth", instBass:"Bass",
     setHelp:"The key stays on this device. Audio goes only to the provider you pick.",
     provider:"Provider", ownServer:"Your own server (proxy)", endpoint:"Proxy address",
     apiKey:"API key", show:"Show", hide:"Hide", model:"Model",
@@ -1647,6 +1830,16 @@ const I18N = {
       <p>Tick <i>"Also save the sound of the recording"</i> <b>before</b> pressing Record — not mid-recording. The audio file is saved alongside the text, under the same name.</p>
       <h3>After transcribing</h3>
       <p>Copy, share, download or clear the text with the buttons below it. You can also transcribe an existing audio file with "Transcribe an audio file".</p>
+      <h3>Melody from the recording</h3>
+      <p>Tick <i>"Also keep the sound for the melody"</i> <b>before</b> recording, then open the <b>🎵 Melody from the recording</b> panel and press <b>Make the melody</b>. The page tracks the pitch of your voice frame by frame, cuts that line into notes, finds the beat, and plays it on the instrument you picked, with drums, bass and chords underneath.</p>
+      <ul>
+        <li><b>Scale</b> snaps the notes onto a scale so nothing sounds off-key; "No snapping" leaves them exactly as sung.</li>
+        <li><b>Snap to the beat</b> moves note starts onto quarters, eighths or sixteenths.</li>
+        <li><b>Tempo</b> fills itself in with the beat that was found; you can type another.</li>
+        <li><b>Save WAV</b> gives you the audio; <b>Save MIDI</b> gives you the notes, so you can open them in any music program and swap the instruments there.</li>
+        <li>You can also start from an audio file, with <b>From a file</b>. The first 3 minutes are used.</li>
+      </ul>
+      <p>Every sound is synthesised here — no samples, no libraries, nothing borrowed — so the melody that comes out is yours, and you can use it in videos with no copyright or royalty trouble.</p>
       <h3>Where files go</h3>
       <p>The 📁 button in the top nav picks where things are saved: a folder on your computer, your phone's share sheet, or a plain download — everything lands in the <code>transcript</code> folder.</p>
       <h3>Shortcuts</h3>
@@ -1712,7 +1905,10 @@ const S = {
   ui:"ro", lang:"ro", engine:"api",
   provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
   hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile",
-  keepAudio:false
+  keepAudio:false,
+  melody:false, melLead:"piano", melChord:"strings",
+  melDrums:true, melBass:true, melChords:true,
+  melScale:"auto", melGrid:"2", melOct:"0"
 };
 
 /* ============================================================
@@ -1727,7 +1923,7 @@ const sheet=$("#sheet"), scrim=$("#scrim");
 const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
 const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
 const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
-const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio");
+const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio"), melodyArmEl=$("#melodyArm");
 
 function say(msg, kind){
   statusEl.className = "status" + (kind ? " " + kind : "");
@@ -1779,6 +1975,7 @@ function applyUILang(){
   recLabel.textContent = rec.active ? t("stop") : t("rec");
   const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
   secureWarn.innerHTML = t("insecure");
+  melSyncLabels();
   updateCounts(); updateProviderUI(); checkSetup();
 }
 window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); if(!helpSheet.classList.contains("hidden")) paintHelp(); });
@@ -1838,6 +2035,15 @@ async function load(){
   tidyEl.checked = !!S.tidy;
   tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
   keepAudioEl.checked = !!S.keepAudio;
+  melodyArmEl.checked = !!S.melody;
+  mel.lead = S.melLead in INSTR ? S.melLead : "piano";
+  mel.back.drums = S.melDrums !== false;
+  mel.back.bass = S.melBass !== false;
+  mel.back.chords = S.melChords !== false;
+  melChordInstEl.value = S.melChord in INSTR ? S.melChord : "strings";
+  melScaleEl.value = S.melScale || "auto";
+  melGridEl.value = S.melGrid == null ? "2" : String(S.melGrid);
+  melOctEl.value = String(S.melOct == null ? 0 : S.melOct);
   document.querySelectorAll("#langChips button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
   document.querySelectorAll("#engineChips button").forEach(b =>
@@ -1900,11 +2106,14 @@ const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, tim
    that never stops does. */
 const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null };
 
-// Read the checkbox once, when recording starts: what was ticked then is what
-// gets recorded. Any earlier take is dropped here, so a new recording never
-// leaves the previous session's sound behind to be saved with the new text.
+// Read the checkboxes once, when recording starts: what was ticked then is
+// what gets recorded. Any earlier take is dropped here, so a new recording
+// never leaves the previous session's sound behind to be saved with the new
+// text. Two boxes want the sound for different reasons - one writes it next
+// to the transcript, the other (S 14) turns it into a melody - and either is
+// enough to start the recorder.
 function armAudio(){
-  audio.armed = !!keepAudioEl.checked;
+  audio.armed = !!(keepAudioEl.checked || melodyArmEl.checked);
   audio.blob = null; audio.chunks = [];
 }
 
@@ -1931,6 +2140,7 @@ async function startAudioKeep(stream){
     const blob = new Blob(audio.chunks, {type: type || "audio/webm"});
     audio.chunks = [];
     audio.blob = blob.size > 1200 ? blob : null;
+    if(audio.blob && melodyArmEl.checked) melSetSource(audio.blob, "rec");
     stopOwnStream();
   };
   try{ audio.mr.start(); }catch(e){ audio.armed = false; stopOwnStream(); }
@@ -2285,12 +2495,1171 @@ $("#dlBtn").addEventListener("click", async () => {
   if(msg) say(msg);
 });
 $("#clearBtn").addEventListener("click", () => {
-  ta.value = ""; interim.textContent = ""; audio.blob = null; updateCounts(); say(t("cleared"));
+  ta.value = ""; interim.textContent = ""; audio.blob = null; melReset(); updateCounts(); say(t("cleared"));
 });
 ta.addEventListener("input", updateCounts);
 
+
 /* ============================================================
-   14. Go
+   14. Melodie — the recording turned into a piece of music
+   ------------------------------------------------------------
+   Analysis and synthesis both happen here, in this page: the pitch
+   track (YIN), the beat (spectral flux + autocorrelation) and every
+   instrument (additive/subtractive voices, Karplus-Strong for the
+   guitar, hand-built drum one-shots). No samples, no library, no
+   third-party audio anywhere in the signal path — which is the whole
+   point: the result carries no copyright or royalty claim from anyone
+   but the person who spoke into the microphone.
+   ============================================================ */
+const MEL_SR   = 44100;   // render rate
+const AN_SR    = 22050;   // analysis rate (onsets / beat)
+const HOP      = 256;     // analysis hop, both rates
+const MEL_MAX  = 180;     // seconds of source we look at (memory, not taste)
+const TAU2     = Math.PI * 2;
+
+const yieldUI = () => new Promise(r => setTimeout(r, 0));
+const clampN = (v,a,b) => v < a ? a : (v > b ? b : v);
+
+/* --- instruments -------------------------------------------------
+   `partials` are the relative amplitudes of harmonics 1..N. `damp`
+   turns a held tone into a struck/plucked one (exp decay, faster for
+   the upper partials via `dampP`). `ks` swaps the whole kernel for a
+   Karplus-Strong string. `gm` is the General MIDI program the MIDI
+   export writes, so the same arrangement opens in any DAW. */
+const INSTR = {
+  piano:   {k:"instPiano",   gm:0,  lo:33, hi:96, partials:[1,.55,.32,.18,.11,.07,.045,.03,.02], inharm:.0004, damp:2.6, dampP:.6,  atk:.004, dec:0,   sus:1,   rel:.16, gain:.95},
+  guitar:  {k:"instGuitar",  gm:25, lo:40, hi:88, ks:true, ksHold:.012,                                          atk:.002, dec:0,   sus:1,   rel:.12, gain:2.2},
+  harp:    {k:"instHarp",    gm:46, lo:36, hi:96, partials:[1,.4,.22,.12,.07,.04],                 damp:2.1, dampP:.7,  atk:.003, dec:0,   sus:1,   rel:.2,  gain:.9},
+  box:     {k:"instBox",     gm:10, lo:60, hi:105,partials:[1,.28,.14,.07],          inharm:.004,  damp:4.2, dampP:.8,  atk:.002, dec:0,   sus:1,   rel:.25, gain:.85},
+  xylo:    {k:"instXylo",    gm:13, lo:53, hi:96, partials:[1,0,.32,0,0,.12],        inharm:.012,  damp:7,   dampP:.5,  atk:.002, dec:0,   sus:1,   rel:.1,  gain:.85},
+  violin:  {k:"instViolin",  gm:40, lo:55, hi:96, partials:[1,.7,.55,.42,.3,.22,.16,.11,.08,.05],  atk:.075, dec:.22, sus:.82, rel:.14, vibR:5.6, vibD:.006, noise:.02,  gain:.6},
+  cello:   {k:"instCello",   gm:42, lo:36, hi:76, partials:[1,.75,.5,.34,.22,.14,.09,.05],         atk:.1,   dec:.28, sus:.85, rel:.2,  vibR:4.8, vibD:.005, noise:.018, gain:.66},
+  strings: {k:"instStrings", gm:48, lo:40, hi:88, partials:[1,.62,.4,.26,.17,.1,.06],              atk:.22,  dec:.4,  sus:.9,  rel:.45, vibR:4.2, vibD:.004, noise:.012, gain:.48},
+  flute:   {k:"instFlute",   gm:73, lo:60, hi:100,partials:[1,.16,.06,.02],                        atk:.06,  dec:.2,  sus:.9,  rel:.12, vibR:5,   vibD:.004, noise:.07,  gain:.7},
+  clarinet:{k:"instClarinet",gm:71, lo:50, hi:91, partials:[1,.04,.5,.03,.28,.02,.16,.01,.08],     atk:.045, dec:.16, sus:.9,  rel:.1,  vibR:4.5, vibD:.002, noise:.03,  gain:.6},
+  trumpet: {k:"instTrumpet", gm:56, lo:54, hi:86, partials:[1,.8,.65,.5,.4,.3,.22,.15,.1,.06],     atk:.05,  dec:.18, sus:.85, rel:.1,  vibR:5.2, vibD:.003, noise:.02,  gain:.5},
+  organ:   {k:"instOrgan",   gm:19, lo:36, hi:96, partials:[1,.5,.7,.35,0,.28,0,.2],               atk:.012, dec:.05, sus:1,   rel:.06, gain:.55},
+  synth:   {k:"instSynth",   gm:81, lo:36, hi:96, partials:[1,.5,.33,.25,.2,.16,.14,.12,.1,.09,.08,.07], atk:.02, dec:.3, sus:.7, rel:.2, vibR:5, vibD:.003, gain:.46},
+  bass:    {k:"instBass",    gm:33, lo:24, hi:60, partials:[1,.42,.2,.08,.04],                     damp:1.6, dampP:.7, atk:.006, dec:0, sus:1, rel:.15, gain:1.05}
+};
+const LEAD_ORDER  = ["piano","guitar","violin","cello","flute","clarinet","trumpet","organ","harp","xylo","box","strings","synth"];
+const CHORD_ORDER = ["piano","guitar","strings","organ","harp","synth"];
+
+const NOTE_RO = ["Do","Do♯","Re","Mi♭","Mi","Fa","Fa♯","Sol","La♭","La","Si♭","Si"];
+const NOTE_EN = ["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+const SCALES  = { major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], penta:[0,2,4,7,9], chrom:null };
+
+/* --- a shared sine table: one lookup per partial per sample beats a
+   Math.sin() call by an order of magnitude, and a few hundred notes
+   is a few hundred million lookups. --- */
+const TSZ = 16384, TMASK = TSZ - 1;
+const SINE = new Float32Array(TSZ);
+for(let i = 0; i < TSZ; i++) SINE[i] = Math.sin(TAU2 * i / TSZ);
+
+/* --- radix-2 FFT, used only by the onset detector --- */
+function makeFFT(n){
+  const co = new Float32Array(n>>1), si = new Float32Array(n>>1);
+  for(let i = 0; i < (n>>1); i++){ co[i] = Math.cos(-TAU2*i/n); si[i] = Math.sin(-TAU2*i/n); }
+  let bits = 0; while((1 << bits) < n) bits++;
+  const rev = new Uint16Array(n);
+  for(let i = 0; i < n; i++){ let r = 0; for(let b = 0; b < bits; b++) if(i & (1<<b)) r |= 1 << (bits-1-b); rev[i] = r; }
+  return function(re, im){
+    for(let i = 0; i < n; i++){
+      const j = rev[i];
+      if(j > i){ let s = re[i]; re[i] = re[j]; re[j] = s; s = im[i]; im[i] = im[j]; im[j] = s; }
+    }
+    for(let size = 2; size <= n; size <<= 1){
+      const half = size >> 1, step = n / size;
+      for(let i = 0; i < n; i += size){
+        for(let j = i, k = 0; j < i + half; j++, k += step){
+          const l = j + half;
+          const tr = re[l]*co[k] - im[l]*si[k];
+          const ti = re[l]*si[k] + im[l]*co[k];
+          re[l] = re[j] - tr; im[l] = im[j] - ti;
+          re[j] += tr;        im[j] += ti;
+        }
+      }
+    }
+  };
+}
+
+/* --- decoding: one pass, resampled to AN_SR, mixed to mono --------
+   An OfflineAudioContext resamples while it decodes, which is both
+   the fastest and the only way that works the same in every browser.
+   Safari has historically refused unusual rates, hence the fallback
+   through a plain AudioContext plus a linear resample. */
+function readArrayBuffer(blob){
+  if(blob.arrayBuffer) return blob.arrayBuffer();
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(fr.error);
+    fr.readAsArrayBuffer(blob);
+  });
+}
+function decodeWith(ctx, ab){
+  return new Promise((res, rej) => {
+    let p = null;
+    try{ p = ctx.decodeAudioData(ab, res, rej); }catch(e){ rej(e); return; }
+    if(p && typeof p.then === "function") p.then(res, rej);
+  });
+}
+async function decodeMono(blob, rate){
+  const ab = await readArrayBuffer(blob);
+  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let buf = null;
+  if(OC){
+    try{ buf = await decodeWith(new OC(1, Math.ceil(rate/10), rate), ab.slice(0)); }
+    catch(e){ buf = null; }
+  }
+  if(!buf){
+    if(!AC) throw new Error("no audio context");
+    const ac = new AC();
+    try{ buf = await decodeWith(ac, ab.slice(0)); }
+    finally{ try{ ac.close(); }catch(e){} }
+  }
+  const ch = buf.numberOfChannels, n = buf.length;
+  let mono = new Float32Array(n);
+  for(let c = 0; c < ch; c++){
+    const d = buf.getChannelData(c);
+    for(let i = 0; i < n; i++) mono[i] += d[i];
+  }
+  if(ch > 1) for(let i = 0; i < n; i++) mono[i] /= ch;
+  if(Math.abs(buf.sampleRate - rate) > 1) mono = resample(mono, buf.sampleRate, rate);
+  return mono;
+}
+function resample(x, from, to){
+  const n = Math.max(1, Math.round(x.length * to / from));
+  const y = new Float32Array(n), r = from / to;
+  for(let i = 0; i < n; i++){
+    const p = i * r, j = p | 0, f = p - j;
+    y[i] = j + 1 < x.length ? x[j]*(1-f) + x[j+1]*f : x[x.length-1];
+  }
+  return y;
+}
+/* halve the rate for the pitch tracker, with a 3-tap guard against
+   the aliasing a bare "take every second sample" would fold in */
+function decimate2(x){
+  const n = x.length >> 1, y = new Float32Array(n);
+  for(let i = 0; i < n; i++){
+    const j = i << 1;
+    const a = j > 0 ? x[j-1] : x[j];
+    const c = j + 1 < x.length ? x[j+1] : x[j];
+    y[i] = .25*a + .5*x[j] + .25*c;
+  }
+  return y;
+}
+function normalise(x){
+  let dc = 0;
+  for(let i = 0; i < x.length; i++) dc += x[i];
+  dc /= (x.length || 1);
+  let peak = 0;
+  for(let i = 0; i < x.length; i++){ x[i] -= dc; const v = Math.abs(x[i]); if(v > peak) peak = v; }
+  if(peak > 1e-5){ const g = 1/peak; for(let i = 0; i < x.length; i++) x[i] *= g; }
+  return x;
+}
+
+/* --- pitch: YIN over 46 ms windows, 23 ms apart -------------------
+   Time domain on purpose: at 11 kHz the lag range is only ~170
+   samples, which is cheaper than an FFT per frame and far easier to
+   read. `clarity` is 1 - the cumulative-mean-normalised difference at
+   the winning lag, i.e. how periodic the frame actually was. */
+async function trackPitch(x, rate, onStep){
+  const W = 512;
+  const tauMin = Math.max(2, Math.floor(rate/1050));
+  const tauMax = Math.min(W - 1, Math.floor(rate/62));
+  const need = W + tauMax;
+  const frames = Math.max(0, Math.floor((x.length - need) / HOP) + 1);
+  const f0 = new Float32Array(frames), clar = new Float32Array(frames), rms = new Float32Array(frames);
+  const d = new Float32Array(tauMax + 2), cm = new Float32Array(tauMax + 2);
+  for(let f = 0; f < frames; f++){
+    if((f & 127) === 127){ if(onStep) onStep(f / frames); await yieldUI(); }
+    const o = f * HOP;
+    let e = 0;
+    for(let i = 0; i < W; i++){ const v = x[o+i]; e += v*v; }
+    rms[f] = Math.sqrt(e / W);
+    if(rms[f] < 0.004) continue;
+    for(let tau = 1; tau <= tauMax; tau++){
+      let s = 0;
+      for(let j = 0; j < W; j++){ const df = x[o+j] - x[o+j+tau]; s += df*df; }
+      d[tau] = s;
+    }
+    let run = 0; cm[0] = 1;
+    for(let tau = 1; tau <= tauMax; tau++){ run += d[tau]; cm[tau] = run > 0 ? d[tau]*tau/run : 1; }
+    let tau = -1;
+    for(let i = tauMin; i < tauMax; i++){
+      if(cm[i] < 0.22 && cm[i] <= cm[i+1] && cm[i] <= cm[i-1]){ tau = i; break; }
+    }
+    if(tau < 0){
+      let bi = tauMin, bv = cm[tauMin];
+      for(let i = tauMin + 1; i <= tauMax; i++) if(cm[i] < bv){ bv = cm[i]; bi = i; }
+      if(bv < 0.5) tau = bi;
+    }
+    if(tau < 0) continue;
+    let ti = tau;
+    if(tau > 1 && tau < tauMax){
+      const a = cm[tau-1], b = cm[tau], c = cm[tau+1], den = a - 2*b + c;
+      if(den !== 0) ti = tau + 0.5*(a - c)/den;
+    }
+    f0[f] = rate / ti;
+    clar[f] = Math.max(0, 1 - cm[tau]);
+  }
+  return { f0, clar, rms, fps: rate / HOP };
+}
+
+function median(a){
+  const s = a.slice().sort((p,q) => p - q);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+}
+
+/* --- pitch frames → notes ----------------------------------------
+   A note runs while the pitch stays inside ±0.75 semitone of where it
+   started; one stray frame is forgiven (`bad`), two end the note. That
+   hysteresis is what keeps a wobbling voice from shattering into
+   dozens of 25 ms fragments. */
+function segmentNotes(pt){
+  const { f0, clar, rms, fps } = pt;
+  const n = f0.length, dt = 1 / fps;
+  let peak = 0;
+  for(let i = 0; i < n; i++) if(rms[i] > peak) peak = rms[i];
+  const floor = Math.max(0.006, peak * 0.06);
+  const midi = new Float32Array(n), voiced = new Uint8Array(n);
+  for(let i = 0; i < n; i++){
+    if(f0[i] > 0 && clar[i] > 0.62 && rms[i] > floor){
+      voiced[i] = 1;
+      midi[i] = 69 + 12 * Math.log2(f0[i] / 440);
+    }
+  }
+  // octave repair: YIN halves or doubles the period on breathy frames
+  const recent = [];
+  for(let i = 0; i < n; i++){
+    if(!voiced[i]) continue;
+    if(recent.length >= 3){
+      const ref = median(recent);
+      for(const shift of [12, -12]){
+        if(Math.abs(midi[i] - ref) > 7 && Math.abs(midi[i] + shift - ref) < 1.5){ midi[i] += shift; break; }
+      }
+    }
+    recent.push(midi[i]);
+    if(recent.length > 5) recent.shift();
+  }
+  // 5-frame median smoothing across the voiced track
+  const sm = Float32Array.from(midi);
+  for(let i = 2; i < n - 2; i++){
+    if(!voiced[i]) continue;
+    const w = [];
+    for(let j = i - 2; j <= i + 2; j++) if(voiced[j]) w.push(midi[j]);
+    if(w.length >= 3) sm[i] = median(w);
+  }
+
+  const notes = [];
+  let cur = null, bad = 0;
+  const close = end => {
+    if(!cur) return;
+    const len = (end - cur.s) * dt;
+    if(len >= 0.075 && cur.f.length){
+      notes.push({ start: cur.s * dt, dur: len, midi: Math.round(median(cur.f)), vel: clampN(0.4 + 0.6 * (cur.a / (peak || 1)), 0.25, 1) });
+    }
+    cur = null; bad = 0;
+  };
+  for(let i = 0; i < n; i++){
+    if(!voiced[i]){ close(i); continue; }
+    const m = sm[i];
+    if(!cur){ cur = { s: i, f: [m], ref: m, a: rms[i] }; bad = 0; continue; }
+    if(Math.abs(m - cur.ref) < 0.75){
+      cur.f.push(m); bad = 0;
+      if(rms[i] > cur.a) cur.a = rms[i];
+      if(cur.f.length === 3) cur.ref = median(cur.f);
+    } else if(++bad >= 2){
+      close(i - 1);
+      cur = { s: i - 1, f: [m], ref: m, a: rms[i] }; bad = 0;
+    }
+  }
+  close(n);
+  // glue neighbours that landed on the same semitone
+  const out = [];
+  for(const nt of notes){
+    const p = out[out.length - 1];
+    if(p && p.midi === nt.midi && nt.start - (p.start + p.dur) < 0.07){
+      p.dur = nt.start + nt.dur - p.start;
+      p.vel = Math.max(p.vel, nt.vel);
+    } else out.push(nt);
+  }
+  return out;
+}
+
+/* --- the beat ----------------------------------------------------
+   Spectral flux gives an onset curve; its autocorrelation gives the
+   period. The log-normal prior around 110 BPM is what stops a waltz
+   being read as a very fast march (and vice versa). */
+function onsetEnvelope(x){
+  const N = 512, fft = makeFFT(N);
+  const win = new Float32Array(N);
+  for(let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(TAU2 * i / N);
+  const frames = Math.max(1, Math.floor((x.length - N) / HOP) + 1);
+  const env = new Float32Array(frames);
+  const re = new Float32Array(N), im = new Float32Array(N);
+  let prev = new Float32Array((N>>1) + 1), cur = new Float32Array((N>>1) + 1);
+  for(let f = 0; f < frames; f++){
+    const o = f * HOP;
+    for(let i = 0; i < N; i++){ re[i] = (x[o+i] || 0) * win[i]; im[i] = 0; }
+    fft(re, im);
+    let flux = 0;
+    for(let k = 1; k <= (N>>1); k++){
+      const m = Math.sqrt(re[k]*re[k] + im[k]*im[k]);
+      cur[k] = m;
+      const dd = m - prev[k];
+      if(dd > 0) flux += dd;
+    }
+    env[f] = flux;
+    const sw = prev; prev = cur; cur = sw;
+  }
+  // subtract a local mean, keep what is left above it
+  const out = new Float32Array(frames);
+  const w = 10;
+  for(let i = 0; i < frames; i++){
+    let s = 0, c = 0;
+    for(let j = Math.max(0, i-w); j <= Math.min(frames-1, i+w); j++){ s += env[j]; c++; }
+    out[i] = Math.max(0, env[i] - s/c);
+  }
+  let mx = 0;
+  for(let i = 0; i < frames; i++) if(out[i] > mx) mx = out[i];
+  if(mx > 0) for(let i = 0; i < frames; i++) out[i] /= mx;
+  return out;
+}
+function detectTempo(env, fps){
+  const minLag = Math.max(2, Math.round(fps * 60 / 200));
+  const maxLag = Math.min(env.length - 2, Math.round(fps * 60 / 55));
+  // Starting the best score at 0 rather than -1 means a signal with no onsets
+  // at all - a held hum, a sine - keeps the plain 100 BPM default instead of
+  // being handed whichever lag happened to come first.
+  let bestLag = Math.round(fps * 60 / 100), bestScore = 0;
+  for(let lag = minLag; lag <= maxLag; lag++){
+    let s = 0, c = 0;
+    for(let i = 0; i + lag < env.length; i++){ s += env[i] * env[i+lag]; c++; }
+    if(!c) continue;
+    const bpm = 60 * fps / lag;
+    const prior = Math.exp(-0.5 * Math.pow(Math.log2(bpm / 110) / 0.5, 2));
+    const score = (s / c) * prior;
+    if(score > bestScore){ bestScore = score; bestLag = lag; }
+  }
+  return bestLag;
+}
+function beatPhase(env, lag){
+  let best = 0, bestS = -1;
+  for(let p = 0; p < lag; p++){
+    let s = 0, c = 0;
+    for(let i = p; i < env.length; i += lag){
+      s += env[i] + 0.5*(env[i-1] || 0) + 0.5*(env[i+1] || 0);
+      c++;
+    }
+    if(c && s/c > bestS){ bestS = s/c; best = p; }
+  }
+  return best;
+}
+
+/* --- key, scale, chords ------------------------------------------- */
+const PROF_MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const PROF_MIN = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+function pcWeights(notes){
+  const w = new Float64Array(12);
+  for(const n of notes) w[((n.midi % 12) + 12) % 12] += n.dur;
+  return w;
+}
+/* Krumhansl-Schmuckler, and the correlation matters: a bare dot product
+   reads a C major phrase as its relative E minor, because the minor profile
+   simply carries larger numbers. Centring both sides first is what makes the
+   F natural - absent from E minor - count against it. */
+function keyCorr(w, prof, r){
+  let mw = 0, mp = 0;
+  for(let i = 0; i < 12; i++){ mw += w[i]; mp += prof[i]; }
+  mw /= 12; mp /= 12;
+  let num = 0, dw = 0, dp = 0;
+  for(let i = 0; i < 12; i++){
+    const a = w[(i + r) % 12] - mw, b = prof[i] - mp;
+    num += a * b; dw += a * a; dp += b * b;
+  }
+  return (dw > 0 && dp > 0) ? num / Math.sqrt(dw * dp) : -1;
+}
+function detectKey(notes){
+  const w = pcWeights(notes);
+  let total = 0;
+  for(let i = 0; i < 12; i++) total += w[i];
+  if(total <= 0) return { tonic: 0, mode: "major" };
+  let best = { tonic: 0, mode: "major", score: -Infinity };
+  for(let r = 0; r < 12; r++){
+    for(const [mode, prof] of [["major", PROF_MAJ], ["minor", PROF_MIN]]){
+      const s = keyCorr(w, prof, r);
+      if(s > best.score) best = { tonic: r, mode, score: s };
+    }
+  }
+  return best;
+}
+function snapMidi(m, tonic, set){
+  if(!set) return m;
+  const base = Math.floor((m - tonic) / 12) * 12 + tonic;
+  let best = m, bd = 1e9;
+  for(let k = -1; k <= 1; k++){
+    for(const s of set){
+      const c = base + k*12 + s, d = Math.abs(c - m);
+      if(d < bd){ bd = d; best = c; }
+    }
+  }
+  return best;
+}
+const QUAL = { maj:[0,4,7], min:[0,3,7], dim:[0,3,6] };
+const DEG_MAJ = [[0,"maj"],[2,"min"],[4,"min"],[5,"maj"],[7,"maj"],[9,"min"],[11,"dim"]];
+const DEG_MIN = [[0,"min"],[2,"dim"],[3,"maj"],[5,"min"],[7,"min"],[8,"maj"],[10,"maj"]];
+/* One chord per bar: the diatonic triad that covers the most melody,
+   with a nudge toward I/IV/V so an ambiguous bar still sounds settled,
+   and a plain tonic on the last bar so the piece lands. */
+function chordsFor(notes, origin, barLen, bars, tonic, mode){
+  const degs = mode === "minor" ? DEG_MIN : DEG_MAJ;
+  const out = [];
+  let prev = null;
+  for(let b = 0; b < bars; b++){
+    const t0 = origin + b*barLen, t1 = t0 + barLen;
+    const w = new Float64Array(12);
+    let tot = 0;
+    for(const n of notes){
+      const s = Math.max(n.start, t0), e = Math.min(n.start + n.dur, t1);
+      if(e <= s) continue;
+      w[((n.midi % 12) + 12) % 12] += e - s;
+      tot += e - s;
+    }
+    let pick = null;
+    if(tot > 0){
+      let bestS = -Infinity;
+      for(const [deg, q] of degs){
+        const root = (tonic + deg) % 12;
+        let s = 0;
+        for(const iv of QUAL[q]) s += w[(root + iv) % 12];
+        if(deg === 0) s += tot * 0.14;
+        if(deg === 5 || deg === 7) s += tot * 0.07;
+        if(s > bestS){ bestS = s; pick = { root, q, deg }; }
+      }
+    }
+    if(!pick) pick = prev || { root: tonic, q: mode === "minor" ? "min" : "maj", deg: 0 };
+    if(b === bars - 1) pick = { root: tonic, q: mode === "minor" ? "min" : "maj", deg: 0 };
+    prev = pick;
+    out.push({ bar: b, root: pick.root, q: pick.q, tones: QUAL[pick.q].map(iv => (pick.root + iv) % 12) });
+  }
+  return out;
+}
+
+/* --- synthesis ----------------------------------------------------
+   One kernel covers every pitched instrument: a bank of partials read
+   out of the sine table, an ADSR without the R (the release is applied
+   where the note is placed, so one rendered tone serves notes of any
+   length), an optional per-partial exponential damping that turns a
+   held tone into a struck one, vibrato, and a breath/bow noise layer.
+   The guitar gets its own kernel — a plucked string is a delay line,
+   not a sum of sines. */
+function renderTone(sp, freq, hold, sr){
+  const n = Math.ceil((hold + 0.03) * sr) + 2;
+  const out = new Float32Array(n);
+  const nyq = sr * 0.45;
+  const inc = [], amp = [], gain = [], dk = [];
+  const damp = sp.damp || 0, dampP = sp.dampP || 1;
+  for(let p = 1; p <= sp.partials.length; p++){
+    const f = freq * p * (sp.inharm ? Math.sqrt(1 + sp.inharm*p*p) : 1);
+    if(f > nyq) break;
+    const a = sp.partials[p-1];
+    if(!a) continue;
+    inc.push(f / sr); amp.push(a); gain.push(1);
+    dk.push(damp ? Math.exp(-damp * Math.pow(p, dampP) / sr) : 1);
+  }
+  const K = inc.length;
+  if(!K) return out;
+  const ph = new Float32Array(K);
+  for(let k = 0; k < K; k++) ph[k] = Math.random();
+  const atk = Math.max(0.001, sp.atk || 0.005);
+  const dec = sp.dec || 0, sus = sp.dec ? (sp.sus == null ? 1 : sp.sus) : 1;
+  const decK = dec > 0 ? Math.exp(-1 / (dec * sr)) : 0;
+  const vibD = sp.vibD || 0, vibInc = (sp.vibR || 0) / sr;
+  const nzAmp = sp.noise || 0;
+  let dcy = 1, vph = 0, lp = 0, env = 0, norm = 0;
+  for(let k = 0; k < K; k++) norm += amp[k];
+  const scale = (sp.gain || 1) / Math.max(1, norm * 0.62);
+  const atkN = atk * sr;
+  for(let i = 0; i < n; i++){
+    if(i < atkN) env = i / atkN;
+    else { if(dec > 0){ dcy *= decK; env = sus + (1 - sus) * dcy; } else env = 1; }
+    let vib = 1;
+    if(vibD){
+      vib = 1 + vibD * SINE[(vph * TSZ) & TMASK];
+      vph += vibInc; if(vph >= 1) vph -= 1;
+    }
+    let s = 0;
+    for(let k = 0; k < K; k++){
+      if(dk[k] !== 1) gain[k] *= dk[k];
+      let p = ph[k] + inc[k] * vib;
+      if(p >= 1) p -= 1;
+      ph[k] = p;
+      s += gain[k] * amp[k] * SINE[(p * TSZ) & TMASK];
+    }
+    if(nzAmp){
+      lp += 0.28 * ((Math.random()*2 - 1) - lp);
+      s += lp * nzAmp * (norm * 0.5);
+    }
+    out[i] = s * env * scale;
+  }
+  return out;
+}
+/* Karplus-Strong: a burst of noise round a lowpassed delay line. The
+   per-pass decay is derived from the loop length so a high string does
+   not die faster than a low one. */
+function renderString(sp, freq, hold, sr){
+  const n = Math.ceil((hold + 0.03) * sr) + 2;
+  const out = new Float32Array(n);
+  const L = Math.max(2, Math.round(sr / freq));
+  const line = new Float32Array(L);
+  let lp = 0;
+  for(let i = 0; i < L; i++){
+    lp += 0.55 * ((Math.random()*2 - 1) - lp);
+    line[i] = lp;
+  }
+  const decay = Math.pow(sp.ksHold || 0.012, L / sr);
+  const atkN = Math.max(1, (sp.atk || 0.002) * sr);
+  let idx = 0, prev = 0;
+  for(let i = 0; i < n; i++){
+    const cur = line[idx];
+    const v = decay * 0.5 * (cur + prev);
+    prev = cur;
+    line[idx] = v;
+    if(++idx >= L) idx = 0;
+    out[i] = v * (sp.gain || 1) * (i < atkN ? i / atkN : 1);
+  }
+  return out;
+}
+function renderInstrument(id, midi, hold, sr){
+  const sp = INSTR[id] || INSTR.piano;
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  return sp.ks ? renderString(sp, freq, hold, sr) : renderTone(sp, freq, hold, sr);
+}
+
+/* --- drums: three one-shots, no samples --------------------------- */
+function renderKick(sr){
+  const n = Math.ceil(0.42 * sr), out = new Float32Array(n);
+  let ph = 0;
+  for(let i = 0; i < n; i++){
+    const t = i / sr;
+    const f = 45 + 95 * Math.exp(-t / 0.035);
+    ph += f / sr; if(ph >= 1) ph -= 1;
+    const body = SINE[(ph * TSZ) & TMASK] * Math.exp(-t / 0.16);
+    const click = (Math.random()*2 - 1) * Math.exp(-t / 0.004) * 0.35;
+    out[i] = (body + click) * 0.95;
+  }
+  return out;
+}
+function renderSnare(sr){
+  const n = Math.ceil(0.3 * sr), out = new Float32Array(n);
+  let hp = 0, x1 = 0, ph = 0;
+  for(let i = 0; i < n; i++){
+    const t = i / sr;
+    const x = Math.random()*2 - 1;
+    hp = 0.72 * (hp + x - x1); x1 = x;
+    ph += 190 / sr; if(ph >= 1) ph -= 1;
+    const tone = SINE[(ph * TSZ) & TMASK] * Math.exp(-t / 0.055) * 0.4;
+    out[i] = (hp * Math.exp(-t / 0.09) + tone) * 0.6;
+  }
+  return out;
+}
+function renderHat(sr, open){
+  const dec = open ? 0.22 : 0.045;
+  const n = Math.ceil((open ? 0.4 : 0.12) * sr), out = new Float32Array(n);
+  let hp = 0, x1 = 0;
+  for(let i = 0; i < n; i++){
+    const x = Math.random()*2 - 1;
+    hp = 0.92 * (hp + x - x1); x1 = x;
+    out[i] = hp * Math.exp(-(i/sr) / dec) * 0.34;
+  }
+  return out;
+}
+
+/* --- mixing -------------------------------------------------------
+   `place` is where the release lives: the cached tone is held, and the
+   note that uses it is cut and faded here. That is why a few dozen
+   rendered tones can serve a few hundred notes. */
+function place(L, R, buf, startSec, holdSec, relSec, gain, pan, sr){
+  const s0 = Math.round(startSec * sr);
+  if(s0 >= L.length) return;
+  const gl = gain * Math.cos((pan + 1) * Math.PI / 4);
+  const gr = gain * Math.sin((pan + 1) * Math.PI / 4);
+  const hold = Math.max(1, Math.round(holdSec * sr));
+  const fade = Math.max(1, Math.round(relSec * sr));
+  const n = Math.min(buf.length, hold + fade, L.length - s0);
+  for(let i = 0; i < n; i++){
+    let e = 1;
+    if(i > hold){ e = 1 - (i - hold) / fade; if(e <= 0) break; }
+    const v = buf[i] * e;
+    L[s0+i] += v * gl;
+    R[s0+i] += v * gr;
+  }
+}
+/* Schroeder reverb — four damped combs into two allpasses, the right
+   channel offset so the room has a width. Generated, like everything
+   else here, rather than convolved with somebody's impulse response. */
+function reverbTail(x, sr, offset){
+  const sc = sr / 44100;
+  const combs = [1116, 1188, 1277, 1356].map(d => Math.round((d + offset) * sc));
+  const aps   = [556, 441].map(d => Math.round((d + offset) * sc));
+  const n = x.length, wet = new Float32Array(n);
+  for(const dl of combs){
+    const buf = new Float32Array(dl);
+    let i = 0, store = 0;
+    for(let s = 0; s < n; s++){
+      const y = buf[i];
+      wet[s] += y;
+      store = y * 0.72 + store * 0.28;
+      buf[i] = x[s] + store * 0.79;
+      if(++i >= dl) i = 0;
+    }
+  }
+  for(let s = 0; s < n; s++) wet[s] *= 0.25;
+  for(const dl of aps){
+    const buf = new Float32Array(dl);
+    let i = 0;
+    for(let s = 0; s < n; s++){
+      const y = buf[i];
+      const o = -wet[s] + y;
+      buf[i] = wet[s] + y * 0.5;
+      if(++i >= dl) i = 0;
+      wet[s] = o;
+    }
+  }
+  return wet;
+}
+function finishMix(L, R, sr, wetAmt){
+  const wl = reverbTail(L, sr, 0), wr = reverbTail(R, sr, 23);
+  let peak = 0;
+  for(let i = 0; i < L.length; i++){
+    L[i] += wl[i] * wetAmt;
+    R[i] += wr[i] * wetAmt;
+    const a = Math.abs(L[i]), b = Math.abs(R[i]);
+    if(a > peak) peak = a;
+    if(b > peak) peak = b;
+  }
+  // normalise, then a gentle saturation that lifts the quiet middle
+  // without letting the loudest hit clip: 0.95 in maps to 0.95 out
+  const g = peak > 0 ? 0.95 / peak : 1;
+  const drive = 1.2, k = 0.95 / Math.tanh(drive * 0.95);
+  for(let i = 0; i < L.length; i++){
+    L[i] = Math.tanh(L[i] * g * drive) * k;
+    R[i] = Math.tanh(R[i] * g * drive) * k;
+  }
+}
+
+/* --- WAV (16-bit PCM stereo) --------------------------------------- */
+function wavBlob(L, R, sr){
+  const n = L.length, bytes = 44 + n * 4;
+  const ab = new ArrayBuffer(bytes), dv = new DataView(ab);
+  const str = (o, s) => { for(let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF");  dv.setUint32(4, bytes - 8, true);  str(8, "WAVE");
+  str(12, "fmt "); dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 4, true);
+  dv.setUint16(32, 4, true);  dv.setUint16(34, 16, true);
+  str(36, "data"); dv.setUint32(40, n * 4, true);
+  let o = 44;
+  for(let i = 0; i < n; i++){
+    let l = L[i]; if(l > 1) l = 1; else if(l < -1) l = -1;
+    let r = R[i]; if(r > 1) r = 1; else if(r < -1) r = -1;
+    dv.setInt16(o, l * 32767 | 0, true); o += 2;
+    dv.setInt16(o, r * 32767 | 0, true); o += 2;
+  }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+/* --- MIDI (format 1) -----------------------------------------------
+   The same arrangement as notes rather than sound, so the person can
+   drop it into any DAW and swap the instruments for their own. */
+function vlq(v){
+  const b = [v & 0x7f];
+  v >>>= 7;
+  while(v > 0){ b.unshift((v & 0x7f) | 0x80); v >>>= 7; }
+  return b;
+}
+function midiTrack(events, name){
+  const data = [];
+  const push = a => { for(const v of a) data.push(v); };
+  push(vlq(0)); push([0xFF, 0x03, name.length]);
+  for(let i = 0; i < name.length; i++) data.push(name.charCodeAt(i) & 0x7f);
+  events.sort((a, b) => a.t - b.t || a.o - b.o);
+  let last = 0;
+  for(const e of events){
+    push(vlq(Math.max(0, e.t - last)));
+    push(e.d);
+    last = e.t;
+  }
+  push(vlq(0)); push([0xFF, 0x2F, 0x00]);
+  const head = [0x4D, 0x54, 0x72, 0x6B,
+    (data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255];
+  return head.concat(data);
+}
+function midiBlob(parts, bpm){
+  const TPQ = 480;
+  const bytes = [0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1,
+    ((parts.length + 1) >> 8) & 255, (parts.length + 1) & 255, (TPQ >> 8) & 255, TPQ & 255];
+  const us = Math.round(60000000 / bpm);
+  const tempo = [{ t: 0, o: 0, d: [0xFF, 0x51, 0x03, (us >> 16) & 255, (us >> 8) & 255, us & 255] },
+                 { t: 0, o: 1, d: [0xFF, 0x58, 0x04, 4, 2, 24, 8] }];
+  for(const b of midiTrack(tempo, "Caiet vocal")) bytes.push(b);
+  for(const p of parts){
+    const ev = [];
+    if(p.ch !== 9) ev.push({ t: 0, o: 0, d: [0xC0 | p.ch, p.gm & 0x7f] });
+    for(const n of p.notes){
+      const on = Math.round(n.start / (60 / bpm) * TPQ);
+      const off = Math.max(on + 1, Math.round((n.start + n.dur) / (60 / bpm) * TPQ));
+      const v = clampN(Math.round(n.vel * 110) + 12, 1, 127);
+      ev.push({ t: on,  o: 1, d: [0x90 | p.ch, clampN(n.midi, 0, 127), v] });
+      ev.push({ t: off, o: 0, d: [0x80 | p.ch, clampN(n.midi, 0, 127), 64] });
+    }
+    for(const b of midiTrack(ev, p.name)) bytes.push(b);
+  }
+  return new Blob([new Uint8Array(bytes)], { type: "audio/midi" });
+}
+
+/* --- arrangement --------------------------------------------------- */
+const mel = {
+  src:null, srcKind:"", raw:null, rawFor:null, score:null, out:null, parts:null,
+  lead:"piano", back:{ drums:true, bass:true, chords:true },
+  busy:false, playing:false, trimmed:false, ctx:null, node:null, msg:null
+};
+
+function quantise(notes, beat, phase, div){
+  if(!div) return notes.slice().sort((a,b) => a.start - b.start);
+  const step = beat / div;
+  const q = notes.map(n => {
+    const s = Math.round((n.start - phase) / step) * step + phase;
+    let e = Math.round((n.start + n.dur - phase) / step) * step + phase;
+    if(e - s < step - 1e-9) e = s + step;
+    return { start: s, dur: e - s, midi: n.midi, vel: n.vel };
+  });
+  q.sort((a, b) => a.start - b.start || b.dur - a.dur);
+  const out = [];
+  for(const n of q){
+    const p = out[out.length - 1];
+    if(p){
+      if(Math.abs(p.start - n.start) < 1e-6) continue;   // same slot — the longer one won the sort
+      if(n.start < p.start + p.dur) p.dur = n.start - p.start;
+      if(p.dur <= 1e-6) out.pop();
+    }
+    out.push(n);
+  }
+  return out.filter(n => n.dur > 1e-6);
+}
+function fitRange(m, sp){
+  while(m < sp.lo) m += 12;
+  while(m > sp.hi) m -= 12;
+  return clampN(m, 0, 127);
+}
+function chordVoicing(c){
+  const base = 55;                                   // just under middle C
+  const root = base + ((((c.root - base) % 12) + 12) % 12);
+  return QUAL[c.q].map(iv => root + iv);
+}
+function keyName(tonic, mode){
+  return (UI === "ro" ? NOTE_RO : NOTE_EN)[((tonic % 12) + 12) % 12] + " " + t(mode === "minor" ? "melodyMinor" : "melodyMajor");
+}
+
+function buildScore(){
+  const raw = mel.raw;
+  const bpm = Math.round(clampN(parseFloat(melTempoEl.value) || raw.bpm, 40, 220));
+  const beat = 60 / bpm, barLen = beat * 4;
+  const div = parseInt(melGridEl.value, 10) || 0;
+  const oct = parseInt(melOctEl.value, 10) || 0;
+  let notes = raw.notes.map(n => ({ start:n.start, dur:n.dur, midi:n.midi, vel:n.vel }));
+  if(!notes.length) return null;
+
+  const key = detectKey(notes);
+  const want = melScaleEl.value;
+  const mode = want === "major" ? "major" : (want === "minor" ? "minor" : key.mode);
+  let set = null;
+  if(want === "auto") set = SCALES[key.mode];
+  else if(want === "major") set = SCALES.major;
+  else if(want === "minor") set = SCALES.minor;
+  else if(want === "penta") set = SCALES.penta;
+  if(set) notes.forEach(n => { n.midi = snapMidi(n.midi, key.tonic, set); });
+
+  notes = quantise(notes, beat, raw.phase, div);
+  if(!notes.length) return null;
+
+  // Bar 1, beat 1 is the first note. Everything was quantised against the
+  // detected beat phase, so shifting the whole thing by that first note
+  // keeps the notes on the grid the drums are about to play.
+  const base = notes[0].start;
+  let lastEnd = 0;
+  for(const n of notes){ n.start -= base; lastEnd = Math.max(lastEnd, n.start + n.dur); }
+  const origin = 0;
+  const bars = Math.max(1, Math.ceil(lastEnd / barLen));
+  const chords = chordsFor(notes, origin, barLen, bars, key.tonic, mode);
+  return { bpm, beat, barLen, origin, bars, notes, chords, tonic:key.tonic, mode, oct,
+           end: bars * barLen };
+}
+
+async function renderAudio(sc){
+  const sr = MEL_SR;
+  const sp = INSTR[mel.lead] || INSTR.piano;
+  const parts = [];
+
+  // the lead sits where the chosen instrument actually plays: shift the
+  // whole line by octaves until its middle lands inside the range
+  const med = median(sc.notes.map(n => n.midi));
+  let shift = sc.oct * 12;
+  while(med + shift < sp.lo) shift += 12;
+  while(med + shift > sp.hi) shift -= 12;
+  parts.push({ inst: mel.lead, ch: 0, name: "Lead", gain: 1, pan: 0,
+    notes: sc.notes.map(n => ({ start:n.start, dur:Math.min(4, n.dur), midi:fitRange(n.midi + shift, sp), vel:n.vel })) });
+
+  if(mel.back.chords){
+    const id = melChordInstEl.value in INSTR ? melChordInstEl.value : "strings";
+    const ci = INSTR[id], cn = [];
+    const plucked = !!(ci.damp || ci.ks);
+    for(const c of sc.chords){
+      const t0 = sc.origin + c.bar * sc.barLen;
+      const v = chordVoicing(c);
+      if(plucked){
+        const arp = [v[0], v[1], v[2], v[0] + 12];
+        const pat = [0, 1, 2, 3, 2, 1, 0, 1];
+        for(let k = 0; k < 8; k++)
+          cn.push({ start: t0 + k * sc.beat / 2, dur: sc.beat * 0.48, midi: fitRange(arp[pat[k]], ci), vel: k % 2 ? 0.34 : 0.46 });
+      } else {
+        for(const m of v) cn.push({ start: t0, dur: sc.barLen * 0.96, midi: fitRange(m, ci), vel: 0.4 });
+      }
+    }
+    parts.push({ inst: id, ch: 1, name: "Chords", gain: 0.55, pan: -0.22, notes: cn });
+  }
+
+  if(mel.back.bass){
+    const bi = INSTR.bass, bn = [];
+    for(const c of sc.chords){
+      const t0 = sc.origin + c.bar * sc.barLen;
+      const root = fitRange(36 + c.root, bi);
+      bn.push({ start: t0, dur: sc.beat * 1.8, midi: root, vel: 0.78 });
+      bn.push({ start: t0 + sc.beat * 2, dur: sc.beat * 1.8, midi: root, vel: 0.6 });
+    }
+    parts.push({ inst: "bass", ch: 2, name: "Bass", gain: 0.8, pan: 0.05, notes: bn });
+  }
+
+  const drums = [];
+  if(mel.back.drums){
+    for(let b = 0; b < sc.bars; b++){
+      const t0 = sc.origin + b * sc.barLen;
+      drums.push({ t: t0, type: "kick", vel: 1 });
+      drums.push({ t: t0 + sc.beat * 2, type: "kick", vel: 0.82 });
+      drums.push({ t: t0 + sc.beat, type: "snare", vel: 0.9 });
+      drums.push({ t: t0 + sc.beat * 3, type: "snare", vel: 0.9 });
+      for(let k = 0; k < 8; k++){
+        const open = (b % 2 === 1 && k === 7);
+        drums.push({ t: t0 + k * sc.beat / 2, type: open ? "hato" : "hat", vel: k % 2 ? 0.55 : 0.8 });
+      }
+    }
+  }
+
+  const total = Math.ceil((sc.end + 1.8) * sr);
+  const L = new Float32Array(total), R = new Float32Array(total);
+
+  // one rendered tone per (instrument, pitch), held as long as the
+  // longest note that needs it — the release happens in `place`
+  const need = new Map();
+  for(const p of parts) for(const n of p.notes){
+    const k = p.inst + "|" + n.midi, d = Math.min(4, n.dur);
+    if(!(need.get(k) >= d)) need.set(k, d);
+  }
+  const cache = new Map();
+  let made = 0;
+  for(const [k, d] of need){
+    const cut = k.lastIndexOf("|");
+    cache.set(k, renderInstrument(k.slice(0, cut), +k.slice(cut + 1), d, sr));
+    if((++made & 7) === 0) await yieldUI();
+  }
+  for(const p of parts){
+    const rel = (INSTR[p.inst] || INSTR.piano).rel || 0.12;
+    for(const n of p.notes){
+      const buf = cache.get(p.inst + "|" + n.midi);
+      if(buf) place(L, R, buf, n.start, Math.min(4, n.dur), rel, p.gain * n.vel, p.pan, sr);
+    }
+    await yieldUI();
+  }
+  if(drums.length){
+    const kit = { kick: renderKick(sr), snare: renderSnare(sr), hat: renderHat(sr, false), hato: renderHat(sr, true) };
+    const gn  = { kick: 0.95, snare: 0.6, hat: 0.32, hato: 0.28 };
+    const pn  = { kick: 0, snare: -0.08, hat: 0.22, hato: 0.22 };
+    for(const d of drums){
+      const b = kit[d.type];
+      place(L, R, b, d.t, b.length / sr, 0.005, gn[d.type] * d.vel, pn[d.type], sr);
+    }
+    await yieldUI();
+  }
+  finishMix(L, R, sr, 0.16);
+
+  const mp = parts.map(p => ({ ch: p.ch, gm: (INSTR[p.inst] || INSTR.piano).gm, name: p.name, notes: p.notes }));
+  if(drums.length){
+    const gmDrum = { kick: 36, snare: 38, hat: 42, hato: 46 };
+    mp.push({ ch: 9, gm: 0, name: "Drums",
+      notes: drums.map(d => ({ start: d.t, dur: 0.12, midi: gmDrum[d.type], vel: d.vel })) });
+  }
+  return { L, R, sr, parts: mp, drums };
+}
+
+/* --- the panel ----------------------------------------------------- */
+const melCard=$("#melodyCard"), melBody=$("#melodyBody"), melHead=$("#melodyToggle");
+const melRoll=$("#melRoll"), melInfo=$("#melInfo");
+const melTempoEl=$("#melTempo"), melGridEl=$("#melGrid"), melScaleEl=$("#melScale");
+const melOctEl=$("#melOct"), melChordInstEl=$("#melChordInst");
+const leadChips=$("#leadChips"), backChips=$("#backChips");
+const melMakeBtn=$("#melMakeBtn"), melPlayBtn=$("#melPlayBtn");
+const melWavBtn=$("#melWavBtn"), melMidiBtn=$("#melMidiBtn");
+const melFileBtn=$("#melFileBtn"), melFileInput=$("#melFile");
+
+LEAD_ORDER.forEach(id => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip";
+  b.setAttribute("data-inst", id);
+  b.setAttribute("data-i", INSTR[id].k);
+  b.setAttribute("aria-pressed", "false");
+  b.textContent = id;
+  leadChips.appendChild(b);
+});
+CHORD_ORDER.forEach(id => {
+  const o = document.createElement("option");
+  o.value = id; o.setAttribute("data-i", INSTR[id].k); o.textContent = id;
+  melChordInstEl.appendChild(o);
+});
+
+function melSay(m){ mel.msg = typeof m === "function" ? m : () => m; melPaintInfo(); }
+function melPaintInfo(){ if(melInfo) melInfo.textContent = mel.msg ? mel.msg() : ""; }
+function melButtons(){
+  if(!melMakeBtn) return;
+  melMakeBtn.disabled = mel.busy || !mel.src;
+  melPlayBtn.disabled = mel.busy || !mel.out;
+  melWavBtn.disabled  = mel.busy || !mel.out;
+  melMidiBtn.disabled = mel.busy || !mel.parts;
+  melPlayBtn.textContent = mel.playing ? t("melodyStop") : t("melodyPlay");
+}
+function melSyncLabels(){
+  if(!melMakeBtn) return;
+  melButtons();
+  document.querySelectorAll("#leadChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.getAttribute("data-inst") === mel.lead)));
+  [["drums","melodyDrums"],["bass","melodyBass"],["chords","melodyChords"]].forEach(([k]) => {
+    const b = backChips.querySelector('button[data-back="' + k + '"]');
+    if(b) b.setAttribute("aria-pressed", String(!!mel.back[k]));
+  });
+  melPaintInfo();
+  drawRoll();
+}
+function melStale(){
+  mel.score = null;
+  if(mel.out){ mel.out = null; mel.parts = null; melStop(); melSay(() => t("melodyStale")); }
+  melButtons();
+}
+function melSetSource(blob, kind){
+  mel.src = blob; mel.srcKind = kind;
+  mel.raw = null; mel.rawFor = null; mel.score = null; mel.out = null; mel.parts = null;
+  melStop();
+  melSay(() => t(kind === "file" ? "melodySrcFile" : "melodySrcRec"));
+  melButtons(); drawRoll();
+}
+function melReset(){
+  melStop();
+  mel.src = null; mel.raw = null; mel.rawFor = null;
+  mel.score = null; mel.out = null; mel.parts = null;
+  melSay("");
+  melButtons(); drawRoll();
+}
+
+/* --- the piano roll ------------------------------------------------ */
+function drawRoll(){
+  if(!melRoll || !melRoll.clientWidth) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = melRoll.clientWidth, h = 132;
+  melRoll.width = Math.round(w * dpr); melRoll.height = Math.round(h * dpr);
+  melRoll.style.height = h + "px";
+  const g = melRoll.getContext("2d");
+  if(!g) return;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cs = getComputedStyle(document.documentElement);
+  const col = k => (cs.getPropertyValue(k) || "").trim() || "#888";
+  g.fillStyle = col("--bg"); g.fillRect(0, 0, w, h);
+  const sc = mel.score;
+  if(!sc || !sc.notes.length){
+    g.fillStyle = col("--text-2"); g.font = "11px " + "ui-monospace, monospace";
+    g.fillText(t("melodyRollEmpty"), 10, h / 2);
+    return;
+  }
+  const t0 = sc.origin, span = Math.max(0.5, sc.end - sc.origin);
+  const X = s => 4 + (s - t0) / span * (w - 8);
+  let lo = 127, hi = 0;
+  for(const n of sc.notes){ if(n.midi < lo) lo = n.midi; if(n.midi > hi) hi = n.midi; }
+  if(hi - lo < 12){ const c = (hi + lo) / 2; lo = c - 6; hi = c + 6; }
+  const top = 8, bot = h - (mel.back.drums ? 20 : 8);
+  const Y = m => bot - (m - lo) / (hi - lo) * (bot - top);
+
+  g.strokeStyle = col("--border"); g.lineWidth = 1;
+  for(let b = 0; b <= sc.bars; b++){
+    const x = Math.round(X(sc.origin + b * sc.barLen)) + 0.5;
+    g.globalAlpha = 0.85; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+  }
+  g.globalAlpha = 0.35;
+  for(let b = 0; b < sc.bars; b++) for(let k = 1; k < 4; k++){
+    const x = Math.round(X(sc.origin + b * sc.barLen + k * sc.beat)) + 0.5;
+    g.beginPath(); g.moveTo(x, top); g.lineTo(x, bot); g.stroke();
+  }
+  g.globalAlpha = 1;
+
+  if(mel.back.chords){
+    g.fillStyle = col("--surface-2");
+    for(const c of sc.chords){
+      const x = X(sc.origin + c.bar * sc.barLen);
+      const x2 = X(sc.origin + (c.bar + 1) * sc.barLen);
+      for(const m of chordVoicing(c)){
+        const y = Y(clampN(m, lo, hi));
+        g.fillRect(x + 1, y - 1.5, Math.max(2, x2 - x - 3), 3);
+      }
+    }
+  }
+  g.fillStyle = col("--accent");
+  for(const n of sc.notes){
+    const x = X(n.start), x2 = X(n.start + n.dur);
+    g.fillRect(x, Y(n.midi) - 2.5, Math.max(2, x2 - x - 1), 5);
+  }
+  if(mel.back.drums){
+    g.fillStyle = col("--danger");
+    for(let b = 0; b < sc.bars; b++) for(let k = 0; k < 4; k++){
+      const x = X(sc.origin + b * sc.barLen + k * sc.beat);
+      g.fillRect(x, h - 12, k % 2 ? 2 : 3, k % 2 ? 4 : 7);
+    }
+  }
+}
+
+/* --- making it ------------------------------------------------------ */
+function melStamp(){
+  return new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "-");
+}
+async function melMake(){
+  if(mel.busy) return;
+  if(!mel.src){ melSay(() => t("melodyNoSrc")); return; }
+  mel.busy = true; melStop(); melButtons();
+  try{
+    if(mel.rawFor !== mel.src){
+      melSay(() => t("melodyDecoding"));
+      await yieldUI();
+      let x = await decodeMono(mel.src, AN_SR);
+      mel.trimmed = false;
+      if(x.length > MEL_MAX * AN_SR){ x = x.subarray(0, MEL_MAX * AN_SR); mel.trimmed = true; }
+      normalise(x);
+      melSay(() => t("melodyBeatStep"));
+      await yieldUI();
+      const env = onsetEnvelope(x);
+      const fps = AN_SR / HOP;
+      const lag = detectTempo(env, fps);
+      const pt = await trackPitch(decimate2(x), AN_SR / 2,
+        f => melSay(() => t("melodyPitchStep", Math.round(f * 100))));
+      mel.raw = { notes: segmentNotes(pt), bpm: Math.round(60 * fps / lag), phase: beatPhase(env, lag) / fps };
+      mel.rawFor = mel.src;
+      melTempoEl.value = String(mel.raw.bpm);
+    }
+    if(!mel.raw.notes.length){ melSay(() => t("melodyNoNotes")); return; }
+    melSay(() => t("melodyArranging"));
+    await yieldUI();
+    const sc = buildScore();
+    if(!sc){ melSay(() => t("melodyNoNotes")); return; }
+    mel.score = sc; drawRoll();
+    melSay(() => t("melodyRendering"));
+    await yieldUI();
+    const out = await renderAudio(sc);
+    mel.out = out; mel.parts = out.parts;
+    const info = { n: sc.notes.length, bpm: sc.bpm, key: keyName(sc.tonic, sc.mode),
+                   bars: sc.bars, len: fmtTime(out.L.length / out.sr * 1000) };
+    const trimmed = mel.trimmed;
+    melSay(() => t("melodyDone", info) + (trimmed ? " · " + t("melodyTrimmed", Math.round(MEL_MAX / 60)) : ""));
+  }catch(e){
+    melSay(() => t("melodyFailed"));
+  }finally{
+    mel.busy = false; melButtons();
+  }
+}
+function melPlay(){
+  if(!mel.out) return;
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!mel.ctx) mel.ctx = new AC();
+    if(mel.ctx.state === "suspended") mel.ctx.resume();
+    const buf = mel.ctx.createBuffer(2, mel.out.L.length, mel.out.sr);
+    if(buf.copyToChannel){ buf.copyToChannel(mel.out.L, 0); buf.copyToChannel(mel.out.R, 1); }
+    else { buf.getChannelData(0).set(mel.out.L); buf.getChannelData(1).set(mel.out.R); }
+    const node = mel.ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(mel.ctx.destination);
+    node.onended = () => { if(mel.node === node){ mel.node = null; mel.playing = false; melButtons(); } };
+    node.start();
+    mel.node = node; mel.playing = true; melButtons();
+  }catch(e){ melSay(() => t("melodyFailed")); }
+}
+function melStop(){
+  if(mel.node){ try{ mel.node.onended = null; mel.node.stop(); }catch(e){} mel.node = null; }
+  mel.playing = false; melButtons();
+}
+
+melHead.addEventListener("click", () => {
+  const open = melBody.classList.contains("hidden");
+  melBody.classList.toggle("hidden", !open);
+  melHead.setAttribute("aria-expanded", String(open));
+  melCard.classList.toggle("open", open);
+  if(open) drawRoll();
+});
+leadChips.addEventListener("click", e => {
+  const b = e.target.closest("button[data-inst]");
+  if(!b) return;
+  mel.lead = b.getAttribute("data-inst");
+  [...leadChips.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  S.melLead = mel.lead; save(); melStale();
+});
+backChips.addEventListener("click", e => {
+  const b = e.target.closest("button[data-back]");
+  if(!b) return;
+  const k = b.getAttribute("data-back");
+  mel.back[k] = !mel.back[k];
+  b.setAttribute("aria-pressed", String(mel.back[k]));
+  S.melDrums = mel.back.drums; S.melBass = mel.back.bass; S.melChords = mel.back.chords;
+  save(); melStale(); drawRoll();
+});
+[melChordInstEl, melScaleEl, melGridEl, melOctEl].forEach(el => el.addEventListener("change", () => {
+  S.melChord = melChordInstEl.value; S.melScale = melScaleEl.value;
+  S.melGrid = melGridEl.value; S.melOct = melOctEl.value;
+  save(); melStale();
+}));
+melTempoEl.addEventListener("change", melStale);
+melMakeBtn.addEventListener("click", melMake);
+melPlayBtn.addEventListener("click", () => { mel.playing ? melStop() : melPlay(); });
+melFileBtn.addEventListener("click", () => melFileInput.click());
+melFileInput.addEventListener("change", () => {
+  const f = melFileInput.files && melFileInput.files[0];
+  melFileInput.value = "";
+  if(f) melSetSource(f, "file");
+});
+melWavBtn.addEventListener("click", async () => {
+  if(!mel.out) return;
+  const r = await ScuLaFolder.save("melodie_" + melStamp() + ".wav",
+    wavBlob(mel.out.L, mel.out.R, mel.out.sr), { quiet:true });
+  if(r.message) melSay(r.message);
+});
+melMidiBtn.addEventListener("click", async () => {
+  if(!mel.parts || !mel.score) return;
+  const r = await ScuLaFolder.save("melodie_" + melStamp() + ".mid",
+    midiBlob(mel.parts, mel.score.bpm), { quiet:true });
+  if(r.message) melSay(r.message);
+});
+melodyArmEl.addEventListener("change", () => { S.melody = melodyArmEl.checked; save(); });
+let melRollTimer = null;
+window.addEventListener("resize", () => { clearTimeout(melRollTimer); melRollTimer = setTimeout(drawRoll, 180); });
+
+/* ============================================================
+   15. Go
    ============================================================ */
 load();
 })();

@@ -14,8 +14,8 @@ pending-edit tracking under it, the TODO-workbook chapter filter, the
 `!nice`/`!important`/`!vital` importance markers, quick idea capture, its
 undo/redo history, pasting a picture into it, and the `@date` markers it
 flags for the calendar, plus — in `calendar.js` — `calendar.html` itself, and
-— in `voice.js` — `voice.html`'s keep-the-audio
-checkbox, written the way `HANDOFF.md` §
+— in `voice.js` and `melody.js` — `voice.html`'s keep-the-audio
+checkbox and the melody it can make out of a recording, written the way `HANDOFF.md` §
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry

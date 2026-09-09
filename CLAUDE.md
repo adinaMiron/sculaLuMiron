@@ -6,7 +6,7 @@ file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `voice.html` | 2303 | 23k | "Caiet vocal" — voice dictation → text | dark (earth) |
+| `voice.html` | 3668 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` | 11224 | 97k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + Google Drive sync | dark (earth) |
 | `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
@@ -58,6 +58,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
+| **The melody in `voice.html`** — pitch and beat detection, the instruments, the WAV and MIDI exports, why nothing is sampled | `docs/FEATURES.md` § P |
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 
@@ -215,7 +216,13 @@ on code blocks in the HTML
 export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
-Chromium's fake microphone, asserting on the real files that come out).
+Chromium's fake microphone, asserting on the real files that come out) and
+its **melody** (`melody.js` — a hummed C-major phrase at a known tempo fed
+in both ways, through the file picker and through the microphone itself
+with Chromium playing a real WAV into it, then the notes read back out of
+the exported MIDI, plus the WAV bytes, the piano roll, both languages, and
+the guarantee that arming the melody does not make "Descarcă" write an
+audio file).
 It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.

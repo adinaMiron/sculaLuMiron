@@ -1669,6 +1669,102 @@ is involved. Run: `/apptest gdsync`.
 
 ---
 
+## P. The melody (`voice.html`)
+
+"Caiet vocal" § 14 turns a recording into a piece of music: it finds the
+notes and the beat in what was hummed, and plays them back on instruments.
+The panel is `#melodyCard`, under the transcript.
+
+### Why every note is synthesised
+
+The person asking for this wants to put the result in a video. That single
+requirement decides the whole design: **nothing in the signal path may come
+from anyone else.** No sample library, no soundfont, no CDN, no rendering
+service. So the fourteen instruments are models, not recordings —
+
+- **`renderTone`** covers thirteen of them: a bank of partials read out of a
+  shared sine table, an ADSR, an optional per-partial exponential damping
+  (that is the entire difference between a held violin and a struck piano),
+  vibrato, and a breath/bow noise layer. An instrument is one object:
+  `partials`, `atk/dec/sus/rel`, `damp`, `inharm`, `vibR/vibD`, `noise`.
+- **`renderString`** covers the guitar, because a plucked string is a
+  delay line, not a sum of sines — Karplus-Strong, with the per-pass decay
+  derived from the loop length so a high string does not die faster than a
+  low one.
+- The **drums** are three one-shots built the same way: a pitch-swept sine
+  for the kick, high-passed noise plus a 190 Hz tone for the snare, a
+  shorter and brighter noise for the hats.
+- The **reverb** is a Schroeder network (four damped combs, two allpasses),
+  not a convolution with somebody's impulse response.
+
+This is the same answer as the JPEG 2000 decoder and the USDA table in
+`recipes.html` (root `CLAUDE.md`, Rule 3): a few hundred lines of our own
+beats a dependency, and here it is also the only answer that leaves the
+result unencumbered.
+
+### The chain
+
+```
+blob ─ decodeMono ─→ mono @22050 ─┬─ onsetEnvelope → detectTempo → beatPhase
+                                  │        (spectral flux, autocorrelation)
+                                  └─ decimate2 → trackPitch (YIN @11025)
+                                                     → segmentNotes
+                                                            ↓
+   detectKey → snapMidi → quantise → chordsFor → buildScore → renderAudio
+                                                                 ↓
+                                                    wavBlob / midiBlob
+```
+
+Things worth knowing before changing any of it:
+
+- **`trackPitch` runs at 11025, not 22050.** The lag range is then ~170
+  samples, which is cheaper than an FFT per frame and much easier to read.
+  It is chunked with `await yieldUI()` every 128 frames so a three-minute
+  recording does not freeze the page.
+- **`segmentNotes` forgives one bad frame, not two.** That hysteresis is
+  what keeps a wobbling voice from shattering into 25 ms fragments.
+- **`detectKey` uses a correlation, not a dot product.** A bare dot product
+  reads a C major phrase as its relative E minor, because the minor profile
+  simply carries larger numbers; centring both sides is what makes an F
+  natural count against E minor. There is a comment saying so — do not
+  "simplify" it back.
+- **Bar 1, beat 1 is the first note** (`buildScore`). Notes are quantised
+  against the detected beat *phase* and then the whole thing is shifted by
+  that first note, so the melody and the drums stay on one grid.
+- **One rendered tone per (instrument, pitch).** The cached tone is *held*;
+  the release happens in `place`, where the note is cut and faded. That is
+  why a few hundred notes cost a few dozen renders.
+- **`MEL_MAX` is 180 s.** The mix is three Float32Arrays of that length at
+  44100; raising it raises peak memory on a phone by ~32 MB per minute.
+
+### The two exports
+
+`ScuLaFolder.save()` for both (§ D), so they land wherever the person chose:
+
+- **WAV** — 16-bit PCM stereo at 44100, `wavBlob`. What goes into the video.
+- **MIDI** — format 1, `midiBlob`, one track per part with its General MIDI
+  program, drums on channel 9. What goes into a DAW when they want to swap
+  the instruments for their own.
+
+### Feeding it
+
+Two sources, and `#melodyArm` is the reason the first one exists: it arms
+the *same* keep-the-sound recorder as `#keepAudio` (§ 9), so a recording
+stays in the page. It does **not** make `#dlBtn` write an audio file —
+that is still `#keepAudio` alone. The second source is `#melFile`, any
+audio file. `tests/melody.js` covers both, and covers the recorded one
+through Chromium's fake microphone playing a real WAV
+(`--use-file-for-fake-audio-capture=…%noloop`), which is the only way to
+get a signal that survives the browser's own noise suppression.
+
+### Testing
+
+`/apptest melody` — a hummed C-major phrase at a known 100 BPM goes in
+through both sources; the checks read the notes back out of the exported
+MIDI rather than trusting the page. Run it after touching anything above.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors

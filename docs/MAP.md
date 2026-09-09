@@ -85,39 +85,68 @@ nothing keeps it in sync automatically.
 
 ---
 
-## voice.html — 2303 lines · "Caiet vocal" (voice dictation)
+## voice.html — 3668 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
-| 11–221 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (keep-the-audio row) **137–138** |
-| 226–1352 | **Shared nav + `ScuLaFolder`** (identical in all 4 files) |
-| 1356–1491 | Markup: header, controls, `#keepAudio` **1384–1388**, textarea, settings sheet |
-| 1493–2216 | App script, numbered sections below |
+| 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the two keep-the-sound rows) **137–138**, `.melody-card` and the piano roll **216–232** |
+| 260–1383 | **Shared nav + `ScuLaFolder`** (identical in all 5 files) |
+| 1387–1613 | Markup: header, controls, `#keepAudio` **1414–1418**, `#melodyArm` **1420–1425**, textarea, **the melody panel `#melodyCard` 1460–1537**, settings sheet |
+| 1615–3667 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1500 | **1. i18n** — `I18N` object (`ro:` 1501 / `en:` 1545), `t()` at 1591, `UI` at 1590 |
-| 1594 | 2. Providers |
-| 1621 | 3. Settings store — `KEY` 1621, `store` 1622 w/ memory fallback, `save()` 1754, `load()` 1755 |
-| 1652 | 4. DOM refs |
-| 1683 | 5. Language / engine chips |
-| 1702 | **6. UI language** — `applyUILang()` **1702** |
-| 1720 | 7. Settings sheet |
-| 1793 | 8. Secure-context check |
-| 1798 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-audio recorder 1816–1868** |
-| 2000 | 10. Transcription queue |
-| 2094 | 11. Browser dictation (Web Speech API) |
-| 2155 | 12. File import |
-| 2169 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| 2214 | 14. Init |
+| 1620 | **1. i18n** — `I18N` object (`ro:` 1623 / `en:` 1736), `t()` at 1851, `UI` at 1850 |
+| 1854 | 2. Providers |
+| 1879 | 3. Settings store — `KEY` 1879, `store` 1880 w/ memory fallback, `save()` 2012, `load()` 2013 |
+| 1915 | 4. DOM refs |
+| 1946 | 5. Language / engine chips |
+| 1961 | **6. UI language** — `applyUILang()` **1963** (it also calls `melSyncLabels()`) |
+| 1984 | 7. Settings sheet |
+| 2066 | 7b. Help |
+| 2078 | 8. Secure-context check |
+| 2083 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2101–2154** |
+| 2289 | 10. Transcription queue |
+| 2383 | 11. Browser dictation (Web Speech API) |
+| 2444 | 12. File import |
+| 2458 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| **2504** | **14. Melodie** — the recording turned into music (§ below) |
+| 3662 | 15. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
 - `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1627.
+
+### The melody (§ 14, 2504–3660)
+
+Analysis and synthesis, both hand-rolled, no library and no samples — see
+`docs/FEATURES.md` § P for the why and the shape. Sub-banners inside it:
+
+| Line | Part |
+|---|---|
+| 2523 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
+| 2560 | `SINE` table (16384 entries) + `makeFFT` |
+| 2595 | `decodeMono`/`resample`/`decimate2`/`normalise` — blob → mono Float32Array at 22050 |
+| 2663 | `trackPitch` — YIN, 46 ms window / 23 ms hop at 11025 |
+| 2708 | `segmentNotes` — pitch frames → notes (octave repair, median smoothing, ±0.75-semitone hysteresis) |
+| 2793 | `onsetEnvelope`/`detectTempo`/`beatPhase` — spectral flux, then autocorrelation with a log-normal prior around 110 BPM |
+| 2863 | `detectKey` (**Pearson**, not a dot product — see the comment there), `snapMidi`, `chordsFor` |
+| 2952 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
+| 3043 | the drum one-shots |
+| 3082 | `place` (where the note release lives), `reverbTail`, `finishMix` |
+| 3155 | `wavBlob` · 3176 `midiBlob` (format 1, a track per part) |
+| 3225 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
+| 3283 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
+| 3408 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
+| 3475 | `drawRoll` — the piano roll |
+| 3539 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
+
+`MEL_MAX` (2517) caps the source at 180 s — memory, not taste: the mix is
+three Float32Arrays of it at 44100.
 
 **Keeping the sound** (`#keepAudio`, off by default, persisted as
 `S.keepAudio`): a **second** `MediaRecorder` on the same stream, started in
@@ -125,7 +154,9 @@ Script sections (comment banners `/* === N. Title === */`):
 `stopRec`/`stopLive`. It is deliberately *not* the transcription recorder —
 that one is rotated every `S.segMin` minutes and its segments are separate
 containers, which cannot be glued back into one playable file. The checkbox
-is read **once, at record time** (`audio.armed`); `#dlBtn` then writes the
+is read **once, at record time** (`audio.armed`) — together with
+`#melodyArm`, which wants the same recorder for a different reason, so
+either box arms it; `#dlBtn` then writes the
 blob next to the transcript under the name the transcript actually got
 (`r.name`, which `freeName` may have bumped), so both land in
 `<folder>/transcript/`. Browser dictation has no stream of its own, so
