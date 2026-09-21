@@ -4744,6 +4744,14 @@ function closeAllPanels() {
   syncBackdrop();
 }
 
+// Closes only the Caiete (workbooks) panel — used when picking a chapter
+// from it, so browsing other panels (search, nav, …) is left undisturbed.
+function closeWbPanel() {
+  document.getElementById('wb-panel').classList.add('collapsed');
+  document.getElementById(PANELS['wb-panel']).classList.remove('active');
+  syncBackdrop();
+}
+
 function togglePanelById(id) {
   const panel = document.getElementById(id);
   const btn = document.getElementById(PANELS[id]);
@@ -6315,12 +6323,12 @@ function renderWorkbooks() {
       const chRow = document.createElement('div');
       chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '') + (wbPendingIds.has(ch.id) ? ' modified' : '');
       chRow.title = book.folder + '/' + ch.file;
-      chRow.addEventListener('click', () => openChapter(ch.id));
+      chRow.addEventListener('click', () => wbSelectChapter(ch.id));
 
       const chName = document.createElement('span');
       chName.className = 'wb-ch-name';
       chName.textContent = '📄 ' + ch.title;
-      wbBindName(chName, 'chapter', ch.id, () => openChapter(ch.id));
+      wbBindName(chName, 'chapter', ch.id, () => wbSelectChapter(ch.id));
 
       const chActs = document.createElement('div');
       chActs.className = 'wb-acts';
@@ -6463,6 +6471,14 @@ async function openChapter(id) {
   await flushChapter();
   loadChapterIntoEditor(ch);
   if (isSmallScreen()) closeAllPanels();
+}
+
+// Picking a chapter from the Caiete panel: select it, then close just that
+// panel — but only once the switch actually went through (a pending unsaved
+// loose file can refuse it via canLeaveEditor's confirm()).
+async function wbSelectChapter(id) {
+  await openChapter(id);
+  if (wbCurrentId === id) closeWbPanel();
 }
 
 async function renameChapter(id, preset) {

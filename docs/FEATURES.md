@@ -730,9 +730,16 @@ workbook subfolder.
 - **Inline rename.** `wbBindName()` wires each `.wb-book-name` /
   `.wb-ch-name` span so a double-click — or one click then `F2` — turns it
   `contenteditable` (`wbInlineRename()`); Enter/blur commits, Escape
-  cancels. A single click keeps its old job (toggle / open) but fires
-  ~230 ms late so the double-click can pre-empt it. `wbLastName` remembers
-  the last name touched so `F2` still lands after the click's repaint.
+  cancels. A single click keeps its old job (toggle a workbook open/closed,
+  or select a chapter) but fires ~230 ms late so the double-click can
+  pre-empt it. `wbLastName` remembers the last name touched so `F2` still
+  lands after the click's repaint. Picking a chapter this way — a click on
+  its row or its name — goes through `wbSelectChapter(id)`: it awaits
+  `openChapter(id)` and, once the switch actually went through, calls
+  `closeWbPanel()` to close **only** the Caiete panel, leaving any other
+  open panel (search, nav, …) alone. That's separate from `openChapter`'s
+  own small-screen-only `closeAllPanels()`, which still covers every other
+  caller (search results, the knowledge graph, …).
 - **Reordering.** `▲`/`▼` on each `.wb-book-row` and `.wb-ch-row` call
   `moveWorkbook(id, ±1)` / `moveChapter(id, ±1)`, which renumber the
   affected list's `order` fields sequentially and persist the changed
