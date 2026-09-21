@@ -3783,7 +3783,7 @@ const I18N = {
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
-    filterAllTodoBtn:"▣ Doar sarcini", filterAllTodoTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”), din toate caietele",
+    filterAllTodoBtn:"▣ Doar sarcini", filterAllTodoTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”), din toate caietele, și în capitolul deschis doar liniile nebifate",
     // Importance markers. The *syntax* stays English (!nice / !important /
     // !vital) so a file reads the same in both languages — only the label
     // on the pill and in the select is translated.
@@ -4036,7 +4036,7 @@ const I18N = {
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus.</li>
         <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
-        <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele.</li>
+        <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
       <h3>Formatare</h3>
       <p>Bara de instrumente are bold, italic, titluri, liste, listă de sarcini, cod, tabel, imagine, link și dimensiune font. Lipirea unei poze (<kbd>Ctrl+V</kbd>) o pune direct în text, ca imagine încorporată.</p>
@@ -4119,7 +4119,7 @@ const I18N = {
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
-    filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook",
+    filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
     impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
     impDefault:"— Importance —",
     impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
@@ -4369,7 +4369,7 @@ const I18N = {
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top.</li>
         <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
-        <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook.</li>
+        <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>
       <h3>Formatting</h3>
       <p>The toolbar has bold, italic, headings, lists, a todo list, code, a table, an image, a link and font size. Pasting a picture (<kbd>Ctrl+V</kbd>) drops it straight into the text as an embedded image.</p>
@@ -6224,7 +6224,8 @@ function parseMarkdown(md, opts) {
 }
 
 function updatePreview() {
-  preview.innerHTML = parseMarkdown(editor.value);
+  const src = wbTodoOnlyAll ? wbOpenTasksOnly(editor.value) : editor.value;
+  preview.innerHTML = parseMarkdown(src);
   updateNav();
   gvRefresh();          // the graph reads the open note; keep it honest
   fdLive();             // and so does the search panel
@@ -6379,15 +6380,23 @@ let wbTodoOnlyAll = false;       // toolbar "▣ Tasks only" — filters EVERY w
 const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
 function wbChapterHasOpenTask(ch) { return !!ch && WB_OPEN_TASK_RE.test(ch.content || ''); }
 function wbIsTodoBook(book) { return !!book && /todo/i.test(book.name || ''); }
+/* Same regex, applied line by line to the open chapter's own text: what the
+   preview shows while "▣ Tasks only" is on — every unchecked "- [ ]" line
+   and nothing else (no "- [x]", no surrounding prose). */
+function wbOpenTasksOnly(text) {
+  return (text || '').split('\n').filter(line => WB_OPEN_TASK_RE.test(line)).join('\n');
+}
 
 /* Toolbar "▣ Tasks only": one switch that filters every workbook's chapter
    list down to the ones with an open "- [ ]" — a global version of the
-   per-workbook ☑ act button. Books left with nothing to show are hidden. */
+   per-workbook ☑ act button — and, in the open chapter's own preview,
+   down to just those lines. Books left with nothing to show are hidden. */
 function toggleTodoFilterAll() {
   wbTodoOnlyAll = !wbTodoOnlyAll;
   const btn = document.getElementById('btn-filter-todo');
   if (btn) btn.classList.toggle('active', wbTodoOnlyAll);
   renderWorkbooks();
+  updatePreview();
 }
 
 /* ── IndexedDB plumbing ── */

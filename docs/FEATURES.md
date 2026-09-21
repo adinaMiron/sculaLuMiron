@@ -699,6 +699,15 @@ entirely (not shown with an empty line), each surviving book is force-opened,
 the per-book `☑` act button is suppressed, and the toolbar button carries
 `.tb-btn.active`. Toggling it off restores everything.
 
+While it is on, `updatePreview()` also feeds the open chapter's text through
+`wbOpenTasksOnly()` before `parseMarkdown()` — a per-line filter against the
+same `WB_OPEN_TASK_RE`, so the preview shows only the unchecked `- [ ]`
+lines: no `- [x]` (completed) and no surrounding prose or headings. The
+editor's own text is untouched — only what `#preview` renders is filtered.
+`toggleTodoFilterAll()` calls `updatePreview()` alongside `renderWorkbooks()`
+so flipping the switch repaints the open chapter immediately, with no
+keystroke needed.
+
 ### The three routes, for a chapter
 
 Same three routes as § D, because the same rules apply:
