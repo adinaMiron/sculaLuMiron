@@ -5,12 +5,13 @@ infinite canvas and what an export's size is) and `recipes.html` (with
 `mealplan.js` for its day composer — the flags, the HTML page read back, and
 the recipe library, and `targets.js` for the daily calorie and macro
 targets a day is measured against), and — in
-`graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`,
+`graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`,
+`wbresume.js`, `wbtodo.js`,
 `importance.js`, `idea.js`, `mdundo.js`, `paste.js` and `calendar.js` — for
 `index.html`'s knowledge graph, the causality diagram beside it, its search panel, its garden
 toolbox, its navigation
 panel, renaming a workbook or chapter in place, "Save all modified" and the
-pending-edit tracking under it, the TODO-workbook chapter filter, the
+pending-edit tracking under it, the open chapter surviving a reload, the TODO-workbook chapter filter, the
 `!nice`/`!important`/`!vital` importance markers, quick idea capture, its
 undo/redo history, pasting a picture into it, and the `@date` markers it
 flags for the calendar, plus — in `calendar.js` — `calendar.html` itself, and
@@ -95,6 +96,7 @@ viewport without editing it:
 | `nav.js` | `index.html`'s navigation panel: every heading listed (and a `#` inside a fence not counted as one), a click taking the **preview** to the heading's id and the **Markdown source** to the line it was read from — selected in the textarea and scrolled to through wrapped lines — the repeated heading that has to reach its own line and its own `…-1` anchor, the clicked item becoming the active one, and a phone, where the click shows the preview and deliberately leaves the source (and the keyboard) alone |
 | `wbrename.js` | `index.html`'s in-place rename of a workbook or chapter name in the panel: a double-click (and one click then `F2`) turning the name `contenteditable`, Enter and blur committing while the chapter file name follows the title, Escape restoring, an emptied name rejected, and the plain single click still toggling the workbook / opening the chapter after its short delay |
 | `wbsaveall.js` | `index.html`'s "Save all modified" button and the pending-edit tracking behind it: editing a chapter records it in `wbPendingIds` and the `pending` object store and shows a `•` on the chapter and workbook rows, `Ctrl+S` clears only the open chapter, `Ctrl+Alt+S` writes every pending chapter and clears them all (content asserted on the real records), a marker created by switching away from an edited chapter, and a marker surviving a page reload. Drives the in-memory document on `file://` but does depend on the IndexedDB writes landing |
+| `wbresume.js` | `index.html`'s **open chapter surviving a reload** and the draft journal behind it (`docs/FEATURES.md` § E): typing both autosaved *and* journalled to `localStorage` under its chapter id; a reload re-attaching the chapter instead of leaving the header on `untitled.md`; the same thing with the race decided against the page — a copy of `index.html` whose textarea already holds the text when the first script runs, which is exactly what a browser's form restoration leaves behind on a discarded tab coming back; a journal ahead of the record recovered and written into the chapter, and one older than the record ignored; restored text ahead of the record kept rather than replaced; a loose "untitled.md" flagged `.loose`, journalled and put back after a reload; and `newFile()` staying a deliberate discard. Reads the real records and the real `localStorage` on `file://` |
 | `wbtodo.js` | `index.html`'s TODO-workbook chapter filter: a workbook whose name contains "TODO" gets a `☑` act button (a plain workbook does not), toggling it hides every chapter with no unchecked `- [ ]` box (a chapter that is all `- [x]`, or has no boxes, drops out; the one with an open box stays), the row count switches to `shown/total` and the button takes an `.on` style, toggling off restores every chapter, and a workbook with nothing open shows the empty line. Drives the in-memory records on `file://` |
 | `importance.js` | `index.html`'s importance markers: the toolbar select and `Ctrl+Alt+1/2/3` / `Ctrl+Alt+0` marking the caret's line or every line of a selection, the marker landing *after* the bullet, the `[ ]` of a task, the hashes of a heading and a `Name>> ` assignee, a second pick replacing rather than stacking, "Remove" clearing, blank lines skipped, the three colours asserted on the computed pill colour and on the block's left edge, the marker kept out of the heading slug and the nav label, `!nicely` / `wow!` / `![alt](…)` matching nothing, the label re-translating in place on a language switch, the export string carrying the label baked in with no `data-i`, and a click on a pill opening the search panel with its own token. Drives the in-memory document on `file://` |
 | `idea.js` | `index.html`'s quick idea capture: the 💡 button sitting immediately right of "New", `Ctrl+Alt+I` opening the box with the caret already in it and `Escape` closing it, the hint naming the chapter the idea will land in, `Ctrl+Enter` filing it, the `"Chapter: "` prefix stripped only when it matched (and kept when it did not), a case- and diacritic-folded name (`retete` → `Rețete`), the pending marker cleared so filing counts as a real save, the textarea moving with the file when the target happens to be the open chapter, the `Idei` workbook and today's chapter created on demand and then reused by a second idea the same day, an empty box filing nothing and staying open, and `Ctrl+I` inside the box leaving the editor's text alone. Drives the in-memory records on `file://` |
@@ -118,7 +120,7 @@ per half) in `window.__ocrSeen` and returns whatever the check queued in
 Tesseract's — for that, serve a real local `./ocr/` as `docs/RECIPES.md` § A
 describes.
 
-`recipes.js`, `mealplan.js`, `targets.js`, `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `calendar.js`, `drive.js` and `voice.js` are the scripts that do **not** use
+`recipes.js`, `mealplan.js`, `targets.js`, `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbsaveall.js`, `wbresume.js`, `wbtodo.js`, `importance.js`, `idea.js`, `paste.js`, `calendar.js`, `drive.js` and `voice.js` are the scripts that do **not** use
 `lib.js` — its `open()` is hard-wired to `editor.html`, so each opens its
 own browser context. `recipes.js` goes one further and does not use a
 `file://` URL either: it serves the repo from a throwaway
@@ -130,7 +132,14 @@ the `file://` case too, on purpose: that is the one where the button has to
 explain itself instead of opening a popup that cannot work. `graph.js`, `cause.js`, `find.js`, `garden.js`, `nav.js`, `wbrename.js`, `wbtodo.js`, `importance.js`, `idea.js` and `paste.js` stay on `file://` — all ten drive the
 in-memory document, so none depends on a write landing. (`idea.js` files
 ideas without a folder handle, so `wbMirrorWrite` is a no-op and the
-assertions are on the records, which is where a phone's ideas live too.) `wbsaveall.js` also
+assertions are on the records, which is where a phone's ideas live too.) `wbresume.js` is the other way round again: it stays on `file://` and reads
+both IndexedDB **and** `localStorage` across reloads, which this Chromium
+gives a `file://` page (the draft journal degrades to a no-op where a browser
+does not, which is why every access to it is wrapped). It also writes a
+throwaway `tests/.restored.html` — a copy of the page whose textarea already
+holds text — to stand in for a browser's form restoration without depending
+on the race; `file://` is one origin in Chromium, so the copy reads the same
+database. `wbsaveall.js` also
 stays on `file://` but does read IndexedDB and reloads the page: Chrome keeps
 a `file://` database alive for the life of the browser context, which is all
 that check needs. `voice.js` stays

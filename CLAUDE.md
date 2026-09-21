@@ -60,6 +60,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
 | **The melody in `voice.html`** — pitch and beat detection, the instruments, the WAV and MIDI exports, why nothing is sampled | `docs/FEATURES.md` § P |
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
+| **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md` | `docs/FEATURES.md` § E |
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 
 Do not read a doc the task doesn't touch.
@@ -203,6 +204,9 @@ keeping its Drive file, a delete travelling and staying deleted, and
 disconnecting), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`),
+the open chapter surviving a reload and the draft journal under it
+(`wbresume.js` — the browser's own form restoration no longer keeping a
+chapter out of its editor, and nothing on screen thrown away),
 the TODO-workbook chapter filter (`wbtodo.js`), the
 `!nice`/`!important`/`!vital` importance markers (`importance.js`), the
 inline `#rrggbb` hex-colour swatch (`color.js` — the preview chip, the
@@ -227,11 +231,12 @@ It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
 — and none of the four apps reference it; it doesn't count against Rule 3.
 
-**On this machine there is no `chromium`** — Playwright's bundled browser is
-not installed. Every test run must point at the system Chrome:
-`PW_CHROME_PATH=/usr/bin/google-chrome-stable node <name>.js` (the var is read
-by `tests/lib.js`). Use **`/apptest <name>`** — it handles the install check
-and the Chrome path.
+**Playwright's bundled browser is not what's installed here.** Every test run
+must point at whatever browser the machine does have through `PW_CHROME_PATH`
+(read by `tests/lib.js`) — the system Chrome
+(`/usr/bin/google-chrome-stable`) on this machine, a pre-installed Chromium
+under `/opt/pw-browsers/` in a cloud session. Use **`/apptest <name>`** — it
+finds the browser and handles the install check.
 
 ## Keep this current (learn as the project goes)
 

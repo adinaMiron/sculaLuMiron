@@ -235,8 +235,13 @@ async function fresh(browser, drive, opts = {}) {
     await page.evaluate(() => { if (document.getElementById('wb-panel').classList.contains('collapsed')) toggleWorkbooks(); });
 
     check('no page errors on load', errors.length === 0, errors);
-    check('the button lives in the workbooks panel',
-      await page.evaluate(() => !!document.querySelector('#wb-panel #btn-wb-cloud')));
+    // It used to sit inside the Caiete panel; it now lives in the header,
+    // beside the save buttons (commit "Move cloud sync button out of Caiete").
+    check('the button lives in the header, beside the save buttons',
+      await page.evaluate(() => {
+        const b = document.querySelector('header .header-actions #btn-wb-cloud');
+        return !!b && !!b.parentElement.querySelector('#btn-save-all-modified');
+      }));
     const st = await btnState(page);
     check('starts disconnected, Romanian label', st.label === '☁ Cont Google' && st.connected === false, st);
     check('and says the chapters are local only', st.where === '☁ doar pe acest dispozitiv', st.where);

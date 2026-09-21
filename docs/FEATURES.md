@@ -512,7 +512,8 @@ Drive API, so none of it needs a Google account to check.
 
 A **workbook** holds **chapters**; one chapter is one markdown file, the
 way OneNote holds pages in a notebook. Code: `index.html`
-3396–3982, mapped function-by-function in `docs/MAP.md`.
+5855–6660 plus the boot at 6937, mapped function-by-function in
+`docs/MAP.md`.
 
 ### Two layers, and which one is the truth
 
@@ -563,6 +564,81 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
 this app knows it wrote, and drops a workbook folder only if the file
 system agrees it's empty. Nothing a person put in that folder by hand is
 ever deleted.
+
+### The draft journal — why "untitled.md" can no longer eat a day's writing
+
+Autosave (above) covers the open chapter, 800 ms after a keystroke. Two
+moments are outside it, and both used to end in lost text:
+
+1. **A loose file.** With no chapter attached, `scheduleAutosave()` returns
+   immediately — there is nothing to write to. Everything typed into
+   `untitled.md` lived in the textarea and nowhere else.
+2. **The 800 ms gap**, and a tab that goes away inside it. Browsers *discard*
+   a tab that has sat idle in the background for a few minutes and reload it
+   when you come back, which is how "the page was open for a while" turns
+   into "the page reloaded without being asked".
+
+So every editor change also lands in **`localStorage`** under
+`scula:md:draft`, tagged with the chapter it belongs to (`''` for a loose
+file) and when it was written:
+
+```js
+{ id: 'ch_…' | '', name: 'mecanica.md', text: '…', at: 1712345678901 }
+```
+
+It is a **journal, not a store**: the record in IndexedDB is still the truth,
+the journal only carries what the truth has not caught up with. It is written
+synchronously — an IndexedDB write started while the page is being torn down
+is not guaranteed to finish — and it hangs off `updateStatus()`, which every
+path that changes the editor already ends in, so no future action can forget
+it. `wbPark()` writes it again on `visibilitychange`, `freeze`, `pagehide`
+**and** `beforeunload`: `beforeunload` alone never fires on a discard.
+
+### Coming back: the resume, and the race it used to lose
+
+A browser restores a `<textarea>`'s value from the navigation entry when a
+page is reloaded or a discarded tab is brought back — **before any script
+runs**. Boot used to resume the last chapter only into an *empty* editor, so
+that restored text kept its own chapter out of the editor: the header read
+`untitled.md`, `wbCurrentId` stayed `null`, and every keystroke after that
+went into a loose file autosave ignores — lost at the next reload. Whether
+the restoration landed before or after the IndexedDB boot was a race, won by
+the restoration exactly when the store was slow to open, which is what a
+cold, just-restored tab looks like. That is the whole of the reported bug.
+
+`loadWorkbooks()` now decides with two facts instead of one:
+
+- **`wbBootText`** — what the textarea already held when the script ran.
+- **`wbUserEdited`** — set only by `scheduleAutosave()`, i.e. by a real edit.
+
+Text nobody has typed into is the browser's restoration, not work in
+progress, so the chapter is re-attached **over** it. Typing that started
+while IndexedDB was still opening is the one case that still wins over the
+resume — and the journal is what keeps it.
+
+Nothing that was on screen is thrown away. Once the chapter is attached, the
+newest of the three wins:
+
+| Source | Wins when |
+|---|---|
+| the journal (`wbDraftAhead`) | it is this chapter's and its `at` is newer than the record's `updated` |
+| the restored text (`wbBootText`) | there is no such journal entry and it differs from the record |
+| the record | otherwise — including a Drive pull or another tab having written it since (§ O) |
+
+and whatever is recovered is flushed straight back into the chapter. With no
+chapter to resume at all, a journalled loose file is put back with its name.
+
+Which side of the race a browser lands on is not ours to choose, so the other
+side is handled too: `wbSettleRestore()` looks once, 1.2 s after boot, for an
+attached chapter whose text has changed with no edit behind it. That change is
+the browser's, and it is what was last on screen, so it is written into the
+chapter instead of being left to disagree with the record until the next
+keystroke. An **empty** restoration is the one thing never honoured — that
+direction is loss, not recovery, so the chapter's text is put back.
+
+An editor whose text belongs to no chapter is also no longer silent about it:
+`#current-file` takes `.loose` and says so in `--danger` with a tooltip, so
+"untitled.md" reads as a warning rather than as a saved file.
 
 ### Pending edits — "Save all modified"
 

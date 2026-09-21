@@ -371,7 +371,7 @@ a `polyline`, whose vertices are all corners already.
 | 8966–9042 | `applyResponsiveDefaults`, init (`loadWorkbooks()` runs here) |
 | **9029–9114** | **Workbooks panel: floating window on phones/tablets** — below the 1024px breakpoint `#wb-panel` becomes `position:fixed` instead of a full-height drawer (CSS in the same media query, ~1039–1063). `placeWbPanel(x,y)` clamps inside the viewport; `positionWbPanelIfFloating()` (called from `togglePanelById` when the panel opens) restores the last position via `wbMetaGet('panelPos')` or falls back to `defaultWbPanelPos()`; `initWbPanelDrag()` drags by `.panel-header` (skips the ✕ button) and persists through `wbMetaSet('panelPos', …)` — the same `scula-md` "meta" store `wbMetaGet('last')` already uses. Desktop is unaffected: `wbPanelFloating()` is `isSmallScreen()`, so the header isn't draggable and the CSS position rule doesn't apply above 1024px |
 
-### Workbooks (5146–5971) — `docs/FEATURES.md` § E
+### Workbooks (5855–6660) — `docs/FEATURES.md` § E
 
 A workbook holds chapters; one chapter is one markdown file. IndexedDB
 (`scula-md`) is the source of truth on every device; the `markdown` folder
@@ -380,14 +380,16 @@ record **is** the UI↔folder correspondence.
 
 | Line | Region |
 |---|---|
-| 5183–5201 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly`/`wbTodoOnlyAll` + `WB_OPEN_TASK_RE`/`wbChapterHasOpenTask`/`wbIsTodoBook`/`toggleTodoFilterAll` — the TODO chapter filter, per-book and the toolbar-wide `▣ Tasks only` switch, …) |
-| 5210–5261 | IndexedDB plumbing: `wbDb`, `wbTx`, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` 5199; `wbPendingMark` 5210/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
-| 5265–5313 | `wbNewId` 5265, `wbSlug` 5274 + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
-| 5315–5344 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
-| 5346–5591 | Panel rendering: `wbActBtn` 5346, `wbInlineRename` 5362/`wbInlineRenameById` 5407/`wbBindName` 5422 (double-click or F2 renames a name in place), `renderWorkbooks` 5461 (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden; the toolbar `▣ Tasks only` button sets `wbTodoOnlyAll` and filters every book the same way, dropping books left empty), `paintWorkbookWhere`, `paintWorkbookCrumb` |
-| 5549–5738 | Operations: create/rename/delete workbook (`createWorkbook` 5549), new/open/rename/delete/export chapter (`newChapter` 5604), `syncAllToFolder` 5723 |
-| 5785–5822 | Autosave: `scheduleAutosave` 5785, `flushChapter` 5747 (marks the chapter pending), `detachChapter` 5807, `canLeaveEditor` |
-| 5779–5971 | Saving: `saveToWorkbook` 5779 (Ctrl+S), `saveAllModifiedChapters` 5797 (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` 5862 → `confirmSaveToWorkbook`) |
+| 5859–5895 | DB/store names (`scula-md` v2: `workbooks`/`chapters`/`meta`/`pending`), module state (`wbBooks`, `wbChapters`, `wbCurrentId`, `wbPendingIds`, `wbTodoOnly`/`wbTodoOnlyAll` + `WB_OPEN_TASK_RE`/`wbChapterHasOpenTask`/`wbIsTodoBook`/`toggleTodoFilterAll` — the TODO chapter filter, per-book and the toolbar-wide `▣ Tasks only` switch, …) |
+| 5897–5950 | IndexedDB plumbing: `wbDb` 5897, `wbTx` 5911, `wbAll/wbPut/wbDrop`, `wbMetaGet/Set`, `wbPersist` 5930; `wbPendingMark` 5941/`wbPendingClear` (the `pending` store — chapters edited but not yet mirrored to disk) |
+| **5952–6015** | **The draft journal** — the on-screen text in `localStorage` (`scula:md:draft`), written synchronously so nothing typed can outlive the tab. `WB_DRAFT_KEY` 5962, `wbFileLabel` 5967 (the header's file name, read or written in one place), `wbDraftWrite` 5973, `wbDraftRead` 5982, **`wbDraftAhead`** 5991 (the journal's text when it is this chapter's *and* newer than the record — otherwise the record wins), `wbEditorChanged` 5999 (hung off `updateStatus` 5837, which every editor mutation ends in), `wbPaintAttach` 6008 (`.file-name.loose` — text that belongs to no chapter). See `docs/FEATURES.md` § E |
+| 6017–6064 | `wbNewId` 6017, `wbSlug` 6026 + `wbUniqueFolder`/`wbUniqueFile` — how a title becomes a file name |
+| 6067–6095 | **Folder mirror**: `wbFolderMode`, `wbMirrorWrite`, `wbMirrorRemove` (never recursive) |
+| 6098–6340 | Panel rendering: `wbActBtn` 6098, `wbInlineRename` 6114/`wbInlineRenameById` 6159/`wbBindName` (double-click or F2 renames a name in place), `renderWorkbooks` 6213 (`.modified` dot on a chapter row / `.has-modified` on its book; on a "TODO"-titled book a `☑` act button toggles `wbTodoOnly` — chapters without an open `- [ ]` are hidden; the toolbar `▣ Tasks only` button sets `wbTodoOnlyAll` and filters every book the same way, dropping books left empty), `paintWorkbookWhere` 6323, `paintWorkbookCrumb` 6330 |
+| 6346–6540 | Operations: create/rename/delete workbook (`createWorkbook` 6346), new chapter 6406, **`loadChapterIntoEditor` 6425**, open/rename/delete/export chapter 6439–6500, `syncAllToFolder` 6528 |
+| 6545–6589 | Autosave: `scheduleAutosave` 6545 (also the one place that records **a real edit**, `wbUserEdited`), `flushChapter` 6556 (marks the chapter pending), `detachChapter` 6572, `canLeaveEditor` 6584 |
+| 6591–6760 | Saving: `saveToWorkbook` 6591 (Ctrl+S), `saveAllModifiedChapters` 6610 (Ctrl+Alt+S — every pending chapter, then clears its marker), the modal (`openWorkbookModal` 6631 → `confirmSaveToWorkbook` 6698) |
+| **6937–7018** | **Boot** — `loadWorkbooks` 6937: the tree, then the chapter that was last open. **`wbBootText`/`wbUserEdited` decide whether resuming is safe** (§ E); `wbSettleRestore` 7001 is the deferred look for a restoration that lands *after* the script (an empty one never erases a chapter); `wbPark` 7014 writes the journal on `visibilitychange`, `freeze`, `pagehide` and `beforeunload` |
 
 **Two writes, two moments.** Typing autosaves to IndexedDB only (no
 permission prompt is legal outside a gesture) and marks the chapter
@@ -395,6 +397,11 @@ permission prompt is legal outside a gesture) and marks the chapter
 `saveAllModifiedChapters`, `confirmSaveToWorkbook`, `ideaAppendTo`, rename,
 delete, `syncAllToFolder` — all of which run inside a click, and each clears
 the pending marker for the chapter(s) it wrote.
+
+**Three, counting the journal.** Autosave covers neither a loose
+`untitled.md` (there is no chapter to write to) nor the 800 ms between a
+keystroke and the write, so every change also goes to `localStorage`
+synchronously — `docs/FEATURES.md` § E, tested by `tests/wbresume.js`.
 
 ### Quick idea capture (5973–6115) — `docs/FEATURES.md` § J
 

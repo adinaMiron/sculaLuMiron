@@ -10,6 +10,9 @@ Thumbs.db
 # Local test scratch
 /tmp/
 *.local.html
+# tests/wbresume.js writes this copy of index.html to stand in for a browser's
+# form restoration, and deletes it again
+tests/.restored.html
 
 # tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
 tests/node_modules/

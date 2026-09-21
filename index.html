@@ -779,6 +779,8 @@
   }
 
   .file-name { font-size: 12px; color: var(--text-3); padding: 6px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 5px; font-family: var(--font-mono); }
+  /* text that is in no chapter — autosave has nowhere to write it, so say so */
+  .file-name.loose { color: var(--danger); border-color: var(--danger); }
   #status-bar { display: flex; gap: 20px; padding: 4px 16px; font-size: 11px; color: var(--text-3); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
 
   /* ── Voice dictation (settings come from the Caiet vocal page) ── */
@@ -3637,6 +3639,9 @@ const I18N = {
     wbSavedSomeModified:n=>`${n} capitol${n===1?'':'e'} salvat${n===1?'':'e'}; unele nu s-au putut scrie.`,
     wbStoreFailed:"Nu s-a putut salva local (IndexedDB indisponibil).",
     wbRestored:n=>`Reluat: ${n}`,
+    wbRecovered:"Text recuperat: ce era pe ecran era mai nou decât ce era salvat.",
+    wbDraftRestored:"Text nesalvat recuperat. Ctrl+S ca să intre într-un capitol.",
+    looseTip:"Textul nu e într-un capitol — nu se salvează automat. Ctrl+S.",
     wbRemoved:"Șters.",
     modalTitleSaveWorkbook:"Salvează în caiet", lblWorkbook:"Caiet", lblNewWorkbookName:"Numele caietului nou",
     newWorkbookPlaceholder:"Notițe", lblChapter:"Capitol", lblChapterTitle:"Titlul capitolului",
@@ -3952,6 +3957,9 @@ const I18N = {
     wbSavedSomeModified:n=>`${n} chapter${n===1?'':'s'} saved; some couldn't be written.`,
     wbStoreFailed:"Couldn't save locally (IndexedDB unavailable).",
     wbRestored:n=>`Resumed: ${n}`,
+    wbRecovered:"Recovered: what was on screen was newer than what was stored.",
+    wbDraftRestored:"Recovered unsaved text. Ctrl+S to put it in a chapter.",
+    looseTip:"This text is in no chapter — it isn't autosaved. Press Ctrl+S.",
     wbRemoved:"Deleted.",
     modalTitleSaveWorkbook:"Save to workbook", lblWorkbook:"Workbook", lblNewWorkbookName:"New workbook name",
     newWorkbookPlaceholder:"Notes", lblChapter:"Chapter", lblChapterTitle:"Chapter title",
@@ -5832,6 +5840,7 @@ function updateStatus() {
   document.getElementById('stat-words').textContent = t('statWords', words);
   document.getElementById('stat-lines').textContent = t('statLines', text.split('\n').length);
   document.getElementById('stat-chars').textContent = t('statChars', text.length);
+  wbEditorChanged();          // the draft journal and the "in no chapter" flag
 }
 
 /* ============================================================
@@ -5856,6 +5865,13 @@ let wbChapters = [];         // [{ id, workbookId, title, file, content, … }]
 let wbCurrentId = null;      // open chapter, or null for a loose file
 let wbDirty = false;
 let wbSaveTimer = 0;
+let wbUserEdited = false;    // has anyone actually typed since this page loaded?
+// What the textarea already held when the script ran. A browser that restores
+// form state — a reload, or a tab the browser discarded while it sat idle and
+// reloaded on return — puts the old text back before any script runs. That is
+// not work in progress, and mistaking it for work in progress is what used to
+// keep a chapter out of its own editor. See loadWorkbooks().
+const wbBootText = editor.value;
 const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
@@ -5930,6 +5946,71 @@ async function wbPendingMark(ch) {
 async function wbPendingClear(id) {
   wbPendingIds.delete(id);
   try { await wbDrop(WB_PENDING, id); } catch (e) {}
+}
+
+/* ── The draft journal ──
+   Autosave writes the open chapter to IndexedDB, but two moments are outside
+   it: text in a loose "untitled.md" (there is no chapter to write to) and the
+   gap between a keystroke and the 800 ms autosave. A tab that goes away in
+   either of them takes that text with it — and browsers discard an idle tab
+   after a few minutes, then reload it when you come back.
+
+   So every change also lands in localStorage, synchronously, tagged with the
+   chapter it belongs to ('' for a loose file) and when it was written. It is
+   a journal, not a store: boot compares it against the record and keeps
+   whichever is newer, and the next keystroke overwrites it. § E. */
+const WB_DRAFT_KEY = 'scula:md:draft';
+let wbDraftTimer = 0;
+let wbDraftReady = false;    // boot reconciles first; until then, nothing is written
+
+// The header's file name, read or written in one place.
+function wbFileLabel(text) {
+  const el = document.getElementById('current-file');
+  if (!el) return '';
+  if (text != null) el.textContent = text;
+  return (el.textContent || '').trim();
+}
+function wbDraftWrite() {
+  clearTimeout(wbDraftTimer);
+  if (!wbDraftReady) return;
+  try {
+    localStorage.setItem(WB_DRAFT_KEY, JSON.stringify({
+      id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now()
+    }));
+  } catch (e) {}             // a full quota is not a reason to block typing
+}
+function wbDraftRead() {
+  try {
+    const d = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null');
+    return d && typeof d.text === 'string' ? d : null;
+  } catch (e) { return null; }
+}
+/* The journal's text when it is this chapter's and ahead of the record —
+   keystrokes the autosave never got to. Otherwise null. A record that is
+   newer (a Drive pull, an edit in another tab) always wins. */
+function wbDraftAhead(draft, ch) {
+  if (!draft || !ch || draft.id !== ch.id) return null;
+  if (draft.text === (ch.content || '')) return null;
+  if ((draft.at || 0) <= (ch.updated || 0)) return null;
+  return draft.text;
+}
+/* Every path that changes the editor ends in updateStatus(), which is why
+   that is where this hangs: one hook for the journal and for the flag. */
+function wbEditorChanged() {
+  wbPaintAttach();
+  if (!wbDraftReady) return;
+  clearTimeout(wbDraftTimer);
+  wbDraftTimer = setTimeout(wbDraftWrite, 700);
+}
+/* An editor holding text that belongs to no chapter is the state this bug was
+   made of: autosave returns early, so the text lives only in the journal. The
+   file name says it in --danger rather than looking like a saved file. */
+function wbPaintAttach() {
+  const el = document.getElementById('current-file');
+  if (!el) return;
+  const loose = !wbCurrentId && !!editor.value.trim();
+  el.classList.toggle('loose', loose);
+  if (loose) el.title = t('looseTip'); else el.removeAttribute('title');
 }
 
 /* ── Small helpers ── */
@@ -6351,6 +6432,7 @@ function loadChapterIntoEditor(ch) {
   updatePreview(); updateStatus(); updateNav();
   renderWorkbooks();
   wbMetaSet('last', ch.id).catch(() => {});
+  wbDraftWrite();              // the journal points at this chapter from now on
   wbSay(t('chapterOpened', ch.title));
 }
 
@@ -6461,7 +6543,11 @@ async function syncAllToFolder() {
    so nothing is lost on any device. Disk mirroring stays on explicit saves,
    which is where a permission prompt is allowed to happen. ── */
 function scheduleAutosave() {
-  if (!wbCurrentId) return;
+  // Every editor mutation the person causes comes through here, including the
+  // ones with no chapter attached — which is what tells boot apart from a
+  // browser that restored the old text on its own.
+  wbUserEdited = true;
+  if (!wbCurrentId) return;   // loose text: the journal in updateStatus() has it
   wbDirty = true;
   wbSay(t('wbEditing'));
   clearTimeout(wbSaveTimer);
@@ -6488,6 +6574,8 @@ function detachChapter() {
   wbCurrentId = null;
   wbDirty = false;
   wbMetaSet('last', '').catch(() => {});
+  wbDraftWrite();              // now a loose file, and the journal says so
+  wbPaintAttach();
   wbSay('');
   renderWorkbooks();
 }
@@ -6648,8 +6736,10 @@ async function confirmSaveToWorkbook() {
   wbCurrentId = ch.id;
   wbDirty = false;
   wbOpenBooks.add(book.id);
-  document.getElementById('current-file').textContent = ch.file;
+  wbFileLabel(ch.file);
   wbMetaSet('last', ch.id).catch(() => {});
+  wbDraftWrite();              // the journal follows the new attachment
+  wbPaintAttach();
   closeWorkbookModal();
   renderWorkbooks();
   const path = await wbMirrorWrite(book, ch, ch.content);
@@ -6860,17 +6950,72 @@ async function loadWorkbooks() {
   let last = null;
   try { last = await wbMetaGet('last'); } catch (e) {}
   const ch = last ? wbChapter(last) : null;
-  // Only resume into an untouched editor — never overwrite typing that
-  // started while IndexedDB was still opening.
-  if (ch && !editor.value.trim()) {
+  const draft = wbDraftRead();
+  // Text nobody has typed into is the browser's own form restoration: a
+  // reload, or a tab that was discarded while idle and came back. Resuming
+  // *over* it is the point — an "untouched editor" used to mean an empty one,
+  // so restored text kept its own chapter out of the editor, the header read
+  // "untitled.md", and everything typed afterwards went into a loose file
+  // autosave ignores. Typing that started while IndexedDB was still opening
+  // is the one case that still wins over the resume.
+  const untouched = !wbUserEdited && editor.value === wbBootText;
+  if (ch && untouched) {
     wbOpenBooks.add(ch.workbookId);
     loadChapterIntoEditor(ch);
-    wbSay(t('wbRestored', ch.title));
+    // Whichever is ahead of the record wins: the journal when it carries this
+    // chapter's keystrokes, otherwise the text the browser put back on screen
+    // (that is what was last seen, and it cannot be older than the record).
+    const ahead = wbDraftAhead(draft, ch);
+    const back = wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
+    const recovered = ahead != null ? ahead : back;
+    if (recovered != null) {
+      editor.value = recovered;
+      wbDirty = true;
+      updatePreview(); updateStatus(); updateNav();
+      await flushChapter();
+      wbSay(t('wbRecovered'), true);
+    } else {
+      wbSay(t('wbRestored', ch.title));
+    }
+  } else if (!ch && untouched && draft && draft.text.trim()) {
+    // A loose file that was never saved into a chapter: bring the text back
+    // instead of opening on the empty page that used to replace it.
+    if (!editor.value.trim()) { editor.value = draft.text; undoReset(); }
+    if (draft.name && wbFileLabel() === 'untitled.md') wbFileLabel(draft.name);
+    updatePreview(); updateStatus(); updateNav();
+    wbSay(t('wbDraftRestored'), true);
   }
+  wbDraftReady = true;         // reconciled — from here the journal is written
+  wbPaintAttach();
+  wbDraftWrite();
+  setTimeout(wbSettleRestore, 1200);
+}
+
+/* The other side of the same race. Where the restoration lands *after* this
+   script instead of before it, the text changes under an attached chapter
+   with no event to announce it — so one deferred look settles it. A change
+   nobody typed is the browser's, and it is what was last on screen, so it is
+   written into the chapter rather than left to disagree with the record until
+   the next keystroke. An empty restoration is never allowed to erase a
+   chapter that has text: that direction is loss, not recovery. */
+function wbSettleRestore() {
+  if (wbUserEdited || !wbCurrentId) return;
+  const ch = wbChapter(wbCurrentId);
+  if (!ch || editor.value === (ch.content || '')) return;
+  if (!editor.value.trim() && (ch.content || '').trim()) { editor.value = ch.content; return; }
+  wbDirty = true;
+  updatePreview(); updateStatus(); updateNav();
+  flushChapter().then(() => wbSay(t('wbRecovered'), true), () => {});
 }
 window.addEventListener('scula-folder', paintWorkbookWhere);
-document.addEventListener('visibilitychange', () => { if (document.hidden) flushChapter(); });
-window.addEventListener('beforeunload', () => { flushChapter(); });
+/* Leaving, hiding, being frozen or being discarded: the journal is written
+   synchronously each time, because an IndexedDB write started here is not
+   guaranteed to finish, and `beforeunload` alone never fires on a discard. */
+function wbPark() { wbDraftWrite(); flushChapter(); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) wbPark(); });
+document.addEventListener('freeze', wbPark);
+window.addEventListener('pagehide', wbPark);
+window.addEventListener('beforeunload', wbPark);
 
 /* ============================================================
    Knowledge graph — Obsidian's graph view.
