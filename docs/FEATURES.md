@@ -1576,11 +1576,12 @@ it is browser-internal, and a page cannot read or write it. The
 account-shaped store a page *can* write to is **Google Drive**, so that is
 what this is: the same account, the same files, one sign-in.
 
-The button is `#btn-wb-cloud`, in the workbooks panel under
-`⇩ Sync to folder`. Left-click connects, then syncs; right-click forgets the
-connection, the same gesture the folder button and `editor.html`'s Drive
-button use. The line under it always says where the chapters are — local
-only, connected, syncing, synced at a time, or *sign-in expired*.
+The button is `#btn-wb-cloud`, in the header next to the Save buttons (not
+inside the Caiete/Workbooks panel, so it's reachable without opening it).
+Left-click connects, then syncs; right-click forgets the connection, the
+same gesture the folder button and `editor.html`'s Drive button use. The
+line under it (`#wb-cloud-where`) always says where the chapters are —
+local only, connected, syncing, synced at a time, or *sign-in expired*.
 
 ### What lands in Drive
 

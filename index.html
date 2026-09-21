@@ -2976,6 +2976,14 @@
     <button class="btn" onclick="saveFile()" data-i="saveFileBtn" data-i-title="saveFileTip" title="Save a copy of the file (Ctrl+Shift+S)">Save ↓</button>
     <button class="btn" id="btn-save-all-modified" onclick="saveAllModifiedChapters()" data-i="saveAllModifiedBtn" data-i-title="saveAllModifiedTip" title="Save every modified chapter in every workbook (Ctrl+Alt+S)">📚 Save all modified</button>
     <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
+    <!-- Google Drive sync: the chapters follow the Google account, so every
+         Chrome signed into it has them — docs/FEATURES.md § O. No data-i:
+         the label depends on the connection, so paintCloud() writes both
+         halves and applyUILang() must not overwrite one of them. Kept beside
+         the Save buttons rather than inside the Caiete/Workbooks panel, so
+         it's reachable without opening that panel. -->
+    <button class="btn" id="btn-wb-cloud" onclick="cloudButton()" oncontextmenu="cloudForgetAsk(event)">☁ Google account</button>
+    <div id="wb-cloud-where"></div>
   </div>
 </header>
 
@@ -3086,12 +3094,6 @@
       <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
       <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Write every chapter into the markdown folder">⇩ Sync to folder</button>
       <div id="wb-where"></div>
-      <!-- Google Drive sync: the chapters follow the Google account, so every
-           Chrome signed into it has them — docs/FEATURES.md § O. No data-i:
-           the label depends on the connection, so paintCloud() writes both
-           halves and applyUILang() must not overwrite one of them. -->
-      <button class="btn" id="btn-wb-cloud" onclick="cloudButton()" oncontextmenu="cloudForgetAsk(event)">☁ Google account</button>
-      <div id="wb-cloud-where"></div>
     </div>
     <div id="wb-tree"></div>
     <div id="wb-resize-handle" title="Drag to resize"></div>
