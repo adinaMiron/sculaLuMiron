@@ -25,7 +25,7 @@ echo "$PW_CHROME_PATH"
 Then, for `$ARGUMENTS`:
 
 - a name (`recipes`, `mealplan`, `graph`, `find`, `nav`, `wbrename`, `voice`,
-  `infinite`, `flow`, `gestures`, `undoredo`, …):
+  `transfer`, `infinite`, `flow`, `gestures`, `undoredo`, …):
   ```bash
   cd tests && timeout 900 node <name>.js        # with PW_CHROME_PATH exported above
   ```

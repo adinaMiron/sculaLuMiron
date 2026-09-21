@@ -263,6 +263,7 @@
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <a href="transfer.html" data-page="transfer.html">Transfer</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
@@ -471,7 +472,8 @@
     "calendar.html": "calendar",
     "editor.html": "desen",
     "index.html": "markdown",
-    "recipes.html": "retete"
+    "recipes.html": "retete",
+    "transfer.html": "transfer"
   };
   var T = {
     ro:{
@@ -754,6 +756,17 @@
     sheetEl.classList.add("open");
   }
 
+  // The chosen root folder itself, or null. dir() below narrows it to this
+  // page's own subfolder; a page that moves the *whole* folder across
+  // (transfer.html sends it to another device, and writes a received tree
+  // back into it) needs the root, with the same permission dance.
+  function rootDir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      return ok ? root : null;
+    }).catch(function(){ return null; });
+  }
+
   // Resolves to this page's subfolder handle, or null when unavailable.
   function dir(request){
     if(!root) return Promise.resolve(null);
@@ -905,6 +918,7 @@
     forget: forget,
     chooser: openSheet,
     dir: dir,
+    rootDir: rootDir,
     save: save,
     download: download,
     toast: toast

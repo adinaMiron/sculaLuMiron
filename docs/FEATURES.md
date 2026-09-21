@@ -17,7 +17,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
-   Verify with `/verify` (parses all four + diffs the nav block).
+   Verify with `/verify` (parses all six + diffs the nav block).
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
    get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
@@ -360,6 +360,7 @@ Full surface:
 | `mode()` | `"folder"` / `"share"` / `"download"` right now |
 | `setMode(m)` / `chooser()` | set the route / open the destination sheet |
 | `dir(request)` | this page's subfolder handle, or `null` |
+| `rootDir(request)` | the **chosen folder itself**, or `null`. Only `transfer.html` uses it — § Q — to read the whole tree out and to write a received one back in with its own structure. Nothing else may hand out a writable handle above a page's own subfolder |
 | `pick()` / `forget()` | folder chooser / clear |
 | `isSet()` / `name()` / `subdir()` / `supported()` / `canShareFiles()` | state |
 | `ready` | promise; resolves once the stored handle and mode are reloaded |
@@ -383,6 +384,8 @@ Full surface:
   | `editor.html` | `desen` |
   | `index.html` | `markdown` |
   | `recipes.html` | `retete` |
+  | `calendar.html` | `calendar` |
+  | `transfer.html` | `transfer` |
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
@@ -462,7 +465,7 @@ toast says so, via `openHtmlBlocked`).
 ### Google Drive — a fourth destination, per page
 
 Deliberately *not* a `ScuLaFolder` mode. `ScuLaFolder` is the shared block
-copied into all five files and it must keep working from `file://` with no
+copied into all six files and it must keep working from `file://` with no
 network; Google needs neither of those to be true. So each page that wants
 Drive carries its own: the button `#driveBtn` in `editor.html`'s script
 (`docs/MAP.md` § Google Drive), and `index.html`'s chapter sync
@@ -477,7 +480,7 @@ code through a Cloudflare worker, and loaded `gapi` as a
 `<script type="module">` in the shared nav. Three things were wrong with that
 and each one alone was fatal: the redirect threw away whatever was on the
 canvas, a module has no globals so `window.gapi` never appeared, and the
-shared nav made all four pages pay for a script only one of them wanted. Both
+shared nav made every page pay for a script only one of them wanted. Both
 Google scripts are fetched on the first click now, and only there.
 
 The token (about an hour) and the folder are kept in `localStorage`
@@ -1851,6 +1854,125 @@ get a signal that survives the browser's own noise suppression.
 `/apptest melody` — a hummed C-major phrase at a known 100 BPM goes in
 through both sources; the checks read the notes back out of the exported
 MIDI rather than trusting the page. Run it after touching anything above.
+
+---
+
+## Q. Files to another device — Wi-Fi and Bluetooth (`transfer.html`)
+
+One page that moves **a file, a pile of files, or a whole folder tree with
+its subfolders** to another device, and remembers the devices it has talked
+to. Two roads, one protocol, no server.
+
+### The two roads, and what each one can actually be
+
+| | Wi-Fi | Bluetooth |
+|---|---|---|
+| API | WebRTC (`RTCPeerConnection` + one ordered `RTCDataChannel`) | Web Bluetooth, GATT |
+| The other end | **another browser**, on the same network | **a device**, never another browser |
+| Signalling | two codes, carried across by the person | the browser's own device chooser |
+| Speed | as fast as the LAN | slow; notes and small files |
+| Where | anywhere WebRTC is (all of them) | Chrome and Edge only |
+
+**Why Bluetooth cannot be phone-to-phone.** A browser can only be a GATT
+*central*: nothing in the platform lets a page advertise, so no browser can
+be the *peripheral* the other one would have to find. Two browsers therefore
+cannot see each other over BLE, in this page or any other, and the Help says
+so in as many words — it is the first thing a person expects and the one
+thing that cannot be built. What the BLE half does talk to is any peripheral
+advertising the **Nordic UART Service** (`6e400001-…`, write `…0002-…`,
+notify `…0003-…`), which is what a small box on an ESP32 or an nRF board
+speaks out of the box.
+
+**Why there is no signalling server.** WebRTC needs the two ends to swap an
+offer and an answer before they can talk, and everyone else does that with a
+server. Rule 3 says these pages run from `file://` and talk to nobody, so
+the person is the channel: `Pornesc eu legătura` makes a code, it goes over
+to the other device however they like (copy, message, or **`Copiază ca link`**
+→ `transfer.html#c=S1…`, which fills the box by itself on arrival), and the
+answer comes back the same way. Two hops, once per link. ICE gathering is
+waited out in full before a code is shown (`iceDone`, 3.5 s cap), so the
+code carries every candidate and nothing has to trickle afterwards.
+
+On one network this needs no STUN at all — host candidates find each other.
+Across networks it does, so there is a **STUN field under "Reglaje", empty by
+default**: same shape as the OCR engine's URL in `recipes.html`, visible and
+the person's to fill, never a silent call to someone's server.
+
+### The wire, which both roads share
+
+4-byte big-endian length · 1 type byte · payload. Eight types: `HELLO`
+`MANIFEST` `START` `DATA` `END` `DONE` `PROGRESS` `ERR`; everything but
+`DATA` is JSON. WebRTC keeps message boundaries and Bluetooth does not, so
+**the receiver trusts neither** — `reader()` reassembles from the length
+prefix either way, and the same `onFrame` reads both. A frame over 4 MB is
+refused rather than buffered.
+
+The chunk size is the transport's: `min(16 KB, sctp.maxMessageSize) - 64`
+for the data channel, with `bufferedAmount` flow control above 1 MB; for
+Bluetooth, 2 KB frames cut into 180-byte GATT writes
+(`writeValueWithoutResponse` where the characteristic has it).
+
+A transfer is: `MANIFEST` (every path and size) ▸ per file `START`, `DATA`…,
+`END` ▸ `DONE`. **The path is the only thing that carries the folder
+structure**, and it is the one thing the other device controls, so
+`safePath()` rebuilds it from scratch on arrival — no `..`, no leading
+slash, no drive letter, no control characters, 24 segments at most. A
+received tree can only ever land inside the folder it was meant for.
+
+### What can be staged, and where what arrives goes
+
+Staged (§ "Ce trimiți"): `Fișiere…` (many at once), `Un dosar…`
+(`showDirectoryPicker` where it exists, `<input webkitdirectory>` where it
+does not), **`Dosarul Scula`** — the whole folder chosen with the 📁 button,
+via the new **`ScuLaFolder.rootDir()`** (§ D), which is what makes this
+"put my things on the other device too" rather than a file picker — and
+drag-and-drop, folders included (`webkitGetAsEntry`, walked depth-first;
+the entries have to be read out of the event before the first `await`, or
+the `DataTransfer` is already empty).
+
+Arriving (§ "Ce ai primit"), three routes, chosen in the page and kept in
+IndexedDB with the rest of the prefs:
+
+| `dest` | What happens |
+|---|---|
+| `ask` | they wait in the list until saved by hand — per row, all at once, or as one `.zip` |
+| `sub` | written as they arrive into this page's own subfolder (`transfer/`) |
+| `root` | written as they arrive into the chosen folder itself, keeping their structure — a received `markdown/plan.md` lands in `markdown/` |
+
+**Nothing is ever overwritten**, on any route: `uniqueName()` bumps a taken
+name to `-1`, `-2`, the same rule `freeName` follows in the shared block.
+The two automatic routes need a folder, which means desktop Chrome or Edge;
+where there is none the file simply waits in the list, and that is what the
+**hand-written store-only ZIP** is for — a folder tree cannot go through a
+phone's share sheet as a tree, so it goes as one file. No deflate: the
+point is the structure, not the size (and no zip64, so this is not the way
+to move 4 GB).
+
+### The device book
+
+IndexedDB **`scula-sync`**: a `devices` store keyed by id, and a `meta`
+store holding this device's own `prefs` (its id, the name the other end
+sees, the STUN field, the chosen `dest`). A row carries the name, which
+road it was, when it was last seen and how much has moved over it.
+
+- **Uită**, per row, drops it. For a Bluetooth row it also calls
+  `BluetoothDevice.forget()`, so the permission the browser was granted goes
+  with it — a row removed while the pairing stayed would be a lie.
+- **Uită toate dispozitivele** empties the store and hands back every BLE
+  permission in one go.
+- **Reconectează**, on a known Bluetooth row, uses `navigator.bluetooth
+  .getDevices()` to connect without going through the chooser again.
+
+A Wi-Fi row cannot be reconnected the same way and does not pretend to:
+every link needs fresh codes, because there is nothing holding the two ends
+together in between. What the row is for is recognising the device by name
+when it comes back, and seeing what has already travelled.
+
+**Both ends are symmetrical.** Once the link is up, either side can send;
+nothing in the protocol remembers which one dialled.
+
+Driven end to end by `tests/transfer.js` — two browser contexts doing the
+real thing, a stub NUS peripheral for the Bluetooth half.
 
 ---
 

@@ -1,0 +1,2961 @@
+<!doctype html><html lang="ro" data-theme="dark"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transfer — Scula lu Miron</title>
+<style>
+  :root {
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    --bg: #14201A;
+    --surface: #1B2A22;
+    --surface-2: #22342A;
+    --border: #2E4739;
+    --accent: #C1BB45;
+    --accent-2: #D3CD7C;
+    --on-accent: #1A2117;
+    --text: #F3EEE1;
+    --text-2: #9FB3A5;
+    --text-3: #5A6A60;
+    --danger: #C4643C;
+    --ok: #6E9E8A;
+    --radius: 10px;
+    --shadow: 0 12px 40px rgba(0,0,0,.5);
+    --font-mono: 'Courier New', monospace;
+    --font-ui: 'Trebuchet MS', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 0.9rem;
+  }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ---------- header ---------- */
+  #tr-head {
+    display: flex; align-items: flex-end; gap: .75rem; flex-wrap: wrap;
+    padding: .9rem 1rem .8rem;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .eyebrow { margin: 0; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+  .wordmark { margin: .1rem 0 0; font-size: 1.35rem; letter-spacing: .02em; }
+  .spacer { flex: 1 1 auto; }
+  .btn {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: .4rem .7rem; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { border-color: var(--danger); color: var(--danger); background: transparent; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .btn[disabled]:hover { border-color: var(--border); }
+  .btn.sm { padding: .25rem .5rem; font-size: .76rem; }
+
+  /* the link state, always visible in the header */
+  .pill {
+    display: inline-flex; align-items: center; gap: .4rem;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: .3rem .7rem; font-size: .76rem; color: var(--text-2);
+  }
+  .pill::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--text-3); }
+  .pill.busy::before { background: var(--accent); }
+  .pill.on { color: var(--text); border-color: var(--ok); }
+  .pill.on::before { background: var(--ok); }
+  .pill.bad { color: var(--danger); border-color: var(--danger); }
+  .pill.bad::before { background: var(--danger); }
+
+  /* ---------- panels ---------- */
+  #tr-main {
+    display: grid; gap: 1rem; align-items: start;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    padding: 1rem; max-width: 76rem; margin: 0 auto;
+  }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: .9rem 1rem 1rem;
+  }
+  .panel-h { display: flex; align-items: center; gap: .5rem; margin: 0 0 .7rem; font-size: 1rem; }
+  .panel-h .num {
+    flex: 0 0 auto; width: 1.4rem; height: 1.4rem; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+    font-size: .76rem; color: var(--text-2);
+  }
+  .sub-h { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+           color: var(--text-3); margin: 1.1rem 0 .45rem; }
+  .hint { font-size: .74rem; color: var(--text-3); margin: .25rem 0 0; line-height: 1.55; }
+  .note {
+    font-size: .76rem; color: var(--text-2); background: var(--bg);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: .45rem .6rem; margin: .6rem 0 0; line-height: 1.55;
+  }
+  .note.bad { border-left-color: var(--danger); }
+  .note.good { border-left-color: var(--ok); }
+  .acts { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .8rem; }
+  .field { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .6rem; }
+  .field label { font-size: .75rem; color: var(--text-2); }
+  .field input, .field select, .field textarea {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .45rem .55rem; width: 100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 4.5rem; font-family: var(--font-mono); font-size: .74rem; word-break: break-all; }
+  .check { display: flex; align-items: center; gap: .4rem; margin: .5rem 0; font-size: .8rem; color: var(--text-2); }
+  .check input { width: auto; }
+
+  /* ---------- the transport tabs ---------- */
+  .tabs { display: flex; gap: .15rem; background: var(--surface-2);
+          border: 1px solid var(--border); border-radius: var(--radius); padding: .15rem; margin-bottom: .7rem; }
+  .tabs .btn { border: 0; background: transparent; flex: 1 1 0; }
+  .tabs .btn.on { background: var(--accent); }
+  .steps { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+  /* ---------- the device book ---------- */
+  .devs { display: flex; flex-direction: column; gap: .35rem; }
+  .dev {
+    display: flex; align-items: center; gap: .55rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .45rem .55rem;
+  }
+  .dev .who { flex: 1 1 auto; min-width: 0; }
+  .dev .nm { display: block; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dev .sub { display: block; font-size: .7rem; color: var(--text-3); }
+  .dev .kind { flex: 0 0 auto; font-size: .95rem; }
+  .dev.live { border-color: var(--ok); }
+  .empty { font-size: .78rem; color: var(--text-3); padding: .3rem 0; }
+
+  /* ---------- the file tray ---------- */
+  .drop {
+    border: 1px dashed var(--border); border-radius: 12px;
+    padding: .9rem; text-align: center; background: var(--bg);
+  }
+  .drop.over { border-color: var(--accent); background: var(--surface-2); }
+  .drop p { margin: 0 0 .6rem; font-size: .8rem; color: var(--text-2); }
+  .drop .btns { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; }
+  .tray {
+    margin-top: .7rem; max-height: 17rem; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+  }
+  .tray:empty { display: none; }
+  .row {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .35rem .5rem; border-bottom: 1px solid var(--border); font-size: .78rem;
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .nm .dir { color: var(--text-3); }
+  .row .sz { flex: 0 0 auto; color: var(--text-3); font-size: .72rem; font-variant-numeric: tabular-nums; }
+  .row .x { flex: 0 0 auto; background: transparent; border: 0; color: var(--text-3); padding: .1rem .3rem; }
+  .row .x:hover { color: var(--danger); }
+  .row.done .nm { color: var(--text); }
+  .row.wait { opacity: .6; }
+
+  /* ---------- progress ---------- */
+  .prog { margin-top: .7rem; }
+  .bar { height: .4rem; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
+
+  /* ---------- modal ---------- */
+  .modal {
+    position: fixed; inset: 0; z-index: 500; display: none;
+    align-items: center; justify-content: center; padding: 1rem;
+    background: rgba(0,0,0,.55);
+  }
+  .modal.open { display: flex; }
+  .modal .card {
+    width: min(38rem, 100%); max-height: calc(100vh - 2rem); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem; box-shadow: var(--shadow);
+  }
+  .modal h2 { margin: 0 0 .75rem; font-size: 1rem; }
+  .modal .acts { display: flex; gap: .5rem; margin-top: .9rem; }
+  .help-body h3 { font-size: .95rem; margin: 1rem 0 .35rem; color: var(--text); }
+  .help-body h3:first-child { margin-top: 0; }
+  .help-body p { font-size: .82rem; line-height: 1.6; color: var(--text-2); margin: 0 0 .5rem; }
+  .help-body ul, .help-body ol { margin: 0 0 .5rem; padding-left: 1.25rem; }
+  .help-body li { font-size: .82rem; line-height: 1.6; color: var(--text-2); margin: 0 0 .3rem; }
+  .help-body b { color: var(--text); }
+  .help-body code { font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2); border-radius: .3rem; padding: .05rem .35rem; color: var(--accent-2); }
+  .help-body kbd { font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: .3rem; padding: .05rem .35rem; }
+
+  details { margin-top: .7rem; }
+  summary { font-size: .76rem; color: var(--text-2); cursor: pointer; }
+  details[open] summary { margin-bottom: .5rem; }
+
+  @media (hover: none) and (pointer: coarse) {
+    .btn { min-height: 44px; padding: 8px 12px; }
+    .btn.sm { min-height: 36px; }
+    .field input, .field select, .field textarea { min-height: 44px; font-size: 16px; }
+    .row { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <a href="transfer.html" data-page="transfer.html">Transfer</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so on those devices
+     the button just names the fallback route (share/download) and a tap
+     opens the destination sheet instead of the picker - see the "supported()"
+     branch in fBtn's click handler below. Kept visible (not hidden) so a
+     phone still has a way to reach ScuLaFolder.chooser() from the nav. */
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "calendar.html": "calendar",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete",
+    "transfer.html": "transfer"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // The chosen root folder itself, or null. dir() below narrows it to this
+  // page's own subfolder; a page that moves the *whole* folder across
+  // (transfer.html sends it to another device, and writes a received tree
+  // back into it) needs the root, with the same permission dance.
+  function rootDir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      return ok ? root : null;
+    }).catch(function(){ return null; });
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    rootDir: rootDir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+<header id="tr-head">
+  <div>
+    <p class="eyebrow" data-i="eyebrow">wi-fi · bluetooth · fără server</p>
+    <h1 class="wordmark" data-i="wordmark">Transfer</h1>
+  </div>
+  <span class="spacer"></span>
+  <span id="linkState" class="pill" role="status" data-i="stOff">Nelegat</span>
+  <button id="helpBtn" class="btn" type="button" data-i="helpBtn">Ajutor</button>
+</header>
+
+<main id="tr-main">
+
+  <!-- ===== 1. the link ===== -->
+  <section class="panel" id="p-link">
+    <h2 class="panel-h"><span class="num">1</span> <span data-i="hLink">Legătura</span></h2>
+
+    <div class="tabs" role="group" data-i-aria="hLink" aria-label="Legătura">
+      <button class="btn tab on" type="button" data-trans="wifi" data-i="tWifi">📶 Wi-Fi</button>
+      <button class="btn tab" type="button" data-trans="ble" data-i="tBle">🔵 Bluetooth</button>
+    </div>
+
+    <!-- Wi-Fi: two browsers, one direct connection, codes carried by hand -->
+    <div id="pane-wifi">
+      <p class="hint" data-i="wifiIntro">Ambele dispozitive pe aceeași rețea Wi-Fi. Faci schimb de două coduri o singură dată, apoi fișierele merg direct, fără server.</p>
+      <div class="steps" id="wifiStart">
+        <button id="btnOffer" class="btn primary" type="button" data-i="wifiOffer">Pornesc eu legătura</button>
+        <button id="btnJoin" class="btn" type="button" data-i="wifiJoin">Intru pe o legătură</button>
+      </div>
+
+      <div id="wifiBox" hidden>
+        <div class="field" id="mineWrap">
+          <label for="myCode" id="myCodeLab" data-i="myCode">Codul meu — dă-l celuilalt dispozitiv</label>
+          <textarea id="myCode" readonly rows="3" spellcheck="false"></textarea>
+          <div class="acts" style="margin-top:.35rem">
+            <button id="copyCode" class="btn sm" type="button" data-i="copy">Copiază codul</button>
+            <button id="copyLink" class="btn sm ghost" type="button" data-i="copyLink">Copiază ca link</button>
+          </div>
+        </div>
+        <div class="field" id="theirsWrap">
+          <label for="theirCode" id="theirCodeLab" data-i="theirCode">Codul celuilalt dispozitiv</label>
+          <textarea id="theirCode" rows="3" spellcheck="false" data-i-placeholder="pasteHint" placeholder="lipește codul aici"></textarea>
+          <div class="acts" style="margin-top:.35rem">
+            <button id="pasteCode" class="btn sm ghost" type="button" data-i="paste">Lipește</button>
+            <button id="useCode" class="btn sm primary" type="button" data-i="useCode">Folosește codul</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bluetooth: the browser can only be the central, so the other side is a
+         device that advertises the Nordic UART service - see the Help. -->
+    <div id="pane-ble" hidden>
+      <p class="hint" data-i="bleIntro">Bluetooth merge cu un aparat care anunță serviciul UART (Nordic). Două browsere nu se pot lega direct între ele prin Bluetooth — vezi Ajutorul.</p>
+      <button id="bleScan" class="btn primary" type="button" data-i="bleScan">Caută un aparat</button>
+      <p id="bleNote" class="note" hidden></p>
+    </div>
+
+    <p id="linkInfo" class="note good" hidden></p>
+    <div class="acts" id="liveActs" hidden>
+      <button id="disconnect" class="btn danger" type="button" data-i="disconnect">Închide legătura</button>
+    </div>
+
+    <details id="advanced">
+      <summary data-i="advanced">Reglaje</summary>
+      <div class="field">
+        <label for="myName" data-i="myName">Numele acestui dispozitiv</label>
+        <input id="myName" type="text" autocomplete="off" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="stun" data-i="stunLabel">Server STUN (opțional)</label>
+        <input id="stun" type="text" autocomplete="off" spellcheck="false" placeholder="stun:stun.example.org:19302">
+        <p class="hint" data-i="stunHint">Gol = doar rețeaua locală, fără niciun server. Completează-l doar dacă cele două dispozitive sunt pe rețele diferite.</p>
+      </div>
+    </details>
+
+    <h3 class="sub-h" data-i="hDevices">Dispozitive știute</h3>
+    <div id="devList" class="devs"></div>
+    <div class="acts">
+      <button id="forgetAll" class="btn ghost danger sm" type="button" data-i="forgetAll">Uită toate dispozitivele</button>
+    </div>
+  </section>
+
+  <!-- ===== 2. what you send ===== -->
+  <section class="panel" id="p-send">
+    <h2 class="panel-h"><span class="num">2</span> <span data-i="hSend">Ce trimiți</span></h2>
+
+    <div id="drop" class="drop">
+      <p data-i="dropHint">Trage aici fișiere sau dosare întregi</p>
+      <div class="btns">
+        <button id="pickFiles" class="btn sm" type="button" data-i="pickFiles">Fișiere…</button>
+        <button id="pickFolder" class="btn sm" type="button" data-i="pickFolder">Un dosar…</button>
+        <button id="pickScula" class="btn sm ghost" type="button" data-i="pickScula">Dosarul Scula</button>
+      </div>
+      <input id="fFiles" type="file" multiple hidden>
+      <input id="fFolder" type="file" webkitdirectory hidden>
+    </div>
+
+    <div id="tray" class="tray"></div>
+    <p id="traySum" class="hint"></p>
+
+    <div class="acts">
+      <button id="clearTray" class="btn ghost sm" type="button" data-i="clearTray">Golește lista</button>
+      <span class="spacer"></span>
+      <button id="sendBtn" class="btn primary" type="button" data-i="sendBtn" disabled>Trimite</button>
+    </div>
+
+    <div id="sendProg" class="prog" hidden>
+      <div class="bar"><i></i></div>
+      <p class="hint"></p>
+    </div>
+  </section>
+
+  <!-- ===== 3. what arrived ===== -->
+  <section class="panel" id="p-recv">
+    <h2 class="panel-h"><span class="num">3</span> <span data-i="hRecv">Ce ai primit</span></h2>
+
+    <div class="field">
+      <label for="dest" data-i="destLabel">Unde ajung fișierele primite</label>
+      <select id="dest">
+        <option value="ask" data-i="destAsk">Le salvez eu, cu butoanele de mai jos</option>
+        <option value="sub" data-i="destSub">Singure, în dosarul „transfer”</option>
+        <option value="root" data-i="destRoot">Singure, în dosarul Scula (structura lor)</option>
+      </select>
+      <p class="hint" data-i="destHint">Nimic nu se suprascrie niciodată: un nume deja luat devine „nume-1”.</p>
+    </div>
+
+    <div id="inbox" class="tray"></div>
+    <p id="inboxSum" class="hint"></p>
+
+    <div id="recvProg" class="prog" hidden>
+      <div class="bar"><i></i></div>
+      <p class="hint"></p>
+    </div>
+
+    <div class="acts">
+      <button id="saveAll" class="btn primary" type="button" data-i="saveAll" disabled>Salvează tot</button>
+      <button id="saveZip" class="btn" type="button" data-i="saveZip" disabled>Ca .zip</button>
+      <span class="spacer"></span>
+      <button id="clearInbox" class="btn ghost sm" type="button" data-i="clearInbox">Golește</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== Help ===== -->
+<div id="help-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2 data-i="helpTitle">Ajutor — Transfer</h2>
+    <div id="help-body" class="help-body"></div>
+    <div class="acts">
+      <span class="spacer"></span>
+      <button id="help-close" class="btn" type="button" data-i="close">Închide</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. i18n  (docs/I18N.md — same shape as the other five apps)
+   ============================================================ */
+const I18N = {
+  ro: {
+    eyebrow:"wi-fi · bluetooth · fără server", wordmark:"Transfer",
+    helpBtn:"Ajutor", helpTitle:"Ajutor — Transfer", close:"Închide",
+
+    stOff:"Nelegat", stWait:"Se leagă…", stOn:n => "Legat: " + n, stBad:"Legătura a căzut",
+
+    hLink:"Legătura", tWifi:"📶 Wi-Fi", tBle:"🔵 Bluetooth",
+    wifiIntro:"Ambele dispozitive pe aceeași rețea Wi-Fi. Faci schimb de două coduri o singură dată, apoi fișierele merg direct, fără server.",
+    wifiOffer:"Pornesc eu legătura", wifiJoin:"Intru pe o legătură",
+    myCode:"Codul meu — dă-l celuilalt dispozitiv",
+    myCodeBack:"Codul meu de răspuns — dă-l înapoi celui care a pornit",
+    theirCode:"Codul celuilalt dispozitiv",
+    theirCodeAnswer:"Codul de răspuns al celuilalt",
+    pasteHint:"lipește codul aici",
+    copy:"Copiază codul", copyLink:"Copiază ca link", paste:"Lipește", useCode:"Folosește codul",
+    bleIntro:"Bluetooth merge cu un aparat care anunță serviciul UART (Nordic). Două browsere nu se pot lega direct între ele prin Bluetooth — vezi Ajutorul.",
+    bleScan:"Caută un aparat", bleAgain:"Caută alt aparat",
+    bleNoApi:"Browserul acesta nu are Web Bluetooth. Merge în Chrome și Edge (Android, Windows, macOS, Linux); Safari și Firefox nu îl au.",
+    bleFail:"Nu s-a putut deschide legătura Bluetooth.",
+    disconnect:"Închide legătura", advanced:"Reglaje",
+    myName:"Numele acestui dispozitiv", stunLabel:"Server STUN (opțional)",
+    stunHint:"Gol = doar rețeaua locală, fără niciun server. Completează-l doar dacă cele două dispozitive sunt pe rețele diferite.",
+
+    hDevices:"Dispozitive știute", forgetAll:"Uită toate dispozitivele",
+    forget:"Uită", reconnect:"Reconectează", noDevices:"— încă niciunul —",
+    devSeen:d => "văzut " + d, devNever:"nefolosit încă",
+    devStats:([n, b]) => n + (n === 1 ? " transfer" : " transferuri") + " · " + b,
+    kindWifi:"Wi-Fi", kindBle:"Bluetooth",
+    forgetAsk:n => "Uiți dispozitivul „" + n + "”?",
+    forgetAllAsk:"Uiți toate dispozitivele știute?",
+    forgot:n => "Am uitat „" + n + "”.", forgotAll:"Lista de dispozitive e goală.",
+
+    hSend:"Ce trimiți", dropHint:"Trage aici fișiere sau dosare întregi",
+    pickFiles:"Fișiere…", pickFolder:"Un dosar…", pickScula:"Dosarul Scula",
+    clearTray:"Golește lista", sendBtn:"Trimite",
+    traySum:([n, b]) => n + (n === 1 ? " fișier" : " fișiere") + " · " + b,
+    trayEmpty:"Nimic de trimis încă.",
+    noFolderPicker:"Browserul acesta nu poate deschide un dosar. Folosește „Fișiere…” sau trage dosarul peste pagină.",
+    noSculaFolder:"Nu e ales niciun dosar Scula. Alege-l din butonul 📁 de sus.",
+    added:n => n + (n === 1 ? " fișier adăugat" : " fișiere adăugate"),
+    nothingThere:"Dosarul acela e gol.",
+
+    hRecv:"Ce ai primit", destLabel:"Unde ajung fișierele primite",
+    destAsk:"Le salvez eu, cu butoanele de mai jos",
+    destSub:"Singure, în dosarul „transfer”",
+    destRoot:"Singure, în dosarul Scula (structura lor)",
+    destHint:"Nimic nu se suprascrie niciodată: un nume deja luat devine „nume-1”.",
+    saveAll:"Salvează tot", saveZip:"Ca .zip", clearInbox:"Golește",
+    inboxEmpty:"Nimic primit încă.",
+    save:"Salvează",
+
+    sending:([p, s, tt]) => "Trimit „" + p + "” — " + s + " / " + tt,
+    sendDone:([n, b]) => "Trimis: " + n + (n === 1 ? " fișier" : " fișiere") + " · " + b,
+    sendFail:"Transferul s-a oprit.",
+    receiving:([p, s, tt]) => "Primesc „" + p + "” — " + s + " / " + tt,
+    recvDone:([n, b]) => "Primit: " + n + (n === 1 ? " fișier" : " fișiere") + " · " + b,
+
+    noLink:"Nu e nicio legătură deschisă. Fă una la pasul 1.",
+    busy:"Un transfer e deja în curs.",
+    copied:"Cod copiat.", linkCopied:"Link copiat.",
+    copyFail:"Nu s-a putut copia — selectează textul și copiază-l cu mâna.",
+    pasteFail:"Nu s-a putut lipi — lipește cu Ctrl+V în căsuță.",
+    badCode:"Codul nu e bun. Copiază-l din nou, tot, de la celălalt dispozitiv.",
+    offerReady:"Cod făcut. Dă-l celuilalt dispozitiv, apoi lipește aici codul lui de răspuns.",
+    answerReady:"Cod de răspuns făcut. Dă-l înapoi dispozitivului care a pornit legătura.",
+    joined:"Legătura e deschisă.",
+    lost:"Legătura s-a închis.",
+    noWebRTC:"Browserul acesta nu are WebRTC, deci nu poate face legătura Wi-Fi.",
+    savedAll:n => n + (n === 1 ? " fișier salvat" : " fișiere salvate"),
+    saveFail:"Nu s-a putut scrie tot. Vezi ce a rămas nesalvat în listă.",
+    zipName:"transfer",
+    linkHint:"Deschide linkul pe celălalt dispozitiv — codul intră singur în căsuță."
+  },
+  en: {
+    eyebrow:"wi-fi · bluetooth · no server", wordmark:"Transfer",
+    helpBtn:"Help", helpTitle:"Help — Transfer", close:"Close",
+
+    stOff:"Not linked", stWait:"Linking…", stOn:n => "Linked: " + n, stBad:"The link dropped",
+
+    hLink:"The link", tWifi:"📶 Wi-Fi", tBle:"🔵 Bluetooth",
+    wifiIntro:"Both devices on the same Wi-Fi. You swap two codes once, then the files go straight across, with no server in between.",
+    wifiOffer:"I'll start the link", wifiJoin:"I'm joining a link",
+    myCode:"My code — hand it to the other device",
+    myCodeBack:"My reply code — hand it back to whoever started",
+    theirCode:"The other device's code",
+    theirCodeAnswer:"The other device's reply code",
+    pasteHint:"paste the code here",
+    copy:"Copy the code", copyLink:"Copy as a link", paste:"Paste", useCode:"Use this code",
+    bleIntro:"Bluetooth talks to a device that advertises the Nordic UART service. Two browsers cannot link to each other over Bluetooth — see Help.",
+    bleScan:"Look for a device", bleAgain:"Look for another device",
+    bleNoApi:"This browser has no Web Bluetooth. Chrome and Edge have it (Android, Windows, macOS, Linux); Safari and Firefox do not.",
+    bleFail:"Couldn't open the Bluetooth link.",
+    disconnect:"Close the link", advanced:"Settings",
+    myName:"This device's name", stunLabel:"STUN server (optional)",
+    stunHint:"Empty = the local network only, no server at all. Fill it in only when the two devices are on different networks.",
+
+    hDevices:"Known devices", forgetAll:"Forget every device",
+    forget:"Forget", reconnect:"Reconnect", noDevices:"— none yet —",
+    devSeen:d => "seen " + d, devNever:"not used yet",
+    devStats:([n, b]) => n + (n === 1 ? " transfer" : " transfers") + " · " + b,
+    kindWifi:"Wi-Fi", kindBle:"Bluetooth",
+    forgetAsk:n => "Forget the device “" + n + "”?",
+    forgetAllAsk:"Forget every known device?",
+    forgot:n => "Forgot “" + n + "”.", forgotAll:"The device list is empty.",
+
+    hSend:"What you send", dropHint:"Drop files, or whole folders, here",
+    pickFiles:"Files…", pickFolder:"A folder…", pickScula:"The Scula folder",
+    clearTray:"Clear the list", sendBtn:"Send",
+    traySum:([n, b]) => n + (n === 1 ? " file" : " files") + " · " + b,
+    trayEmpty:"Nothing to send yet.",
+    noFolderPicker:"This browser can't open a folder. Use “Files…”, or drag the folder onto the page.",
+    noSculaFolder:"No Scula folder is chosen. Pick one from the 📁 button at the top.",
+    added:n => n + (n === 1 ? " file added" : " files added"),
+    nothingThere:"That folder is empty.",
+
+    hRecv:"What arrived", destLabel:"Where received files go",
+    destAsk:"I'll save them myself, with the buttons below",
+    destSub:"On their own, into the “transfer” folder",
+    destRoot:"On their own, into the Scula folder (their own structure)",
+    destHint:"Nothing is ever overwritten: a name already taken becomes “name-1”.",
+    saveAll:"Save everything", saveZip:"As .zip", clearInbox:"Clear",
+    inboxEmpty:"Nothing received yet.",
+    save:"Save",
+
+    sending:([p, s, tt]) => "Sending “" + p + "” — " + s + " / " + tt,
+    sendDone:([n, b]) => "Sent: " + n + (n === 1 ? " file" : " files") + " · " + b,
+    sendFail:"The transfer stopped.",
+    receiving:([p, s, tt]) => "Receiving “" + p + "” — " + s + " / " + tt,
+    recvDone:([n, b]) => "Received: " + n + (n === 1 ? " file" : " files") + " · " + b,
+
+    noLink:"No link is open. Make one in step 1.",
+    busy:"A transfer is already running.",
+    copied:"Code copied.", linkCopied:"Link copied.",
+    copyFail:"Couldn't copy — select the text and copy it by hand.",
+    pasteFail:"Couldn't paste — paste into the box with Ctrl+V.",
+    badCode:"That code isn't right. Copy it again, all of it, from the other device.",
+    offerReady:"Code ready. Hand it to the other device, then paste its reply code here.",
+    answerReady:"Reply code ready. Hand it back to the device that started the link.",
+    joined:"The link is open.",
+    lost:"The link closed.",
+    noWebRTC:"This browser has no WebRTC, so it can't make the Wi-Fi link.",
+    savedAll:n => n + (n === 1 ? " file saved" : " files saved"),
+    saveFail:"Couldn't write everything. The list shows what is still unsaved.",
+    zipName:"transfer",
+    linkHint:"Open the link on the other device — the code lands in the box on its own."
+  }
+};
+
+/* ---- the Help text, one template per language (docs/MAP.md "The Help modal").
+   It is hand-written prose: when the feature changes, change it here too. ---- */
+I18N.ro.helpBody = `
+  <h3>Ce face pagina asta</h3>
+  <p>Mută fișiere de pe un dispozitiv pe altul <b>direct</b>, fără niciun server la mijloc și fără să treacă prin internet: un fișier, mai multe deodată, sau un dosar întreg cu toate subdosarele lui. Două drumuri: <b>Wi-Fi</b> (între două browsere, pe aceeași rețea) și <b>Bluetooth</b> (către un aparat care vorbește serviciul UART).</p>
+
+  <h3>Wi-Fi — pas cu pas</h3>
+  <p>Amândouă dispozitivele trebuie să fie pe <b>aceeași rețea Wi-Fi</b>. Legătura se face o singură dată, cu două coduri:</p>
+  <ol>
+    <li>Pe dispozitivul de unde pleacă fișierele: <b>„Pornesc eu legătura”</b>. Apare <b>codul meu</b>.</li>
+    <li>Dă codul celuilalt dispozitiv — <b>„Copiază codul”</b> și trimite-l cum vrei (mesaj, mail, AirDrop), sau <b>„Copiază ca link”</b> și deschide linkul acolo: codul intră singur în căsuță.</li>
+    <li>Pe celălalt dispozitiv: <b>„Intru pe o legătură”</b>, lipește codul, apoi <b>„Folosește codul”</b>. Apare un <b>cod de răspuns</b>.</li>
+    <li>Adu codul de răspuns înapoi pe primul dispozitiv, lipește-l și apasă iar <b>„Folosește codul”</b>.</li>
+    <li>Bulina din antet se face verde: <b>Legat</b>. Codurile nu mai sunt bune la nimic — fiecare legătură are altele.</li>
+  </ol>
+  <p>După ce legătura e deschisă, <b>oricare</b> dintre cele două poate trimite; pasul 2 e la fel pe amândouă.</p>
+  <p>Dispozitivele pe <b>rețele diferite</b> au nevoie de un server STUN, ca să-și afle adresa publică. E câmpul din „Reglaje”, gol din construcție: pagina nu vorbește cu nimeni dacă nu îi spui tu cu cine. Chiar și cu STUN, unele rețele (4G, hoteluri) nu lasă legătura directă să se facă.</p>
+
+  <h3>Bluetooth — ce merge și ce nu</h3>
+  <p>Un browser poate fi doar <b>central</b> Bluetooth, niciodată <b>periferic</b>: nu se poate anunța singur. Deci <b>două browsere nu se pot lega prin Bluetooth</b> — pentru telefon-la-telefon folosește Wi-Fi de mai sus.</p>
+  <p>Ce merge: orice aparat care anunță <b>Nordic UART Service</b>, cu aceleași UUID-uri pe care le caută și pagina:</p>
+  <ul>
+    <li>serviciu <code>6e400001-b5a3-f393-e0a9-e50e24dcca9e</code></li>
+    <li>scriere (către aparat) <code>6e400002-…</code></li>
+    <li>notificare (de la aparat) <code>6e400003-…</code></li>
+  </ul>
+  <p>Apasă <b>„Caută un aparat”</b>, alege-l din fereastra browserului și gata. Merge în Chrome și Edge; Safari și Firefox nu au Web Bluetooth. Bluetooth e <b>lent</b> — bun pentru notițe și fișiere mici, nu pentru poze cu zecile.</p>
+
+  <h3>Ce poți trimite</h3>
+  <ul>
+    <li><b>„Fișiere…”</b> — unul sau mai multe deodată.</li>
+    <li><b>„Un dosar…”</b> — tot dosarul, cu subdosarele lui; structura ajunge întreagă dincolo.</li>
+    <li><b>„Dosarul Scula”</b> — dosarul ales cu butonul 📁 din bara de sus, cu tot ce au scris în el celelalte pagini (<code>markdown/</code>, <code>retete/</code>, <code>desen/</code>, <code>transcript/</code>, <code>calendar/</code>). Ăsta e „sincronizează-mi lucrurile pe celălalt dispozitiv”.</li>
+    <li><b>Trage și lasă</b> — fișiere sau dosare întregi peste zona punctată.</li>
+  </ul>
+  <p>Lista se adună: mai poți pune peste ce e deja acolo, iar <b>✕</b> scoate un rând. Același drum înseamnă același fișier — se înlocuiește, nu se dublează.</p>
+
+  <h3>Unde ajung fișierele primite</h3>
+  <p>Alegerea e la pasul 3:</p>
+  <ul>
+    <li><b>Le salvez eu</b> — rămân în listă și le scrii cu „Salvează tot”, „Ca .zip”, sau cu <b>Salvează</b> de pe fiecare rând.</li>
+    <li><b>Singure, în dosarul „transfer”</b> — se scriu pe măsură ce vin, în subdosarul acestei pagini.</li>
+    <li><b>Singure, în dosarul Scula</b> — cu structura lor, peste dosarul ales cu 📁: un <code>markdown/plan.md</code> primit ajunge în <code>markdown/</code>.</li>
+  </ul>
+  <p><b>Nimic nu se suprascrie niciodată.</b> Dacă numele e luat, fișierul nou se face <code>nume-1</code>, <code>nume-2</code>… Scrisul direct în dosar cere un dosar ales (📁) și merge doar pe desktop, în Chrome sau Edge; pe telefon nu există așa ceva, așa că acolo salvezi cu butoanele — iar <b>„Ca .zip”</b> e felul în care un dosar cu subdosare ajunge întreg pe telefon, într-un singur fișier.</p>
+
+  <h3>Dispozitive știute</h3>
+  <p>Fiecare dispozitiv cu care ai vorbit rămâne ținut minte în <b>IndexedDB</b> (baza <code>scula-sync</code>), cu numele lui, drumul folosit, când l-ai văzut ultima oară și cât ai mutat. Sunt ale acestui browser — nu pleacă nicăieri.</p>
+  <ul>
+    <li><b>Uită</b>, pe rândul lui, îl scoate din listă. La un aparat Bluetooth, îi ia și voia dată browserului, deci data viitoare te întreabă din nou.</li>
+    <li><b>Uită toate dispozitivele</b> golește lista dintr-o dată.</li>
+    <li><b>Reconectează</b> apare la aparatele Bluetooth știute: se leagă fără să mai treacă prin fereastra de căutare, dacă aparatul e pornit și aproape.</li>
+  </ul>
+  <p>Numele cu care te vezi tu pe celălalt dispozitiv se schimbă din „Reglaje”.</p>
+
+  <h3>Când ceva nu merge</h3>
+  <ul>
+    <li><b>Codul nu e primit</b> — copiază-l tot, de la început până la sfârșit. Un cod rupt la mijloc nu poate fi reparat.</li>
+    <li><b>Rămâne „Se leagă…”</b> — cel mai des cele două nu-s pe aceeași rețea, sau rețeaua ține dispozitivele izolate între ele (<i>client isolation</i>, obișnuit la Wi-Fi public). Încearcă pe un hotspot de telefon.</li>
+    <li><b>Codurile expiră</b> dacă închizi pagina sau începi altă legătură: fă-le din nou.</li>
+    <li><b>Transferul se oprește la mijloc</b> — fișierele primite întregi până atunci rămân în listă și pot fi salvate; restul se trimite din nou.</li>
+    <li>Fișierele primite stau în memoria paginii până le salvezi, deci un dosar uriaș se trimite mai bine în tranșe — sau cu „Singure, în dosar”, care scrie pe măsură ce primește.</li>
+  </ul>
+`;
+
+I18N.en.helpBody = `
+  <h3>What this page does</h3>
+  <p>It moves files from one device to another <b>directly</b> — no server in between, nothing going out over the internet: one file, several at once, or a whole folder with every subfolder inside it. Two roads: <b>Wi-Fi</b> (between two browsers on the same network) and <b>Bluetooth</b> (to a device that speaks the UART service).</p>
+
+  <h3>Wi-Fi — step by step</h3>
+  <p>Both devices must be on the <b>same Wi-Fi network</b>. The link is made once, with two codes:</p>
+  <ol>
+    <li>On the device the files come from: <b>“I'll start the link”</b>. Your <b>code</b> appears.</li>
+    <li>Get that code to the other device — <b>“Copy the code”</b> and send it however you like (message, mail, AirDrop), or <b>“Copy as a link”</b> and open that link there: the code lands in the box on its own.</li>
+    <li>On the other device: <b>“I'm joining a link”</b>, paste the code, then <b>“Use this code”</b>. A <b>reply code</b> appears.</li>
+    <li>Carry the reply code back to the first device, paste it, and press <b>“Use this code”</b> there too.</li>
+    <li>The dot in the header turns green: <b>Linked</b>. The codes are now spent — every link has its own.</li>
+  </ol>
+  <p>Once the link is open <b>either</b> side can send; step 2 works the same on both.</p>
+  <p>Devices on <b>different networks</b> need a STUN server to learn their public address. That's the field under “Settings”, empty by design: the page talks to nobody unless you name them. Even with STUN, some networks (mobile data, hotels) won't let a direct link form at all.</p>
+
+  <h3>Bluetooth — what works and what doesn't</h3>
+  <p>A browser can only ever be a Bluetooth <b>central</b>, never a <b>peripheral</b>: it cannot advertise itself. So <b>two browsers cannot link over Bluetooth</b> — for phone-to-phone, use Wi-Fi above.</p>
+  <p>What does work: any device advertising the <b>Nordic UART Service</b>, with the same UUIDs this page looks for:</p>
+  <ul>
+    <li>service <code>6e400001-b5a3-f393-e0a9-e50e24dcca9e</code></li>
+    <li>write (to the device) <code>6e400002-…</code></li>
+    <li>notify (from the device) <code>6e400003-…</code></li>
+  </ul>
+  <p>Press <b>“Look for a device”</b>, pick it in the browser's own chooser, and that's it. Chrome and Edge have this; Safari and Firefox don't. Bluetooth is <b>slow</b> — fine for notes and small files, not for photos by the dozen.</p>
+
+  <h3>What you can send</h3>
+  <ul>
+    <li><b>“Files…”</b> — one, or many at once.</li>
+    <li><b>“A folder…”</b> — the whole folder with its subfolders; the structure arrives intact.</li>
+    <li><b>“The Scula folder”</b> — the folder chosen with the 📁 button in the top bar, with everything the other pages have written into it (<code>markdown/</code>, <code>retete/</code>, <code>desen/</code>, <code>transcript/</code>, <code>calendar/</code>). This is the “put my things on the other device too” button.</li>
+    <li><b>Drag and drop</b> — files or whole folders onto the dashed area.</li>
+  </ul>
+  <p>The list adds up: you can keep dropping onto what's already there, and <b>✕</b> takes a row out. The same path means the same file — it replaces, it doesn't double.</p>
+
+  <h3>Where received files go</h3>
+  <p>You choose in step 3:</p>
+  <ul>
+    <li><b>I'll save them myself</b> — they stay in the list until you write them with “Save everything”, “As .zip”, or the <b>Save</b> on each row.</li>
+    <li><b>On their own, into the “transfer” folder</b> — written as they arrive, into this page's own subfolder.</li>
+    <li><b>On their own, into the Scula folder</b> — with their own structure, into the folder chosen with 📁: a received <code>markdown/plan.md</code> lands in <code>markdown/</code>.</li>
+  </ul>
+  <p><b>Nothing is ever overwritten.</b> If the name is taken, the new file becomes <code>name-1</code>, <code>name-2</code>… Writing straight into a folder needs a folder chosen (📁) and works on desktop Chrome or Edge only; phones have no such thing, so there you save with the buttons — and <b>“As .zip”</b> is how a folder with subfolders arrives whole on a phone, in a single file.</p>
+
+  <h3>Known devices</h3>
+  <p>Every device you've talked to is remembered in <b>IndexedDB</b> (the <code>scula-sync</code> database), with its name, the road used, when you last saw it and how much you moved. They belong to this browser — they go nowhere else.</p>
+  <ul>
+    <li><b>Forget</b>, on its row, takes it out of the list. For a Bluetooth device it also hands back the permission the browser was given, so next time it asks again.</li>
+    <li><b>Forget every device</b> empties the list in one go.</li>
+    <li><b>Reconnect</b> shows up on known Bluetooth devices: it links without going through the chooser again, as long as the device is on and nearby.</li>
+  </ul>
+  <p>The name the other device sees you as is in “Settings”.</p>
+
+  <h3>When something doesn't work</h3>
+  <ul>
+    <li><b>The code is refused</b> — copy all of it, start to end. A code cut in half can't be repaired.</li>
+    <li><b>It stays on “Linking…”</b> — usually the two aren't on the same network, or the network keeps its devices apart (<i>client isolation</i>, common on public Wi-Fi). Try a phone hotspot.</li>
+    <li><b>Codes expire</b> when you close the page or start another link: make new ones.</li>
+    <li><b>A transfer stops halfway</b> — whatever arrived whole stays in the list and can be saved; send the rest again.</li>
+    <li>Received files sit in the page's memory until you save them, so a huge folder travels better in batches — or with “on their own, into a folder”, which writes as it receives.</li>
+  </ul>
+`;
+
+let UI = "ro";
+function t(k, a){
+  const v = (I18N[UI] || I18N.ro)[k];
+  return typeof v === "function" ? v(a) : v;
+}
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  ["placeholder","title","aria-label","value","alt"].forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  paintLinkState();
+  paintWifiLabels();
+  paintTray();
+  paintInbox();
+  paintDevices();
+  if($("help-modal").classList.contains("open")) paintHelp();
+}
+
+/* ============================================================
+   2. State and small helpers
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const ENC = new TextEncoder(), DEC = new TextDecoder();
+function toast(m){ try{ window.ScuLaFolder.toast(m); }catch(e){} }
+
+let tray = [];            // what is staged to be sent  [{path,size,type,file|handle}]
+let inbox = [];           // what has arrived           [{path,size,type,blob,saved,where}]
+let busy = false;         // a transfer is running right now
+let state = "off";        // "off" | "wait" | "on" | "bad"
+let prefs = { id:"", name:"", stun:"", dest:"ask" };
+
+const link = {            // whichever transport is currently open
+  on:false, kind:null, peer:null, payload:8192,
+  send(){ return Promise.reject(new Error("no link")); },
+  close(){}
+};
+
+function fmtBytes(n){
+  if(!n && n !== 0) return "—";
+  if(n < 1024) return n + " B";
+  const u = ["kB","MB","GB","TB"];
+  let v = n / 1024, i = 0;
+  while(v >= 1024 && i < u.length - 1){ v /= 1024; i++; }
+  return (v < 10 ? v.toFixed(1) : Math.round(v)) + " " + u[i];
+}
+function fmtWhen(ts){
+  if(!ts) return t("devNever");
+  try{
+    return new Date(ts).toLocaleString(UI === "ro" ? "ro-RO" : "en-GB",
+      { dateStyle:"short", timeStyle:"short" });
+  }catch(e){ return new Date(ts).toISOString().slice(0, 16).replace("T", " "); }
+}
+function rid(){
+  const a = new Uint8Array(8);
+  (window.crypto || window.msCrypto).getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
+}
+function guessName(){
+  const p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+  const ua = navigator.userAgent || "";
+  const br = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome"
+           : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  return (br + (p ? " · " + p : "")).slice(0, 60);
+}
+// A path from the other device decides where bytes land, so it is rebuilt
+// here from scratch: no "..", no leading slash, no drive letter, nothing that
+// could walk out of the folder it was meant for.
+function safePath(p){
+  const parts = String(p == null ? "" : p).split(/[\\/]+/)
+    .map(s => s.trim().replace(/[\u0000-\u001f<>:"|?*]/g, "_").replace(/^\.+$/, ""))
+    .filter(s => s.length)
+    .map(s => s.slice(0, 120));
+  if(!parts.length) parts.push("fisier");
+  return parts.slice(0, 24).join("/");
+}
+function baseName(p){ const i = p.lastIndexOf("/"); return i < 0 ? p : p.slice(i + 1); }
+
+/* ============================================================
+   3. The device book — IndexedDB "scula-sync"
+   ------------------------------------------------------------
+   Every device this browser has talked to, kept between visits, with
+   a way to forget one or all of them. IndexedDB because it survives a
+   reload and holds structured records; localStorage is the stand-in
+   where IndexedDB is refused (private windows, some file:// setups).
+   ============================================================ */
+const Book = (function(){
+  const NAME = "scula-sync", VER = 1, DEV = "devices", META = "meta", LS = "scula:sync:";
+  let dbp = null;
+  function db(){
+    if(dbp) return dbp;
+    dbp = new Promise(function(res, rej){
+      let r;
+      try{ r = indexedDB.open(NAME, VER); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){
+        const d = r.result;
+        if(!d.objectStoreNames.contains(DEV)) d.createObjectStore(DEV, { keyPath:"id" });
+        if(!d.objectStoreNames.contains(META)) d.createObjectStore(META);
+      };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+    return dbp;
+  }
+  function tx(store, mode, run){
+    return db().then(d => new Promise(function(res, rej){
+      const t2 = d.transaction(store, mode);
+      const rq = run(t2.objectStore(store));
+      t2.oncomplete = function(){ res(rq ? rq.result : undefined); };
+      t2.onerror = function(){ rej(t2.error); };
+      t2.onabort = function(){ rej(t2.error); };
+    }));
+  }
+  function lsGet(k, d){ try{ const v = localStorage.getItem(LS + k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+  function lsSet(k, v){ try{ localStorage.setItem(LS + k, JSON.stringify(v)); }catch(e){} return v; }
+
+  return {
+    all(){ return tx(DEV, "readonly", s => s.getAll()).then(a => a || []).catch(() => lsGet("devices", [])); },
+    put(rec){
+      return tx(DEV, "readwrite", s => s.put(rec)).catch(function(){
+        const a = lsGet("devices", []).filter(x => x.id !== rec.id);
+        a.push(rec); lsSet("devices", a);
+      });
+    },
+    del(id){
+      return tx(DEV, "readwrite", s => s.delete(id))
+        .catch(() => lsSet("devices", lsGet("devices", []).filter(x => x.id !== id)));
+    },
+    clear(){ return tx(DEV, "readwrite", s => s.clear()).catch(() => lsSet("devices", [])); },
+    meta(){ return tx(META, "readonly", s => s.get("prefs")).catch(() => lsGet("prefs", null)); },
+    setMeta(v){ return tx(META, "readwrite", s => s.put(v, "prefs")).catch(() => lsSet("prefs", v)); }
+  };
+})();
+
+function savePrefs(){ return Book.setMeta(prefs); }
+
+async function remember(id, name, kind, extra){
+  if(!id) return null;
+  const all = await Book.all();
+  const rec = all.filter(d => d.id === id)[0] || { id, first: Date.now(), count:0, bytes:0 };
+  rec.name = name || rec.name || id.slice(0, 10);
+  rec.kind = kind || rec.kind;
+  rec.last = Date.now();
+  if(extra) Object.keys(extra).forEach(k => { rec[k] = extra[k]; });
+  await Book.put(rec);
+  await paintDevices();
+  return rec;
+}
+async function credit(id, files, bytes){
+  if(!id) return;
+  const all = await Book.all();
+  const rec = all.filter(d => d.id === id)[0];
+  if(!rec) return;
+  rec.count = (rec.count || 0) + files;
+  rec.bytes = (rec.bytes || 0) + bytes;
+  rec.last = Date.now();
+  await Book.put(rec);
+  await paintDevices();
+}
+async function forgetDevice(rec){
+  if(!confirm(t("forgetAsk", rec.name))) return;
+  // A Bluetooth device also holds a permission the browser granted this
+  // origin; forgetting the row without it would leave the pairing behind.
+  if(rec.kind === "ble" && navigator.bluetooth && navigator.bluetooth.getDevices){
+    try{
+      const ds = await navigator.bluetooth.getDevices();
+      const d = ds.filter(x => x.id === rec.bleId)[0];
+      if(d && d.forget) await d.forget();
+    }catch(e){}
+  }
+  await Book.del(rec.id);
+  await paintDevices();
+  toast(t("forgot", rec.name));
+}
+async function forgetEverything(){
+  if(!confirm(t("forgetAllAsk"))) return;
+  if(navigator.bluetooth && navigator.bluetooth.getDevices){
+    try{
+      const ds = await navigator.bluetooth.getDevices();
+      for(const d of ds) if(d.forget) await d.forget().catch(() => {});
+    }catch(e){}
+  }
+  await Book.clear();
+  await paintDevices();
+  toast(t("forgotAll"));
+}
+
+/* ============================================================
+   4. The wire — one framing for both transports
+   ------------------------------------------------------------
+   4-byte big-endian length, 1 type byte, then the payload. WebRTC
+   keeps message boundaries and Bluetooth does not, so the receiver
+   never trusts them: it reassembles from the length prefix either
+   way, and the same code reads both.
+   ============================================================ */
+const F = { HELLO:1, MANIFEST:2, START:3, DATA:4, END:5, DONE:6, PROGRESS:7, ERR:8 };
+const MAX_FRAME = 1 << 22;      // 4 MB - a frame bigger than this is a bug or a lie
+
+function frame(type, payload){
+  const body = payload || new Uint8Array(0);
+  const out = new Uint8Array(5 + body.length);
+  new DataView(out.buffer).setUint32(0, body.length + 1);
+  out[4] = type;
+  out.set(body, 5);
+  return out;
+}
+function jframe(type, obj){ return frame(type, ENC.encode(JSON.stringify(obj))); }
+function jparse(p){ try{ return JSON.parse(DEC.decode(p)) || {}; }catch(e){ return {}; } }
+
+function reader(onFrame){
+  let buf = new Uint8Array(0);
+  return function push(bytes){
+    if(buf.length){
+      const n = new Uint8Array(buf.length + bytes.length);
+      n.set(buf); n.set(bytes, buf.length);
+      buf = n;
+    } else buf = bytes;
+    for(;;){
+      if(buf.length < 4) return;
+      const len = new DataView(buf.buffer, buf.byteOffset, 4).getUint32(0);
+      if(len < 1 || len > MAX_FRAME) throw new Error("frame " + len);
+      if(buf.length < 4 + len) return;
+      const type = buf[4];
+      const payload = buf.slice(5, 4 + len);
+      buf = buf.slice(4 + len);
+      onFrame(type, payload);
+    }
+  };
+}
+
+/* The codes the two devices swap: JSON, deflated where the browser has
+   CompressionStream, then base64url with an "S1Z"/"S1P" marker so a code
+   pasted out of a chat window can be found inside whatever came with it. */
+function b64u(u8){
+  let s = "";
+  for(let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function unb64u(s){
+  let x = s.replace(/-/g, "+").replace(/_/g, "/");
+  while(x.length % 4) x += "=";
+  const bin = atob(x);
+  const u8 = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+async function packCode(obj){
+  const raw = ENC.encode(JSON.stringify(obj));
+  if(typeof CompressionStream === "function"){
+    try{
+      const buf = await new Response(new Blob([raw]).stream()
+        .pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer();
+      return "S1Z" + b64u(new Uint8Array(buf));
+    }catch(e){}
+  }
+  return "S1P" + b64u(raw);
+}
+async function unpackCode(text){
+  const m = String(text == null ? "" : text).replace(/\s+/g, "").match(/S1[ZP][A-Za-z0-9_-]{20,}/);
+  if(!m) throw new Error("no code");
+  let bytes = unb64u(m[0].slice(3));
+  if(m[0][2] === "Z"){
+    const buf = await new Response(new Blob([bytes]).stream()
+      .pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+    bytes = new Uint8Array(buf);
+  }
+  return JSON.parse(DEC.decode(bytes));
+}
+
+/* ============================================================
+   5. Wi-Fi — one WebRTC data channel, signalled by hand
+   ------------------------------------------------------------
+   There is no server here (CLAUDE.md rule 3), so the offer and the
+   answer are carried across by the person: copied, messaged, or
+   opened as a link. ICE gathering is waited out in full, so one code
+   carries every candidate and nothing has to trickle afterwards.
+   ============================================================ */
+let pc = null, dc = null, role = null, peerHint = null;
+
+function iceServers(){
+  const s = (prefs.stun || "").trim();
+  return s ? [{ urls: s.split(/[\s,]+/).filter(Boolean) }] : [];
+}
+function newPc(){
+  const p = new RTCPeerConnection({ iceServers: iceServers() });
+  p.onconnectionstatechange = function(){
+    if(p !== pc) return;
+    if(p.connectionState === "failed" || p.connectionState === "disconnected") dropped();
+  };
+  return p;
+}
+function iceDone(p){
+  if(p.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise(function(res){
+    const fin = function(){ p.removeEventListener("icegatheringstatechange", chk); clearTimeout(tm); res(); };
+    const chk = function(){ if(p.iceGatheringState === "complete") fin(); };
+    p.addEventListener("icegatheringstatechange", chk);
+    const tm = setTimeout(fin, 3500);   // a STUN server that never answers must not hang the page
+  });
+}
+function dcSend(bytes){
+  if(!dc || dc.readyState !== "open") return Promise.reject(new Error("closed"));
+  if(dc.bufferedAmount > 1 << 20){
+    return new Promise(function(res){
+      dc.bufferedAmountLowThreshold = 1 << 18;
+      dc.addEventListener("bufferedamountlow", function h(){
+        dc.removeEventListener("bufferedamountlow", h);
+        res();
+      }, { once:true });
+    }).then(() => { dc.send(bytes); });
+  }
+  dc.send(bytes);
+  return Promise.resolve();
+}
+function wireChannel(ch){
+  dc = ch;
+  dc.binaryType = "arraybuffer";
+  const push = reader(onFrame);
+  dc.onopen = function(){
+    const max = (pc && pc.sctp && pc.sctp.maxMessageSize) || 65536;
+    link.on = true;
+    link.kind = "wifi";
+    link.payload = Math.max(1024, Math.min(16384, max) - 64);
+    link.send = dcSend;
+    link.close = function(){ try{ dc.close(); }catch(e){} };
+    link.peer = peerHint || { id:"", name:"?" };
+    sendHello();
+    setState("on");
+    $("wifiBox").hidden = true;
+    toast(t("joined"));
+  };
+  dc.onmessage = function(ev){
+    try{ push(new Uint8Array(ev.data)); }
+    catch(e){ toast(t("sendFail")); try{ dc.close(); }catch(e2){} }
+  };
+  dc.onclose = dropped;
+}
+function closeWifi(){
+  try{ if(dc) dc.close(); }catch(e){}
+  try{ if(pc) pc.close(); }catch(e){}
+  dc = null; pc = null;
+}
+async function startOffer(){
+  if(typeof RTCPeerConnection !== "function"){ toast(t("noWebRTC")); return; }
+  closeWifi();
+  role = "offer";
+  peerHint = null;
+  pc = newPc();
+  wireChannel(pc.createDataChannel("scula", { ordered:true }));
+  await pc.setLocalDescription(await pc.createOffer());
+  await iceDone(pc);
+  $("myCode").value = await packCode({ t:"o", s: pc.localDescription.sdp, n: prefs.name, i: prefs.id });
+  $("wifiBox").hidden = false;
+  $("mineWrap").hidden = false;
+  $("theirsWrap").hidden = false;
+  $("theirCode").value = "";
+  paintWifiLabels();
+  setState("wait");
+  toast(t("offerReady"));
+}
+function startJoin(){
+  if(typeof RTCPeerConnection !== "function"){ toast(t("noWebRTC")); return; }
+  closeWifi();
+  role = "answer";
+  peerHint = null;
+  $("wifiBox").hidden = false;
+  $("mineWrap").hidden = true;
+  $("theirsWrap").hidden = false;
+  $("myCode").value = "";
+  paintWifiLabels();
+  $("theirCode").focus();
+}
+async function useTheirCode(){
+  let msg;
+  try{ msg = await unpackCode($("theirCode").value); }catch(e){ toast(t("badCode")); return; }
+  if(!msg || !msg.s){ toast(t("badCode")); return; }
+  try{
+    if(msg.t === "o"){
+      // They started it; we answer. Works whether or not "I'm joining" was pressed.
+      closeWifi();
+      role = "answer";
+      peerHint = { id: msg.i || "", name: msg.n || "?" };
+      pc = newPc();
+      pc.ondatachannel = function(ev){ wireChannel(ev.channel); };
+      await pc.setRemoteDescription({ type:"offer", sdp: msg.s });
+      await pc.setLocalDescription(await pc.createAnswer());
+      await iceDone(pc);
+      $("myCode").value = await packCode({ t:"a", s: pc.localDescription.sdp, n: prefs.name, i: prefs.id });
+      $("wifiBox").hidden = false;
+      $("mineWrap").hidden = false;
+      paintWifiLabels();
+      setState("wait");
+      toast(t("answerReady"));
+    } else if(msg.t === "a"){
+      if(!pc || role !== "offer" || pc.signalingState !== "have-local-offer"){ toast(t("badCode")); return; }
+      peerHint = { id: msg.i || "", name: msg.n || "?" };
+      await pc.setRemoteDescription({ type:"answer", sdp: msg.s });
+      setState("wait");
+    } else toast(t("badCode"));
+  }catch(e){ toast(t("badCode")); }
+}
+
+/* ============================================================
+   6. Bluetooth — Web Bluetooth, over the Nordic UART service
+   ------------------------------------------------------------
+   A browser can only be a GATT *central*: it cannot advertise, so it
+   cannot be found by another browser. The other side is therefore a
+   real peripheral speaking NUS - the Help says so in as many words,
+   because "phone to phone over BLE" is the thing people expect and
+   the one thing no browser can do.
+   ============================================================ */
+const NUS  = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const NUS_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";   // central -> device
+const NUS_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";   // device  -> central
+const BLE_MTU = 180;            // what a default 23-byte-ATT link grows to; safe everywhere
+
+let bleDev = null;
+
+async function bleAttach(device){
+  const gatt = await device.gatt.connect();
+  const svc = await gatt.getPrimaryService(NUS);
+  const rx = await svc.getCharacteristic(NUS_RX);
+  const tx = await svc.getCharacteristic(NUS_TX);
+  const push = reader(onFrame);
+  await tx.startNotifications();
+  tx.addEventListener("characteristicvaluechanged", function(ev){
+    const v = ev.target.value;
+    try{ push(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength))); }
+    catch(e){ toast(t("sendFail")); }
+  });
+  device.addEventListener("gattserverdisconnected", dropped);
+  const noResp = !!(rx.properties && rx.properties.writeWithoutResponse);
+  bleDev = device;
+  link.on = true;
+  link.kind = "ble";
+  link.payload = 2048;          // one DATA frame, split across writes below
+  link.peer = { id:"ble:" + device.id, name: device.name || t("kindBle") };
+  link.send = async function(bytes){
+    for(let i = 0; i < bytes.length; i += BLE_MTU){
+      const part = bytes.slice(i, i + BLE_MTU);
+      if(noResp && rx.writeValueWithoutResponse) await rx.writeValueWithoutResponse(part);
+      else if(rx.writeValueWithResponse) await rx.writeValueWithResponse(part);
+      else await rx.writeValue(part);
+    }
+  };
+  link.close = function(){ try{ gatt.disconnect(); }catch(e){} };
+  await remember(link.peer.id, link.peer.name, "ble", { bleId: device.id });
+  sendHello();
+  setState("on");
+  toast(t("joined"));
+}
+async function bleScan(){
+  if(!navigator.bluetooth){ $("bleNote").textContent = t("bleNoApi"); $("bleNote").hidden = false; return; }
+  try{
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [NUS] }],
+      optionalServices: [NUS]
+    });
+    setState("wait");
+    await bleAttach(device);
+  }catch(e){
+    if(e && e.name === "NotFoundError"){ setState("off"); return; }   // chooser dismissed
+    // bleAttach opens the link before it finishes; a throw halfway through
+    // must not leave a half-open one behind.
+    hangUp();
+    $("bleNote").textContent = t("bleFail") + " " + (e && e.message ? e.message : "");
+    $("bleNote").hidden = false;
+  }
+}
+async function bleReconnect(rec){
+  if(!navigator.bluetooth || !navigator.bluetooth.getDevices){ toast(t("bleNoApi")); return; }
+  try{
+    const ds = await navigator.bluetooth.getDevices();
+    const d = ds.filter(x => x.id === rec.bleId)[0];
+    if(!d){ toast(t("bleFail")); return; }
+    setState("wait");
+    await bleAttach(d);
+  }catch(e){ hangUp(); toast(t("bleFail")); }
+}
+
+/* ============================================================
+   7. One link, either road
+   ============================================================ */
+function sendHello(){
+  link.send(jframe(F.HELLO, { i: prefs.id, n: prefs.name, v:1 })).catch(() => {});
+}
+function dropped(){
+  if(!link.on && state === "off") return;
+  link.on = false;
+  link.send = function(){ return Promise.reject(new Error("no link")); };
+  setState("bad");
+  toast(t("lost"));
+  busy = false;
+  paintSendReady();
+}
+function hangUp(){
+  try{ link.close(); }catch(e){}
+  closeWifi();
+  bleDev = null;
+  link.on = false;
+  link.peer = null;
+  link.kind = null;
+  link.send = function(){ return Promise.reject(new Error("no link")); };
+  role = null;
+  busy = false;
+  $("wifiBox").hidden = true;
+  setState("off");
+}
+
+/* ============================================================
+   8. The tray — files, folders, whole trees
+   ------------------------------------------------------------
+   Everything that can be staged ends up as {path,size,type} plus
+   either a File or a FileSystemFileHandle read at send time. The
+   path is the only thing that travels, and it carries the folder
+   structure: "note/2026/plan.md" arrives inside "note/2026".
+   ============================================================ */
+function addOne(path, size, type, file, handle){
+  const p = safePath(path);
+  const i = tray.findIndex(x => x.path === p);
+  const rec = { path:p, size:size || 0, type:type || "", file:file || null, handle:handle || null };
+  if(i >= 0) tray[i] = rec; else tray.push(rec);
+  return rec;
+}
+function addFiles(list, pathOf){
+  let n = 0;
+  for(const f of list){ addOne(pathOf(f), f.size, f.type, f, null); n++; }
+  tray.sort((a, b) => a.path.localeCompare(b.path));
+  paintTray();
+  if(n) toast(t("added", n));
+  return n;
+}
+
+// A dropped folder: DataTransferItem entries, walked depth-first. The entries
+// have to be taken out of the event synchronously - by the first await the
+// DataTransfer is already empty.
+function walkEntry(entry, prefix){
+  return new Promise(function(res){
+    if(entry.isFile){
+      entry.file(function(f){ addOne(prefix + entry.name, f.size, f.type, f, null); res(); }, function(){ res(); });
+    } else if(entry.isDirectory){
+      const rd = entry.createReader();
+      const kids = [];
+      const read = function(){
+        rd.readEntries(function(batch){
+          if(!batch.length){
+            let chain = Promise.resolve();
+            kids.forEach(function(k){ chain = chain.then(() => walkEntry(k, prefix + entry.name + "/")); });
+            chain.then(res, res);
+            return;
+          }
+          for(const b of batch) kids.push(b);
+          read();
+        }, function(){ res(); });
+      };
+      read();
+    } else res();
+  });
+}
+async function fromDrop(dt){
+  const entries = [];
+  if(dt.items){
+    for(const it of dt.items){
+      const e = it.webkitGetAsEntry ? it.webkitGetAsEntry() : null;
+      if(e) entries.push(e);
+    }
+  }
+  const before = tray.length;
+  if(entries.length){
+    for(const e of entries) await walkEntry(e, "");
+    tray.sort((a, b) => a.path.localeCompare(b.path));
+    paintTray();
+    toast(t("added", tray.length - before < 0 ? 0 : tray.length - before));
+  } else if(dt.files && dt.files.length){
+    addFiles(dt.files, f => f.name);
+  }
+}
+
+// A directory handle (desktop Chrome/Edge), walked into the same shape.
+async function walkHandle(dirH, prefix, out, depth){
+  if(depth > 12) return;
+  for await (const [name, h] of dirH.entries()){
+    if(h.kind === "file"){
+      let f;
+      try{ f = await h.getFile(); }catch(e){ continue; }
+      out.push({ path: safePath(prefix + name), size: f.size, type: f.type, file:null, handle:h });
+    } else if(h.kind === "directory"){
+      await walkHandle(h, prefix + name + "/", out, depth + 1);
+    }
+  }
+}
+async function addFromHandle(dirH, prefix){
+  const out = [];
+  await walkHandle(dirH, prefix || "", out, 0);
+  if(!out.length){ toast(t("nothingThere")); return 0; }
+  for(const r of out){
+    const i = tray.findIndex(x => x.path === r.path);
+    if(i >= 0) tray[i] = r; else tray.push(r);
+  }
+  tray.sort((a, b) => a.path.localeCompare(b.path));
+  paintTray();
+  toast(t("added", out.length));
+  return out.length;
+}
+async function pickFolder(){
+  if(typeof window.showDirectoryPicker !== "function"){
+    // No desktop picker: <input webkitdirectory> is what phones and Firefox have.
+    if($("fFolder").webkitdirectory !== undefined){ $("fFolder").click(); return; }
+    toast(t("noFolderPicker"));
+    return;
+  }
+  let h;
+  try{ h = await window.showDirectoryPicker({ id:"scula-send", mode:"read" }); }
+  catch(e){ return; }
+  await addFromHandle(h, h.name + "/");
+}
+async function pickScula(){
+  const root = await window.ScuLaFolder.rootDir(true);
+  if(!root){ toast(t("noSculaFolder")); return; }
+  await addFromHandle(root, "");
+}
+function fileOf(item){
+  if(item.file) return Promise.resolve(item.file);
+  if(item.handle) return item.handle.getFile();
+  return Promise.reject(new Error("gone"));
+}
+
+/* ============================================================
+   9. Sending
+   ============================================================ */
+function paintProg(box, frac, msg){
+  const el = $(box);
+  el.hidden = false;
+  el.querySelector("i").style.width = Math.max(0, Math.min(1, frac)) * 100 + "%";
+  el.querySelector("p").textContent = msg;
+}
+async function sendTray(){
+  if(!link.on){ toast(t("noLink")); return; }
+  if(busy){ toast(t("busy")); return; }
+  if(!tray.length) return;
+  busy = true;
+  paintSendReady();
+  const items = tray.slice();
+  const total = items.reduce((a, x) => a + (x.size || 0), 0);
+  let sent = 0;
+  try{
+    await link.send(jframe(F.MANIFEST, {
+      tid: rid(), total, n: items.length,
+      files: items.map((x, i) => ({ i, path:x.path, size:x.size, type:x.type }))
+    }));
+    for(let i = 0; i < items.length; i++){
+      await link.send(jframe(F.START, { i }));
+      const f = await fileOf(items[i]);
+      let off = 0;
+      do {
+        const part = new Uint8Array(await f.slice(off, off + link.payload).arrayBuffer());
+        if(part.length) await link.send(frame(F.DATA, part));
+        off += part.length;
+        sent += part.length;
+        paintProg("sendProg", total ? sent / total : 1, t("sending", [items[i].path, fmtBytes(sent), fmtBytes(total)]));
+        if(!part.length) break;
+      } while(off < f.size);
+      await link.send(jframe(F.END, { i }));
+    }
+    await link.send(jframe(F.DONE, { n: items.length, total }));
+    paintProg("sendProg", 1, t("sendDone", [items.length, fmtBytes(total)]));
+    toast(t("sendDone", [items.length, fmtBytes(total)]));
+    if(link.peer) await credit(link.peer.id, items.length, total);
+  }catch(e){
+    paintProg("sendProg", total ? sent / total : 0, t("sendFail"));
+    toast(t("sendFail"));
+  }
+  busy = false;
+  paintSendReady();
+}
+
+/* ============================================================
+   10. Receiving
+   ============================================================ */
+let rx = null;                    // the transfer being received
+let chain = Promise.resolve();    // frames arrive synchronously; saving does not
+function later(fn){ chain = chain.then(fn).catch(function(){ toast(t("saveFail")); }); }
+
+function onFrame(type, p){
+  if(type === F.HELLO){
+    const m = jparse(p);
+    link.peer = { id: m.i || (link.peer && link.peer.id) || "", name: m.n || "?" };
+    later(() => remember(link.peer.id, link.peer.name, link.kind));
+    setState("on");
+    return;
+  }
+  if(type === F.MANIFEST){
+    const m = jparse(p);
+    const files = (m.files || []).map(f => ({ path: safePath(f.path), size: f.size | 0, type: String(f.type || "") }));
+    rx = { files, total: m.total | 0, got: 0, i: -1, parts: [], done: 0 };
+    paintProg("recvProg", 0, t("receiving", ["…", "0 B", fmtBytes(rx.total)]));
+    return;
+  }
+  if(type === F.START){
+    if(!rx) return;
+    rx.i = jparse(p).i | 0;
+    rx.parts = [];
+    return;
+  }
+  if(type === F.DATA){
+    if(!rx || rx.i < 0) return;
+    rx.parts.push(p);
+    rx.got += p.length;
+    const f = rx.files[rx.i];
+    paintProg("recvProg", rx.total ? rx.got / rx.total : 0,
+      t("receiving", [f ? f.path : "…", fmtBytes(rx.got), fmtBytes(rx.total)]));
+    return;
+  }
+  if(type === F.END){
+    if(!rx) return;
+    const i = rx.i, parts = rx.parts, f = rx.files[i];
+    rx.parts = []; rx.i = -1; rx.done++;
+    if(!f) return;
+    const blob = new Blob(parts, { type: f.type || "application/octet-stream" });
+    const rec = { path: f.path, size: blob.size, type: f.type, blob, saved:false, where:"" };
+    inbox.push(rec);
+    paintInbox();
+    later(async function(){
+      if(prefs.dest !== "ask") await autoSave(rec);
+      link.send(jframe(F.PROGRESS, { i, ok:true })).catch(() => {});
+    });
+    return;
+  }
+  if(type === F.DONE){
+    const m = jparse(p);
+    const n = rx ? rx.done : (m.n | 0), b = rx ? rx.got : (m.total | 0);
+    rx = null;
+    paintProg("recvProg", 1, t("recvDone", [n, fmtBytes(b)]));
+    toast(t("recvDone", [n, fmtBytes(b)]));
+    if(link.peer) later(() => credit(link.peer.id, n, b));
+    return;
+  }
+  // PROGRESS / ERR: the sender's own view already shows what it wrote out.
+}
+
+/* ============================================================
+   11. Saving what arrived
+   ============================================================ */
+async function uniqueName(d, name){
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let nm = name;
+  for(let i = 0; i <= 500; i++){
+    try{ await d.getFileHandle(nm); }catch(e){ return nm; }
+    nm = base + "-" + (i + 1) + ext;
+  }
+  return nm;
+}
+async function destRoot(request){
+  // "root" drops the tree straight into the chosen folder; "sub" keeps it
+  // inside this page's own subfolder. Both need a folder to exist at all.
+  const F2 = window.ScuLaFolder;
+  return prefs.dest === "root" ? F2.rootDir(request !== false) : F2.dir(request !== false);
+}
+async function writeInto(dirH, path, blob){
+  const parts = path.split("/");
+  const name = parts.pop();
+  let d = dirH;
+  for(const seg of parts) d = await d.getDirectoryHandle(seg, { create:true });
+  const nm = await uniqueName(d, name);
+  const fh = await d.getFileHandle(nm, { create:true });
+  const w = await fh.createWritable();
+  await w.write(blob);
+  await w.close();
+  return parts.concat([nm]).join("/");
+}
+async function autoSave(rec){
+  const d = await destRoot(false);
+  if(!d) return false;                 // no folder (phone, or none chosen): it waits in the list
+  try{
+    rec.where = await writeInto(d, rec.path, rec.blob);
+    rec.saved = true;
+    paintInbox();
+    return true;
+  }catch(e){ return false; }
+}
+async function saveOne(rec){
+  const d = await destRoot(true);
+  if(d){
+    try{
+      rec.where = await writeInto(d, rec.path, rec.blob);
+      rec.saved = true;
+      paintInbox();
+      return true;
+    }catch(e){}
+  }
+  const r = await window.ScuLaFolder.save(baseName(rec.path), rec.blob);
+  if(r && r.saved){ rec.saved = true; rec.where = r.path; paintInbox(); return true; }
+  return false;
+}
+async function saveEverything(){
+  const left = inbox.filter(r => !r.saved);
+  if(!left.length) return;
+  const d = await destRoot(true);
+  let n = 0;
+  if(d){
+    for(const rec of left){
+      try{
+        rec.where = await writeInto(d, rec.path, rec.blob);
+        rec.saved = true; n++;
+      }catch(e){}
+    }
+    paintInbox();
+    toast(n === left.length ? t("savedAll", n) : t("saveFail"));
+    return;
+  }
+  // No folder to write into: hand them over one at a time, which on a phone
+  // is the OS share sheet - see docs/FEATURES.md § D.
+  for(const rec of left){
+    const r = await window.ScuLaFolder.save(baseName(rec.path), rec.blob, { quiet:true });
+    if(r && r.saved){ rec.saved = true; rec.where = r.path; n++; }
+  }
+  paintInbox();
+  toast(n ? t("savedAll", n) : t("saveFail"));
+}
+
+/* A stored (uncompressed) ZIP, written by hand - it is the only way a folder
+   with subfolders arrives whole on a phone, where there is no folder to write
+   into. No deflate: the point is the structure, not the size. */
+const CRC_T = (function(){
+  const tb = new Uint32Array(256);
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    tb[n] = c >>> 0;
+  }
+  return tb;
+})();
+function crc32(u8){
+  let c = 0xFFFFFFFF;
+  for(let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function zipStore(recs){
+  const now = new Date();
+  const time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+  const date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+  const parts = [], central = [];
+  let off = 0, cdLen = 0;
+  for(const r of recs){
+    const name = ENC.encode(r.path);
+    const bytes = new Uint8Array(await r.blob.arrayBuffer());
+    const crc = crc32(bytes);
+    const lh = new Uint8Array(30 + name.length);
+    const v = new DataView(lh.buffer);
+    v.setUint32(0, 0x04034b50, true);
+    v.setUint16(4, 20, true);
+    v.setUint16(6, 0x0800, true);          // names are UTF-8
+    v.setUint16(8, 0, true);               // stored
+    v.setUint16(10, time, true); v.setUint16(12, date, true);
+    v.setUint32(14, crc, true);
+    v.setUint32(18, bytes.length, true); v.setUint32(22, bytes.length, true);
+    v.setUint16(26, name.length, true); v.setUint16(28, 0, true);
+    lh.set(name, 30);
+    parts.push(lh, bytes);
+
+    const ch = new Uint8Array(46 + name.length);
+    const w = new DataView(ch.buffer);
+    w.setUint32(0, 0x02014b50, true);
+    w.setUint16(4, 20, true); w.setUint16(6, 20, true);
+    w.setUint16(8, 0x0800, true); w.setUint16(10, 0, true);
+    w.setUint16(12, time, true); w.setUint16(14, date, true);
+    w.setUint32(16, crc, true);
+    w.setUint32(20, bytes.length, true); w.setUint32(24, bytes.length, true);
+    w.setUint16(28, name.length, true);
+    w.setUint32(42, off, true);
+    ch.set(name, 46);
+    central.push(ch);
+    cdLen += ch.length;
+    off += lh.length + bytes.length;
+  }
+  const end = new Uint8Array(22);
+  const e = new DataView(end.buffer);
+  e.setUint32(0, 0x06054b50, true);
+  e.setUint16(8, recs.length, true); e.setUint16(10, recs.length, true);
+  e.setUint32(12, cdLen, true); e.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [end]), { type:"application/zip" });
+}
+async function saveZip(){
+  if(!inbox.length) return;
+  const blob = await zipStore(inbox);
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+  const r = await window.ScuLaFolder.save(t("zipName") + "-" + stamp + ".zip", blob);
+  if(r && r.saved){ inbox.forEach(x => { x.saved = true; x.where = r.path; }); paintInbox(); }
+}
+
+/* ============================================================
+   12. Painting
+   ============================================================ */
+function peerName(){ return (link.peer && link.peer.name) || "?"; }
+
+function paintLinkState(){
+  const el = $("linkState");
+  el.classList.remove("on", "busy", "bad");
+  if(state === "on"){ el.classList.add("on"); el.textContent = t("stOn", peerName()); }
+  else if(state === "wait"){ el.classList.add("busy"); el.textContent = t("stWait"); }
+  else if(state === "bad"){ el.classList.add("bad"); el.textContent = t("stBad"); }
+  else el.textContent = t("stOff");
+
+  $("liveActs").hidden = !(state === "on" || state === "wait");
+  const info = $("linkInfo");
+  info.hidden = state !== "on";
+  if(state === "on"){
+    info.textContent = t("stOn", peerName()) + " · " + (link.kind === "ble" ? t("kindBle") : t("kindWifi"));
+  }
+  paintSendReady();
+}
+function paintSendReady(){
+  $("sendBtn").disabled = !(link.on && tray.length && !busy);
+}
+function paintWifiLabels(){
+  $("myCodeLab").textContent = role === "answer" ? t("myCodeBack") : t("myCode");
+  $("theirCodeLab").textContent = role === "offer" ? t("theirCodeAnswer") : t("theirCode");
+  $("bleScan").textContent = bleDev ? t("bleAgain") : t("bleScan");
+}
+function pathCell(p){
+  const i = p.lastIndexOf("/");
+  const span = document.createElement("span");
+  span.className = "nm";
+  if(i >= 0){
+    const d = document.createElement("span");
+    d.className = "dir";
+    d.textContent = p.slice(0, i + 1);
+    span.appendChild(d);
+  }
+  span.appendChild(document.createTextNode(i >= 0 ? p.slice(i + 1) : p));
+  span.title = p;
+  return span;
+}
+function paintTray(){
+  const box = $("tray");
+  box.textContent = "";
+  let total = 0;
+  tray.forEach(function(item, i){
+    total += item.size || 0;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.appendChild(pathCell(item.path));
+    const sz = document.createElement("span");
+    sz.className = "sz";
+    sz.textContent = fmtBytes(item.size);
+    row.appendChild(sz);
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "x";
+    x.textContent = "✕";
+    x.setAttribute("aria-label", t("clearTray"));
+    x.addEventListener("click", function(){ tray.splice(i, 1); paintTray(); });
+    row.appendChild(x);
+    box.appendChild(row);
+  });
+  $("traySum").textContent = tray.length ? t("traySum", [tray.length, fmtBytes(total)]) : t("trayEmpty");
+  $("clearTray").hidden = !tray.length;
+  paintSendReady();
+}
+function paintInbox(){
+  const box = $("inbox");
+  box.textContent = "";
+  let total = 0, left = 0;
+  inbox.forEach(function(rec){
+    total += rec.size || 0;
+    if(!rec.saved) left++;
+    const row = document.createElement("div");
+    row.className = "row" + (rec.saved ? " done" : "");
+    row.appendChild(pathCell(rec.path));
+    const sz = document.createElement("span");
+    sz.className = "sz";
+    sz.textContent = rec.saved ? "✓ " + fmtBytes(rec.size) : fmtBytes(rec.size);
+    if(rec.saved && rec.where) sz.title = rec.where;
+    row.appendChild(sz);
+    if(!rec.saved){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn sm ghost";
+      b.textContent = t("save");
+      b.addEventListener("click", function(){ saveOne(rec); });
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  });
+  $("inboxSum").textContent = inbox.length ? t("traySum", [inbox.length, fmtBytes(total)]) : t("inboxEmpty");
+  $("saveAll").disabled = !left;
+  $("saveZip").disabled = !inbox.length;
+  $("clearInbox").hidden = !inbox.length;
+}
+async function paintDevices(){
+  const box = $("devList");
+  const all = (await Book.all()).sort((a, b) => (b.last || 0) - (a.last || 0));
+  box.textContent = "";
+  if(!all.length){
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = t("noDevices");
+    box.appendChild(p);
+    return;
+  }
+  all.forEach(function(rec){
+    const row = document.createElement("div");
+    row.className = "dev" + (link.on && link.peer && link.peer.id === rec.id ? " live" : "");
+    const k = document.createElement("span");
+    k.className = "kind";
+    k.textContent = rec.kind === "ble" ? "🔵" : "📶";
+    k.title = rec.kind === "ble" ? t("kindBle") : t("kindWifi");
+    row.appendChild(k);
+
+    const who = document.createElement("span");
+    who.className = "who";
+    const nm = document.createElement("b");
+    nm.className = "nm";
+    nm.textContent = rec.name || rec.id;
+    const sub = document.createElement("span");
+    sub.className = "sub";
+    sub.textContent = t("devSeen", fmtWhen(rec.last)) + " · " + t("devStats", [rec.count || 0, fmtBytes(rec.bytes || 0)]);
+    who.appendChild(nm);
+    who.appendChild(sub);
+    row.appendChild(who);
+
+    if(rec.kind === "ble" && navigator.bluetooth && navigator.bluetooth.getDevices && !link.on){
+      const rc = document.createElement("button");
+      rc.type = "button";
+      rc.className = "btn sm ghost";
+      rc.textContent = t("reconnect");
+      rc.addEventListener("click", function(){ bleReconnect(rec); });
+      row.appendChild(rc);
+    }
+    const fg = document.createElement("button");
+    fg.type = "button";
+    fg.className = "btn sm danger";
+    fg.textContent = t("forget");
+    fg.addEventListener("click", function(){ forgetDevice(rec); });
+    row.appendChild(fg);
+    box.appendChild(row);
+  });
+}
+function setState(s){ state = s; paintLinkState(); }
+
+/* ============================================================
+   13. Wiring
+   ============================================================ */
+function showTab(which){
+  document.querySelectorAll(".tabs .btn").forEach(b => b.classList.toggle("on", b.dataset.trans === which));
+  $("pane-wifi").hidden = which !== "wifi";
+  $("pane-ble").hidden = which !== "ble";
+}
+document.querySelectorAll(".tabs .btn").forEach(function(b){
+  b.addEventListener("click", function(){ showTab(b.dataset.trans); });
+});
+
+$("btnOffer").addEventListener("click", startOffer);
+$("btnJoin").addEventListener("click", startJoin);
+$("useCode").addEventListener("click", useTheirCode);
+$("disconnect").addEventListener("click", hangUp);
+$("bleScan").addEventListener("click", bleScan);
+$("forgetAll").addEventListener("click", forgetEverything);
+
+async function toClipboard(text, okMsg){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast(okMsg);
+    return;
+  }catch(e){}
+  try{
+    // execCommand copies a selection, so the text has to be in the document:
+    // a scratch textarea, not #myCode, which may not be what was asked for.
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.setAttribute("readonly", "");
+    el.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    document.body.appendChild(el);
+    el.select();
+    const ok = document.execCommand("copy");
+    el.remove();
+    if(ok){ toast(okMsg); return; }
+  }catch(e){}
+  toast(t("copyFail"));
+}
+$("copyCode").addEventListener("click", function(){ toClipboard($("myCode").value, t("copied")); });
+$("copyLink").addEventListener("click", function(){
+  const base = location.href.split("#")[0];
+  toClipboard(base + "#c=" + $("myCode").value, t("linkCopied"));
+});
+$("pasteCode").addEventListener("click", async function(){
+  try{
+    const s = await navigator.clipboard.readText();
+    if(s){ $("theirCode").value = s; return; }
+  }catch(e){}
+  $("theirCode").focus();
+  toast(t("pasteFail"));
+});
+
+$("pickFiles").addEventListener("click", function(){ $("fFiles").click(); });
+$("pickFolder").addEventListener("click", pickFolder);
+$("pickScula").addEventListener("click", pickScula);
+$("fFiles").addEventListener("change", function(){
+  addFiles(this.files, f => f.name);
+  this.value = "";
+});
+$("fFolder").addEventListener("change", function(){
+  addFiles(this.files, f => f.webkitRelativePath || f.name);
+  this.value = "";
+});
+$("clearTray").addEventListener("click", function(){ tray = []; paintTray(); });
+$("sendBtn").addEventListener("click", sendTray);
+
+const drop = $("drop");
+["dragenter", "dragover"].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("over"); });
+});
+["dragleave", "dragend"].forEach(function(ev){
+  drop.addEventListener(ev, function(){ drop.classList.remove("over"); });
+});
+drop.addEventListener("drop", function(e){
+  e.preventDefault();
+  drop.classList.remove("over");
+  fromDrop(e.dataTransfer);
+});
+// Anywhere else on the page, a dropped file must not navigate away from it.
+window.addEventListener("dragover", function(e){ e.preventDefault(); });
+window.addEventListener("drop", function(e){ e.preventDefault(); });
+
+$("saveAll").addEventListener("click", saveEverything);
+$("saveZip").addEventListener("click", saveZip);
+$("clearInbox").addEventListener("click", function(){ inbox = []; paintInbox(); $("recvProg").hidden = true; });
+$("dest").addEventListener("change", function(){ prefs.dest = this.value; savePrefs(); });
+$("myName").addEventListener("change", function(){
+  prefs.name = (this.value || "").trim().slice(0, 60) || guessName();
+  this.value = prefs.name;
+  savePrefs();
+});
+$("stun").addEventListener("change", function(){ prefs.stun = (this.value || "").trim(); savePrefs(); });
+
+/* ---- Help (docs/MAP.md "The Help modal") ---- */
+function paintHelp(){ $("help-body").innerHTML = t("helpBody"); }
+function openHelp(){ paintHelp(); $("help-modal").classList.add("open"); }
+function closeHelp(){ $("help-modal").classList.remove("open"); }
+$("helpBtn").addEventListener("click", openHelp);
+$("help-close").addEventListener("click", closeHelp);
+$("help-modal").addEventListener("click", function(ev){ if(ev.target === $("help-modal")) closeHelp(); });
+document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeHelp(); });
+
+// The shared nav owns the language; it announces changes to whoever cares.
+window.addEventListener("scula-ui-lang", function(ev){
+  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
+});
+
+/* ============================================================
+   14. Init
+   ============================================================ */
+(function init(){
+  try{ UI = localStorage.getItem("scula:ui-lang") || "ro"; }catch(e){}
+  applyUILang();
+  Book.meta().then(function(p){
+    prefs = Object.assign({ id:"", name:"", stun:"", dest:"ask" }, p || {});
+    if(!prefs.id) prefs.id = rid();
+    if(!prefs.name) prefs.name = guessName();
+    $("myName").value = prefs.name;
+    $("stun").value = prefs.stun || "";
+    $("dest").value = prefs.dest || "ask";
+    savePrefs();
+  }).catch(function(){
+    prefs.id = rid();
+    prefs.name = guessName();
+    $("myName").value = prefs.name;
+  }).then(function(){
+    // A code can arrive as a link: transfer.html#c=S1… - fill the box, and
+    // drop it from the address bar so a reload doesn't re-offer a spent code.
+    const m = (location.hash || "").match(/S1[ZP][A-Za-z0-9_-]{20,}/);
+    if(m){
+      showTab("wifi");
+      role = "answer";
+      $("wifiBox").hidden = false;
+      $("mineWrap").hidden = true;
+      $("theirsWrap").hidden = false;
+      $("theirCode").value = m[0];
+      paintWifiLabels();
+      toast(t("linkHint"));
+      try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    }
+  });
+})();
+</script>
+</body></html>

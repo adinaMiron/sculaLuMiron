@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Five standalone browser tools. **No build step, no framework, no package
+Six standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
@@ -11,14 +11,16 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 11224 | 97k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + Google Drive sync | dark (earth) |
 | `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
+| `transfer.html` | 2961 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
 "markdown page" / "index" → `index.html` · "retete" / "rețete" →
 `recipes.html` · "voice" / "caiet vocal" → `voice.html` ·
 "editor.html" / "mazgaleste" / "drawing page" → `editor.html` ·
-"calendar" / "calendarul" → `calendar.html`. The nav order is Markdown,
-Calendar, Caiet vocal, Rețete, Mazgaleste, and the old "Editor" label is
-now "Mazgaleste". `index.html` is the markdown editor — it's the file
+"calendar" / "calendarul" → `calendar.html` · "transfer" / "sync" /
+"trimite pe alt dispozitiv" → `transfer.html`. The nav order is Markdown,
+Calendar, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old "Editor"
+label is now "Mazgaleste". `index.html` is the markdown editor — it's the file
 served at the site root, and its nav link is the one highlighted as
 current when the site loads at `/` (see the `here` fallback in the shared
 nav script).
@@ -29,7 +31,7 @@ sync docs).
 
 ## Rule 1: never read a whole HTML file
 
-Reading all five costs ~265k tokens; `recipes.html` alone is 89k and
+Reading all six costs ~295k tokens; `recipes.html` alone is 89k and
 `index.html` 76k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
@@ -38,7 +40,7 @@ grep -n "functionName\|#elementId" editor.html   # locate
 sed -n '1084,1144p' editor.html                  # read just that
 ```
 
-`docs/MAP.md` has line anchors for every section of all four files. Read
+`docs/MAP.md` has line anchors for every section of all six files. Read
 it instead of exploring. It is far cheaper than one file scan.
 
 ## Routing — read only what the task needs
@@ -62,24 +64,25 @@ it instead of exploring. It is far cheaper than one file scan.
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
 | **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md` | `docs/FEATURES.md` § E |
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
+| **Moving files to another device** — the Wi-Fi (WebRTC) link and its codes, the Bluetooth (NUS) one, folder trees, the received-file routes, the device book and forgetting a device | `docs/FEATURES.md` § Q |
 
 Do not read a doc the task doesn't touch.
 
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all five files — from the `<nav id="site-nav">` line through the
-`<!-- ===== end toolbar nav ===== -->` marker (~1120 lines; starts near
-`voice.html:226`, `editor.html:427`, `index.html:1548`,
-`recipes.html:524`, `calendar.html:248`, but these **drift** — grep the
-`<nav` line). It carries the nav links, the UI-language toggle,
+in all six files — from the `<nav id="site-nav">` line through the
+`<!-- ===== end toolbar nav ===== -->` marker (~1138 lines; starts near
+`voice.html:260`, `editor.html:452`, `index.html:1840`,
+`recipes.html:527`, `calendar.html:269`, `transfer.html:197`, but these
+**drift** — grep the `<nav` line). It carries the nav links, the UI-language toggle,
 **`window.ScuLaFolder`** — which decides where every saved file goes
 (`docs/FEATURES.md` § D) — **and `window.ScuLaCal`**, the shared calendar
 store every page can write events into (`docs/FEATURES.md` § L). Any change
-to it must be applied to **all five** or they drift.
+to it must be applied to **all six** or they drift.
 
 **Verify with `/verify`** — it extracts the block by those two anchors (no
-line numbers) and diffs all five.
+line numbers) and diffs all six.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -88,6 +91,12 @@ block's `SUBDIR` map, so the new page gets its own folder.
 
 - **Single file per app.** Don't split into `.css`/`.js` or introduce a
   bundler, npm, or a framework. The apps are meant to run from `file://`.
+- **A browser API is not a dependency.** `transfer.html` speaks WebRTC and
+  Web Bluetooth, and neither adds a file, a script tag or a server: the
+  two devices talk to each other. The one thing it will not grow is a
+  signalling server — the offer and the answer are carried across by the
+  person (§ Q). A STUN address is a field, empty by default, in the same
+  spirit as the OCR URL below.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
   CDN in `index.html:1390` (docx import). Don't add more. (Google Identity
   Services is fetched on demand by the two Drive features — `editor.html`'s
@@ -141,11 +150,11 @@ block's `SUBDIR` map, so the new page gets its own folder.
 Run **`/verify`** — it does both the JS parse-check and the nav-sync diff.
 A PostToolUse hook (`.claude/hooks/check-html-js.sh`) already parse-checks
 the file you just edited on every save and blocks on a syntax error; `/verify`
-is the before-done check across all four.
+is the before-done check across all six.
 
 ```bash
-# JS in every <script> block still parses (verified working on all 5 files)
-for f in voice.html editor.html index.html recipes.html calendar.html; do
+# JS in every <script> block still parses (verified working on all 6 files)
+for f in voice.html editor.html index.html recipes.html calendar.html transfer.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
@@ -180,7 +189,13 @@ the recipe library, and the picker putting a meal on a day under a chosen
 flag with the day total following; and `targets.js` — the daily calorie
 and macro targets: the three verdicts, an empty field staying out of the
 comparison, the two rows the markdown gains, and the difference row
-following a quantity edited inside the exported page), for `calendar.html` (`calendar.js` — the event
+following a quantity edited inside the exported page), for `transfer.html` (`transfer.js` — two
+devices at once: two browser contexts, the offer and the answer carried
+between them the way a person carries them, a folder tree sent over a real
+`RTCDataChannel` and read back byte for byte, the hand-written store-only
+`.zip` parsed back out, the device book kept across a reload and forgotten
+on demand, and the Bluetooth half driven against a stub NUS peripheral),
+for `calendar.html` (`calendar.js` — the event
 modal writing a real Google-shaped event, all four views including the
 week block's geometry and drag-to-create on the hour grid, search, the
 four facet filters, and both exports plus the `.ics` round-trip; it also

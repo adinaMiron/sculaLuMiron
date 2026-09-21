@@ -1,6 +1,6 @@
 # webPages
 
-Four standalone browser tools. No build step, no dependencies to install —
+Six standalone browser tools. No build step, no dependencies to install —
 open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
@@ -8,9 +8,11 @@ open any `.html` file in a browser and it runs.
 | **Caiet vocal** | `voice.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `index.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, and an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`. |
+| **Calendar** | `calendar.html` | Events on days and hours — month, week, day and agenda views — kept in Google Calendar's own event shape, so the `.ics` and JSON exports are what Google takes. |
+| **Transfer** | `transfer.html` | Moves a file, a pile of files or a whole folder tree to another device: **Wi-Fi** (a direct WebRTC link, two codes swapped by hand, no server) or **Bluetooth** (a device speaking the Nordic UART service). Remembers the devices it has talked to, and forgets them on request. |
 | **Rețete** | `recipes.html` | Reads a meal plan or a recipe book out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. Reads its own PDFs and its own JPEG 2000 scans, recognises photos in the page, and lets a hundred days be searched, filtered and rearranged. |
 
-All four share a common nav bar and link to each other.
+All six share a common nav bar and link to each other.
 
 ## Running
 

@@ -12,12 +12,13 @@ light/dark, with no build step.
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `recipes.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 | `calendar.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
+| `transfer.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 
 None of the five files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
 
-`recipes.html` and `calendar.html` were written after the migrations, so
+`recipes.html`, `calendar.html` and `transfer.html` were written after the migrations, so
 they carry the full target set below from their first commit — including
 the `--text-3`,
 `--accent-2`, `--accent-soft` and `--ok` roles the older files only partly
