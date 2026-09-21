@@ -1983,6 +1983,101 @@ real thing, a stub NUS peripheral for the Bluetooth half.
 
 ---
 
+## R. The timeline (`index.html`)
+
+Dates down the left of a note and what happened beside them, drawn as a
+real timeline: an `<svg>` with a dot per entry where its date falls, and
+the list of entries under it.
+
+### The syntax
+
+Three characters, and the line is the whole thing:
+
+```
+#1961 - !Kennedy anunță ținta
+#1967-01-27 - !Apollo 1 — incendiul de la rampă
+#1968-12 - ![Apollo 8](https://ro.wikipedia.org/wiki/Apollo_8)
+#1969-07-20 - !**Apollo 11** — primul om pe Lună
+```
+
+- `#` opens the **date**, `!` opens **what happened**, and the `-` between
+  them is the markdown link that ties the two together. The spaces around
+  the `-` are required — without them `#2026-09` would eat its own
+  separator.
+- **Consecutive lines are one timeline.** A blank line between two entries
+  is part of the run, not the end of it (people space a list out while
+  writing it); a paragraph, a table, a fence or a heading ends it.
+- The date is a year, a month or a day, written either way round:
+  `#1969`, `#2026-09`, `#2026-09-21`, `#21.09.2026`, `#09.2026`. A
+  timeline may mix them — a month only refines its year.
+- The **whole line** has to be an entry, the way a causal chain has to be
+  a whole line (§ M). `#` only opens a date when a ` - !` follows it on
+  the same line, so a `# heading`, a `#tag` and a `#rrggbb` colour are all
+  left alone and nothing fires inside a sentence. (`TAG_RE` needs a letter
+  in the tag, so `#1969` was never a tag to begin with.)
+
+### What the `!` opens
+
+The marker doubles as the `!` of an image, so a picture is written the way
+it is written anywhere else, and the same shape pointing at something that
+is not a picture is what a person means by a link:
+
+| Written | Read as |
+|---|---|
+| `!Primul om pe Lună` | text — ordinary inline markdown |
+| `![lună](luna.png)` | an image (the path ends in a picture, or is a `data:image/…`) |
+| `![Apollo 11](https://nasa.gov)` | a link |
+| `![[imagine.png]]` | the wiki embed, untouched (§ G) |
+
+Everything after the marker goes through `applyInline()`, so `[[links]]`,
+`#tags`, `**bold**` and `` `code` `` all still work inside an entry. An
+importance marker needs its own `!` — `#2026 - !!vital …`.
+
+### The drawing
+
+`mdTimelineHtml()` builds it. **The x of every dot is a percentage and
+every y is a pixel** — that is the one decision worth knowing. A `viewBox`
+would scale the whole drawing down with the pane and leave a date four
+pixels tall in a narrow preview; percentages stretch only the spacing, so
+the type, the dots and the spine keep the size they were drawn at.
+
+- A dot sits where its date falls between the first and the last. Where
+  the dates cannot say (one entry, or every entry on the same day) the
+  dots are spaced evenly, and two that would land on top of each other are
+  nudged apart.
+- Date labels use two rows, and one that fits on neither is dropped rather
+  than drawn over its neighbour — the dot and its number still say which
+  entry it is. Spacing is decided against an assumed 450 px, so a narrow
+  preview is the case that has to hold.
+- The arrowhead is a `<marker>`, because nothing else can sit at the far
+  end of a line whose x is a percentage.
+- The dot's number and the entry's number are one thing: the list is an
+  `<ol>` and the badge is a CSS counter, so there is nothing to keep in
+  step.
+- Colours are the existing tokens (`--accent`, `--border`, `--text-2`) —
+  no new ones. The exported page carries the same rules in literal hex,
+  like the rest of that template (§ C).
+
+### Adding to it
+
+- **Another date shape.** One alternative in `TL_DATE_SRC` and the
+  matching branch in `tlDateValue()`. Nothing else reads the date.
+- **Another kind of content.** One branch in `tlContentHtml()`; the
+  fallback is already "inline markdown", so most things need nothing.
+- The toolbar's ⏳ button (`insertTimeline()`) writes three entries to
+  write over — a sentence, a link and a picture.
+
+### Testing
+
+`tests/timeline.js` — the run becoming one block, the dates kept as
+written, the three kinds of content, the dot placed by its date (asserted
+on real geometry, not on the attribute), a heading/`#tag`/colour/causal
+line left alone, the blank line inside a run, the table and the fence that
+end one, two entries on one day, the toolbar button, both languages and
+the export. Run: `/apptest timeline`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors

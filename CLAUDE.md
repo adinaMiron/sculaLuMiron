@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 3668 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 11224 | 97k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + Google Drive sync | dark (earth) |
+| `index.html` | 11677 | 100k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + Google Drive sync | dark (earth) |
 | `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 | `transfer.html` | 2961 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
@@ -57,6 +57,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | `[[wikilinks]]`, `#tags`, the knowledge graph | `docs/FEATURES.md` § G |
 | **Google Drive / the Gmail account** — the chapters following the account across browsers, the manifest, tombstones, or anything OAuth | `docs/FEATURES.md` § O (`index.html`) and § D (`editor.html`) |
 | The **causality diagram** — `a -> b` / `-\|` / `~>`, key words, feedback loops, circular causality | `docs/FEATURES.md` § M |
+| The **timeline** — `#1969 - !ce s-a întâmplat`, the dates, the SVG drawing, what the `!` can hold | `docs/FEATURES.md` § R |
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
@@ -230,7 +231,10 @@ export string, and the graph scanner not minting a node for it), the
 (`idea.js`), the editor's own undo/redo history (`mdundo.js` — real
 keystrokes and the real toolbar buttons), the blank-line-above/below
 shortcuts (`mdlines.js` — Ctrl+Enter / Ctrl+Shift+Enter, caret placement
-and one-step undo) and the copy-to-clipboard button
+and one-step undo), the **timeline** (`timeline.js` — the run of
+`#date - !what` lines becoming one block, text · image · link, the dot
+placed by its date asserted on real geometry, what must *not* become a
+timeline, both languages and the export) and the copy-to-clipboard button
 on code blocks in the HTML
 export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
