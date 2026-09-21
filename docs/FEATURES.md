@@ -485,6 +485,18 @@ The token (about an hour) and the folder are kept in `localStorage`
 one silent re-auth and retry. Right-clicking the button forgets both, the same
 gesture the folder button next to it uses.
 
+**Connecting once turns every save into two.** The first successful connect
+(the button's click handler, the `!connected` branch) sets `driveAutosync`
+and persists it as `gdrive_autosync` in `localStorage`, so it survives a
+reload the same way the folder does. From then on `saveOut()` — the one
+function every save button in the page calls (`#saveBtn`, "Save all sizes",
+and the screen-recording save) — also calls `driveAutoUpload()`, which
+pushes the same blob to Drive whenever `driveAutosync` is set **and**
+`driveLive()` is true. It never opens a popup: a lapsed token just skips
+that pass silently rather than interrupting the local save, the same
+principle `index.html`'s `cloudAutoSync()` (§ O) uses. Forgetting the
+connection (right-click, full forget) clears `driveAutosync` too.
+
 Scope is `drive.file` — the page only ever sees files it made itself. That is
 also why the folder is *not* browsed: with `drive.file`, `files.list` returns
 nothing but this page's own files, so by default the drawings go to a

@@ -5509,10 +5509,22 @@ function renderComposite(w, h, opts){
   return out;
 }
 
+// Once the person has connected Drive at least once (driveAutosync, set on
+// that first connect and kept in localStorage), every save also pushes a
+// copy there - never opening a popup, so a lapsed token just skips this pass
+// silently rather than interrupting the save that's actually in progress.
+function driveAutoUpload(filename, blob){
+  if (!driveAutosync || !driveLive()) return;
+  driveUpload(filename, blob).catch(() => {}).then(paintDrive);
+}
+
 // Everything this page writes goes through the shared nav block: into
 // <default folder>/desen on desktop, the OS share sheet on a phone, or a
 // download. It reports the outcome in the shared toast itself.
-const saveOut = (filename, blob) => ScuLaFolder.save(filename, blob);
+const saveOut = (filename, blob) => {
+  driveAutoUpload(filename, blob);
+  return ScuLaFolder.save(filename, blob);
+};
 
 document.getElementById('saveBtn').addEventListener('click', () => {
   if (!state.canvasReady) return;
@@ -5722,7 +5734,7 @@ const DRIVE = {
 };
 
 const driveBtn = document.getElementById('driveBtn');
-let driveToken = null, driveTokenExp = 0, driveFolder = null, driveClient = null;
+let driveToken = null, driveTokenExp = 0, driveFolder = null, driveClient = null, driveAutosync = false;
 
 // An access token lives about an hour; keeping it means a reload doesn't
 // re-open the Google popup.
@@ -5731,6 +5743,7 @@ try {
   const ex = Number(localStorage.getItem('gdrive_token_exp')) || 0;
   if (tk && ex > Date.now() + 60000) { driveToken = tk; driveTokenExp = ex; }
   driveFolder = JSON.parse(localStorage.getItem('gdrive_folder') || 'null');
+  driveAutosync = localStorage.getItem('gdrive_autosync') === '1';
 } catch (e) {}
 
 function driveLive(){ return !!driveToken && driveTokenExp > Date.now() + 60000; }
@@ -5759,9 +5772,13 @@ function driveForget(tokenOnly){
   try {
     localStorage.removeItem('gdrive_token');
     localStorage.removeItem('gdrive_token_exp');
-    if (!tokenOnly) { localStorage.removeItem('gdrive_folder'); localStorage.removeItem('gdrive_folder_id'); }
+    if (!tokenOnly) {
+      localStorage.removeItem('gdrive_folder');
+      localStorage.removeItem('gdrive_folder_id');
+      localStorage.removeItem('gdrive_autosync');
+    }
   } catch (e) {}
-  if (!tokenOnly) driveFolder = null;
+  if (!tokenOnly) { driveFolder = null; driveAutosync = false; }
 }
 
 async function driveAuth(){
@@ -5891,6 +5908,8 @@ if (driveBtn) {
       if (!connected) {
         await driveAuth();
         const f = await driveEnsureFolder();
+        driveAutosync = true;
+        try { localStorage.setItem('gdrive_autosync', '1'); } catch (e) {}
         ScuLaFolder.toast(t('driveConnected', f.name));
         return;
       }

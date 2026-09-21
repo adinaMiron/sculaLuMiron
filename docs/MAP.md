@@ -222,10 +222,10 @@ Script sections (banners `/* ===== Title ===== */`):
 | **4680** | **Pointer interaction** — the one gesture layer: `pointers`/`gesture`, `beginPinch`/`updatePinch`, `releasePointer`, `maybeDoubleTap`, then `onDown`/`onMove`/`onUp` |
 | 5187 | Text editing overlay — `openTextEditor`, `positionEditor` (+ the `repositionEditor` hook the viewport calls) |
 | 5223 | Keyboard shortcuts |
-| **5312** | **Save** — `EXPORT_MARGIN`/`inkBounds`/`exportRect` (what an export frames), `renderComposite`, **`saveOut()`** 5401 (one line onto `ScuLaFolder.save`) |
-| 5413 | Save all sizes (zip) — `qualifyingSizes(rect)`, `makeZip`, `crc32` |
-| 5529 | Fonts ready — `document.fonts.load()` startup pass |
-| **5602** | **Google Drive** — `DRIVE` config, `loadScriptOnce`, `driveAuth` (Google Identity Services, in a popup), `driveFetch` (one 402 retry), `drivePickFolder` (only if `DRIVE.API_KEY` is filled in), `driveEnsureFolder` (otherwise a "Mazgaleste" folder it creates), `driveUpload`, `paintDrive`. Both Google scripts are fetched on the first click, never at page load. Tested by `tests/drive.js` against a stubbed Drive API |
+| **5312** | **Save** — `EXPORT_MARGIN`/`inkBounds`/`exportRect` (what an export frames), `renderComposite`, **`driveAutoUpload()`** 5516 (§ Google Drive below, called by every save once connected), **`saveOut()`** 5524 (`ScuLaFolder.save`, plus `driveAutoUpload`) |
+| 5539 | Save all sizes (zip) — `qualifyingSizes(rect)`, `makeZip`, `crc32` |
+| 5692 | Fonts ready — `document.fonts.load()` startup pass |
+| **5728** | **Google Drive** — `DRIVE` config, `loadScriptOnce`, `driveAuth` (Google Identity Services, in a popup), `driveFetch` (one 402 retry), `drivePickFolder` (only if `DRIVE.API_KEY` is filled in), `driveEnsureFolder` (otherwise a "Mazgaleste" folder it creates), `driveUpload`, `paintDrive`. Both Google scripts are fetched on the first click, never at page load. **Connecting once sets `driveAutosync`** (persisted as `gdrive_autosync`), which is what makes `saveOut()` above also push to Drive on every later save — `docs/FEATURES.md` § D. Tested by `tests/drive.js` against a stubbed Drive API |
 
 Largest region by far is Rendering (3062–3906); go straight to the
 specific `drawX()` you need.
