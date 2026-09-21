@@ -357,6 +357,7 @@
     white-space: nowrap;
   }
   .wb-crumb[hidden] { display: none; }
+  #btn-map[hidden] { display: none; }
 
   #stat-wb { color: var(--text-2); }
 
@@ -1271,6 +1272,21 @@
     white-space: nowrap;
   }
 
+  /* "^@Castelul Peleș" — a place flagged in the source, rendered as a pill
+     and drawn by the Hartă page (docs/FEATURES.md § S). Reuses --imp-nice,
+     the mossy teal the tags already carry: a place is a quiet "this is
+     where", not an alarm. Its label is the address the person typed, so
+     unlike .md-date it needs no repaint on a language switch. */
+  .md-geo {
+    display: inline-block;
+    color: var(--imp-nice);
+    background: color-mix(in srgb, var(--imp-nice) 15%, transparent);
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 0.9em;
+  }
+  .md-geo .geo-note { color: var(--text-3); font-style: italic; }
+
   /* "Name>> " — the name of whoever a task is handed to, picked out from
      the surrounding text. Reuses --danger (the shared terracotta status
      colour) rather than minting a new token, since it needs to read as an
@@ -1891,6 +1907,7 @@
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
   <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="map.html" data-page="map.html">Hartă</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
@@ -2101,6 +2118,7 @@
   var SUBDIR = {
     "voice.html": "transcript",
     "calendar.html": "calendar",
+    "map.html": "harta",
     "editor.html": "desen",
     "index.html": "markdown",
     "recipes.html": "retete",
@@ -3024,6 +3042,151 @@
     changed: fire
   };
 })();
+
+/* ============================================================
+   window.ScuLaGeo - the "^@" location marker
+   ------------------------------------------------------------
+   "^@Castelul Peles", "^@44.4268, 26.1025", "^@Strada Lipscani 12,
+   Bucuresti" - a place flagged in markdown, the way "@date" flags a day
+   for the calendar. The syntax lives here, in the block every page
+   carries, and not in the page that writes it, so index.html (which
+   paints the markers and sends them) and map.html (which draws them)
+   can never drift apart - docs/FEATURES.md § S.
+   ============================================================ */
+(function(){
+  var KEY = "scula:map:payload";
+
+  // "^@" then the place, to the end of the line. A "#tag" ends it - the tag
+  // belongs to the line, not to the address - and so does a "<": by the time
+  // index.html runs this over a rendered line, every "<" in it is a tag that
+  // line's own rendering produced. The lead class is TAG_RE's, so "a^@b"
+  // mid-word is not a marker, and one inside `inline code` (which by then
+  // follows "`" or ">") is left alone.
+  //
+  // The tail is a lookahead, not part of the match, so the space *before* a
+  // trailing "#tag" survives: without it the pill this becomes would put the
+  // tag straight after a ">", which is exactly the lead TAG_RE refuses, and
+  // the tag would stop being one. "m", because applyInline() is handed whole
+  // paragraphs and a line start inside one still starts a marker.
+  function markRe(){ return /(^|[\s(\[{])\^@[ \t]*([^\n<#]*?)(?=[ \t]*(?:[<#]|$))/gm; }
+
+  // "44.4268, 26.1025" or "44.4268N 26.1025E" -> {lat, lon}. A pair of bare
+  // integers ("Sector 3, 5") is not coordinates: one of the numbers must
+  // carry a decimal point, or both must carry a hemisphere letter. V is
+  // Romanian for West, so it counts as one.
+  function coords(s){
+    var str = String(s == null ? "" : s).trim();
+    var m = /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])?\s*[,;]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])?$/.exec(str)
+         || /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])\s+([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])$/.exec(str);
+    if(!m) return null;
+    if(!(m[2] && m[4]) && m[1].indexOf(".") < 0 && m[3].indexOf(".") < 0) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[3]);
+    if(m[2] && /[Ss]/.test(m[2])) lat = -lat;
+    if(m[4] && /[WVwv]/.test(m[4])) lon = -lon;
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: lat, lon: lon };
+  }
+
+  // What follows "^@" -> { query, note, lat, lon }, or null when there is
+  // nothing but the marker. Everything after a "|" is a note about the
+  // place rather than part of its address.
+  function read(raw){
+    var s = String(raw == null ? "" : raw), bar = s.indexOf("|"), note = "";
+    if(bar >= 0){ note = s.slice(bar + 1).trim(); s = s.slice(0, bar); }
+    s = s.replace(/[\s,;]+$/, "").trim();
+    if(!s) return null;
+    var c = coords(s);
+    return { query: s, note: note, lat: c ? c.lat : null, lon: c ? c.lon : null };
+  }
+
+  // The whole thing in one call: text -> [{ place, index, length, text }],
+  // the shape ScuLaCal.findMarks already returns for dates.
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text == null ? "" : text)))){
+      if(re.lastIndex === m.index) re.lastIndex++;
+      var place = read(m[2]);
+      if(!place) continue;
+      var lead = m[1] ? m[1].length : 0;
+      out.push({ place: place, index: m.index + lead, length: m[0].length - lead, text: m[0].slice(lead) });
+    }
+    return out;
+  }
+  function has(text){ return findMarks(text).length > 0; }
+
+  function tagsOf(line){
+    var re = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu, m, out = [];
+    while((m = re.exec(String(line)))) out.push(m[2]);
+    return out;
+  }
+  // The line the place was written on, without its markers, its bullet and
+  // its checkbox - what the popup shows under the name.
+  function contextOf(line){
+    var s = String(line).replace(markRe(), function(whole, lead, raw){
+      var p = read(raw);
+      return (lead || "") + (p ? p.query : "");
+    });
+    s = s.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "").replace(/^\s*\[[ xX]\]\s*/, "");
+    s = s.replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
+    return s.length > 160 ? s.slice(0, 157) + "…" : s;
+  }
+
+  // text -> the payload map.html draws: one layer per heading, in the order
+  // the headings appear, each holding the places written under it.
+  function scan(text, meta){
+    meta = meta || {};
+    var lines = String(text == null ? "" : text).split("\n");
+    var layers = [], index = {}, count = 0, current = "", inCode = false;
+    var fallback = String(meta.title || "").replace(/\.(md|markdown|txt)$/i, "").trim() || "·";
+    function layer(name){
+      if(!index[name]){ index[name] = { name: name, items: [] }; layers.push(index[name]); }
+      return index[name];
+    }
+    lines.forEach(function(line, i){
+      if(/^\s*```/.test(line)){ inCode = !inCode; return; }
+      if(inCode) return;
+      var h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if(h){
+        current = h[2].replace(markRe(), "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim();
+      }
+      var hits = findMarks(line);
+      if(!hits.length) return;
+      var name = current || fallback, tags = tagsOf(line), ctx = contextOf(line);
+      hits.forEach(function(hit){
+        layer(name).items.push({
+          q: hit.place.query, note: hit.place.note,
+          lat: hit.place.lat, lon: hit.place.lon,
+          line: i, tags: tags, context: ctx
+        });
+        count++;
+      });
+    });
+    return { v:1, source: meta.source || "index.html", title: meta.title || "",
+             at: Date.now(), count: count, layers: layers };
+  }
+
+  // The hand-over: one page writes the list, map.html reads it. localStorage
+  // rather than a query string - a whole chapter's worth of places does not
+  // belong in a URL, and this survives the map page being reloaded.
+  function send(payload){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); return true; }catch(e){ return false; }
+  }
+  function received(){
+    try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  window.ScuLaGeo = {
+    KEY: KEY,
+    markRe: markRe,
+    coords: coords,
+    read: read,
+    findMarks: findMarks,
+    has: has,
+    scan: scan,
+    send: send,
+    received: received
+  };
+})();
 </script>
 <!-- ===== end toolbar nav ===== -->
 
@@ -3036,6 +3199,10 @@
     <button class="btn" id="btn-help" onclick="openHelpModal()" data-i="helpBtn" data-i-title="helpTip" title="Help">❓ Help</button>
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
+    <!-- Shown only while the open chapter holds a "^@" place — docs/FEATURES.md § S.
+         mapRefresh() flips it on every keystroke, so the button appears the
+         moment the first marker is typed and leaves when the last one goes. -->
+    <button class="btn" id="btn-map" onclick="openMap()" data-i="mapBtn" data-i-title="mapTip" title="Show this chapter's &quot;^@&quot; places on the map (Ctrl+Alt+M)" hidden>🗺 Map</button>
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
@@ -3845,6 +4012,8 @@ const I18N = {
                              (gone ? ", " + gone + " șterse" : "") + ".",
     calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
     calOpen:"Deschide",
+    mapBtn:"🗺 Hartă", mapTip:"Arată pe hartă locurile „^@” din capitolul acesta (Ctrl+Alt+M)",
+    mapNone:"Niciun loc „^@” în capitolul acesta. Scrie de exemplu ^@Castelul Peleș.",
     modalTitleIdea:"Idee rapidă", lblIdea:"Idee",
     ideaPlaceholder:"Editor: - [ ] scrie cod care să…",
     ideaSaveBtn:"Trimite ideea", ideaSaveTip:"Trimite ideea (Ctrl+Enter)",
@@ -3906,6 +4075,9 @@ const I18N = {
       <p><code>Nume>> text</code> la începutul rândului marchează cine se ocupă de acea sarcină.</p>
       <h3>Marcajul de dată @dată</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, sau un interval de zile cu <code>..</code> — scris oriunde în text. 📅 „Trimite datele” sau <kbd>Ctrl+Alt+D</kbd> trimite toate marcajele către pagina Calendar.</p>
+      <h3>Marcajul de loc ^@</h3>
+      <p><code>^@Castelul Peleș</code>, <code>^@Strada Lipscani 12, București</code> sau <code>^@44.4268, 26.1025</code> — un nume, o adresă sau coordonate, scrise până la capătul rândului. După <code>|</code> poți adăuga o notă, iar un <code>#etichetă</code> încheie adresa și rămâne al rândului.</p>
+      <p>Butonul 🗺 Hartă apare doar cât capitolul deschis are un <code>^@</code>; el (sau <kbd>Ctrl+Alt+M</kbd>) duce locurile pe pagina Hartă, așezate pe straturi după titlul de deasupra fiecăruia.</p>
       <h3>Cronologie</h3>
       <ul>
         <li>Un rând scris <code>#1969 - !Primul om pe Lună</code> e un reper: <code>#</code> deschide data, <code>!</code> deschide ce s-a întâmplat, iar <code>-</code> dintre ele le leagă.</li>
@@ -4173,6 +4345,8 @@ const I18N = {
                              (gone ? ", " + gone + " removed" : "") + ".",
     calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
     calOpen:"Open",
+    mapBtn:"\uD83D\uDDFA Map", mapTip:"Show this chapter's \u201C^@\u201D places on the map (Ctrl+Alt+M)",
+    mapNone:"No \u201C^@\u201D place in this chapter. Write one like ^@Pele\u0219 Castle.",
     modalTitleIdea:"Quick idea", lblIdea:"Idea",
     ideaPlaceholder:"Editor: - [ ] write code to …",
     ideaSaveBtn:"Send idea", ideaSaveTip:"File this idea (Ctrl+Enter)",
@@ -4234,6 +4408,9 @@ const I18N = {
       <p><code>Name>> text</code> at the start of a line marks who owns that task.</p>
       <h3>The @date marker</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, or a day range with <code>..</code> — written anywhere in the text. 📅 "Push dates" or <kbd>Ctrl+Alt+D</kbd> sends every marker to the Calendar page.</p>
+      <h3>The ^@ place marker</h3>
+      <p><code>^@Peleș Castle</code>, <code>^@12 Lipscani Street, Bucharest</code> or <code>^@44.4268, 26.1025</code> — a name, an address or coordinates, written to the end of the line. What follows a <code>|</code> is a note, and a <code>#tag</code> ends the address and stays the line's.</p>
+      <p>The 🗺 Map button is there only while the open chapter holds a <code>^@</code>; it (or <kbd>Ctrl+Alt+M</kbd>) takes the places to the Map page, laid out in layers by the heading above each one.</p>
       <h3>Timeline</h3>
       <ul>
         <li>A line written <code>#1969 - !First man on the Moon</code> is one entry: <code>#</code> opens the date, <code>!</code> opens what happened, and the <code>-</code> between them ties the two together.</li>
@@ -5087,6 +5264,11 @@ const HEX_COLOR_RE = /(^|[\s(\[{])#([0-9a-fA-F]{8}|[0-9a-fA-F]{6})\b/g;
 // in the shared nav block (docs/FEATURES.md § L). Global, but only ever used
 // through .replace(), which resets lastIndex itself.
 const DATE_MARK_RE = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
+// "^@Castelul Peleș" — a place flagged for the map. Same arrangement as the
+// date above: the syntax is ScuLaGeo's, in the shared nav block, so this page
+// and map.html read one marker (docs/FEATURES.md § S). Also global, also only
+// ever used through .replace().
+const GEO_MARK_RE = window.ScuLaGeo ? ScuLaGeo.markRe() : /(?!)/g;
 // "^anchor" at the very end of a line names that block.
 const BLOCK_RE = /\s\^([A-Za-z0-9][A-Za-z0-9-]*)\s*$/;
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?)$/i;
@@ -5426,6 +5608,46 @@ function calRepaintLang() {
       endTime: el.dataset.t2 || null
     });
   });
+}
+
+/* ── "^@" places, and the map they are drawn on — docs/FEATURES.md § S ──
+   The marker itself is ScuLaGeo's (shared nav block), so this page only
+   does three things with it: paint it in the preview and the export, count
+   it so the 🗺 button can hide itself, and hand the open chapter over. */
+function renderGeoMark(args) {
+  const lead = args[1] || '';
+  const place = window.ScuLaGeo && ScuLaGeo.read(args[2]);
+  if (!place) return args[0];         // a bare "^@" with nothing after it
+  // The text came out of already-escaped markdown, so it goes back in as-is;
+  // the one thing to keep out of an attribute is the quote character.
+  const attr = place.query.replace(/"/g, '&quot;');
+  const note = place.note ? ` <span class="geo-note">${place.note}</span>` : '';
+  const coords = place.lat != null ? ' data-lat="' + place.lat + '" data-lon="' + place.lon + '"' : '';
+  return `${lead}<span class="md-geo" data-q="${attr}"${coords}>\u{1F4CD} ${place.query}${note}</span>`;
+}
+
+// The open chapter as the payload map.html draws. Its title is what the
+// header shows, so a loose "untitled.md" names itself the same way.
+function mapScan() {
+  const title = (document.getElementById('current-file') || {}).textContent || 'untitled.md';
+  return ScuLaGeo.scan(editor.value, { title: title.trim(), source: 'index.html' });
+}
+// 🗺 — hand this chapter's places to the map page and go there.
+function openMap() {
+  if (!window.ScuLaGeo) return false;
+  const payload = mapScan();
+  if (!payload.count) { ScuLaFolder.toast(t('mapNone')); return false; }
+  ScuLaGeo.send(payload);
+  location.href = 'map.html';
+  return true;
+}
+// The button exists only while there is something for it to show. Called
+// from updatePreview(), which every keystroke and every chapter opened ends
+// in, so it appears with the first marker and leaves with the last.
+function mapRefresh() {
+  const btn = document.getElementById('btn-map');
+  if (!btn) return;
+  btn.hidden = !(window.ScuLaGeo && ScuLaGeo.has(editor.value));
 }
 
 // "Name>> " marks a task as handed to that person. name is already escaped
@@ -5826,6 +6048,10 @@ function applyInline(text, opts) {
     // marker inside `inline code` now follows ">", which the lead class
     // excludes, so backticked text is left alone.
     .replace(DATE_MARK_RE, function () { return renderDateMark(arguments); })
+    // "^@place" after the code rule too, and for the same reason — and
+    // before TAG_RE, because a "#tag" is where a place's address ends: the
+    // marker gives up the "#" and TAG_RE below still gets to paint it.
+    .replace(GEO_MARK_RE, function () { return renderGeoMark(arguments); })
     // "#rrggbb" as a swatch — before TAG_RE, which would otherwise eat it.
     // A "#" inside a <code> span produced above is preceded by ">", not a
     // space, so this leaves inline code alone (same guard TAG_RE relies on).
@@ -6003,6 +6229,7 @@ function updatePreview() {
   gvRefresh();          // the graph reads the open note; keep it honest
   fdLive();             // and so does the search panel
   gdRefresh();          // and the garden toolbox
+  mapRefresh();         // and the 🗺 button only exists while a "^@" does
 }
 
 /* Following a [[wikilink]] or a #tag from the preview. Delegated, because
@@ -10427,6 +10654,8 @@ function exportHtml() {
     .wikilink.is-unresolved { color: #999; border-bottom-color: #ccc; }
     .md-tag { display: inline-block; color: #3f7a63; background: #e6f0ea; border-radius: 10px; padding: 0 7px; font-size: 0.9em; }
     .md-date { display: inline-block; color: #8a6a1f; background: #f6ecd4; border-radius: 10px; padding: 0 7px; font-size: 0.9em; white-space: nowrap; }
+    .md-geo { display: inline-block; color: #3f7a63; background: #e4efe8; border-radius: 10px; padding: 0 7px; font-size: 0.9em; }
+    .md-geo .geo-note { color: #8a8f8b; font-style: italic; }
     .md-color { font-family: 'Courier New', monospace; font-size: 0.92em; white-space: nowrap; }
     .md-color-sw { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.12em; border-radius: 3px; border: 1px solid #ccc; }
     .md-assignee { color: #C4643C; font-weight: 600; }
@@ -10764,6 +10993,7 @@ document.addEventListener('keydown', e => {
   // return for the same reason the importance chords above use them.
   if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyI') { e.preventDefault(); openIdeaModal(); return; }
   if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyD') { e.preventDefault(); calSyncAll(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyM') { e.preventDefault(); openMap(); return; }
   if ((e.ctrlKey||e.metaKey) && e.key === '3') { e.preventDefault(); toggleGraph(); }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'L') { e.preventDefault(); openWikiModal(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '1') { e.preventDefault(); toggleNav(); }

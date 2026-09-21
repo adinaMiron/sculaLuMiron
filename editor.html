@@ -452,6 +452,7 @@
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
   <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="map.html" data-page="map.html">Hartă</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
@@ -662,6 +663,7 @@
   var SUBDIR = {
     "voice.html": "transcript",
     "calendar.html": "calendar",
+    "map.html": "harta",
     "editor.html": "desen",
     "index.html": "markdown",
     "recipes.html": "retete",
@@ -1583,6 +1585,151 @@
     onChange: function(f){ subs.push(f); },
     offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
     changed: fire
+  };
+})();
+
+/* ============================================================
+   window.ScuLaGeo - the "^@" location marker
+   ------------------------------------------------------------
+   "^@Castelul Peles", "^@44.4268, 26.1025", "^@Strada Lipscani 12,
+   Bucuresti" - a place flagged in markdown, the way "@date" flags a day
+   for the calendar. The syntax lives here, in the block every page
+   carries, and not in the page that writes it, so index.html (which
+   paints the markers and sends them) and map.html (which draws them)
+   can never drift apart - docs/FEATURES.md § S.
+   ============================================================ */
+(function(){
+  var KEY = "scula:map:payload";
+
+  // "^@" then the place, to the end of the line. A "#tag" ends it - the tag
+  // belongs to the line, not to the address - and so does a "<": by the time
+  // index.html runs this over a rendered line, every "<" in it is a tag that
+  // line's own rendering produced. The lead class is TAG_RE's, so "a^@b"
+  // mid-word is not a marker, and one inside `inline code` (which by then
+  // follows "`" or ">") is left alone.
+  //
+  // The tail is a lookahead, not part of the match, so the space *before* a
+  // trailing "#tag" survives: without it the pill this becomes would put the
+  // tag straight after a ">", which is exactly the lead TAG_RE refuses, and
+  // the tag would stop being one. "m", because applyInline() is handed whole
+  // paragraphs and a line start inside one still starts a marker.
+  function markRe(){ return /(^|[\s(\[{])\^@[ \t]*([^\n<#]*?)(?=[ \t]*(?:[<#]|$))/gm; }
+
+  // "44.4268, 26.1025" or "44.4268N 26.1025E" -> {lat, lon}. A pair of bare
+  // integers ("Sector 3, 5") is not coordinates: one of the numbers must
+  // carry a decimal point, or both must carry a hemisphere letter. V is
+  // Romanian for West, so it counts as one.
+  function coords(s){
+    var str = String(s == null ? "" : s).trim();
+    var m = /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])?\s*[,;]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])?$/.exec(str)
+         || /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])\s+([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])$/.exec(str);
+    if(!m) return null;
+    if(!(m[2] && m[4]) && m[1].indexOf(".") < 0 && m[3].indexOf(".") < 0) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[3]);
+    if(m[2] && /[Ss]/.test(m[2])) lat = -lat;
+    if(m[4] && /[WVwv]/.test(m[4])) lon = -lon;
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: lat, lon: lon };
+  }
+
+  // What follows "^@" -> { query, note, lat, lon }, or null when there is
+  // nothing but the marker. Everything after a "|" is a note about the
+  // place rather than part of its address.
+  function read(raw){
+    var s = String(raw == null ? "" : raw), bar = s.indexOf("|"), note = "";
+    if(bar >= 0){ note = s.slice(bar + 1).trim(); s = s.slice(0, bar); }
+    s = s.replace(/[\s,;]+$/, "").trim();
+    if(!s) return null;
+    var c = coords(s);
+    return { query: s, note: note, lat: c ? c.lat : null, lon: c ? c.lon : null };
+  }
+
+  // The whole thing in one call: text -> [{ place, index, length, text }],
+  // the shape ScuLaCal.findMarks already returns for dates.
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text == null ? "" : text)))){
+      if(re.lastIndex === m.index) re.lastIndex++;
+      var place = read(m[2]);
+      if(!place) continue;
+      var lead = m[1] ? m[1].length : 0;
+      out.push({ place: place, index: m.index + lead, length: m[0].length - lead, text: m[0].slice(lead) });
+    }
+    return out;
+  }
+  function has(text){ return findMarks(text).length > 0; }
+
+  function tagsOf(line){
+    var re = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu, m, out = [];
+    while((m = re.exec(String(line)))) out.push(m[2]);
+    return out;
+  }
+  // The line the place was written on, without its markers, its bullet and
+  // its checkbox - what the popup shows under the name.
+  function contextOf(line){
+    var s = String(line).replace(markRe(), function(whole, lead, raw){
+      var p = read(raw);
+      return (lead || "") + (p ? p.query : "");
+    });
+    s = s.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "").replace(/^\s*\[[ xX]\]\s*/, "");
+    s = s.replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
+    return s.length > 160 ? s.slice(0, 157) + "…" : s;
+  }
+
+  // text -> the payload map.html draws: one layer per heading, in the order
+  // the headings appear, each holding the places written under it.
+  function scan(text, meta){
+    meta = meta || {};
+    var lines = String(text == null ? "" : text).split("\n");
+    var layers = [], index = {}, count = 0, current = "", inCode = false;
+    var fallback = String(meta.title || "").replace(/\.(md|markdown|txt)$/i, "").trim() || "·";
+    function layer(name){
+      if(!index[name]){ index[name] = { name: name, items: [] }; layers.push(index[name]); }
+      return index[name];
+    }
+    lines.forEach(function(line, i){
+      if(/^\s*```/.test(line)){ inCode = !inCode; return; }
+      if(inCode) return;
+      var h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if(h){
+        current = h[2].replace(markRe(), "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim();
+      }
+      var hits = findMarks(line);
+      if(!hits.length) return;
+      var name = current || fallback, tags = tagsOf(line), ctx = contextOf(line);
+      hits.forEach(function(hit){
+        layer(name).items.push({
+          q: hit.place.query, note: hit.place.note,
+          lat: hit.place.lat, lon: hit.place.lon,
+          line: i, tags: tags, context: ctx
+        });
+        count++;
+      });
+    });
+    return { v:1, source: meta.source || "index.html", title: meta.title || "",
+             at: Date.now(), count: count, layers: layers };
+  }
+
+  // The hand-over: one page writes the list, map.html reads it. localStorage
+  // rather than a query string - a whole chapter's worth of places does not
+  // belong in a URL, and this survives the map page being reloaded.
+  function send(payload){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); return true; }catch(e){ return false; }
+  }
+  function received(){
+    try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  window.ScuLaGeo = {
+    KEY: KEY,
+    markRe: markRe,
+    coords: coords,
+    read: read,
+    findMarks: findMarks,
+    has: has,
+    scan: scan,
+    send: send,
+    received: received
   };
 })();
 </script>

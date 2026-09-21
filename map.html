@@ -1,0 +1,2378 @@
+<!doctype html><html lang="ro" data-theme="dark"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hartă — Scula lu Miron</title>
+<style>
+  :root {
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    --bg: #14201A;
+    --surface: #1B2A22;
+    --surface-2: #22342A;
+    --border: #2E4739;
+    --accent: #C1BB45;
+    --accent-2: #D3CD7C;
+    --on-accent: #1A2117;
+    --text: #F3EEE1;
+    --text-2: #9FB3A5;
+    --text-3: #5A6A60;
+    --danger: #C4643C;
+    --ok: #6E9E8A;
+    --radius: 10px;
+    --shadow: 0 12px 40px rgba(0,0,0,.5);
+    --font-mono: 'Courier New', monospace;
+    --font-ui: 'Trebuchet MS', sans-serif;
+    --side-w: 17rem;
+    /* the four states a place can be in, so the dot in the list and the pin
+       on the map are coloured from one place */
+    --pin-coord: #C1BB45;   /* written as coordinates — nothing to look up */
+    --pin-found: #6E9E8A;   /* the geocoder found it */
+    --pin-wait:  #9FB3A5;   /* queued or in flight */
+    --pin-none:  #C4643C;   /* nothing came back */
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 0.9rem;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ---------- header ---------- */
+  #map-head {
+    flex: 0 0 auto; display: flex; align-items: center; gap: .5rem;
+    flex-wrap: wrap; padding: .5rem .75rem;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  #map-head .logo { font-weight: 600; letter-spacing: .02em; }
+  #map-head .logo span { color: var(--text-3); font-weight: 400; }
+  #map-head .spacer { flex: 1 1 auto; }
+  #map-source {
+    color: var(--text-2); font-size: .82rem;
+    max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .btn {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: .4rem .7rem; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  .btn.ghost { background: transparent; }
+  .btn.icon { padding: .4rem .55rem; }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+  /* ---------- body ---------- */
+  #map-body { flex: 1 1 auto; display: flex; min-height: 0; }
+
+  /* ---------- the layered list ---------- */
+  #side {
+    flex: 0 0 var(--side-w); width: var(--side-w);
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  #side.hidden { display: none; }
+  .side-top { padding: .6rem; display: flex; flex-direction: column; gap: .45rem;
+              border-bottom: 1px solid var(--border); }
+  .side-top input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .4rem .55rem;
+  }
+  .side-top input:focus { outline: none; border-color: var(--accent); }
+  #layers { flex: 1 1 auto; overflow-y: auto; padding: .35rem .4rem .8rem; }
+  .layer { margin-bottom: .35rem; }
+  .layer-head {
+    display: flex; align-items: center; gap: .4rem;
+    padding: .35rem .4rem; border-radius: var(--radius);
+    background: var(--surface-2); cursor: pointer; user-select: none;
+  }
+  .layer-head:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+  .layer-head .tw { color: var(--text-3); width: .8rem; flex: 0 0 auto; }
+  .layer-head .nm { flex: 1 1 auto; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer-head .ct { color: var(--text-3); font-size: .78rem; }
+  .layer.off .layer-head .nm { color: var(--text-3); font-weight: 400; text-decoration: line-through; }
+  .layer.collapsed .places { display: none; }
+  .places { padding: .15rem 0 .15rem .5rem; }
+  .place {
+    display: flex; align-items: flex-start; gap: .4rem;
+    padding: .3rem .4rem; border-radius: var(--radius); cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .place:hover { background: var(--surface-2); }
+  .place.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .place .dot { flex: 0 0 auto; width: .55rem; height: .55rem; border-radius: 50%;
+                margin-top: .35rem; background: var(--pin-wait); }
+  .place .txt { flex: 1 1 auto; min-width: 0; }
+  .place .q { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .place .sub { display: block; color: var(--text-3); font-size: .75rem;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .place.none .q { color: var(--danger); }
+  .side-foot { flex: 0 0 auto; padding: .45rem .6rem; border-top: 1px solid var(--border);
+               color: var(--text-3); font-size: .76rem; min-height: 2rem; }
+  .empty { color: var(--text-3); padding: 1rem .6rem; line-height: 1.5; }
+  .empty code { font-family: var(--font-mono); color: var(--accent-2); }
+
+  /* ---------- the map ---------- */
+  #stage {
+    flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden;
+    background: var(--bg);
+    /* a graticule, so the page is still a map when no tile ever arrives
+       (offline, file://, or an empty tile field) */
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+    background-size: 64px 64px;
+    touch-action: none; cursor: grab;
+  }
+  #stage.dragging { cursor: grabbing; }
+  #tiles, #pins { position: absolute; inset: 0; }
+  #pins { pointer-events: none; }
+  .tile {
+    position: absolute; top: 0; left: 0; width: 256px; height: 256px;
+    user-select: none; -webkit-user-drag: none; pointer-events: none;
+  }
+  .pin {
+    position: absolute; top: 0; left: 0; pointer-events: auto;
+    display: flex; align-items: center; gap: .3rem;
+    background: transparent; border: 0; padding: 0;
+    transform-origin: 0 0; white-space: nowrap;
+  }
+  .pin .bead {
+    width: .85rem; height: .85rem; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg); flex: 0 0 auto;
+    background: var(--pin-found); border: 1px solid rgba(0,0,0,.45);
+    box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+  .pin.coord .bead { background: var(--pin-coord); }
+  .pin .lbl {
+    font-size: .74rem; color: var(--text);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    border: 1px solid var(--border); border-radius: 6px; padding: 0 .3rem;
+    max-width: 11rem; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pin.on .bead { background: var(--accent); transform: rotate(-45deg) scale(1.25); }
+  .pin.on .lbl { border-color: var(--accent); color: var(--accent-2); }
+
+  #hud { position: absolute; right: .6rem; top: .6rem; display: flex; flex-direction: column; gap: .3rem; }
+  #hud .btn { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+  #attrib {
+    position: absolute; right: .4rem; bottom: .35rem;
+    font-size: .68rem; color: var(--text-2);
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    padding: .1rem .35rem; border-radius: 5px;
+  }
+  #attrib a { color: var(--text-2); }
+  #scale {
+    position: absolute; left: .6rem; bottom: .5rem; font-size: .68rem; color: var(--text-2);
+    border: 1px solid var(--text-2); border-top: 0; height: .5rem; min-width: 3rem;
+  }
+  #scale span { position: absolute; left: 0; bottom: .45rem; white-space: nowrap;
+                background: color-mix(in srgb, var(--bg) 70%, transparent); padding: 0 .2rem; }
+  #side-toggle { display: none; }
+
+  /* the popup that a pin opens */
+  #pop {
+    position: absolute; z-index: 5; display: none;
+    max-width: 17rem; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: .55rem .65rem;
+    transform: translate(-50%, -100%); margin-top: -1rem;
+  }
+  #pop.open { display: block; }
+  #pop h4 { margin: 0 0 .25rem; font-size: .92rem; }
+  #pop p { margin: 0 0 .3rem; color: var(--text-2); font-size: .8rem; line-height: 1.4; }
+  #pop .co { font-family: var(--font-mono); font-size: .76rem; color: var(--text-3); }
+  #pop .tags { color: var(--ok); font-size: .76rem; }
+  #pop .row { display: flex; gap: .3rem; margin-top: .35rem; flex-wrap: wrap; }
+  #pop .row .btn { padding: .25rem .45rem; font-size: .78rem; }
+  #pop .x { position: absolute; top: .15rem; right: .3rem; background: transparent;
+            border: 0; color: var(--text-3); font-size: 1rem; line-height: 1; }
+
+  /* ---------- modals (same chrome as calendar.html) ---------- */
+  .modal {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    background: rgba(0,0,0,.55); align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal.open { display: flex; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    width: min(34rem, 100%); max-height: 86vh; overflow-y: auto; padding: 1rem;
+  }
+  .card h3 { margin: 0 0 .7rem; }
+  .field { margin-bottom: .7rem; }
+  .field label { display: block; font-size: .78rem; color: var(--text-2); margin-bottom: .2rem; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .45rem .55rem; font-family: var(--font-mono); font-size: .8rem;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .field .hint { display: block; margin-top: .25rem; font-size: .74rem; color: var(--text-3); line-height: 1.45; }
+  .card .actions { display: flex; gap: .4rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .8rem; }
+  .help-body h3 { margin: .9rem 0 .35rem; font-size: .95rem; color: var(--accent-2); }
+  .help-body h3:first-child { margin-top: 0; }
+  .help-body p, .help-body li { color: var(--text-2); line-height: 1.55; margin: .3rem 0; }
+  .help-body ul { margin: .3rem 0; padding-left: 1.1rem; }
+  .help-body code { font-family: var(--font-mono); color: var(--accent-2); }
+  .help-body kbd {
+    font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 5px; padding: 0 .3rem;
+  }
+
+  /* ---------- phones ---------- */
+  @media (max-width: 720px) {
+    #side {
+      position: absolute; z-index: 12; top: 0; bottom: 0; left: 0;
+      width: min(19rem, 86vw); flex-basis: auto; box-shadow: var(--shadow);
+    }
+    #map-body { position: relative; }
+    #side-toggle { display: inline-block; }
+    #map-source { max-width: 10rem; }
+    .btn { min-height: 44px; }
+    .place { padding: .5rem .4rem; }
+  }
+</style>
+</head>
+<body>
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="map.html" data-page="map.html">Hartă</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <a href="transfer.html" data-page="transfer.html">Transfer</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so on those devices
+     the button just names the fallback route (share/download) and a tap
+     opens the destination sheet instead of the picker - see the "supported()"
+     branch in fBtn's click handler below. Kept visible (not hidden) so a
+     phone still has a way to reach ScuLaFolder.chooser() from the nav. */
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "calendar.html": "calendar",
+    "map.html": "harta",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete",
+    "transfer.html": "transfer"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // The chosen root folder itself, or null. dir() below narrows it to this
+  // page's own subfolder; a page that moves the *whole* folder across
+  // (transfer.html sends it to another device, and writes a received tree
+  // back into it) needs the root, with the same permission dance.
+  function rootDir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      return ok ? root : null;
+    }).catch(function(){ return null; });
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  function save(filename, blob, opts){
+    var quiet = !!(opts && opts.quiet);
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + name };
+          });
+        });
+      });
+    }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    rootDir: rootDir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
+
+/* ============================================================
+   window.ScuLaGeo - the "^@" location marker
+   ------------------------------------------------------------
+   "^@Castelul Peles", "^@44.4268, 26.1025", "^@Strada Lipscani 12,
+   Bucuresti" - a place flagged in markdown, the way "@date" flags a day
+   for the calendar. The syntax lives here, in the block every page
+   carries, and not in the page that writes it, so index.html (which
+   paints the markers and sends them) and map.html (which draws them)
+   can never drift apart - docs/FEATURES.md § S.
+   ============================================================ */
+(function(){
+  var KEY = "scula:map:payload";
+
+  // "^@" then the place, to the end of the line. A "#tag" ends it - the tag
+  // belongs to the line, not to the address - and so does a "<": by the time
+  // index.html runs this over a rendered line, every "<" in it is a tag that
+  // line's own rendering produced. The lead class is TAG_RE's, so "a^@b"
+  // mid-word is not a marker, and one inside `inline code` (which by then
+  // follows "`" or ">") is left alone.
+  //
+  // The tail is a lookahead, not part of the match, so the space *before* a
+  // trailing "#tag" survives: without it the pill this becomes would put the
+  // tag straight after a ">", which is exactly the lead TAG_RE refuses, and
+  // the tag would stop being one. "m", because applyInline() is handed whole
+  // paragraphs and a line start inside one still starts a marker.
+  function markRe(){ return /(^|[\s(\[{])\^@[ \t]*([^\n<#]*?)(?=[ \t]*(?:[<#]|$))/gm; }
+
+  // "44.4268, 26.1025" or "44.4268N 26.1025E" -> {lat, lon}. A pair of bare
+  // integers ("Sector 3, 5") is not coordinates: one of the numbers must
+  // carry a decimal point, or both must carry a hemisphere letter. V is
+  // Romanian for West, so it counts as one.
+  function coords(s){
+    var str = String(s == null ? "" : s).trim();
+    var m = /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])?\s*[,;]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])?$/.exec(str)
+         || /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])\s+([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])$/.exec(str);
+    if(!m) return null;
+    if(!(m[2] && m[4]) && m[1].indexOf(".") < 0 && m[3].indexOf(".") < 0) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[3]);
+    if(m[2] && /[Ss]/.test(m[2])) lat = -lat;
+    if(m[4] && /[WVwv]/.test(m[4])) lon = -lon;
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: lat, lon: lon };
+  }
+
+  // What follows "^@" -> { query, note, lat, lon }, or null when there is
+  // nothing but the marker. Everything after a "|" is a note about the
+  // place rather than part of its address.
+  function read(raw){
+    var s = String(raw == null ? "" : raw), bar = s.indexOf("|"), note = "";
+    if(bar >= 0){ note = s.slice(bar + 1).trim(); s = s.slice(0, bar); }
+    s = s.replace(/[\s,;]+$/, "").trim();
+    if(!s) return null;
+    var c = coords(s);
+    return { query: s, note: note, lat: c ? c.lat : null, lon: c ? c.lon : null };
+  }
+
+  // The whole thing in one call: text -> [{ place, index, length, text }],
+  // the shape ScuLaCal.findMarks already returns for dates.
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text == null ? "" : text)))){
+      if(re.lastIndex === m.index) re.lastIndex++;
+      var place = read(m[2]);
+      if(!place) continue;
+      var lead = m[1] ? m[1].length : 0;
+      out.push({ place: place, index: m.index + lead, length: m[0].length - lead, text: m[0].slice(lead) });
+    }
+    return out;
+  }
+  function has(text){ return findMarks(text).length > 0; }
+
+  function tagsOf(line){
+    var re = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu, m, out = [];
+    while((m = re.exec(String(line)))) out.push(m[2]);
+    return out;
+  }
+  // The line the place was written on, without its markers, its bullet and
+  // its checkbox - what the popup shows under the name.
+  function contextOf(line){
+    var s = String(line).replace(markRe(), function(whole, lead, raw){
+      var p = read(raw);
+      return (lead || "") + (p ? p.query : "");
+    });
+    s = s.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "").replace(/^\s*\[[ xX]\]\s*/, "");
+    s = s.replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
+    return s.length > 160 ? s.slice(0, 157) + "…" : s;
+  }
+
+  // text -> the payload map.html draws: one layer per heading, in the order
+  // the headings appear, each holding the places written under it.
+  function scan(text, meta){
+    meta = meta || {};
+    var lines = String(text == null ? "" : text).split("\n");
+    var layers = [], index = {}, count = 0, current = "", inCode = false;
+    var fallback = String(meta.title || "").replace(/\.(md|markdown|txt)$/i, "").trim() || "·";
+    function layer(name){
+      if(!index[name]){ index[name] = { name: name, items: [] }; layers.push(index[name]); }
+      return index[name];
+    }
+    lines.forEach(function(line, i){
+      if(/^\s*```/.test(line)){ inCode = !inCode; return; }
+      if(inCode) return;
+      var h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if(h){
+        current = h[2].replace(markRe(), "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim();
+      }
+      var hits = findMarks(line);
+      if(!hits.length) return;
+      var name = current || fallback, tags = tagsOf(line), ctx = contextOf(line);
+      hits.forEach(function(hit){
+        layer(name).items.push({
+          q: hit.place.query, note: hit.place.note,
+          lat: hit.place.lat, lon: hit.place.lon,
+          line: i, tags: tags, context: ctx
+        });
+        count++;
+      });
+    });
+    return { v:1, source: meta.source || "index.html", title: meta.title || "",
+             at: Date.now(), count: count, layers: layers };
+  }
+
+  // The hand-over: one page writes the list, map.html reads it. localStorage
+  // rather than a query string - a whole chapter's worth of places does not
+  // belong in a URL, and this survives the map page being reloaded.
+  function send(payload){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); return true; }catch(e){ return false; }
+  }
+  function received(){
+    try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  window.ScuLaGeo = {
+    KEY: KEY,
+    markRe: markRe,
+    coords: coords,
+    read: read,
+    findMarks: findMarks,
+    has: has,
+    scan: scan,
+    send: send,
+    received: received
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+<header id="map-head">
+  <div class="logo">Hartă <span>/ locații</span></div>
+  <button class="btn icon ghost" id="side-toggle" onclick="toggleSide()" aria-label="Listă">☰</button>
+  <span id="map-source"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="btn-fit" onclick="fitAll()" data-i="fitBtn" data-i-title="fitTip" title="Încadrează toate locurile găsite">⤢ Încadrează</button>
+  <button class="btn" id="btn-locate" onclick="locateAll(true)" data-i="locateBtn" data-i-title="locateTip" title="Caută din nou fiecare adresă">🔎 Caută adresele</button>
+  <button class="btn" id="btn-open-md" onclick="openMd()" data-i="openMdBtn" data-i-title="openMdTip" title="Citește marcajele „^@” dintr-un fișier .md">📄 Deschide .md</button>
+  <button class="btn" id="btn-export" onclick="exportGeoJSON()" data-i="exportBtn" data-i-title="exportTip" title="Salvează locurile ca .geojson">⬇ Exportă</button>
+  <button class="btn icon" id="btn-settings" onclick="openSettings()" data-i-title="settingsTip" title="Adresa hărții și a geocodorului">⚙</button>
+  <button class="btn icon" id="btn-help" onclick="openHelp()" data-i-title="helpTip" title="Ajutor">❓</button>
+  <input type="file" id="md-file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+</header>
+
+<div id="map-body">
+  <aside id="side">
+    <div class="side-top">
+      <input id="q" type="search" data-i-placeholder="filterHint" placeholder="Filtrează locurile…" autocomplete="off">
+      <input id="add" type="search" data-i-placeholder="addHint" placeholder="Caută un loc și adaugă-l…" autocomplete="off">
+    </div>
+    <div id="layers"></div>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+
+  <div id="stage">
+    <div id="tiles"></div>
+    <div id="pins"></div>
+    <div id="hud">
+      <button class="btn icon" onclick="zoomBy(1)" aria-label="+">＋</button>
+      <button class="btn icon" onclick="zoomBy(-1)" aria-label="−">−</button>
+      <button class="btn icon" onclick="fitAll()" aria-label="fit">⤢</button>
+    </div>
+    <div id="scale"><span></span></div>
+    <div id="attrib"></div>
+    <div id="pop">
+      <button class="x" onclick="closePop()" aria-label="×">×</button>
+      <h4 id="pop-title"></h4>
+      <p id="pop-note"></p>
+      <p class="co" id="pop-co"></p>
+      <p class="tags" id="pop-tags"></p>
+      <div class="row">
+        <button class="btn" id="pop-osm" onclick="openOnOSM()" data-i="onOsmBtn">🌍 OpenStreetMap</button>
+        <button class="btn" id="pop-copy" onclick="copyCoords()" data-i="copyCoordsBtn">⧉ Coordonate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settings-modal">
+  <div class="card">
+    <h3 data-i="settingsTitle">Adresele</h3>
+    <div class="field">
+      <label for="f-tiles" data-i="tilesLabel">Adresa dalelor hărții</label>
+      <input id="f-tiles" type="text" spellcheck="false">
+      <span class="hint" data-i="tilesHint">Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.</span>
+    </div>
+    <div class="field">
+      <label for="f-geocoder" data-i="geocoderLabel">Adresa geocodorului</label>
+      <input id="f-geocoder" type="text" spellcheck="false">
+      <span class="hint" data-i="geocoderHint">Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.</span>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" onclick="clearGeoCache()" data-i="clearCacheBtn">Golește memoria adreselor</button>
+      <button class="btn ghost" onclick="resetSettings()" data-i="resetBtn">Implicit</button>
+      <button class="btn" onclick="closeSettings()" data-i="cancelBtn">Renunță</button>
+      <button class="btn primary" onclick="saveSettings()" data-i="saveBtn">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="help-modal">
+  <div class="card">
+    <h3 data-i="helpTitle">Harta locurilor</h3>
+    <div class="help-body" id="help-body"></div>
+    <div class="actions">
+      <button class="btn primary" onclick="closeHelp()" data-i="closeBtn">Închide</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Hartă — the places flagged with "^@" in markdown, on a map.
+   ------------------------------------------------------------
+   The syntax and the scan live in window.ScuLaGeo, inside the shared nav
+   block, so this page and index.html read the exact same marker
+   (docs/FEATURES.md § S). This file owns three things and nothing else:
+   a slippy map hand-rolled out of <img> tiles (CLAUDE.md rule 3 - no
+   map library), a geocoder call against an address the person can see
+   and change, and the layered list beside it.
+   ============================================================ */
+
+/* ============================================================
+   1. i18n — docs/I18N.md
+   ============================================================ */
+const I18N = {
+  ro: {
+    fitBtn:"⤢ Încadrează", fitTip:"Încadrează toate locurile găsite",
+    locateBtn:"🔎 Caută adresele", locateTip:"Caută din nou fiecare adresă",
+    openMdBtn:"📄 Deschide .md", openMdTip:"Citește marcajele „^@” dintr-un fișier .md",
+    exportBtn:"⬇ Exportă", exportTip:"Salvează locurile ca .geojson",
+    settingsTip:"Adresa hărții și a geocodorului",
+    helpTip:"Ajutor",
+    filterHint:"Filtrează locurile…",
+    addHint:"Caută un loc și adaugă-l…",
+    manualLayer:"Căutate aici",
+    noSource:"Nicio listă de locuri încă",
+    fromChapter:n => "din „" + n + "”",
+    fromFile:n => "din " + n,
+    onOsmBtn:"🌍 OpenStreetMap",
+    copyCoordsBtn:"⧉ Coordonate",
+    copied:"Coordonatele au fost copiate.",
+    settingsTitle:"Adresele",
+    tilesLabel:"Adresa dalelor hărții",
+    tilesHint:"Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.",
+    geocoderLabel:"Adresa geocodorului",
+    geocoderHint:"Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.",
+    clearCacheBtn:"Golește memoria adreselor",
+    resetBtn:"Implicit", cancelBtn:"Renunță", saveBtn:"Salvează", closeBtn:"Închide",
+    cacheCleared:"Memoria adreselor a fost golită.",
+    helpTitle:"Harta locurilor",
+    emptyTitle:"Nimic de arătat încă.",
+    statusCounts:a => a[1] + " din " + a[0] + " găsite",
+    statusWorking:n => "Se caută… (" + n + " în coadă)",
+    statusNoGeocoder:"Fără geocodor: doar locurile scrise în coordonate.",
+    statusNone:n => n + " negăsite",
+    noPlaces:"Niciun loc găsit încă.",
+    savedGeo:n => n + " locuri salvate.",
+    nothingToSave:"Niciun loc găsit de salvat.",
+    readFile:a => a[1] + " locuri în " + a[0],
+    noMarks:"Fișierul nu are niciun marcaj „^@”.",
+    kindCoord:"coordonate", kindFound:"găsit", kindWait:"se caută", kindNone:"negăsit",
+    helpBody:`
+      <h3>De unde vin locurile</h3>
+      <p>Din marcajele <code>^@</code> scrise în markdown. Butonul 🗺 din pagina Markdown trimite aici capitolul deschis; <b>📄 Deschide .md</b> citește orice fișier markdown direct.</p>
+      <ul>
+        <li><code>^@Castelul Peleș</code> — un nume căutat pe hartă</li>
+        <li><code>^@Strada Lipscani 12, București</code> — o stradă cu număr</li>
+        <li><code>^@44.4268, 26.1025</code> — coordonate: nu se mai caută nimic online</li>
+        <li><code>^@Castelul Peleș | a doua zi, dimineața</code> — după <code>|</code> scrii o notă</li>
+      </ul>
+      <p>Un <code>#etichetă</code> de pe aceeași linie încheie adresa și rămâne al liniei.</p>
+      <h3>Straturile</h3>
+      <p>Fiecare loc intră în stratul titlului de deasupra lui (<code>## Ziua 2</code>). Clic pe numele stratului îl ascunde și îl arată; clic pe ▸ îl strânge. Clic pe un loc duce harta la el.</p>
+      <h3>Harta</h3>
+      <p>Trage cu degetul sau cu mausul, rotița sau <kbd>+</kbd>/<kbd>−</kbd> apropie și depărtează, <kbd>F</kbd> încadrează tot. Dalele vin de la OpenStreetMap, adresa lor se vede și se schimbă în ⚙ — un dosar local le înlocuiește, iar câmpul gol lasă doar caroiajul.</p>
+      <h3>Căutarea adreselor</h3>
+      <p>Numele și străzile sunt căutate cu geocodorul din ⚙ (implicit Nominatim, al OpenStreetMap), o cerere pe secundă, iar răspunsurile sunt ținute minte, așa că a doua oară nu se mai cere nimic.</p>
+    `
+  },
+  en: {
+    fitBtn:"⤢ Fit all", fitTip:"Frame every place that was found",
+    locateBtn:"🔎 Look up addresses", locateTip:"Look every address up again",
+    openMdBtn:"📄 Open .md", openMdTip:"Read the “^@” markers out of a .md file",
+    exportBtn:"⬇ Export", exportTip:"Save the places as .geojson",
+    settingsTip:"The map and geocoder addresses",
+    helpTip:"Help",
+    filterHint:"Filter the places…",
+    addHint:"Look a place up and add it…",
+    manualLayer:"Looked up here",
+    noSource:"No list of places yet",
+    fromChapter:n => "from “" + n + "”",
+    fromFile:n => "from " + n,
+    onOsmBtn:"🌍 OpenStreetMap",
+    copyCoordsBtn:"⧉ Coordinates",
+    copied:"Coordinates copied.",
+    settingsTitle:"The addresses",
+    tilesLabel:"Map tile address",
+    tilesHint:"A {z}/{x}/{y} template. Empty = no tiles: the graticule and the points stay, so the page works with no internet. A local folder (“./tiles/{z}/{x}/{y}.png”) works just as well.",
+    geocoderLabel:"Geocoder address",
+    geocoderHint:"A {q} template. Empty = nothing is looked up online: only places written as coordinates appear.",
+    clearCacheBtn:"Clear remembered addresses",
+    resetBtn:"Default", cancelBtn:"Cancel", saveBtn:"Save", closeBtn:"Close",
+    cacheCleared:"Remembered addresses cleared.",
+    helpTitle:"The map of places",
+    emptyTitle:"Nothing to show yet.",
+    statusCounts:a => a[1] + " of " + a[0] + " found",
+    statusWorking:n => "Looking up… (" + n + " queued)",
+    statusNoGeocoder:"No geocoder: only places written as coordinates.",
+    statusNone:n => n + " not found",
+    noPlaces:"No place found yet.",
+    savedGeo:n => n + " places saved.",
+    nothingToSave:"No located place to save.",
+    readFile:a => a[1] + " places in " + a[0],
+    noMarks:"That file has no “^@” marker.",
+    kindCoord:"coordinates", kindFound:"found", kindWait:"looking up", kindNone:"not found",
+    helpBody:`
+      <h3>Where the places come from</h3>
+      <p>From the <code>^@</code> markers written in markdown. The 🗺 button on the Markdown page sends the open chapter here; <b>📄 Open .md</b> reads any markdown file directly.</p>
+      <ul>
+        <li><code>^@Peleș Castle</code> — a name looked up on the map</li>
+        <li><code>^@12 Lipscani Street, Bucharest</code> — a street with a number</li>
+        <li><code>^@44.4268, 26.1025</code> — coordinates: nothing is looked up online</li>
+        <li><code>^@Peleș Castle | second day, morning</code> — what follows <code>|</code> is a note</li>
+      </ul>
+      <p>A <code>#tag</code> on the same line ends the address and stays the line's.</p>
+      <h3>The layers</h3>
+      <p>Each place joins the layer of the heading above it (<code>## Day 2</code>). Clicking a layer's name hides and shows it; clicking ▸ collapses it. Clicking a place takes the map there.</p>
+      <h3>The map</h3>
+      <p>Drag with a finger or the mouse, the wheel or <kbd>+</kbd>/<kbd>−</kbd> zooms, <kbd>F</kbd> frames everything. Tiles come from OpenStreetMap; their address is visible and editable under ⚙ — a local folder replaces them, and an empty field leaves just the graticule.</p>
+      <h3>Looking addresses up</h3>
+      <p>Names and streets are looked up with the geocoder under ⚙ (Nominatim, OpenStreetMap's own, by default), one request a second, and the answers are remembered, so the second time nothing is asked.</p>
+    `
+  }
+};
+let UI = "ro";
+function t(k, a){
+  const v = (I18N[UI] || I18N.ro)[k];
+  return typeof v === "function" ? v(a) : v;
+}
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  ["placeholder","title","aria-label","value","alt"].forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  paintSource();
+  paintList();
+  paintAttrib();
+  if($("help-modal").classList.contains("open")) paintHelp();
+}
+
+/* ============================================================
+   2. Storage — never localStorage directly (file:// can throw)
+   ============================================================ */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } },
+  drop(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const SET_KEY = "scula:map:settings";
+const CACHE_KEY = "scula:map:geocache";
+const DEFAULTS = {
+  tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  geocoder: "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}"
+};
+let S = Object.assign({}, DEFAULTS);
+(function loadSettings(){
+  try{ Object.assign(S, JSON.parse(store.get(SET_KEY, "{}")) || {}); }catch(e){}
+})();
+function saveS(){ store.set(SET_KEY, JSON.stringify(S)); }
+
+let CACHE = {};
+try{ CACHE = JSON.parse(store.get(CACHE_KEY, "{}")) || {}; }catch(e){ CACHE = {}; }
+const cacheKey = q => String(q).toLowerCase().replace(/\s+/g, " ").trim();
+function cacheGet(q){ const h = CACHE[cacheKey(q)]; return h && num(h.lat) && num(h.lon) ? h : null; }
+function cachePut(q, hit){
+  CACHE[cacheKey(q)] = { lat: hit.lat, lon: hit.lon, label: hit.label || "", at: Date.now() };
+  store.set(CACHE_KEY, JSON.stringify(CACHE));
+}
+
+/* ============================================================
+   3. State
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const stage = $("stage"), tilesEl = $("tiles"), pinsEl = $("pins");
+
+let PLACES = [];        // every place, flat — the list and the pins share it
+let LAYERS = [];        // [{ name, off, collapsed }] in the order they appeared
+let SOURCE = null;      // { title, source } — where the list came from
+let selected = null;
+let filter = "";
+const TILE = 256, MIN_Z = 2, MAX_Z = 19;
+let view = { lat: 45.9432, lon: 24.9668, z: 6 };   // the whole country, to start
+const tileNodes = new Map();
+
+function layerOf(name){
+  let l = LAYERS.find(x => x.name === name);
+  if(!l){ l = { name, off:false, collapsed:false }; LAYERS.push(l); }
+  return l;
+}
+
+/* ============================================================
+   4. Web Mercator — the only maths a slippy map needs
+   ============================================================ */
+const worldSize = z => TILE * Math.pow(2, z);
+function lon2x(lon, z){ return (lon + 180) / 360 * worldSize(z); }
+function lat2y(lat, z){
+  const s = Math.sin(Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI / 180);
+  return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * worldSize(z);
+}
+function x2lon(x, z){ return x / worldSize(z) * 360 - 180; }
+function y2lat(y, z){
+  const n = Math.PI - 2 * Math.PI * y / worldSize(z);
+  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+function stageSize(){ const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; }
+// The pixel coordinates of the viewport's top-left corner, in world space.
+function origin(){
+  const { w, h } = stageSize();
+  return { x: lon2x(view.lon, view.z) - w / 2, y: lat2y(view.lat, view.z) - h / 2 };
+}
+function pointToLatLon(px, py){
+  const o = origin();
+  return { lat: y2lat(o.y + py, view.z), lon: x2lon(o.x + px, view.z) };
+}
+
+/* ============================================================
+   5. Tiles
+   ============================================================ */
+function tileUrl(z, x, y){
+  const tpl = (S.tiles || "").trim();
+  if(!tpl) return "";
+  return tpl.replace("{z}", z).replace("{x}", x).replace("{y}", y)
+            .replace("{s}", "abc"[(x + y) % 3]);
+}
+function renderTiles(){
+  const tpl = (S.tiles || "").trim();
+  if(!tpl){ tileNodes.forEach(img => img.remove()); tileNodes.clear(); return; }
+  const { w, h } = stageSize(), z = view.z, n = Math.pow(2, z), o = origin();
+  const x0 = Math.floor(o.x / TILE), x1 = Math.floor((o.x + w) / TILE);
+  const y0 = Math.floor(o.y / TILE), y1 = Math.floor((o.y + h) / TILE);
+  const want = new Set();
+  for(let ty = y0; ty <= y1; ty++){
+    if(ty < 0 || ty >= n) continue;
+    for(let tx = x0; tx <= x1; tx++){
+      const wx = ((tx % n) + n) % n;              // the world wraps east-west
+      const key = z + "/" + wx + "/" + ty + "/" + tx;
+      want.add(key);
+      let img = tileNodes.get(key);
+      if(!img){
+        img = new Image();
+        img.className = "tile"; img.alt = ""; img.decoding = "async";
+        img.addEventListener("error", () => { img.style.visibility = "hidden"; });
+        img.src = tileUrl(z, wx, ty);
+        tilesEl.appendChild(img);
+        tileNodes.set(key, img);
+      }
+      img.style.transform = "translate3d(" + Math.round(tx * TILE - o.x) + "px," +
+                            Math.round(ty * TILE - o.y) + "px,0)";
+    }
+  }
+  tileNodes.forEach((img, key) => { if(!want.has(key)){ img.remove(); tileNodes.delete(key); } });
+}
+function paintAttrib(){
+  const tpl = (S.tiles || "").trim();
+  $("attrib").innerHTML = /openstreetmap\.org/i.test(tpl)
+    ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    : "";
+}
+
+/* ============================================================
+   6. Pins
+   ============================================================ */
+// isFinite(null) is true - Number(null) is 0 - so "has it got coordinates
+// yet" has to ask for a real number, or every place not looked up yet lands
+// on Null Island and the list blows up on its first toFixed().
+function num(v){ return typeof v === "number" && isFinite(v); }
+function located(p){ return num(p.lat) && num(p.lon); }
+function shown(p){
+  if(layerOf(p.layer).off) return false;
+  if(!filter) return true;
+  const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
+  return hay.indexOf(filter) >= 0;
+}
+function renderPins(){
+  const { w, h } = stageSize(), o = origin();
+  PLACES.forEach(p => {
+    if(!located(p) || !shown(p)){ if(p.el) p.el.style.display = "none"; return; }
+    if(!p.el){
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "pin";
+      b.innerHTML = '<span class="bead"></span><span class="lbl"></span>';
+      b.addEventListener("click", ev => { ev.stopPropagation(); select(p, false); });
+      pinsEl.appendChild(b);
+      p.el = b;
+    }
+    p.el.querySelector(".lbl").textContent = p.q;
+    p.el.classList.toggle("coord", p.status === "coord");
+    p.el.classList.toggle("on", selected === p);
+    p.el.style.zIndex = selected === p ? 4 : 1;
+    const x = lon2x(p.lon, view.z) - o.x, y = lat2y(p.lat, view.z) - o.y;
+    if(x < -240 || y < -80 || x > w + 240 || y > h + 80){ p.el.style.display = "none"; return; }
+    p.el.style.display = "flex";
+    p.el.style.transform = "translate3d(" + Math.round(x) + "px," + Math.round(y) + "px,0) translate(-0.425rem,-50%)";
+  });
+  placePop();
+}
+function renderScale(){
+  const mPerPx = 156543.03392 * Math.cos(view.lat * Math.PI / 180) / Math.pow(2, view.z);
+  const target = 90 * mPerPx;
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const nice = [1, 2, 5, 10].map(k => k * pow).filter(v => v >= target)[0] || pow;
+  const px = nice / mPerPx;
+  const el = $("scale");
+  el.style.width = Math.round(px) + "px";
+  el.querySelector("span").textContent = nice >= 1000 ? (nice / 1000) + " km" : nice + " m";
+}
+function render(){ renderTiles(); renderPins(); renderScale(); }
+
+/* ---- the popup ---- */
+function select(p, fromList){
+  selected = p;
+  if(fromList && located(p)) panTo(p.lat, p.lon, Math.max(view.z, 13));
+  paintList();
+  if(!located(p)){ closePop(); render(); return; }
+  $("pop-title").textContent = p.q;
+  $("pop-note").textContent = p.note || p.label || p.context || "";
+  $("pop-note").style.display = $("pop-note").textContent ? "" : "none";
+  $("pop-co").textContent = p.lat.toFixed(5) + ", " + p.lon.toFixed(5);
+  $("pop-tags").textContent = (p.tags || []).map(x => "#" + x).join(" ");
+  $("pop").classList.add("open");
+  render();
+}
+function placePop(){
+  const pop = $("pop");
+  if(!pop.classList.contains("open") || !selected || !located(selected)) return;
+  const o = origin(), { w } = stageSize();
+  const x = lon2x(selected.lon, view.z) - o.x, y = lat2y(selected.lat, view.z) - o.y;
+  pop.style.left = Math.max(90, Math.min(w - 90, x)) + "px";
+  pop.style.top = y + "px";
+}
+function closePop(){ $("pop").classList.remove("open"); }
+function openOnOSM(){
+  if(!selected || !located(selected)) return;
+  window.open("https://www.openstreetmap.org/?mlat=" + selected.lat + "&mlon=" + selected.lon +
+              "#map=17/" + selected.lat + "/" + selected.lon, "_blank", "noopener");
+}
+function copyCoords(){
+  if(!selected || !located(selected)) return;
+  const s = selected.lat.toFixed(6) + ", " + selected.lon.toFixed(6);
+  const done = () => ScuLaFolder.toast(t("copied"));
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(done, () => {});
+  else done();
+}
+
+/* ---- moving the map ---- */
+function panTo(lat, lon, z){
+  view.lat = lat; view.lon = lon;
+  if(z != null) view.z = Math.max(MIN_Z, Math.min(MAX_Z, z));
+  render();
+}
+function zoomBy(d, ax, ay){
+  const nz = Math.max(MIN_Z, Math.min(MAX_Z, view.z + d));
+  if(nz === view.z) return;
+  const { w, h } = stageSize();
+  if(ax == null){ ax = w / 2; ay = h / 2; }
+  const under = pointToLatLon(ax, ay);
+  view.z = nz;
+  const ox = lon2x(under.lon, nz) - ax, oy = lat2y(under.lat, nz) - ay;
+  view.lon = x2lon(ox + w / 2, nz);
+  view.lat = y2lat(oy + h / 2, nz);
+  render();
+}
+function fitAll(){
+  const pts = PLACES.filter(p => located(p) && shown(p));
+  if(!pts.length) return;
+  let n = pts[0].lat, s = pts[0].lat, e = pts[0].lon, wst = pts[0].lon;
+  pts.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lon); wst = Math.min(wst, p.lon); });
+  const { w, h } = stageSize();
+  let z = MAX_Z;
+  for(; z > MIN_Z; z--){
+    const dx = lon2x(e, z) - lon2x(wst, z), dy = lat2y(s, z) - lat2y(n, z);
+    if(dx <= w - 120 && dy <= h - 120) break;
+  }
+  view.z = z; view.lat = (n + s) / 2; view.lon = (e + wst) / 2;
+  render();
+}
+
+/* ============================================================
+   7. The layered list
+   ============================================================ */
+function statusWord(p){
+  return p.status === "coord" ? t("kindCoord")
+       : p.status === "found" ? t("kindFound")
+       : p.status === "none"  ? t("kindNone")
+       : t("kindWait");
+}
+function statusColor(p){
+  return p.status === "coord" ? "var(--pin-coord)"
+       : p.status === "found" ? "var(--pin-found)"
+       : p.status === "none"  ? "var(--pin-none)"
+       : "var(--pin-wait)";
+}
+function paintList(){
+  const box = $("layers");
+  box.innerHTML = "";
+  if(!PLACES.length){
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.innerHTML = "<b>" + t("emptyTitle") + "</b><br>" +
+      (UI === "ro"
+        ? 'Scrie <code>^@Castelul Peleș</code> într-un capitol din pagina Markdown și apasă 🗺, sau deschide un fișier .md de aici.'
+        : 'Write <code>^@Peleș Castle</code> in a chapter on the Markdown page and press 🗺, or open a .md file from here.');
+    box.appendChild(d);
+    paintFoot();
+    return;
+  }
+  LAYERS.forEach(L => {
+    const mine = PLACES.filter(p => p.layer === L.name);
+    const vis = mine.filter(p => !filter || shown(p) || L.off);
+    const list = filter ? mine.filter(p => {
+      const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
+      return hay.indexOf(filter) >= 0;
+    }) : mine;
+    if(!list.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "layer" + (L.off ? " off" : "") + (L.collapsed ? " collapsed" : "");
+    const head = document.createElement("div");
+    head.className = "layer-head";
+    const tw = document.createElement("span");
+    tw.className = "tw"; tw.textContent = L.collapsed ? "▸" : "▾";
+    tw.addEventListener("click", ev => { ev.stopPropagation(); L.collapsed = !L.collapsed; paintList(); });
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.textContent = L.name; nm.title = L.name;
+    const ct = document.createElement("span");
+    ct.className = "ct";
+    ct.textContent = list.filter(located).length + "/" + list.length;
+    head.appendChild(tw); head.appendChild(nm); head.appendChild(ct);
+    head.addEventListener("click", () => { L.off = !L.off; paintList(); render(); });
+    wrap.appendChild(head);
+
+    const places = document.createElement("div");
+    places.className = "places";
+    list.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "place" + (selected === p ? " on" : "") + (p.status === "none" ? " none" : "");
+      const dot = document.createElement("span");
+      dot.className = "dot"; dot.style.background = statusColor(p);
+      const txt = document.createElement("span");
+      txt.className = "txt";
+      const q = document.createElement("span");
+      q.className = "q"; q.textContent = p.q; q.title = p.q;
+      const sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = p.note || (located(p) ? p.lat.toFixed(4) + ", " + p.lon.toFixed(4) : statusWord(p));
+      txt.appendChild(q); txt.appendChild(sub);
+      row.appendChild(dot); row.appendChild(txt);
+      row.addEventListener("click", () => select(p, true));
+      places.appendChild(row);
+    });
+    wrap.appendChild(places);
+    box.appendChild(wrap);
+  });
+  paintFoot();
+}
+function paintFoot(){
+  const total = PLACES.length, ok = PLACES.filter(located).length;
+  const queued = PLACES.filter(p => p.status === "pending" || p.status === "working").length;
+  const missing = PLACES.filter(p => p.status === "none").length;
+  let s = total ? t("statusCounts", [total, ok]) : t("noPlaces");
+  if(queued) s = t("statusWorking", queued);
+  else if(missing) s += " · " + t("statusNone", missing);
+  if(!(S.geocoder || "").trim() && total > ok) s += " · " + t("statusNoGeocoder");
+  $("side-foot").textContent = s;
+}
+function paintSource(){
+  const el = $("map-source");
+  if(!SOURCE) { el.textContent = t("noSource"); return; }
+  el.textContent = SOURCE.source === "file" ? t("fromFile", SOURCE.title) : t("fromChapter", SOURCE.title);
+  el.title = el.textContent;
+}
+function toggleSide(){ $("side").classList.toggle("hidden"); }
+
+/* ============================================================
+   8. Looking an address up
+   ============================================================ */
+const GAP_MS = 1100;          // Nominatim's usage policy: one request a second
+let queue = [], busy = false, lastCall = 0;
+
+function readGeoResult(j){
+  let r = null;
+  if(Array.isArray(j)) r = j[0];
+  else if(j && Array.isArray(j.features)){
+    const f = j.features[0];
+    if(f && f.geometry && f.geometry.coordinates){
+      return { lat: +f.geometry.coordinates[1], lon: +f.geometry.coordinates[0],
+               label: (f.properties && (f.properties.display_name || f.properties.name)) || "" };
+    }
+  }
+  else if(j && Array.isArray(j.results)) r = j.results[0];
+  else if(j && j.lat != null) r = j;
+  if(!r) return null;
+  const pick = v => (v === null || v === undefined || v === "") ? NaN : Number(v);
+  const lat = pick(r.lat != null ? r.lat : r.latitude);
+  const lon = pick(r.lon != null ? r.lon : (r.lng != null ? r.lng : r.longitude));
+  if(!num(lat) || !num(lon)) return null;
+  return { lat, lon, label: r.display_name || r.name || "" };
+}
+function geoFetch(q){
+  const tpl = (S.geocoder || "").trim();
+  if(!tpl) return Promise.reject(new Error("no-geocoder"));
+  const url = tpl.indexOf("{q}") >= 0 ? tpl.replace("{q}", encodeURIComponent(q))
+                                      : tpl + encodeURIComponent(q);
+  return fetch(url, { headers: { "Accept": "application/json" } })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+    .then(readGeoResult);
+}
+function enqueue(p){
+  if(p.status === "coord") return;
+  const hit = cacheGet(p.q);
+  if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; return; }
+  if(!(S.geocoder || "").trim()){ p.status = "none"; return; }
+  p.status = "pending";
+  queue.push(p);
+}
+function pump(){
+  if(busy) return;
+  const p = queue.shift();
+  if(!p){ paintFoot(); return; }
+  busy = true;
+  const wait = Math.max(0, GAP_MS - (Date.now() - lastCall));
+  setTimeout(() => {
+    lastCall = Date.now();
+    p.status = "working"; paintFoot();
+    geoFetch(p.q).then(hit => {
+      if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; cachePut(p.q, hit); }
+      else p.status = "none";
+    }).catch(() => { p.status = "none"; })
+      .then(() => {
+        busy = false;
+        paintList(); render();
+        if(!queue.length && PLACES.filter(located).length) fitAll();
+        pump();
+      });
+  }, wait);
+}
+function locateAll(force){
+  if(force){
+    PLACES.forEach(p => {
+      if(p.status === "coord") return;
+      p.lat = null; p.lon = null; p.status = "pending";
+    });
+    queue = [];
+  }
+  PLACES.forEach(p => { if(!located(p) && p.status !== "pending" && p.status !== "working") enqueue(p); });
+  if(force) PLACES.forEach(p => { if(p.status === "pending" && queue.indexOf(p) < 0) queue.push(p); });
+  paintList(); render(); pump();
+}
+
+/* ============================================================
+   9. Where the list comes from
+   ============================================================ */
+function adopt(payload){
+  if(!payload || !payload.layers) return false;
+  PLACES = []; LAYERS = []; selected = null; queue = [];
+  pinsEl.innerHTML = "";
+  payload.layers.forEach(L => {
+    layerOf(L.name);
+    (L.items || []).forEach(it => {
+      PLACES.push({
+        q: it.q, note: it.note || "", layer: L.name, line: it.line,
+        tags: it.tags || [], context: it.context || "",
+        lat: num(it.lat) ? it.lat : null,
+        lon: num(it.lon) ? it.lon : null,
+        label: "", status: num(it.lat) && num(it.lon) ? "coord" : "pending",
+        el: null
+      });
+    });
+  });
+  SOURCE = { title: payload.title || "", source: payload.source === "file" ? "file" : "chapter" };
+  paintSource();
+  PLACES.forEach(enqueue);
+  paintList();
+  if(PLACES.filter(located).length) fitAll(); else render();
+  pump();
+  return PLACES.length > 0;
+}
+function takePayload(){
+  const p = window.ScuLaGeo && ScuLaGeo.received();
+  if(p) adopt(p);
+}
+function openMd(){ $("md-file").click(); }
+$("md-file").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  f.text().then(text => {
+    const payload = ScuLaGeo.scan(text, { title: f.name, source: "file" });
+    if(!payload.count){ ScuLaFolder.toast(t("noMarks")); return; }
+    adopt(payload);
+    ScuLaFolder.toast(t("readFile", [f.name, payload.count]));
+  });
+  ev.target.value = "";
+});
+
+/* Someone typed a place into the sidebar — one more pin, its own layer. */
+function addTyped(q){
+  q = String(q || "").trim();
+  if(!q) return;
+  const co = ScuLaGeo.coords(q);
+  const name = t("manualLayer");
+  layerOf(name);
+  const p = {
+    q, note: "", layer: name, line: null, tags: [], context: "",
+    lat: co ? co.lat : null, lon: co ? co.lon : null, label: "",
+    status: co ? "coord" : "pending", el: null
+  };
+  PLACES.push(p);
+  if(!SOURCE) { SOURCE = { title: name, source: "chapter" }; paintSource(); }
+  enqueue(p);
+  paintList();
+  if(located(p)) { select(p, true); } else render();
+  pump();
+}
+
+/* ============================================================
+   10. Export — through ScuLaFolder, like every other save here
+   ============================================================ */
+function exportGeoJSON(){
+  const pts = PLACES.filter(located);
+  if(!pts.length){ ScuLaFolder.toast(t("nothingToSave")); return; }
+  const fc = {
+    type: "FeatureCollection",
+    features: pts.map(p => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [+p.lon.toFixed(6), +p.lat.toFixed(6)] },
+      properties: {
+        name: p.q, layer: p.layer, note: p.note || "",
+        tags: p.tags || [], line: p.line, source: SOURCE ? SOURCE.title : ""
+      }
+    }))
+  };
+  const base = (SOURCE && SOURCE.title ? SOURCE.title.replace(/\.(md|markdown|txt)$/i, "") : "locatii")
+               .replace(/[\\/:*?"<>|]+/g, "-").trim() || "locatii";
+  const blob = new Blob([JSON.stringify(fc, null, 2)], { type: "application/geo+json" });
+  Promise.resolve(ScuLaFolder.save(base + ".geojson", blob)).then(() => {
+    ScuLaFolder.toast(t("savedGeo", pts.length));
+  });
+}
+
+/* ============================================================
+   11. Dragging, wheeling and pinching
+   ============================================================ */
+(function interaction(){
+  let drag = null, pointers = new Map(), pinch = null;
+  stage.addEventListener("pointerdown", ev => {
+    if(ev.target.closest(".pin") || ev.target.closest("#pop") || ev.target.closest("#hud")) return;
+    stage.setPointerCapture(ev.pointerId);
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if(pointers.size === 2){
+      const [a, b] = [...pointers.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: view.z };
+      drag = null;
+    } else {
+      drag = { x: ev.clientX, y: ev.clientY, moved: false };
+      stage.classList.add("dragging");
+    }
+  });
+  stage.addEventListener("pointermove", ev => {
+    if(!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if(pinch && pointers.size === 2){
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const nz = Math.round(pinch.z + Math.log2(d / (pinch.d || 1)));
+      if(nz !== view.z){
+        const r = stage.getBoundingClientRect();
+        zoomBy(nz - view.z, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+      }
+      return;
+    }
+    if(!drag) return;
+    const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+    if(!dx && !dy) return;
+    drag.x = ev.clientX; drag.y = ev.clientY; drag.moved = true;
+    const { w, h } = stageSize(), o = origin();
+    view.lon = x2lon(o.x - dx + w / 2, view.z);
+    view.lat = y2lat(Math.max(0, Math.min(worldSize(view.z), o.y - dy + h / 2)), view.z);
+    render();
+  });
+  function up(ev){
+    pointers.delete(ev.pointerId);
+    if(pointers.size < 2) pinch = null;
+    if(!pointers.size){
+      if(drag && !drag.moved) closePop();
+      drag = null; stage.classList.remove("dragging");
+    }
+  }
+  stage.addEventListener("pointerup", up);
+  stage.addEventListener("pointercancel", up);
+  stage.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const r = stage.getBoundingClientRect();
+    zoomBy(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
+  }, { passive: false });
+  stage.addEventListener("dblclick", ev => {
+    const r = stage.getBoundingClientRect();
+    zoomBy(1, ev.clientX - r.left, ev.clientY - r.top);
+  });
+  window.addEventListener("resize", () => render());
+})();
+
+$("q").addEventListener("input", ev => { filter = ev.target.value.trim().toLowerCase(); paintList(); render(); });
+$("add").addEventListener("keydown", ev => {
+  if(ev.key !== "Enter") return;
+  addTyped(ev.target.value);
+  ev.target.value = "";
+});
+
+document.addEventListener("keydown", ev => {
+  if(ev.key === "Escape"){
+    if($("settings-modal").classList.contains("open")) closeSettings();
+    else if($("help-modal").classList.contains("open")) closeHelp();
+    else closePop();
+    return;
+  }
+  const el = document.activeElement;
+  if(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+  if(ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  if(ev.key === "+" || ev.key === "=") zoomBy(1);
+  else if(ev.key === "-" || ev.key === "_") zoomBy(-1);
+  else if(ev.key === "f" || ev.key === "F") fitAll();
+});
+
+/* ============================================================
+   12. The two modals
+   ============================================================ */
+function openSettings(){
+  $("f-tiles").value = S.tiles || "";
+  $("f-geocoder").value = S.geocoder || "";
+  $("settings-modal").classList.add("open");
+}
+function closeSettings(){ $("settings-modal").classList.remove("open"); }
+function saveSettings(){
+  S.tiles = $("f-tiles").value.trim();
+  S.geocoder = $("f-geocoder").value.trim();
+  saveS();
+  closeSettings();
+  tileNodes.forEach(img => img.remove()); tileNodes.clear();
+  paintAttrib(); render();
+  PLACES.forEach(p => { if(!located(p)) enqueue(p); });
+  paintList(); pump();
+}
+function resetSettings(){ $("f-tiles").value = DEFAULTS.tiles; $("f-geocoder").value = DEFAULTS.geocoder; }
+function clearGeoCache(){
+  CACHE = {}; store.drop(CACHE_KEY);
+  ScuLaFolder.toast(t("cacheCleared"));
+}
+function paintHelp(){ $("help-body").innerHTML = t("helpBody"); }
+function openHelp(){ paintHelp(); $("help-modal").classList.add("open"); }
+function closeHelp(){ $("help-modal").classList.remove("open"); }
+[["settings-modal", closeSettings], ["help-modal", closeHelp]].forEach(([id, close]) => {
+  $(id).addEventListener("click", ev => { if(ev.target.id === id) close(); });
+});
+
+/* ============================================================
+   13. Init
+   ============================================================ */
+try{ UI = localStorage.getItem("scula:ui-lang") || "ro"; }catch(e){}
+// The shared nav owns the language; it announces changes to whoever cares.
+window.addEventListener("scula-ui-lang", ev => {
+  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
+});
+// Another tab pressed 🗺 while this page was already open.
+window.addEventListener("storage", ev => {
+  if(ev.key === (window.ScuLaGeo ? ScuLaGeo.KEY : "scula:map:payload")) takePayload();
+});
+applyUILang();
+paintAttrib();
+takePayload();
+render();
+</script>
+</body>
+</html>

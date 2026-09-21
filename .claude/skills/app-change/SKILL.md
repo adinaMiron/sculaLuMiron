@@ -1,11 +1,11 @@
 ---
 name: app-change
-description: Make a change to one of the six standalone browser apps (voice.html / editor.html / index.html / recipes.html / calendar.html / transfer.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", "in calendar", "on the transfer page", etc. — a feature, button, fix, or styling change inside one app file.
+description: Make a change to one of the seven standalone browser apps (voice.html / editor.html / index.html / recipes.html / calendar.html / transfer.html / map.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", "in calendar", "on the transfer page", "on the map page", etc. — a feature, button, fix, or styling change inside one app file.
 ---
 
-# Changing one of the six apps
+# Changing one of the seven apps
 
-Six self-contained HTML files, no build step. See `CLAUDE.md` for the hard rules.
+Seven self-contained HTML files, no build step. See `CLAUDE.md` for the hard rules.
 This skill is the repeatable loop for a change request.
 
 ## 1. Which file
@@ -18,6 +18,7 @@ This skill is the repeatable loop for a change request.
 | "editor.html", "image marker", "mazgaleste", "drawing/canvas page" | `editor.html` | Mazgaleste (was "Editor") |
 | "calendar", "calendarul" | `calendar.html` | Calendar |
 | "transfer", "sync", "trimite pe alt dispozitiv" | `transfer.html` | Transfer |
+| "harta", "hartă", "locatii", "map page" | `map.html` | Hartă |
 
 ## 2. Locate before reading — never read a whole app file
 
@@ -39,11 +40,11 @@ budget.
 - `rem` for chrome in `editor.html` (except inside `(pointer:coarse)` blocks).
 - Save via `ScuLaFolder.save(name, blob)` — never a hand-rolled `<a download>`.
 - **Touching the `<nav id="site-nav">` block? Apply the identical change to all
-  six files** — it is byte-identical across them.
+  seven files** — it is byte-identical across them.
 
 ## 4. Verify — run `/verify`
 
-Parse-checks the JS in all six files and diffs the nav block. A PostToolUse
+Parse-checks the JS in all seven files and diffs the nav block. A PostToolUse
 hook already parse-checks the file you edited on each save, but run `/verify`
 before calling the change done. For behaviour changes, `/apptest <name>`.
 

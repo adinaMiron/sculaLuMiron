@@ -1,9 +1,9 @@
 # THEME.md — unified colour theme
 
-Goal: one shared visual identity across all five apps, switchable
+Goal: one shared visual identity across all seven apps, switchable
 light/dark, with no build step.
 
-## Current state — all five migrated
+## Current state — all seven migrated
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
@@ -13,12 +13,13 @@ light/dark, with no build step.
 | `recipes.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 | `calendar.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 | `transfer.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
+| `map.html` | **dark** | ✅ born on the earth palette, semantic names (+ the four `--pin-*` place states) | olive `#C1BB45` |
 
-None of the five files share one `:root` block yet — each still defines
+None of the seven files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
 
-`recipes.html`, `calendar.html` and `transfer.html` were written after the migrations, so
+`recipes.html`, `calendar.html`, `transfer.html` and `map.html` were written after the migrations, so
 they carry the full target set below from their first commit — including
 the `--text-3`,
 `--accent-2`, `--accent-soft` and `--ok` roles the older files only partly
@@ -67,6 +68,13 @@ tags already use, an amber sitting between it and the accent, and the
 shared terracotta. Each level's CSS class sets these into an `--imp-c`
 custom property, which is what lets one rule colour both the pill and the
 block around it. Same reasoning as `--graph-*` for keeping them tokens.
+
+`map.html` carries its own four: `--pin-coord` (the olive — written as
+coordinates, nothing to look up), `--pin-found` (the mossy teal — the
+geocoder answered), `--pin-wait` (the mist — queued or in flight) and
+`--pin-none` (the shared terracotta — nothing came back). Same reasoning as
+`--graph-*`: the dot in the list and the pin on the map are coloured from
+one place, and a light theme would have exactly four values to redefine.
 
 Where a cell is blank, that file has no equivalent — not a gap to fill,
 just a role it doesn't need (`voice.html` has no secondary accent tint or

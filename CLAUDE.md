@@ -1,26 +1,28 @@
 # CLAUDE.md
 
-Six standalone browser tools. **No build step, no framework, no package
+Seven standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `voice.html` | 3668 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
-| `editor.html` | 5930 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 11677 | 100k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + Google Drive sync | dark (earth) |
-| `recipes.html` | 10053 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
-| `calendar.html` | 2628 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
-| `transfer.html` | 2961 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
+| `voice.html` | 3829 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
+| `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
+| `index.html` | 11906 | 102k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + Google Drive sync | dark (earth) |
+| `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
+| `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
+| `transfer.html` | 3108 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
+| `map.html` | 2378 | 24k | "Hartă" — the `^@` places written in markdown, drawn on a **hand-rolled slippy map** (OSM tiles, no map library) and listed in layers beside it | dark (earth) |
 
 **What the user calls each page** — requests come in as "work on the X page":
 "markdown page" / "index" → `index.html` · "retete" / "rețete" →
 `recipes.html` · "voice" / "caiet vocal" → `voice.html` ·
 "editor.html" / "mazgaleste" / "drawing page" → `editor.html` ·
 "calendar" / "calendarul" → `calendar.html` · "transfer" / "sync" /
-"trimite pe alt dispozitiv" → `transfer.html`. The nav order is Markdown,
-Calendar, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old "Editor"
-label is now "Mazgaleste". `index.html` is the markdown editor — it's the file
+"trimite pe alt dispozitiv" → `transfer.html` · "harta" / "hartă" /
+"locatii" / "map page" → `map.html`. The nav order is Markdown,
+Calendar, Hartă, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old
+"Editor" label is now "Mazgaleste". `index.html` is the markdown editor — it's the file
 served at the site root, and its nav link is the one highlighted as
 current when the site loads at `/` (see the `here` fallback in the shared
 nav script).
@@ -31,7 +33,7 @@ sync docs).
 
 ## Rule 1: never read a whole HTML file
 
-Reading all six costs ~295k tokens; `recipes.html` alone is 89k and
+Reading all seven costs ~319k tokens; `recipes.html` alone is 89k and
 `index.html` 76k. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
@@ -40,7 +42,7 @@ grep -n "functionName\|#elementId" editor.html   # locate
 sed -n '1084,1144p' editor.html                  # read just that
 ```
 
-`docs/MAP.md` has line anchors for every section of all six files. Read
+`docs/MAP.md` has line anchors for every section of all seven files. Read
 it instead of exploring. It is far cheaper than one file scan.
 
 ## Routing — read only what the task needs
@@ -66,24 +68,28 @@ it instead of exploring. It is far cheaper than one file scan.
 | **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md` | `docs/FEATURES.md` § E |
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 | **Moving files to another device** — the Wi-Fi (WebRTC) link and its codes, the Bluetooth (NUS) one, folder trees, the received-file routes, the device book and forgetting a device | `docs/FEATURES.md` § Q |
+| **The `^@` place marker and the map** — `window.ScuLaGeo`, the layered list, the tiles, the geocoder, the 🗺 button that appears only when a chapter has a place | `docs/FEATURES.md` § S |
 
 Do not read a doc the task doesn't touch.
 
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all six files — from the `<nav id="site-nav">` line through the
-`<!-- ===== end toolbar nav ===== -->` marker (~1138 lines; starts near
-`voice.html:260`, `editor.html:452`, `index.html:1840`,
-`recipes.html:527`, `calendar.html:269`, `transfer.html:197`, but these
+in all seven files — from the `<nav id="site-nav">` line through the
+`<!-- ===== end toolbar nav ===== -->` marker (~1279 lines; starts near
+`voice.html:260`, `editor.html:452`, `index.html:1907`,
+`recipes.html:527`, `calendar.html:269`, `transfer.html:197`,
+`map.html:238`, but these
 **drift** — grep the `<nav` line). It carries the nav links, the UI-language toggle,
 **`window.ScuLaFolder`** — which decides where every saved file goes
-(`docs/FEATURES.md` § D) — **and `window.ScuLaCal`**, the shared calendar
-store every page can write events into (`docs/FEATURES.md` § L). Any change
-to it must be applied to **all six** or they drift.
+(`docs/FEATURES.md` § D) — **`window.ScuLaCal`**, the shared calendar
+store every page can write events into (`docs/FEATURES.md` § L) — **and
+`window.ScuLaGeo`**, the `^@` place marker and the scan behind the map
+(`docs/FEATURES.md` § S). Any change
+to it must be applied to **all seven** or they drift.
 
 **Verify with `/verify`** — it extracts the block by those two anchors (no
-line numbers) and diffs all six.
+line numbers) and diffs all seven.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -99,7 +105,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
   person (§ Q). A STUN address is a field, empty by default, in the same
   spirit as the OCR URL below.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `index.html:1390` (docx import). Don't add more. (Google Identity
+  CDN in `index.html:1902` (docx import). Don't add more. (Google Identity
   Services is fetched on demand by the two Drive features — `editor.html`'s
   button and `index.html`'s chapter sync — and is a `<script>` tag in no
   file; there is no signing into a Google account without Google's own code,
@@ -112,7 +118,13 @@ block's `SUBDIR` map, so the new page gets its own folder.
   — `docs/RECIPES.md` § A. The knowledge graph in `index.html`
   and the JPEG 2000 decoder in `recipes.html` § 3 are what the rule looks
   like when it holds: a force-graph library and an image codec, both
-  hand-rolled rather than pulled in. The codec is 1000 lines for one image
+  hand-rolled rather than pulled in. **The slippy map in `map.html` is the
+  third**: Leaflet would be the obvious answer and it is still a file this
+  repo will not carry, so the map is ~200 lines of Web Mercator, `<img>`
+  tiles and DOM pins. Its two addresses — the tile template and the
+  geocoder — are the OCR URL's pattern again: visible, editable fields,
+  empty by default meaning "don't", and a local `./tiles/` folder makes the
+  page a map with no internet at all (`docs/FEATURES.md` § S). The codec is 1000 lines for one image
   format, and it is still the right answer — no browser but Safari decodes
   JPEG 2000, and most scanned books are stored in it. **The USDA table in
   `recipes.html` § 6 is the same answer for data**: FoodData Central would
@@ -151,18 +163,18 @@ block's `SUBDIR` map, so the new page gets its own folder.
 Run **`/verify`** — it does both the JS parse-check and the nav-sync diff.
 A PostToolUse hook (`.claude/hooks/check-html-js.sh`) already parse-checks
 the file you just edited on every save and blocks on a syntax error; `/verify`
-is the before-done check across all six.
+is the before-done check across all seven.
 
 ```bash
-# JS in every <script> block still parses (verified working on all 6 files)
-for f in voice.html editor.html index.html recipes.html calendar.html transfer.html; do
+# JS in every <script> block still parses (verified working on all 7 files)
+for f in voice.html editor.html index.html recipes.html calendar.html transfer.html map.html; do
   awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
   printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
 done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `index.html:1543` has attributes and is correctly skipped. If
+in `index.html:1902` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach. The
@@ -196,6 +208,12 @@ between them the way a person carries them, a folder tree sent over a real
 `RTCDataChannel` and read back byte for byte, the hand-written store-only
 `.zip` parsed back out, the device book kept across a reload and forgotten
 on demand, and the Bluetooth half driven against a stub NUS peripheral),
+for `map.html` (`map.js` — the `^@` marker in the preview and the 🗺 button
+that comes and goes with it, the hand-over into the map page, the layers
+read back off the headings, the geocoder driven against a stubbed route
+(two names, two calls; coordinates cost none) and its answers remembered
+across a reload, a pin asserted against the projection that placed it, a
+zoom holding the point under the cursor, and the exported GeoJSON),
 for `calendar.html` (`calendar.js` — the event
 modal writing a real Google-shaped event, all four views including the
 week block's geometry and drag-to-create on the hour grid, search, the
@@ -248,7 +266,7 @@ the guarantee that arming the melody does not make "Descarcă" write an
 audio file).
 It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
-— and none of the four apps reference it; it doesn't count against Rule 3.
+— and none of the seven apps reference it; it doesn't count against Rule 3.
 
 **Playwright's bundled browser is not what's installed here.** Every test run
 must point at whatever browser the machine does have through `PW_CHROME_PATH`
@@ -283,16 +301,15 @@ change, not "later":
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
-1. `README.md` is a stub.
-2. `tests/nav.js` fails two checks — the phone pass: "on a phone the click
+1. `tests/nav.js` fails two checks — the phone pass: "on a phone the click
    shows the preview" and "and leaves the source (and the keyboard) alone".
    A click on a nav item leaves the view on `view-source` and flashes
    nothing. Reproduces on the `index.html` in `HEAD`, so it is not whatever
    you just changed. Every other check passes.
-3. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
+2. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
    now sits between them. Also reproduces on `HEAD`; either the button moved
    or the check is stale. Its other checks pass.
-4. **Not** an issue, though it reads like one: the calendar never talks to
+3. **Not** an issue, though it reads like one: the calendar never talks to
    Google. Events reach Google Calendar as an export the person carries
    over — the `.ics` through its Import screen, or the JSON through the
    API. No OAuth, no network call, deliberately — see Rule 3.

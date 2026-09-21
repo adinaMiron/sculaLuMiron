@@ -17,7 +17,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
-   Verify with `/verify` (parses all six + diffs the nav block).
+   Verify with `/verify` (parses all seven + diffs the nav block).
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
    get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
@@ -465,7 +465,7 @@ toast says so, via `openHtmlBlocked`).
 ### Google Drive — a fourth destination, per page
 
 Deliberately *not* a `ScuLaFolder` mode. `ScuLaFolder` is the shared block
-copied into all six files and it must keep working from `file://` with no
+copied into all seven files and it must keep working from `file://` with no
 network; Google needs neither of those to be true. So each page that wants
 Drive carries its own: the button `#driveBtn` in `editor.html`'s script
 (`docs/MAP.md` § Google Drive), and `index.html`'s chapter sync
@@ -2075,6 +2075,155 @@ on real geometry, not on the attribute), a heading/`#tag`/colour/causal
 line left alone, the blank line inside a run, the table and the fence that
 end one, two entries on one day, the toolbar button, both languages and
 the export. Run: `/apptest timeline`.
+
+---
+
+## S. Places and the map (`^@`, `window.ScuLaGeo`, `map.html`)
+
+A place written in a chapter, drawn on a map on its own page. The same
+arrangement as the calendar (§ L): the **syntax lives in the shared nav
+block**, not in the page that writes it, so `index.html` (which paints the
+markers and hands them over) and `map.html` (which draws them) read one
+marker and can never drift apart.
+
+### The syntax
+
+`^@` and then the place, to the end of the line:
+
+```md
+^@Castelul Peleș                       a name, looked up on the map
+^@Strada Lipscani 12, București        a street with a number
+^@44.4268, 26.1025                     coordinates — nothing is looked up
+^@44.4268N 26.1025E                    the same, with hemispheres (V = Vest)
+^@Castelul Peleș | a doua zi           what follows "|" is a note
+^@Castelul Peleș #vacanta              a "#tag" ends the address
+```
+
+Three rules do all the work:
+
+- **The lead class is `TAG_RE`'s** — a marker starts a line or follows a
+  space or an opening bracket. So `ana^@x` mid-word is not one, and a
+  marker inside `` `inline code` `` (which by then follows `` ` `` or `>`)
+  is left alone, the same trick the `@date` marker relies on.
+- **The tail is a lookahead, not part of the match.** The address ends at
+  the end of the line, at a `#`, or at a `<`. Keeping the trailing space
+  *out* of the match is not cosmetic: the pill the marker becomes ends in
+  `>`, and `>` is exactly the lead `TAG_RE` refuses — swallow the space and
+  the `#vacanta` beside a place quietly stops being a tag.
+- **Coordinates are recognised, not looked up.** One of the two numbers
+  must carry a decimal point, or both must carry a hemisphere letter —
+  otherwise `^@Sector 3, 5` would be a point in the Indian Ocean.
+
+An impossible pair (`^@91, 200`) is not coordinates and falls back to being
+an address, the way `@2026-02-31` falls back to plain text.
+
+### `window.ScuLaGeo` — the API
+
+In the shared block, a third IIFE after `ScuLaFolder` and `ScuLaCal`.
+
+| Call | What |
+|---|---|
+| `markRe()` | a fresh `/g/m` regex — group 1 is the lead, group 2 the raw address |
+| `read(raw)` | group 2 → `{ query, note, lat, lon }`, or `null` for a bare `^@` |
+| `coords(s)` | `"44.4268, 26.1025"` → `{lat, lon}` or `null` |
+| `findMarks(text)` | `[{ place, index, length, text }]` — `ScuLaCal.findMarks`'s shape |
+| `has(text)` | is there a place in here at all (what the 🗺 button asks) |
+| `scan(text, meta)` | the whole payload: one layer per heading, in order |
+| `send(p)` / `received()` | the hand-over, through `localStorage['scula:map:payload']` |
+
+**`scan()` is where layers come from.** Every place joins the layer of the
+nearest heading above it; places before the first heading join a layer
+named after the chapter. A fenced code block is skipped, the line's
+`#tags` ride along, and the line itself is kept (bullet, checkbox and
+inline markdown stripped) as the `context` the popup shows.
+
+The hand-over is `localStorage`, not a query string: a chapter's worth of
+places does not belong in a URL, and this way the map still has its list
+after a reload. It is one key, last-write-wins, and `map.html` also listens
+for the `storage` event, so pressing 🗺 in one tab repaints a map already
+open in another.
+
+### In `index.html`
+
+- `GEO_MARK_RE` beside `DATE_MARK_RE`, `renderGeoMark()` beside
+  `renderDateMark()`, and one `.replace()` in `applyInline()` — after the
+  inline-code rule (the backtick guard) and **before `TAG_RE`**, so the
+  `#` the address gave up still becomes a tag.
+- The pill is `.md-geo`, reusing `--imp-nice` (the mossy teal the tags
+  already carry). Its label is the address the person typed, so unlike
+  `.md-date` it never needs a language repaint.
+- **🗺 Map / Hartă** (header, `Ctrl+Alt+M`) is `hidden` unless
+  `ScuLaGeo.has(editor.value)`. `mapRefresh()` is called from
+  `updatePreview()`, which every keystroke and every chapter opened ends
+  in, so the button appears with the first marker and leaves with the last.
+  `openMap()` scans, sends and navigates; with no place it toasts instead.
+- The chapter's name — what the header shows, `untitled.md` included — is
+  what the map page is told it is looking at. One source of truth for
+  "which chapter is this".
+
+### The page
+
+`map.html`. Three parts and nothing else: a hand-rolled slippy map, a
+geocoder call, and the layered list beside it.
+
+**The map is ~200 lines, not a library** (CLAUDE.md rule 3, the same answer
+as the force graph and the JPEG 2000 codec). Web Mercator in six
+functions, `<img>` tiles positioned by `transform`, DOM pins on top.
+Tiles are keyed `z/x/y/tx` — `tx` unwrapped, so the copy of a tile east of
+the antimeridian is its own node. `origin()` is the viewport's top-left in
+world pixels and every other position is derived from it; a zoom keeps the
+point under the cursor still by re-deriving the centre from that anchor.
+
+**Two addresses, both visible and editable** (⚙), both empty-able, in the
+same spirit as the OCR URL in `recipes.html`:
+
+| Field | Default | Empty means |
+|---|---|---|
+| tiles | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | no tiles — the graticule and the pins stay, so the page is still a map offline |
+| geocoder | `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}` | nothing is looked up — only places written as coordinates appear |
+
+A local `./tiles/{z}/{x}/{y}.png` makes it work with no internet at all.
+The geocoder reader accepts Nominatim's shape, a bare array, a GeoJSON
+`features` list and a `results` list, so a self-hosted one usually needs no
+code. Requests are queued **one a second** (Nominatim's usage policy) and
+every answer is cached in `localStorage['scula:map:geocache']`, so the
+second visit asks nothing.
+
+**The list is the layers.** Clicking a layer's name hides it (and its
+pins); the `▸` collapses it; clicking a place flies the map there and opens
+its popup. The dot's colour is the place's state — written as coordinates,
+found, still being looked up, not found — and those four are `--pin-*`
+tokens for the same reason the graph's node roles are.
+
+⚠ **`isFinite(null)` is `true`.** `Number(null)` is `0`, so "has it got
+coordinates yet" must ask `typeof v === "number"` first (`num()`), or every
+place not yet looked up lands on Null Island. This cost one debugging round;
+don't reintroduce it.
+
+The page stands on its own, too: **📄 Open .md** scans any markdown file
+with the same `ScuLaGeo.scan()`, and the sidebar's second field looks a
+single place up and pins it. **⬇ Export** writes a `.geojson`
+(`[lon, lat]`, each feature keeping its layer, note and tags) through
+`ScuLaFolder.save()` like every other save here.
+
+### Adding to it
+
+- **Another address shape** (a plus code, a `geo:` URI): one branch in
+  `ScuLaGeo.coords()`. Nothing else reads coordinates.
+- **Another geocoder shape**: one branch in `readGeoResult()`.
+- **Another page that reads places**: `ScuLaGeo.findMarks()`, and paint it
+  however that page paints things. Don't re-derive the regex.
+
+### Testing
+
+`tests/map.js` — both pages in one run: the pill and the tag beside it, the
+🗺 button coming and going, the hand-over, the layers read off the
+headings, the fenced block that never travelled, the geocoder against a
+stubbed route (two names → two calls, coordinates → none) and its answers
+surviving a reload, a layer switched off, a pin asserted against the
+projection that placed it, a zoom holding its anchor, the exported GeoJSON,
+a `.md` opened on the map page itself, and both languages.
+Run: `/apptest map`.
 
 ---
 
