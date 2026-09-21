@@ -5866,6 +5866,11 @@ let wbCurrentId = null;      // open chapter, or null for a loose file
 let wbDirty = false;
 let wbSaveTimer = 0;
 let wbUserEdited = false;    // has anyone actually typed since this page loaded?
+// The browser's own "Edit files?" permission prompt is asked at most once per
+// page load: past that, a granted handle needs no more asking, and a denied
+// or dismissed one should not be re-asked on every autosave tick. Re-picking
+// the folder (scula-folder event) is the one thing that earns a fresh ask.
+let wbMirrorAsked = false;
 // What the textarea already held when the script ran. A browser that restores
 // form state — a reload, or a tab the browser discarded while it sat idle and
 // reloaded on return — puts the old text back before any script runs. That is
@@ -6070,7 +6075,8 @@ function wbFolderMode() {
 async function wbMirrorWrite(book, chapter, text) {
   if (!wbFolderMode()) return null;
   try {
-    const md = await ScuLaFolder.dir(true);                     // <root>/markdown
+    const md = await ScuLaFolder.dir(!wbMirrorAsked);           // <root>/markdown
+    wbMirrorAsked = true;
     if (!md) return null;
     const bookDir = await md.getDirectoryHandle(book.folder, { create: true });
     const fh = await bookDir.getFileHandle(chapter.file, { create: true });
@@ -7008,6 +7014,7 @@ function wbSettleRestore() {
   flushChapter().then(() => wbSay(t('wbRecovered'), true), () => {});
 }
 window.addEventListener('scula-folder', paintWorkbookWhere);
+window.addEventListener('scula-folder', () => { wbMirrorAsked = false; });
 /* Leaving, hiding, being frozen or being discarded: the journal is written
    synchronously each time, because an IndexedDB write started here is not
    guaranteed to finish, and `beforeunload` alone never fires on a discard. */
