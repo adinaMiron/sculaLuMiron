@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 3829 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 11906 | 102k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + Google Drive sync | dark (earth) |
+| `index.html` | 12947 | 111k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 | `transfer.html` | 3108 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
@@ -69,6 +69,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 | **Moving files to another device** — the Wi-Fi (WebRTC) link and its codes, the Bluetooth (NUS) one, folder trees, the received-file routes, the device book and forgetting a device | `docs/FEATURES.md` § Q |
 | **The `^@` place marker and the map** — `window.ScuLaGeo`, the layered list, the tiles, the geocoder, the 🗺 button that appears only when a chapter has a place | `docs/FEATURES.md` § S |
+| **Photos and films from a folder** — the hand-rolled EXIF and `moov` readers, where each container keeps its metadata, the date and the GPS a camera wrote, the name pulled out of a file name, what gets written into the chapter | `docs/FEATURES.md` § T |
 
 Do not read a doc the task doesn't touch.
 
@@ -252,7 +253,14 @@ shortcuts (`mdlines.js` — Ctrl+Enter / Ctrl+Shift+Enter, caret placement
 and one-step undo), the **timeline** (`timeline.js` — the run of
 `#date - !what` lines becoming one block, text · image · link, the dot
 placed by its date asserted on real geometry, what must *not* become a
-timeline, both languages and the export) and the copy-to-clipboard button
+timeline, both languages and the export) and the **photos and films**
+toolbox (`media.js` — a folder walked through a stubbed picker, every fixture
+assembled byte by byte in the test: a JPEG with a real `APP1` segment and a
+GPS IFD, a PNG with an `eXIf` chunk, an MP4 whose `moov` holds `©day` and
+`©xyz` and one with only `mvhd`; the three date sources and the column that
+names them, the name pulled out of a file name, the filters, the tick, and
+all three output shapes read back out of the real editor), the
+copy-to-clipboard button
 on code blocks in the HTML
 export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for

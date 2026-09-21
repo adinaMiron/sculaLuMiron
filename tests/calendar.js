@@ -46,7 +46,11 @@ async function openPage(browser, url, { width = 1280, height = 900 } = {}) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE ' + m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    if (/Failed to load resource/.test(m.text())) return;   // the CDN tag, over file://
+    errors.push('CONSOLE ' + m.text());
+  });
   await page.goto(url);
   return { ctx, page, errors };
 }

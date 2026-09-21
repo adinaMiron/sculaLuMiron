@@ -2236,6 +2236,139 @@ Run: `/apptest map`.
 
 ---
 
+## T. Photos and films from a folder (`index.html`)
+
+📸 **Poze / Photos** (toolbar, `Ctrl+6`) opens a folder — subfolders and
+all — and reads out of every picture and every film the two things the
+camera wrote into the file itself: **when** it was taken and **where**.
+The file name is asked third, and only for what it alone knows.
+
+### Three sources, in this order
+
+| Source | What it answers | Shown as |
+|---|---|---|
+| The file's own metadata | EXIF in a picture, the `moov` boxes in a film | `metadate` / `metadata` |
+| The file name | a date, when the metadata has none | `denumire` / `file name` |
+| The file system | `lastModified`, the last resort | `fișier` / `file date` |
+
+Which one answered is a column, not a footnote: a date a camera wrote is
+worth more than one read off a name, and the person has to be able to see
+which they are looking at. **"Only what the metadata says"** is the switch
+that drops the other two.
+
+### The parsers, all of them hand-rolled
+
+Rule 3 again — there is no EXIF library here and there will not be one.
+`recipes.html` decodes JPEG 2000 by hand and `map.html` projects Web
+Mercator by hand; this reads metadata by hand, for the same reason.
+
+| Container | Where the metadata sits |
+|---|---|
+| JPEG | the `APP1` segment that opens with `Exif\0\0`, then a TIFF header |
+| PNG | the `eXIf` chunk (PNG 1.5), which is that same TIFF header |
+| WebP | the RIFF `EXIF` chunk, ditto |
+| TIFF | it *is* the TIFF header |
+| HEIC / AVIF | an item in `meta`: `iinf` names the `Exif` item, `iloc` says where it lies |
+| MP4 / MOV / 3GP | `moov` → `©day` and `©xyz`, or `loci`, or `mvhd` |
+
+So `mbReadTiff()` is written once and four of the six containers are just
+"where does its TIFF start". Out of it come `DateTimeOriginal` (0x9003 —
+when the shutter fired; `DateTimeDigitized` and `DateTime` only fill a
+gap) and the GPS IFD (0x8825), whose degrees/minutes/seconds and `N`/`S`
+letter become one signed number.
+
+For a film, **`©day` wins**: it is the one field written with a time zone
+in it. `mvhd` is the fallback and counts seconds from 1904-01-01 UTC.
+The place is `©xyz` (ISO 6709, `+44.4268+026.1025/`) or the older `loci`,
+whose longitude and latitude are 16.16 fixed point.
+
+**Nothing is ever read whole.** A picture is answered by its first 384 KB
+and a film by the one box that holds its header — the top level is walked
+header by header, so a gigabyte of `mdat` is stepped over, never fetched.
+
+### The name, which is the rule the option rests on
+
+> extract the text which is different from the date and the time
+
+`mbNameOf()` is that sentence:
+
+1. Drop the extension.
+2. Cut out every run that reads as a **date** (`2024-07-12`, `20240712`,
+   `12.07.2024`) or as a **three-part clock** (`15-30-00`). The same scan
+   that finds them is what produces the fallback date, so the two can
+   never disagree.
+3. Drop `(1)`-style copy counters, then the words a camera puts there
+   itself — `IMG`, `VID`, `DSC`, `PXL`, `MVIMG`, `PANO`, `WA0012`,
+   `Screenshot`, … (`MB_NOISE`).
+4. Drop a run of **three or more** digits at either end. Three is the
+   floor on purpose: a counter is `0023`, but `Casa 12` is a name and
+   keeps its 12.
+5. What is left, separators turned into spaces, is the name. Nothing
+   left means there was never a name to find.
+
+```
+2024-07-12 Ana la mare.jpg          → "Ana la mare"
+IMG_20240712_153000.jpg             → ""
+VID_20240713_101500 Botezul.mp4     → "Botezul"
+Casa 12.png                         → "Casa 12"
+```
+
+### What it writes
+
+Three shapes, all of them in markers this page already reads — nothing
+here invents a syntax:
+
+```md
+- @2024-07-12 15:30 — **Ana la mare** — [Ana la mare](poze/ana.jpg) ^@44.4268, 26.1025
+#2024-07-12 - ![Ana la mare](poze/ana.jpg)
+| Când | Nume | Unde | Fișier |
+```
+
+- **The place always ends the line.** A `^@` address runs to the end of
+  its line (§ S), so anything after it would be swallowed — which is also
+  why a **table** cell gets bare coordinates and no marker at all.
+- In the **timeline**, the marker's own `!` is the `!` of an image (§ R):
+  `- ![name](file.jpg)` is the picture, the same shape over an `.mp4` is
+  a link, and the extension is what decides.
+- "A heading per day" opens each day with `### 2024-07-12`, which in the
+  timeline shape means a timeline per day.
+- The tick on each row is what decides — filtering narrows what is on
+  screen, the tick says what gets written.
+
+### The folder
+
+`showDirectoryPicker({mode:'read'})` on a desktop, walked recursively and
+capped at `MB_MAX_FILES` (4000 — a folder tree, not a disk). No phone
+browser has that picker, so there the same job is done by an
+`<input webkitdirectory>`, whose files already carry the path they had in
+the folder. This is the image explorer's read-only picker again, not
+`ScuLaFolder` (§ D) — nothing is written back into the folder. The CSV is
+the one thing saved, and that goes through `saveOut()` like everything
+else.
+
+### Adding to it
+
+- **Another container**: one branch in `mbExifOf()` returning
+  `mbReadTiff(bytes, where)`. Everything downstream is already written.
+- **Another EXIF tag**: one `else if` in `mbReadTiff`'s `ifd()`.
+- **Another output shape**: one branch in `mbLines()`. Keep the place last
+  on its line.
+- **Another word a camera writes**: `MB_NOISE`.
+
+### Testing
+
+`tests/media.js` — the real page against real bytes, every fixture
+assembled in the test rather than recorded: a JPEG with a genuine `APP1`
+segment and a GPS IFD, a PNG with an `eXIf` chunk, an MP4 whose `moov`
+holds `©day` and `©xyz` and one that has only `mvhd`, a `.txt` that must
+not be picked up, and two levels of subfolders. It asserts the three
+sources and the column that names them, all four name-extraction rules,
+the filters, the tick, all three output shapes read back out of the real
+editor (including the place pill and the 🗺 button the `^@` brings), and
+both languages. Run: `/apptest media`.
+
+---
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors
