@@ -65,7 +65,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
 | **The melody in `voice.html`** — pitch and beat detection, the instruments, the WAV and MIDI exports, why nothing is sampled | `docs/FEATURES.md` § P |
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
-| **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md` | `docs/FEATURES.md` § E |
+| **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md`, **and the folders and files a person added to the markdown folder by hand becoming workbooks and chapters** | `docs/FEATURES.md` § E |
 | The calendar, `window.ScuLaCal`, the `@date` markdown marker, or anything that has to reach Google Calendar | `docs/FEATURES.md` § L |
 | **Moving files to another device** — the Wi-Fi (WebRTC) link and its codes, the Bluetooth (NUS) one, folder trees, the received-file routes, the device book and forgetting a device | `docs/FEATURES.md` § Q |
 | **The `^@` place marker and the map** — `window.ScuLaGeo`, the layered list, the tiles, the geocoder, the 🗺 button that appears only when a chapter has a place | `docs/FEATURES.md` § S |
@@ -238,7 +238,14 @@ the pull into an empty database, newest-`updated`-wins both ways, a rename
 keeping its Drive file, a delete travelling and staying deleted, and
 disconnecting), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
-"Save all modified" with its pending-edit tracking (`wbsaveall.js`),
+"Save all modified" with its pending-edit tracking (`wbsaveall.js`), the
+**folder read back into the tree** (`wbadopt.js` — "Sincronizează în dosar"
+against an in-memory directory handle: a folder nobody had opened becoming a
+workbook, a `.md` and a `.txt` beside a known chapter becoming chapters, the
+hidden directory and the picture that must *not*, an edit made here never
+overwritten by the file on disk, and the adopted records pushed to Drive in
+the same press — through the fake Drive `gdsync.js` now exports rather than
+a second copy of it),
 the open chapter surviving a reload and the draft journal under it
 (`wbresume.js` — the browser's own form restoration no longer keeping a
 chapter out of its editor, and nothing on screen thrown away),
@@ -314,10 +321,13 @@ change, not "later":
    A click on a nav item leaves the view on `view-source` and flashes
    nothing. Reproduces on the `index.html` in `HEAD`, so it is not whatever
    you just changed. Every other check passes.
-2. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
+2. `tests/wbrename.js` times out on its first `dblclick` — the
+   `.wb-ch-name` span it targets resolves but is never visible. Reproduces
+   on `HEAD`, so it is not whatever you just changed.
+3. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
    now sits between them. Also reproduces on `HEAD`; either the button moved
    or the check is stale. Its other checks pass.
-3. **Not** an issue, though it reads like one: the calendar never talks to
+4. **Not** an issue, though it reads like one: the calendar never talks to
    Google. Events reach Google Calendar as an export the person carries
    over — the `.ics` through its Import screen, or the JSON through the
    API. No OAuth, no network call, deliberately — see Rule 3.

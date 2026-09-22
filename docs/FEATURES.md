@@ -708,6 +708,53 @@ editor's own text is untouched — only what `#preview` renders is filtered.
 so flipping the switch repaints the open chapter immediately, with no
 keystroke needed.
 
+### The mirror read back — "⇩ Sincronizează în dosar"
+
+The mirror ran one way for a long time: records here, files there. But the
+folder is a folder, and a person who drops a directory of notes into
+`<root>/markdown`, or a `.md` next to the ones a workbook already owns,
+means those to be a workbook and a chapter. So the button
+(`syncAllToFolder()`) now **looks before it writes**:
+
+1. `wbAdoptFromFolder()` walks `<root>/markdown`. A directory whose name
+   matches no `book.folder` becomes a workbook — the folder name is both
+   its `name` and its `folder`, because `wbSlug()` would only take it
+   further from the tree it has to keep matching. An empty directory counts:
+   a folder made and not yet filled is still a workbook someone meant.
+   Directories whose name starts with `.` are skipped — a hidden directory
+   is not a workbook however it looks.
+2. Inside each one, a file ending `.md`, `.markdown` or `.txt` whose name
+   matches no `chapter.file` of that workbook becomes a chapter, carrying
+   the file's own bytes as `content`, its first heading (or, failing that,
+   its file name) as `title`, and the file's `lastModified` as `created`
+   and `updated`. Anything else in the folder — a picture, a PDF — is left
+   exactly where it is.
+3. Then the old write pass runs and every chapter, adopted or not, is
+   written back out.
+
+Matching is case-insensitive on both names, because two of the three file
+systems these apps run on are.
+
+**The pass only ever adds.** A file a chapter already owns is never read
+back: doing that would quietly overwrite an edit made here that hasn't
+reached disk yet, and the write pass in step 3 is what settles that
+direction. Nothing on disk is renamed or removed either — same promise
+`wbMirrorRemove()` already makes.
+
+Adopted records land in IndexedDB, which is all § O's merge needs to carry
+them up to the Gmail account: a record Drive has never seen is an upload to
+it. So when something was adopted *and* an account is linked,
+`syncAllToFolder()` calls `cloudSync(false)` itself rather than leaving it
+to the debounce — the person just pressed a sync button and is owed the
+count. A lapsed token is not worth a popup there; the status line says
+`cloudStale`, which is what the ☁ button's own label already says. With
+nothing adopted the press ends in the ordinary `cloudAutoSync()`.
+
+The status line reports both directions: `wbAdopted` (what the folder had)
+in front of `wbSynced` (what was written), then the cloud's own
+`cloudDone` / `cloudNothing`. Tested by `tests/wbadopt.js`, against an
+in-memory directory handle and the fake Drive from `tests/gdsync.js`.
+
 ### The three routes, for a chapter
 
 Same three routes as § D, because the same rules apply:

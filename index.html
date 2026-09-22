@@ -3473,7 +3473,7 @@
     </div>
     <div class="panel-actions">
       <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
-      <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Write every chapter into the markdown folder">⇩ Sync to folder</button>
+      <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Take in new workbooks and chapters from the markdown folder, then write every chapter back into it">⇩ Sync to folder</button>
       <div id="wb-where"></div>
     </div>
     <div id="wb-tree"></div>
@@ -4029,7 +4029,7 @@ const I18N = {
     /* ── Caiete și capitole (vezi docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
     newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
-    syncFolderTip:"Scrie fiecare capitol în dosarul markdown",
+    syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown, apoi scrie fiecare capitol înapoi în el",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
     saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
     saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
@@ -4057,6 +4057,7 @@ const I18N = {
     wbSavedTo:p=>`Salvat în ${p}`,
     wbSavedLocal:"Capitol salvat pe acest dispozitiv.",
     wbSynced:n=>`${n} capitol${n===1?'':'e'} scrise în dosar.`,
+    wbAdopted:r=>`Găsite în dosar: ${r.books} caiet${r.books===1?'':'e'}, ${r.chapters} capitol${r.chapters===1?'':'e'}.`,
     wbNoModified:"Niciun capitol modificat.",
     wbSavedAllModified:n=>`${n} capitol${n===1?'':'e'} modificat${n===1?'':'e'} salvat${n===1?'':'e'}.`,
     wbSavedSomeModified:n=>`${n} capitol${n===1?'':'e'} salvat${n===1?'':'e'}; unele nu s-au putut scrie.`,
@@ -4394,7 +4395,7 @@ const I18N = {
     /* ── Workbooks and chapters (see docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
     newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
-    syncFolderTip:"Write every chapter into the markdown folder",
+    syncFolderTip:"Take in new workbooks and chapters from the markdown folder, then write every chapter back into it",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
     saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
     saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
@@ -4422,6 +4423,7 @@ const I18N = {
     wbSavedTo:p=>`Saved to ${p}`,
     wbSavedLocal:"Chapter saved on this device.",
     wbSynced:n=>`${n} chapter${n===1?'':'s'} written to the folder.`,
+    wbAdopted:r=>`Found in the folder: ${r.books} workbook${r.books===1?'':'s'}, ${r.chapters} chapter${r.chapters===1?'':'s'}.`,
     wbNoModified:"No modified chapters.",
     wbSavedAllModified:n=>`${n} modified chapter${n===1?'':'s'} saved.`,
     wbSavedSomeModified:n=>`${n} chapter${n===1?'':'s'} saved; some couldn't be written.`,
@@ -6813,11 +6815,16 @@ function wbSay(msg, alsoToast) {
   if (el) el.textContent = msg || '';
   if (alsoToast && msg && typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(msg);
 }
+// A chapter's name, read out of the text itself: the first heading, or the
+// fallback the caller knows (the file name, usually).
+function wbTitleFromText(text, fallback) {
+  const m = String(text || '').match(/^#{1,3}\s+(.+)$/m);
+  const head = m ? m[1].trim().slice(0, 80) : '';
+  return head || fallback;
+}
 function wbGuessTitle() {
-  const m = editor.value.match(/^#{1,3}\s+(.+)$/m);
-  if (m) return m[1].trim().slice(0, 80);
   const base = (document.getElementById('current-file').textContent || '').replace(/\.(md|txt)$/i, '');
-  return base && base !== 'untitled' ? base : t('defaultChapterName');
+  return wbTitleFromText(editor.value, base && base !== 'untitled' ? base : t('defaultChapterName'));
 }
 
 /* ── The folder mirror ──
@@ -6853,6 +6860,88 @@ async function wbMirrorRemove(folder, file) {
     if (file) await bookDir.removeEntry(file);
     else await md.removeEntry(folder);
   } catch (e) { /* not there, or not empty — leave it alone */ }
+}
+
+/* ── The mirror, read back ──
+   The mirror used to run one way only: records here, files there. But the
+   folder is a folder — a person drops a directory of notes into
+   <root>/markdown, or a .md next to the ones a workbook already owns, and
+   means those to be a workbook and a chapter. "Sincronizează în dosar" now
+   looks before it writes.
+
+   A directory whose name matches no book.folder becomes a workbook; a text
+   file inside one whose name matches no chapter.file of that workbook
+   becomes a chapter, carrying the file's own text and its first heading (or
+   its file name) as the title. Matching is case-insensitive, because two of
+   the three file systems these apps run on are.
+
+   This pass only ever *adds*. A file a chapter already owns is left exactly
+   as it is — reading it back would quietly overwrite an edit made here that
+   hasn't reached disk yet — and nothing on disk is renamed or removed.
+   docs/FEATURES.md § E. */
+const WB_ADOPT_RE = /\.(md|markdown|txt)$/i;
+
+async function wbDirEntries(handle, kind) {
+  const out = [];
+  if (!handle || typeof handle.values !== 'function') return out;
+  try {
+    for await (const entry of handle.values()) if (entry.kind === kind) out.push(entry);
+  } catch (e) { return out; }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function wbAdoptFromFolder() {
+  const found = { books: 0, chapters: 0 };
+  if (!wbFolderMode()) return found;
+  let md = null;
+  try {
+    md = await ScuLaFolder.dir(!wbMirrorAsked);           // <root>/markdown
+    wbMirrorAsked = true;
+  } catch (e) { return found; }
+  if (!md) return found;
+
+  for (const entry of await wbDirEntries(md, 'directory')) {
+    if (entry.name.charAt(0) === '.') continue;           // hidden / system, not a workbook
+    const folder = entry.name;
+    let book = wbBooks.find(b => (b.folder || '').toLowerCase() === folder.toLowerCase());
+    if (!book) {
+      // The folder name is the workbook's name as well as its folder: it is
+      // what the person typed, and wbSlug() would only take it further from
+      // the tree it has to keep matching.
+      book = {
+        id: wbNewId('wb_'), name: folder, folder: folder,
+        created: Date.now(), updated: Date.now(), order: wbBooks.length
+      };
+      wbBooks.push(book);
+      if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); continue; }
+      wbOpenBooks.add(book.id);
+      found.books++;
+    }
+
+    const taken = new Set(wbChaptersOf(book.id).map(c => (c.file || '').toLowerCase()));
+    let order = wbChaptersOf(book.id).length;
+    for (const fileEntry of await wbDirEntries(entry, 'file')) {
+      if (!WB_ADOPT_RE.test(fileEntry.name)) continue;
+      if (taken.has(fileEntry.name.toLowerCase())) continue;
+      let file, text;
+      try { file = await fileEntry.getFile(); text = await file.text(); }
+      catch (e) { continue; }
+      const ch = {
+        id: wbNewId('ch_'), workbookId: book.id,
+        title: wbTitleFromText(text, fileEntry.name.replace(/\.[^.]+$/, '')),
+        file: fileEntry.name, content: text,
+        created: file.lastModified || Date.now(),
+        updated: file.lastModified || Date.now(),
+        order: order
+      };
+      wbChapters.push(ch);
+      if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); continue; }
+      taken.add(ch.file.toLowerCase());
+      order++;
+      found.chapters++;
+    }
+  }
+  return found;
 }
 
 /* ── Panel rendering ── */
@@ -7294,9 +7383,15 @@ function exportChapter(id) {
   ScuLaFolder.save(name, new Blob([ch.content || ''], { type: 'text/markdown' }));
 }
 
+/* Both directions of the mirror, in that order: read the folder for
+   workbooks and chapters that only exist there yet, then write every
+   chapter back out. Whatever the read pass adopted is in IndexedDB by the
+   time the cloud is asked, which is all § O's merge needs to carry it up to
+   the Gmail account — a record Drive has never seen is an upload to it. */
 async function syncAllToFolder() {
   if (!wbFolderMode()) { ScuLaFolder.chooser(); return; }
   await flushChapter();
+  const found = await wbAdoptFromFolder();
   let n = 0;
   for (const book of wbBooks) {
     for (const ch of wbChaptersOf(book.id)) {
@@ -7305,7 +7400,22 @@ async function syncAllToFolder() {
   }
   for (const id of [...wbPendingIds]) await wbPendingClear(id);   // everything is on disk now
   renderWorkbooks();
-  wbSay(t('wbSynced', n), true);
+
+  let msg = t('wbSynced', n);
+  if (found.books || found.chapters) msg = t('wbAdopted', found) + ' ' + msg;
+  wbSay(msg, true);
+
+  if (!(found.books || found.chapters)) { cloudAutoSync(); return; }
+  if (!gsConnected()) return;
+  // Something new, and an account linked: push it now rather than on the
+  // debounce, so the person who just pressed a sync button is told what
+  // happened. A lapsed token is not worth a popup here — the ☁ button's own
+  // label already says it needs pressing again.
+  if (!gsLive()) { wbSay(msg + ' ' + t('cloudStale'), true); return; }
+  try {
+    const r = await cloudSync(false);
+    if (r) wbSay(msg + ' ' + ((r.up || r.down) ? t('cloudDone', r) : t('cloudNothing')), true);
+  } catch (e) { cloudError(e); }
 }
 
 /* ── Autosave: the open chapter is written back to IndexedDB as you type,

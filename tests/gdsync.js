@@ -227,6 +227,13 @@ async function fresh(browser, drive, opts = {}) {
   return { ctx, page, errors, hits };
 }
 
+// The fake Drive, the route stubs and the static server are reused by
+// wbadopt.js, which pushes folder-adopted chapters through the same path.
+// Guarding the run below keeps `node gdsync.js` behaving exactly as before.
+module.exports = { fakeDrive, stub, serve, withToken, DIR };
+
+if (require.main !== module) return;
+
 (async () => {
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const { srv, port } = await serve();
