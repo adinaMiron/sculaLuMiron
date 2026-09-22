@@ -81,6 +81,11 @@ function fakeDrive(seed) {
         const f = files.get(m[1]);
         return f ? { status: 200, type: 'text/plain', body: f.body || '' } : { status: 404, json: { error: { message: 'gone' } } };
       }
+      if (m && method === 'GET') {                         // metadata
+        const f = files.get(m[1]);
+        return f ? { status: 200, json: { id: f.id, name: f.name, trashed: !!f.trashed } }
+                 : { status: 404, json: { error: { message: 'gone' } } };
+      }
       if (m && method === 'PATCH') {                       // rename
         const f = files.get(m[1]);
         if (!f) return { status: 404, json: { error: { message: 'gone' } } };
@@ -98,6 +103,7 @@ function fakeDrive(seed) {
         const pa = /'([^']+)' in parents/.exec(q);
         const wantDir = q.includes(DIR);
         const hit = [...files.values()].filter(f =>
+          !f.trashed &&
           (!name || f.name === name) &&
           (!pa || (f.parents || []).includes(pa[1])) &&
           (!wantDir || f.mimeType === DIR));
@@ -488,6 +494,47 @@ async function fresh(browser, drive, opts = {}) {
     check('token and folder cleared from storage',
       await page.evaluate(() => !localStorage.getItem('gdrive_token') && !localStorage.getItem('gdrive_md_folder')));
     check('and it says so', (await toastText(page) || '').includes('deconectat'), await toastText(page));
+    await ctx.close();
+  }
+
+  // ---- 8. the remembered folder is checked, not trusted ----
+  // Drive takes a file into a binned folder without complaint, so a sync that
+  // still held the old id reported success while the chapters landed in the
+  // bin — the whole of the reported "it says synced, Drive shows nothing".
+  {
+    const drive = fakeDrive([
+      { id: 'binned', name: 'Scula Markdown', mimeType: DIR, parents: [], trashed: true, body: '' }
+    ]);
+    const { ctx, page, errors } = await fresh(browser, drive);
+    await ctx.addInitScript(() => {
+      localStorage.setItem('gdrive_md_folder', JSON.stringify({ id: 'binned', name: 'Scula Markdown' }));
+    });
+    await page.goto(BASE);
+    await page.waitForTimeout(600);
+    await seed(page);
+    await page.evaluate(() => { if (document.getElementById('wb-panel').classList.contains('collapsed')) toggleWorkbooks(); });
+    await page.click('#btn-wb-cloud');
+    await page.waitForTimeout(900);
+
+    check('no page errors when the remembered folder is gone', errors.length === 0, errors);
+    const made = [...drive.files.values()].find(f => f.name === 'Scula Markdown' && !f.trashed);
+    check('a binned folder is made again rather than written into', !!made && made.id !== 'binned', made);
+    check('and nothing was put inside the binned one',
+      ![...drive.files.values()].some(f => (f.parents || []).includes('binned')),
+      [...drive.files.values()].filter(f => (f.parents || []).includes('binned')).map(f => f.name));
+    const bookDir = drive.file('fizica');
+    check('the chapters land under the new folder',
+      !!bookDir && bookDir.parents.includes(made.id) && !!drive.file('mecanica.md'), bookDir);
+    check('and the new id is what gets remembered',
+      await page.evaluate(() => JSON.parse(localStorage.getItem('gdrive_md_folder') || '{}').id) === made.id);
+
+    const link = await page.evaluate(() => {
+      const a = document.querySelector('#wb-cloud-where a');
+      return a && { href: a.getAttribute('href'), title: a.title, text: a.textContent };
+    });
+    check('the status line links to the folder it actually wrote to',
+      !!link && link.href === 'https://drive.google.com/drive/folders/' + made.id, link);
+    check('and names it in the tooltip', !!link && link.title.includes('Scula Markdown'), link);
     await ctx.close();
   }
 

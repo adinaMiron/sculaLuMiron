@@ -278,6 +278,8 @@
   }
   /* The token lapses after about an hour — that is a "press me", not an error. */
   #wb-cloud-where.warn { color: var(--accent-2); }
+  #wb-cloud-where a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  #wb-cloud-where a:hover { color: var(--accent); }
 
   #wb-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
   #wb-tree::-webkit-scrollbar { width: 4px; }
@@ -4077,6 +4079,7 @@ const I18N = {
     cloudOff:"☁ doar pe acest dispozitiv",
     cloudReady:"☁ conectat, încă nesincronizat",
     cloudAt:h=>`☁ sincronizat la ${h}`,
+    cloudOpenTip:f=>`Deschide dosarul „${f}” în Google Drive`,
     cloudStale:"☁ conectarea a expirat — apasă din nou",
     cloudSyncing:"☁ se sincronizează…",
     cloudConnected:f=>`Cont Google conectat. Capitolele merg în „${f}”.`,
@@ -4441,6 +4444,7 @@ const I18N = {
     cloudOff:"☁ this device only",
     cloudReady:"☁ connected, not synced yet",
     cloudAt:h=>`☁ synced at ${h}`,
+    cloudOpenTip:f=>`Open the “${f}” folder in Google Drive`,
     cloudStale:"☁ sign-in expired — press again",
     cloudSyncing:"☁ syncing…",
     cloudConnected:f=>`Google account connected. Chapters go to “${f}”.`,
@@ -12554,6 +12558,7 @@ const GSYNC = {
 };
 
 let gsToken = null, gsTokenExp = 0, gsFolder = null, gsClient = null;
+let gsFolderOk = false;               // the remembered folder, confirmed against Drive this page-load
 let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
 let gsGraves = {};                    // id → deleted-at, books and chapters alike
 
@@ -12598,7 +12603,7 @@ function gsForget(tokenOnly) {
     localStorage.removeItem('gdrive_token_exp');
     if (!tokenOnly) { localStorage.removeItem('gdrive_md_folder'); localStorage.removeItem('gdrive_md_at'); }
   } catch (e) {}
-  if (!tokenOnly) { gsFolder = null; gsLastAt = 0; }
+  if (!tokenOnly) { gsFolder = null; gsFolderOk = false; gsLastAt = 0; }
 }
 
 /* A background sync must never open a popup — nobody asked for one, and a
@@ -12698,9 +12703,26 @@ async function gsWrite(name, parentId, blob, fileId) {
   }
 }
 
+/* A remembered id is not a folder. It can have been deleted, emptied into the
+   bin, or made by a different Google account than the one signed in now — and
+   Drive accepts a file into a binned folder without complaint, which is exactly
+   how a sync reports success with nothing to show for it in My Drive. So the
+   cached id is confirmed once per page-load, and a folder that is gone is made
+   again rather than written into. */
 async function gsRoot() {
-  if (gsFolder && gsFolder.id) return gsFolder;
-  gsFolder = (await gsChild(GSYNC.FOLDER_NAME, null, true)) || (await gsMakeFolder(GSYNC.FOLDER_NAME, null));
+  if (gsFolder && gsFolder.id && gsFolderOk) return gsFolder;
+  if (gsFolder && gsFolder.id) {
+    let live = null;
+    try { live = await gsJson(GS_FILES + '/' + gsFolder.id + '?fields=id,name,trashed'); }
+    catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
+    if (live && !live.trashed) return gsRootIs({ id: live.id, name: live.name });
+    gsFolder = null;
+  }
+  return gsRootIs((await gsChild(GSYNC.FOLDER_NAME, null, true)) || (await gsMakeFolder(GSYNC.FOLDER_NAME, null)));
+}
+function gsRootIs(folder) {
+  gsFolder = { id: folder.id, name: folder.name };
+  gsFolderOk = true;
   try { localStorage.setItem('gdrive_md_folder', JSON.stringify(gsFolder)); } catch (e) {}
   return gsFolder;
 }
@@ -12873,11 +12895,33 @@ function paintCloud() {
   if (!where) return;
   const stale = on && !gsLive();
   where.classList.toggle('warn', stale);
-  where.textContent = !on ? t('cloudOff')
+  const msg = !on ? t('cloudOff')
     : gsBusy ? t('cloudSyncing')
     : stale ? t('cloudStale')
-    : gsLastAt ? t('cloudAt', new Date(gsLastAt).toLocaleTimeString())
+    : gsLastAt ? t('cloudAt', gsWhen(gsLastAt))
     : t('cloudReady');
+  where.textContent = '';
+  // Connected means the folder exists, so "where did my chapters go" is a
+  // question the page can answer with a link rather than a name to go hunting.
+  if (on && gsFolder && gsFolder.id) {
+    const a = document.createElement('a');
+    a.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(gsFolder.id);
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = msg;
+    a.title = t('cloudOpenTip', gsFolder.name || GSYNC.FOLDER_NAME);
+    where.appendChild(a);
+  } else {
+    where.textContent = msg;
+  }
+}
+
+// A bare time reads as "just now". A stamp from another day has to say which,
+// or a sync that quietly stopped working looks exactly like one that just ran.
+function gsWhen(ms) {
+  const d = new Date(ms);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString()
+    : d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
 function cloudError(err) {

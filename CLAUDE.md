@@ -8,7 +8,7 @@ file). Open in a browser; that's the whole toolchain.
 |---|---|---|---|---|
 | `voice.html` | 3829 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 12947 | 111k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
+| `index.html` | 12991 | 111k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 | `transfer.html` | 3108 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
@@ -78,7 +78,7 @@ Do not read a doc the task doesn't touch.
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
 in all seven files — from the `<nav id="site-nav">` line through the
 `<!-- ===== end toolbar nav ===== -->` marker (~1279 lines; starts near
-`voice.html:260`, `editor.html:452`, `index.html:1907`,
+`voice.html:260`, `editor.html:452`, `index.html:2052`,
 `recipes.html:527`, `calendar.html:269`, `transfer.html:197`,
 `map.html:238`, but these
 **drift** — grep the `<nav` line). It carries the nav links, the UI-language toggle,
@@ -106,7 +106,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
   person (§ Q). A STUN address is a field, empty by default, in the same
   spirit as the OCR URL below.
 - **No new dependencies.** Only external dep in the repo is mammoth.js via
-  CDN in `index.html:1902` (docx import). Don't add more. (Google Identity
+  CDN in `index.html:2047` (docx import). Don't add more. (Google Identity
   Services is fetched on demand by the two Drive features — `editor.html`'s
   button and `index.html`'s chapter sync — and is a `<script>` tag in no
   file; there is no signing into a Google account without Google's own code,
@@ -175,7 +175,7 @@ done
 ```
 
 Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `index.html:1902` has attributes and is correctly skipped. If
+in `index.html:2047` has attributes and is correctly skipped. If
 you add an attributed `<script …>` on its own line, adjust the pattern.
 
 For behaviour, ad-hoc Playwright scripts are the established approach. The

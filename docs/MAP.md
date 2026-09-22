@@ -332,7 +332,7 @@ a `polyline`, whose vertices are all corners already.
 | Lines | Contents |
 |---|---|
 | 8–1687 | App CSS. `:root` **9–58** (earth-palette tokens + `--danger`, the `--graph-*` node roles — including the five **causal** ones, `--graph-keyword` / `--graph-cause-pos` / `--graph-cause-neg` / `--graph-loop-r` / `--graph-loop-b` — and the three `--imp-*` importance levels). Workbooks panel **209–331**, modals **501–558** (`.field input, .field select, .field textarea` — `#idea-text` **523**), navigation panel **657**, **search & filter panel 785–986** (incl. `.find-caret`, `.find-hit` blocks and `.find-line`), wikilinks/tags/assignee **1177–1245**, **importance markers 1248–1316**, **the `.md-geo` place pill 1280–1291** (§ S), **causal lines 1320–1343** (`.md-causal`, the chips and the signed glyphs), **knowledge graph 1346–1671** (the mode switch **1442**, the `data-gv-only` halves **1444–1447**, the loop rows **1567–1602**), **Drive-sync button 264–283** (`#btn-wb-cloud.connected`, `#wb-cloud-where`), **timeline 1368–1417** (`.md-timeline`, `.tl-svg` and the `.tl-*` classes the drawing carries — § R), **garden toolbox 1688–1816**, **photos and films 1902–2043** (`#media-view` and the `.mb-*` chrome — § T) (`#garden-view` reuses `.gv-bar`/`.gv-scope`; `.gd-filters`, `#gd-table`, and the two `.gd-col-*` classes a phone drops) |
-| 1688 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone — Google's scripts are fetched on demand now, by `editor.html`'s § Google Drive and by this file's § Google Drive sync, never at page load) |
+| 2047 | **mammoth.js CDN** (docx import) — the only CDN tag left in the nav area; the `apis.google.com` one that used to sit beside it is gone — Google's scripts are fetched on demand now, by `editor.html`'s § Google Drive and by this file's § Google Drive sync, never at page load) |
 | 2050–3334 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** |
 | 2977–3491 | Markup: header (**`#btn-idea`** 2376, right of "New"), **toolbar 2857–2940** (**`#btn-undo`/`#btn-redo` 2862–2863**, first in the group; the `#importance-select` is at **2889**, **`#btn-garden` 3343** and **`#btn-media` 3445**, beside the graph button), workspace 2945, panels (`#wb-panel` — its `.panel-actions` carry **`#btn-wb-cloud` 3403** + `#wb-cloud-where`, § O —, `#img-panel`, **`#find-panel` 3009**, `#nav-panel` 3043), modals — `#image-modal` 3068, `#workbook-modal` 3101, **`#idea-modal` 3132**, `#link-modal` 3148, `#table-modal` 3171 |
 | **3886–3925** | Markup: **`#media-view`** overlay (§ T) — the bar with 📂 **3890**, the `<input webkitdirectory>` **3901** that is the only folder picker a phone has, the five switches **3904–3912**, `#mb-table` and the foot with ↩ **3920** |
@@ -342,7 +342,7 @@ a `polyline`, whose vertices are all corners already.
 
 | Line | Function / region |
 |---|---|
-| 3508 | `I18N` (`ro:` 3477 / `en:` 3655; the `idea*` keys at **3641** / **3821**, the **`cloud*`** ones at **3999** / **4350**, the **`media*`/`mb*`** ones at **4142** / **4506**), `t()`, `store`, `applyUILang` **3932** — its tail repaints what has no `data-i` key: the garden, the `@date` pills, and **`paintCloud()` 4636** |
+| 3962 | `I18N` (`ro:` 3963 / `en:` 4331; the `idea*` keys at **4222** / **4587**, the **`cloud*`** ones at **4076** / **4441**, the **`media*`/`mb*`** ones at **4146** / **4511**), `t()` **4698**, `store`, `applyUILang` **4722** — its tail repaints what has no `data-i` key: the garden, the `@date` pills, and **`paintCloud()`** |
 | 3975–3977 | `editor`, `preview` refs, `savedRange` |
 | 3980–3994 | Selection: `saveSelection`, `restoreSelection` |
 | **4009–4096** | **Undo / redo** — the editor's own history, because the textarea's is unusable here (toolbar actions edit through `setRangeText`, which Chrome does not record, and opening a chapter replaces `.value`). `undoMark(coalesce)` **3995** records the state *before* an edit; two hooks feed it and catch every edit there is — the `beforeinput` listener **4028** (typing, paste, cut, and the browser's own history events, routed here) and the `editor.setRangeText` override **4039**, which is what makes every toolbar action, line move, Tab, `[[` completion and dictated word one undo step without any of them knowing. `undoReset()` **4007** on a whole-document swap (chapter open, New, import, an idea appended to the open chapter — that one is already on disk). `paintUndo()` **4035** disables the buttons. Shortcuts at **8824** |
@@ -370,7 +370,7 @@ a `polyline`, whose vertices are all corners already.
 | **7643–8164** | **Search & filter** — see the sub-table below |
 | **9250–9969** | **The garden toolbox** — see the sub-table below |
 | **10468–11247** | **Photos and films** — see the sub-table below |
-| **12071–12500** | **Google Drive sync** — see the sub-table below |
+| **12523–12988** | **Google Drive sync** — see the sub-table below |
 | **8229–8418** | **Writing a `[[link]]`**: `wikiCandidates` 8215, the modal 8150–8268, the `[[` suggester 8278–8354 (incl. **`editorMirrorAt`** 8320, shared with the search panel) |
 | 8370–8391 | `newFile`, `openFile`, `handleFileOpen` (all detach from the open chapter) |
 | 8392 | `importDocx` |
@@ -495,7 +495,7 @@ thing across all three.
 `gdFootText` and `gdCsv`. A new *place* or *plant* needs only a row in
 `GD_PLACES` / `GD_PLANTS` — never a regex edit.
 
-### Google Drive sync (12057–12486) — `docs/FEATURES.md` § O
+### Google Drive sync (12523–12988) — `docs/FEATURES.md` § O
 
 The chapters follow the Google account, so every Chrome signed into it has
 them. Chrome's own bookmark sync is not reachable from a page; Drive is the
@@ -507,16 +507,17 @@ Appended at the **end of the app script**, so nothing above it moved.
 
 | Line | Region |
 |---|---|
-| **12098** | **`GSYNC`** — the OAuth client (`editor.html`'s, same origin and scope), `FOLDER_NAME` (`Scula Markdown`), `MANIFEST`, and the three timings: `POLL_MS` 2 min, `DEBOUNCE_MS` 6 s, `GRAVE_MS` 90 days |
-| 12121–12156 | State + the `localStorage` read. **The token is `editor.html`'s** (`gdrive_token`/`gdrive_token_exp`), so connecting on one page connects the other; only `gdrive_md_folder`/`gdrive_md_at` are ours. `gsLive()` (token good for another minute) vs **`gsConnected()`** (set up here — a stored folder outlives the hour-long token, and that is the difference between "sign in" and "sign in again"). `gsLoadScript` 12113, `gsForget` 12133 |
-| **12160** | **`gsAuth(interactive)`** — Google Identity Services in a popup, script fetched here and nowhere else. **The flag is the whole safety rule**: a background run must never open a popup, so without it an expired token throws `stale` instead |
-| **12188** | **`gsRaw`** (one 401 → one silent re-auth and retry) + `gsJson`/`gsText` |
-| 12211–12262 | Drive REST: `gsChild` (a name search — safe because `drive.file` only ever lists what this page made), `gsMakeFolder`, `gsRename`, `gsDownload`, `gsTrash`, **`gsWrite` 12222** (POST creates, PATCH overwrites *and renames*, which is what makes a renamed chapter move rather than duplicate; a 404 falls back to a create, a 403 deliberately does not), `gsRoot` 12239 |
-| 12264–12275 | **Tombstones**: `gsGravesLoad` reads the `meta` store's `deleted` map, **`cloudTombstone(id)`** writes one. Called from `deleteChapter`/`deleteWorkbook` — without it a delete is undone by the next sync |
-| **12277** | **`cloudSync(interactive)`** — the one pass, in five numbered steps: read the manifest · merge the graves both ways and apply them to both sides (a record `updated` *after* the grave is a re-creation and wins) · workbooks · chapters, newest `updated` wins · **the manifest written last**, so a half-finished run redoes work rather than losing a file it already wrote. Returns `{up, down}` |
-| **12415** | **`paintCloud()`** — the label, the tip, the `.connected` fill and the status line (local only / connected / syncing / synced at / sign-in expired). Called from `applyUILang`'s tail, since the button has no `data-i` |
-| 12436–12478 | `cloudError` (a closed popup and a `stale` token are answers, not errors to shout about), **`cloudButton()`** 12430, `cloudForgetAsk` 12452 (right-click, the folder button's gesture) |
-| 12480–12500 | **Keeping up on its own**: `cloudAutoSync()` (debounced push — hooked into `flushChapter`, `saveToWorkbook`, `saveAllModifiedChapters` and both deletes), `cloudBoot()` 12471 (called from `loadWorkbooks().then(...)` at **12035**, so the tree is loaded first), the poll, and the visibility pull. All silent — they skip rather than ask for a sign-in |
+| **12550** | **`GSYNC`** — the OAuth client (`editor.html`'s, same origin and scope), `FOLDER_NAME` (`Scula Markdown`), `MANIFEST`, and the three timings: `POLL_MS` 2 min, `DEBOUNCE_MS` 6 s, `GRAVE_MS` 90 days |
+| 12560–12608 | State + the `localStorage` read. **The token is `editor.html`'s** (`gdrive_token`/`gdrive_token_exp`), so connecting on one page connects the other; only `gdrive_md_folder`/`gdrive_md_at` are ours. `gsLive()` **12575** (token good for another minute) vs **`gsConnected()` 12578** (set up here — a stored folder outlives the hour-long token, and that is the difference between "sign in" and "sign in again"). `gsFolderOk` **12561** is the cached folder, confirmed against Drive this page-load. `gsLoadScript` 12580, `gsForget` 12597 |
+| **12613** | **`gsAuth(interactive)`** — Google Identity Services in a popup, script fetched here and nowhere else. **The flag is the whole safety rule**: a background run must never open a popup, so without it an expired token throws `stale` instead |
+| **12641** | **`gsRaw`** (one 401 → one silent re-auth and retry) + `gsJson`/`gsText` 12654 |
+| 12657–12709 | Drive REST: `gsChild` **12664** (a name search — safe because `drive.file` only ever lists what this page made), `gsMakeFolder` 12671, `gsRename` 12678, `gsDownload`/`gsTrash` 12683, **`gsWrite` 12689** (POST creates, PATCH overwrites *and renames*, which is what makes a renamed chapter move rather than duplicate; a 404 falls back to a create, a 403 deliberately does not) |
+| **12712** | **`gsRoot`** — an id is not a folder, so the remembered one is confirmed (`fields=id,name,trashed`) once per page-load and re-made if it is gone or binned. **Drive writes into a binned folder without complaint**, which is how a sync reported success with nothing to show in My Drive. `gsRootIs` 12723 caches what it settled on |
+| 12729–12741 | **Tombstones**: `gsGravesLoad` **12734** reads the `meta` store's `deleted` map, **`cloudTombstone(id)` 12737** writes one. Called from `deleteChapter`/`deleteWorkbook` — without it a delete is undone by the next sync |
+| **12747** | **`cloudSync(interactive)`** — the one pass, in five numbered steps: read the manifest · merge the graves both ways and apply them to both sides (a record `updated` *after* the grave is a re-creation and wins) · workbooks · chapters, newest `updated` wins · **the manifest written last**, so a half-finished run redoes work rather than losing a file it already wrote. Returns `{up, down}` |
+| **12885** | **`paintCloud()`** — the label, the tip, the `.connected` fill and the status line (local only / connected / syncing / synced at / sign-in expired). Once connected the line is an **`<a>` to the Drive folder itself**, built as a text node — never `innerHTML`. `gsWhen()` **12920** prints a bare time only for today, so an old stamp cannot pass for a fresh sync. Called from `applyUILang`'s tail, since the button has no `data-i` |
+| 12927–12969 | `cloudError` (a closed popup and a `stale` token are answers, not errors to shout about), **`cloudButton()` 12936**, `cloudForgetAsk` 12958 (right-click, the folder button's gesture) |
+| 12972–12988 | **Keeping up on its own**: `cloudAutoSync()` (debounced push — hooked into `flushChapter`, `saveToWorkbook`, `saveAllModifiedChapters` and both deletes), `cloudBoot()` **12977** (called from `loadWorkbooks().then(...)` at **12502**, so the tree is loaded first), the poll, and the visibility pull. All silent — they skip rather than ask for a sign-in |
 
 Tested by `tests/gdsync.js` against an in-memory fake Drive — push, pull,
 newest-wins both ways, rename, delete, disconnect. No Google account needed.

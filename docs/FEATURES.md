@@ -1701,6 +1701,11 @@ Scula Markdown/
   <workbook folder>/<chapter>.md
 ```
 
+The folder is at the top of **My Drive**, and the page says so rather than
+leaving it to be hunted for: once connected, the line under the button is a
+link to `drive.google.com/drive/folders/<id>` — the folder this device
+actually wrote to, not a name to search for.
+
 `index.json` is what makes this a *sync* and not an upload. It carries the
 stable ids both devices already agree on (`wb_…`, `ch_…` — § E), every
 record's `updated` stamp, the Drive file id to overwrite, and the
@@ -1739,6 +1744,24 @@ The manifest is written **last**. A run that dies halfway leaves the old one
 in place, so the next run redoes the work rather than losing track of a file
 it had already uploaded.
 
+### The remembered folder is checked, not trusted
+
+`gdrive_md_folder` holds the root folder's id, and an id is not a folder: it
+can have been deleted, emptied into the bin, or made by a different Google
+account than the one signed in now. **Drive accepts a file into a binned
+folder without complaint** — which is how a sync came to report success while
+the chapters landed somewhere My Drive does not show. So `gsRoot()` confirms
+the cached id against Drive (`GET files/<id>?fields=id,name,trashed`) once per
+page-load — `gsFolderOk` is what keeps a debounced sync from spending a
+request on it every time — and a folder that is gone or binned is made again
+instead of written into. The new root has no manifest in it, so the next pass
+re-uploads every chapter: the recovery is the ordinary sync, not a special
+path.
+
+The status line is honest about *when*, too. `gsWhen()` prints a bare time only
+for a stamp from **today**; any older one carries its date. A sync that quietly
+stopped working used to be indistinguishable from one that had just run.
+
 IndexedDB stays the source of truth on each device — Drive is a third mirror
 beside the markdown folder (§ D), never ahead of it. A pulled chapter is
 marked **pending** (§ E), so the next explicit save writes it to disk too.
@@ -1772,8 +1795,10 @@ REST verbs the page uses, with multipart uploads parsed for real): lazy
 script loading, both languages, the `file://` refusal, the push down to the
 file bodies and the manifest, the pull into an empty database, newest-wins
 in both directions, a rename keeping its Drive file, a delete travelling and
-staying deleted on the other browser, and disconnecting. No Google account
-is involved. Run: `/apptest gdsync`.
+staying deleted on the other browser, disconnecting, and a binned root folder
+being made again rather than written into — with the status line's link
+asserted against the folder the run actually wrote to. No Google account is
+involved. Run: `/apptest gdsync`.
 
 ---
 
