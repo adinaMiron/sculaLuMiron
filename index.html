@@ -3452,6 +3452,13 @@
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
   <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
+  <select class="tb-select" id="importance-insert-select" onchange="insertImportanceAtCursor(this.value)"
+          data-i-title="impInsertTip" title="Insert an importance marker at the cursor">
+    <option value="" data-i="impInsertDefault">— Marcaje de importanță —</option>
+    <option value="!nice" data-i="impInsertNice">🌱 !nice</option>
+    <option value="!important" data-i="impInsertImportant">⭐ !important</option>
+    <option value="!vital" data-i="impInsertVital">🔥 !vital</option>
+  </select>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
@@ -3991,6 +3998,9 @@ const I18N = {
     // !vital) so a file reads the same in both languages — only the label
     // on the pill and in the select is translated.
     impTip:"Marchează cât de important e rândul (Ctrl+Alt+1/2/3, Ctrl+Alt+0 șterge)",
+    impInsertTip:"Inserează un marcaj de importanță la cursor",
+    impInsertDefault:"— Marcaje de importanță —",
+    impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     impDefault:"— Importanță —",
     impNiceOpt:"🌱 Bine de avut", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
     impNoneOpt:"✕ Scoate marcajul",
@@ -4357,6 +4367,9 @@ const I18N = {
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
     filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
     impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
+    impInsertTip:"Insert an importance marker at the cursor",
+    impInsertDefault:"— Importance markers —",
+    impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     impDefault:"— Importance —",
     impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
     impNoneOpt:"✕ Remove",
@@ -4876,6 +4889,13 @@ function insertAtCursor(text) {
   const s = editor.selectionStart, e = editor.selectionEnd;
   editor.setRangeText(text, s, e, 'end');
   updatePreview(); updateStatus();
+}
+
+function insertImportanceAtCursor(marker) {
+  const select = document.getElementById('importance-insert-select');
+  if (!marker) return;
+  insertAtCursor(marker);
+  select.value = '';
 }
 
 /* ── Toolbar actions ── */
