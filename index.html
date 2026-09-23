@@ -149,6 +149,8 @@
     outline: none;
   }
   .tb-select:focus { border-color: var(--accent); }
+  .tb-color-control { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .tb-color-control input[type="color"] { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
 
   /* ── Main workspace ── */
   .workspace {
@@ -514,7 +516,7 @@
     padding: 24px 28px;
     overflow-y: auto;
     tab-size: 2;
-    background: transparent; color: transparent; caret-color: var(--text);
+    background: transparent; color: var(--text); caret-color: var(--text);
   }
   #editor::placeholder { color: var(--text-3); }
   #editor::selection { background: #C1BB4540; }
@@ -3445,6 +3447,9 @@
     <option value="30">30px</option>
   </select>
 
+  <label class="tb-btn tb-color-control" title="Text color" data-i-title="textColorTip">A <input type="color" aria-label="Text color" value="#c1bb45" onchange="applyTextColor(this.value)"></label>
+  <label class="tb-btn tb-color-control" title="Highlight color" data-i-title="highlightColorTip">▰ <input type="color" aria-label="Highlight color" value="#f4d35e" onchange="applyHighlightColor(this.value)"></label>
+
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
   <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
@@ -4008,6 +4013,7 @@ const I18N = {
     impFindTip:"Caută tot ce e marcat așa",
     lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
     linkTip:"Inserează hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Imagine",
+    textColorTip:"Culoarea textului selectat", highlightColorTip:"Evidențiază textul selectat",
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
     codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
     timelineTip:"Inserează o cronologie (#dată - !ce s-a întâmplat)", timelineBtn:"⏳ Cronologie",
@@ -4377,6 +4383,7 @@ const I18N = {
     impFindTip:"Find everything marked this way",
     lblSize:"Size", sizeDefault:"— Font Size —",
     linkTip:"Insert hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Image",
+    textColorTip:"Color selected text", highlightColorTip:"Highlight selected text",
     tableTip:"Insert table", tableBtn:"⊞ Table",
     codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
     timelineTip:"Insert a timeline (#date - !what happened)", timelineBtn:"⏳ Timeline",
@@ -4906,6 +4913,25 @@ function wrapSelection(before, after) {
   const replacement = before + (sel || 'text') + after;
   editor.setRangeText(replacement, start, end, 'select');
   if (!sel) editor.setSelectionRange(start + before.length, start + before.length + 4);
+  updatePreview(); updateStatus();
+}
+
+function applyTextColor(color) {
+  applyInlineColor('color', color);
+}
+
+function applyHighlightColor(color) {
+  applyInlineColor('background-color', color);
+}
+
+function applyInlineColor(property, color) {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const selected = editor.value.slice(start, end) || 'text';
+  const replacement = `<span style="${property}:${color}">${selected}</span>`;
+  editor.setRangeText(replacement, start, end, 'select');
+  if (start === end) editor.setSelectionRange(start + replacement.indexOf('>') + 1, start + replacement.indexOf('>') + 5);
   updatePreview(); updateStatus();
 }
 
