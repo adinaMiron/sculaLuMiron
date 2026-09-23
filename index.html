@@ -4290,7 +4290,7 @@ const I18N = {
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
       <h3>Formatare</h3>
-      <p>Bara de instrumente are bold, italic, titluri, liste, listă de sarcini, cod, tabel, imagine, link și dimensiune font. Lipirea unei poze (<kbd>Ctrl+V</kbd>) o pune direct în text, ca imagine încorporată.</p>
+      <p>Bara de instrumente are bold, italic, titluri, liste, listă de sarcini, cod, tabel, imagine, link, dimensiune font, culoare text și evidențiere. Selectează textul și aplică dimensiunea, culoarea și evidențierea în orice combinație. Lipirea unei poze (<kbd>Ctrl+V</kbd>) o pune direct în text, ca imagine încorporată.</p>
       <h3>Legături [[wikilink]] și #etichete</h3>
       <ul>
         <li>Scrie <code>[[</code> pentru sugestii de notițe (↑↓ alege, Enter/Tab inserează, Esc renunță), sau folosește butonul ⟦⟧ Notiță / <kbd>Ctrl+Shift+L</kbd>.</li>
@@ -4661,7 +4661,7 @@ const I18N = {
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>
       <h3>Formatting</h3>
-      <p>The toolbar has bold, italic, headings, lists, a todo list, code, a table, an image, a link and font size. Pasting a picture (<kbd>Ctrl+V</kbd>) drops it straight into the text as an embedded image.</p>
+      <p>The toolbar has bold, italic, headings, lists, a todo list, code, a table, an image, a link, font size, text color and highlight. Select text and apply size, color and highlight in any combination. Pasting a picture (<kbd>Ctrl+V</kbd>) drops it straight into the text as an embedded image.</p>
       <h3>[[Wikilinks]] and #tags</h3>
       <ul>
         <li>Type <code>[[</code> for note suggestions (↑↓ to move, Enter/Tab to insert, Esc to dismiss), or use the ⟦⟧ Note link button / <kbd>Ctrl+Shift+L</kbd>.</li>
@@ -4933,12 +4933,33 @@ function applyHighlightColor(color) {
 
 function applyInlineColor(property, color) {
   if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+  applyInlineStyle(property, color);
+}
+
+function applyInlineStyle(property, value) {
   editor.focus();
   const start = editor.selectionStart, end = editor.selectionEnd;
-  const selected = editor.value.slice(start, end) || 'text';
-  const replacement = `<span style="${property}:${color}">${selected}</span>`;
-  editor.setRangeText(replacement, start, end, 'select');
-  if (start === end) editor.setSelectionRange(start + replacement.indexOf('>') + 1, start + replacement.indexOf('>') + 5);
+  const source = editor.value;
+  const selected = source.slice(start, end) || 'text';
+  const opening = source.slice(0, start).match(/<span style="([^"]*)">$/);
+  // A second toolbar action on the same selected text updates its span.
+  // Partial selections still get their own span, which the parser can nest.
+  if (opening && source.slice(end).startsWith('</span>') &&
+      !selected.includes('<span') && !selected.includes('</span>')) {
+    const styles = opening[1].split(';').map(s => s.trim()).filter(Boolean)
+      .filter(s => s.split(':', 1)[0].trim() !== property);
+    styles.push(`${property}:${value}`);
+    const spanStart = start - opening[0].length;
+    const replacement = `<span style="${styles.join(';')}">${selected}</span>`;
+    editor.setRangeText(replacement, spanStart, end + '</span>'.length, 'select');
+    const textStart = spanStart + replacement.indexOf('>') + 1;
+    editor.setSelectionRange(textStart, textStart + selected.length);
+  } else {
+    const replacement = `<span style="${property}:${value}">${selected}</span>`;
+    editor.setRangeText(replacement, start, end, 'select');
+    const textStart = start + replacement.indexOf('>') + 1;
+    editor.setSelectionRange(textStart, textStart + selected.length);
+  }
   updatePreview(); updateStatus();
 }
 
@@ -5138,12 +5159,8 @@ function toggleTodoDone() {
 
 function insertFontSize(size) {
   if (!size) return;
-  const start = editor.selectionStart, end = editor.selectionEnd;
-  const sel = editor.value.substring(start, end) || 'text';
-  editor.focus();
-  editor.setRangeText(`<span style="font-size:${size}px">${sel}</span>`, start, end, 'end');
+  applyInlineStyle('font-size', `${size}px`);
   document.getElementById('size-select').value = '';
-  updatePreview(); updateStatus();
 }
 
 /* ── Image URL modal ── */
@@ -6397,8 +6414,14 @@ function renderCodeBlock(codeLines, codeLang, forExport) {
 function parseMarkdown(md, opts) {
   const forExport = !!(opts && opts.forExport);
   let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  html = html.replace(/&lt;(span\s[^&]*?)&gt;([\s\S]*?)&lt;\/span&gt;/g,
-    (_, attrs, content) => `<span ${attrs}>${content}</span>`);
+  // Restore innermost spans first so overlapping toolbar selections can
+  // render together in both the preview and the exported HTML.
+  let previous;
+  do {
+    previous = html;
+    html = html.replace(/&lt;(span\s[^&]*?)&gt;((?:(?!&lt;span\s)[\s\S])*?)&lt;\/span&gt;/g,
+      (_, attrs, content) => `<span ${attrs}>${content}</span>`);
+  } while (html !== previous);
 
   const lines = html.split('\n');
   const out = []; let inUL = false; let inOL = false;

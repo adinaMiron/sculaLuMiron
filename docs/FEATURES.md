@@ -138,6 +138,12 @@ The parser is unified: `parseMarkdown(md, opts)` (L4047) and
 (`exportHtml()`, `{forExport: true}`). Add new syntax once, in these two
 functions — no twin to keep in sync.
 
+The font size, text color and highlight controls all use `applyInlineStyle()`.
+The selected text stays selected so the controls can be applied in any order;
+the same span gains each CSS property. Partial selections can create nested
+spans, so `parseMarkdown()` restores them from the inside out for preview
+and export. `tests/mdstyles.js` checks both routes.
+
 Syntax that creates a *link* between notes is a third thing again: it also
 has to appear in the graph, which reads the text through `scanNote()`
 rather than through the parser. See § G.
