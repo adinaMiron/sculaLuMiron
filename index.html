@@ -489,7 +489,18 @@
     flex-shrink: 0;
   }
 
+  #editor-pane { position: relative; }
+  #editor-matches {
+    position: absolute; inset: 33px 0 0; /* below the pane header */
+    box-sizing: border-box; padding: 24px 28px;
+    overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word;
+    font: 14px/1.7 var(--font-mono); tab-size: 2;
+    color: var(--text); pointer-events: none; z-index: 0;
+  }
+  #editor-matches mark.page-match { background: #ffd54a; color: #211900; border-radius: 2px; }
+  #editor-matches mark.page-match.current { background: #ff8a3d; outline: 2px solid #ff8a3d; }
   #editor {
+    position: relative; z-index: 1;
     flex: 1;
     background: var(--bg);
     color: var(--text);
@@ -502,7 +513,9 @@
     padding: 24px 28px;
     overflow-y: auto;
     tab-size: 2;
+    background: transparent; color: transparent; caret-color: var(--text);
   }
+  #editor::placeholder { color: var(--text-3); }
   #editor::selection { background: #C1BB4540; }
 
   #preview {
@@ -1001,8 +1014,6 @@
     cursor: pointer;
   }
   .find-hit mark:hover { background: var(--accent-2); }
-  #preview mark.page-match { background: #ffd54a; color: #211900; border-radius: 2px; }
-  #preview mark.page-match.current { background: #ff8a3d; outline: 2px solid #ff8a3d; }
   .find-where {
     display: block;
     font-family: var(--font-mono);
@@ -3506,6 +3517,7 @@
   <div class="main">
     <div class="pane" id="editor-pane">
       <div class="pane-header" data-i="paneSourceHeader">Markdown Source</div>
+      <div id="editor-matches" aria-hidden="true"></div>
       <textarea id="editor" spellcheck="false" oninput="updatePreview(); updateStatus(); scheduleAutosave()" onkeydown="handleTab(event)" data-i-placeholder="editorPlaceholder" placeholder="Start writing Markdown here…
 
 # Hello, World!
@@ -6524,12 +6536,21 @@ preview.addEventListener('keydown', e => {
 // Highlight the selected phrase in the rendered page. Ctrl+Shift+H advances
 // through matches; Ctrl+Alt+Shift+H marks every occurrence.
 let pageMatchQuery = '', pageMatchIndex = -1;
-function clearPageMatches() {
-  preview.querySelectorAll('mark.page-match').forEach(mark => {
-    mark.replaceWith(document.createTextNode(mark.textContent));
-  });
-  preview.normalize();
+const editorMatches = document.getElementById('editor-matches');
+function paintEditorMatches(current = -1) {
+  const text = editor.value, query = pageMatchQuery;
+  const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  if (!query) { editorMatches.textContent = text; return; }
+  const lower = text.toLocaleLowerCase(), needle = query.toLocaleLowerCase();
+  let from = 0, at, index = 0, html = '';
+  while ((at = lower.indexOf(needle, from)) !== -1) {
+    html += esc(text.slice(from, at)) + '<mark class="page-match' + (index === current ? ' current' : '') + '">' + esc(text.slice(at, at + query.length)) + '</mark>';
+    from = at + query.length; index++;
+  }
+  editorMatches.innerHTML = html + esc(text.slice(from));
 }
+editor.addEventListener('scroll', () => { editorMatches.scrollTop = editor.scrollTop; editorMatches.scrollLeft = editor.scrollLeft; });
+editor.addEventListener('input', () => paintEditorMatches(pageMatchIndex));
 function highlightPageMatches(all) {
   const selection = window.getSelection();
   let query = selection && selection.toString().trim();
@@ -6538,32 +6559,12 @@ function highlightPageMatches(all) {
   }
   if (!query) query = pageMatchQuery;
   if (!query) return;
-  if (query !== pageMatchQuery) { clearPageMatches(); pageMatchQuery = query; pageMatchIndex = -1; }
-  else clearPageMatches();
-  const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  const marks = [];
-  const needle = query.toLocaleLowerCase();
-  nodes.forEach(node => {
-    const text = node.nodeValue, lower = text.toLocaleLowerCase();
-    let from = 0, at;
-    const frag = document.createDocumentFragment();
-    while ((at = lower.indexOf(needle, from)) !== -1) {
-      if (at > from) frag.appendChild(document.createTextNode(text.slice(from, at)));
-      const mark = document.createElement('mark');
-      mark.className = 'page-match'; mark.textContent = text.slice(at, at + query.length);
-      frag.appendChild(mark); marks.push(mark); from = at + query.length;
-    }
-    if (!marks.length || from === 0) return;
-    if (from < text.length) frag.appendChild(document.createTextNode(text.slice(from)));
-    node.replaceWith(frag);
-  });
-  if (!marks.length) return;
-  if (all) { pageMatchIndex = -1; return; }
-  pageMatchIndex = (pageMatchIndex + 1) % marks.length;
-  marks[pageMatchIndex].classList.add('current');
-  marks[pageMatchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (query !== pageMatchQuery) { pageMatchQuery = query; pageMatchIndex = -1; }
+  const count = (editor.value.toLocaleLowerCase().split(query.toLocaleLowerCase()).length - 1);
+  if (!count) { paintEditorMatches(-1); return; }
+  if (all) { pageMatchIndex = -1; paintEditorMatches(-1); return; }
+  pageMatchIndex = (pageMatchIndex + 1) % count;
+  paintEditorMatches(pageMatchIndex);
 }
 
 /* ── Navigation panel ── */
