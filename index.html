@@ -497,7 +497,8 @@
     font: 14px/1.7 var(--font-mono); tab-size: 2;
     color: var(--text); pointer-events: none; z-index: 0;
   }
-  #editor-matches mark.page-match { background: #ffd54a; color: #211900; border-radius: 2px; }
+  #editor-matches mark.page-match { position: relative; background: #ffd54a; color: #211900; border-radius: 2px; }
+  #editor-matches .page-match-caret { position:absolute; top:-1px; bottom:-1px; width:1px; background:#15120a; pointer-events:none; z-index:1; }
   #editor-matches mark.page-match.current { background: #ff8a3d; outline: 2px solid #ff8a3d; }
   #editor {
     position: relative; z-index: 1;
@@ -6535,7 +6536,7 @@ preview.addEventListener('keydown', e => {
 
 // Highlight the selected phrase in the rendered page. Ctrl+Shift+H advances
 // through matches; Ctrl+Alt+Shift+H marks every occurrence.
-let pageMatchQuery = '', pageMatchIndex = -1;
+let pageMatchQuery = '', pageMatchIndex = -1, pageMatchCaret = null;
 const editorMatches = document.getElementById('editor-matches');
 function paintEditorMatches(current = -1) {
   const text = editor.value, query = pageMatchQuery;
@@ -6544,13 +6545,47 @@ function paintEditorMatches(current = -1) {
   const lower = text.toLocaleLowerCase(), needle = query.toLocaleLowerCase();
   let from = 0, at, index = 0, html = '';
   while ((at = lower.indexOf(needle, from)) !== -1) {
-    html += esc(text.slice(from, at)) + '<mark class="page-match' + (index === current ? ' current' : '') + '">' + esc(text.slice(at, at + query.length)) + '</mark>';
+    html += esc(text.slice(from, at)) + '<mark class="page-match' + (index === current ? ' current' : '') + '">' + esc(text.slice(at, at + query.length));
+    if (pageMatchIndex === -1 && pageMatchCaret != null) html += '<span class="page-match-caret" aria-hidden="true" style="left:' + pageMatchCaret + 'ch"></span>';
+    html += '</mark>';
     from = at + query.length; index++;
   }
   editorMatches.innerHTML = html + esc(text.slice(from));
 }
 editor.addEventListener('scroll', () => { editorMatches.scrollTop = editor.scrollTop; editorMatches.scrollLeft = editor.scrollLeft; });
 editor.addEventListener('input', () => paintEditorMatches(pageMatchIndex));
+// In "all matches" mode the textarea has one native caret, so mirror a
+// caret at the same offset in every mark and apply edits to every occurrence.
+editor.addEventListener('keydown', e => {
+  if (pageMatchIndex !== -1 || !pageMatchQuery || pageMatchCaret == null || document.activeElement !== editor) return;
+  const query = pageMatchQuery;
+  const lower = editor.value.toLocaleLowerCase(), needle = query.toLocaleLowerCase();
+  const starts = []; let p = 0;
+  while ((p = lower.indexOf(needle, p)) !== -1) { starts.push(p); p += query.length; }
+  if (!starts.length) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault(); pageMatchCaret = Math.max(0, Math.min(query.length, pageMatchCaret + (e.key === 'ArrowLeft' ? -1 : 1)));
+    paintEditorMatches(-1); return;
+  }
+  let remove = 0, insert = '';
+  if (e.key === 'Backspace') { if (!pageMatchCaret) return; remove = -1; }
+  else if (e.key === 'Delete') { if (pageMatchCaret >= query.length) return; remove = 1; }
+  else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) insert = e.key;
+  else return;
+  e.preventDefault(); undoMark(false);
+  let value = editor.value;
+  starts.slice().reverse().forEach(start => {
+    const at = start + pageMatchCaret;
+    if (remove < 0) value = value.slice(0, at - 1) + value.slice(at);
+    else if (remove > 0) value = value.slice(0, at) + value.slice(at + 1);
+    else value = value.slice(0, at) + insert + value.slice(at);
+  });
+  editor.value = value;
+  if (insert) { pageMatchQuery = query.slice(0, pageMatchCaret) + insert + query.slice(pageMatchCaret); pageMatchCaret++; }
+  else if (remove) { pageMatchQuery = query.slice(0, pageMatchCaret + (remove < 0 ? -1 : 0)) + query.slice(pageMatchCaret + (remove > 0 ? 1 : 0)); if (remove < 0) pageMatchCaret--; }
+  editor.setSelectionRange(editor.selectionStart, editor.selectionStart);
+  updatePreview(); updateStatus(); scheduleAutosave(); paintEditorMatches(-1);
+});
 function highlightPageMatches(all) {
   const selection = window.getSelection();
   let query = selection && selection.toString().trim();
@@ -6562,7 +6597,7 @@ function highlightPageMatches(all) {
   if (query !== pageMatchQuery) { pageMatchQuery = query; pageMatchIndex = -1; }
   const count = (editor.value.toLocaleLowerCase().split(query.toLocaleLowerCase()).length - 1);
   if (!count) { paintEditorMatches(-1); return; }
-  if (all) { pageMatchIndex = -1; paintEditorMatches(-1); return; }
+  if (all) { pageMatchIndex = -1; pageMatchCaret = query.length; paintEditorMatches(-1); return; }
   pageMatchIndex = (pageMatchIndex + 1) % count;
   paintEditorMatches(pageMatchIndex);
 }
