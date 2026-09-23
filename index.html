@@ -7328,6 +7328,8 @@ async function deleteChapter(id) {
   if (!ch) return;
   if (!confirm(t('confirmDeleteChapter', ch.title))) return;
   const book = wbBook(ch.workbookId);
+  const wbPanel = document.getElementById('wb-panel');
+  const keepOpen = !isSmallScreen() && !wbPanel.classList.contains('collapsed');
   try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
   await wbPendingClear(ch.id);
   if (book) await wbMirrorRemove(book.folder, ch.file);
@@ -7335,6 +7337,13 @@ async function deleteChapter(id) {
   if (ch.id === wbCurrentId) detachChapter();
   await cloudTombstone(ch.id);          // docs/FEATURES.md § O
   renderWorkbooks();
+  // On phone/tablet the panel is meant to close once its job is done; on
+  // larger screens it stays put — a delete is not a reason to lose it, same
+  // as picking a chapter (see wbSelectChapter).
+  if (keepOpen && wbPanel.classList.contains('collapsed')) {
+    wbPanel.classList.remove('collapsed');
+    document.getElementById(PANELS['wb-panel']).classList.add('active');
+  }
   wbSay(t('wbRemoved'));
   cloudAutoSync();
 }
