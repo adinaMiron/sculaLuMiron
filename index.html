@@ -12679,6 +12679,7 @@ const GSYNC = {
 
 let gsToken = null, gsTokenExp = 0, gsFolder = null, gsClient = null;
 let gsFolderOk = false;               // the remembered folder, confirmed against Drive this page-load
+const gsDirOk = new Set();            // workbook folder ids confirmed the same way (gsDirLive)
 let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
 let gsGraves = {};                    // id → deleted-at, books and chapters alike
 
@@ -12723,7 +12724,7 @@ function gsForget(tokenOnly) {
     localStorage.removeItem('gdrive_token_exp');
     if (!tokenOnly) { localStorage.removeItem('gdrive_md_folder'); localStorage.removeItem('gdrive_md_at'); }
   } catch (e) {}
-  if (!tokenOnly) { gsFolder = null; gsFolderOk = false; gsLastAt = 0; }
+  if (!tokenOnly) { gsFolder = null; gsFolderOk = false; gsLastAt = 0; gsDirOk.clear(); }
 }
 
 /* A background sync must never open a popup — nobody asked for one, and a
@@ -12819,6 +12820,9 @@ async function gsWrite(name, parentId, blob, fileId) {
     // rather than losing the chapter. Only on a 404: a 403 is usually a rate
     // limit, and re-creating there would duplicate the chapter instead.
     if (fileId && e.status === 404) return gsWrite(name, parentId, blob, null);
+    // No file to overwrite and still a 404: the *folder* is gone. Forget that
+    // it was confirmed, so the next pass checks it and makes it again.
+    if (e.status === 404) gsDirOk.delete(parentId);
     throw e;
   }
 }
@@ -12845,6 +12849,22 @@ function gsRootIs(folder) {
   gsFolderOk = true;
   try { localStorage.setItem('gdrive_md_folder', JSON.stringify(gsFolder)); } catch (e) {}
   return gsFolder;
+}
+
+/* The same doubt, for a workbook's folder id in the manifest. One that was
+   deleted in Drive (or taken down with another workbook that shared it) made
+   every write into it a 404, the pass died before the manifest went back, and
+   the next pass redid the whole grave list against files already gone. Only
+   a 404 means gone: a 403 is usually a rate limit, and re-making the folder
+   there would split the workbook in two. */
+async function gsDirLive(id) {
+  if (gsDirOk.has(id)) return true;
+  let live = null;
+  try { live = await gsJson(GS_FILES + '/' + id + '?fields=id,trashed'); }
+  catch (e) { if (e.status !== 404) throw e; }
+  if (!live || live.trashed) return false;
+  gsDirOk.add(id);
+  return true;
 }
 
 /* ── Tombstones ──
@@ -12896,7 +12916,14 @@ async function cloudSync(interactive) {
       const rc = remChaps.get(id);
       if (rc) { if (rc.driveId) await gsTrash(rc.driveId); remChaps.delete(id); }
       const rb = remBooks.get(id);
-      if (rb) { if (rb.driveId) await gsTrash(rb.driveId); remBooks.delete(id); }
+      if (rb) {
+        remBooks.delete(id);
+        // Deleting a Drive folder takes everything in it. A folder another
+        // workbook still writes into (two same-named workbooks used to share
+        // one) stays; only this workbook's chapters, graved above, go.
+        const shared = rb.driveId && [...remBooks.values()].some(o => o.driveId === rb.driveId);
+        if (rb.driveId && !shared) { await gsTrash(rb.driveId); gsDirOk.delete(rb.driveId); }
+      }
       // A local record edited *after* the delete was recorded elsewhere is a
       // deliberate re-creation, and wins over the grave.
       const lc = wbChapter(id);
@@ -12933,15 +12960,29 @@ async function cloudSync(interactive) {
     }
     const outBooks = [];
     const dirOf = new Map();          // book id → its Drive folder id, this pass
+    const rehomed = new Map();        // book id → 'gone' | 'shared': its chapter files must be written anew
+    const claimed = new Set();        // folder ids a workbook already owns — one folder, one workbook
     for (const lb of wbBooks) {
       const rb = remBooks.get(lb.id);
-      let driveId = rb && rb.driveId;
+      if (!rb || !rb.driveId || claimed.has(rb.driveId)) continue;
+      if (await gsDirLive(rb.driveId)) { claimed.add(rb.driveId); dirOf.set(lb.id, rb.driveId); }
+      else rehomed.set(lb.id, 'gone');
+    }
+    for (const lb of wbBooks) {
+      const rb = remBooks.get(lb.id);
+      let driveId = dirOf.get(lb.id);
       if (driveId && rb.folder !== lb.folder && (lb.updated || 0) > (rb.updated || 0)) {
         try { await gsRename(driveId, lb.folder); } catch (e) {}
       }
       if (!driveId) {
-        const dir = (await gsChild(lb.folder, rootId, true)) || (await gsMakeFolder(lb.folder, rootId));
+        if (rb && rb.driveId && !rehomed.has(lb.id)) rehomed.set(lb.id, 'shared');
+        // A same-named folder is only reused when no other workbook owns it,
+        // or two workbooks end up in one folder and deleting either empties both.
+        let dir = await gsChild(lb.folder, rootId, true);
+        if (!dir || claimed.has(dir.id)) dir = await gsMakeFolder(lb.folder, rootId);
         driveId = dir.id;
+        claimed.add(driveId);
+        gsDirOk.add(driveId);
       }
       dirOf.set(lb.id, driveId);
       outBooks.push({ id: lb.id, name: lb.name, folder: lb.folder, created: lb.created || 0,
@@ -12973,8 +13014,14 @@ async function cloudSync(interactive) {
       const dir = dirOf.get(lc.workbookId);
       if (!dir) continue;               // an orphan chapter has nowhere to go
       let driveId = rc && rc.driveId;
-      if (!rc || (lc.updated || 0) > (rc.updated || 0)) {
-        const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }), driveId);
+      // A workbook given a new folder this pass takes its chapters with it,
+      // changed or not: the old files went with a deleted folder, or sit in
+      // another workbook's.
+      const moved = rehomed.get(lc.workbookId);
+      if (!rc || moved || (lc.updated || 0) > (rc.updated || 0)) {
+        const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }),
+                                   moved ? null : driveId);
+        if (moved === 'shared' && driveId) await gsTrash(driveId);
         driveId = file.id;
         up++;
       }

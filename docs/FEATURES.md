@@ -1805,6 +1805,23 @@ instead of written into. The new root has no manifest in it, so the next pass
 re-uploads every chapter: the recovery is the ordinary sync, not a special
 path.
 
+**The workbook folders get the same doubt, and one folder is one workbook.**
+A workbook's `driveId` in the manifest is a folder id too, and it can be gone
+just the same. It used to be trusted, so every chapter write into a deleted
+folder came back `404 File not found`, the pass died before the manifest was
+written back (step 5), and the next pass re-applied the whole grave list
+against files that were already deleted — one sync button saying "Google
+Drive: File not found: …" over a console full of 404s on `DELETE files/<id>`.
+The usual way a folder vanished: two workbooks with the same folder name (one
+made in each browser, say) had both been handed one Drive folder by the name
+search, and deleting either one deleted the folder under the other. Now
+`gsDirLive()` confirms each workbook folder once per page-load (`gsDirOk`);
+a folder that is gone, or that another workbook already owns, is made anew
+and that workbook's chapters are written into it whether they changed or not
+(the old copies in a folder another workbook owns are deleted). A graved
+workbook's folder is not deleted while another workbook in the manifest
+still points at it.
+
 The status line is honest about *when*, too. `gsWhen()` prints a bare time only
 for a stamp from **today**; any older one carries its date. A sync that quietly
 stopped working used to be indistinguishable from one that had just run.
@@ -1844,7 +1861,12 @@ file bodies and the manifest, the pull into an empty database, newest-wins
 in both directions, a rename keeping its Drive file, a delete travelling and
 staying deleted on the other browser, disconnecting, and a binned root folder
 being made again rather than written into — with the status line's link
-asserted against the folder the run actually wrote to. No Google account is
+asserted against the folder the run actually wrote to. The fake behaves like
+Drive where it matters: a folder's `DELETE` takes its contents, and a write
+into a missing parent is a 404. With that, it also checks a deleted workbook
+folder being made again with its unchanged chapters rewritten into it (and
+the next sync deleting nothing), and two workbooks that shared a folder
+being split apart so that deleting one leaves the other's files alone. No Google account is
 involved. Run: `/apptest gdsync`.
 
 ---

@@ -66,9 +66,19 @@ function fakeDrive(seed) {
   const add = f => { files.set(f.id, f); return f; };
   (seed || []).forEach(add);
   const newId = () => 'f' + (++n);
+  // Real Drive answers a write into a parent it cannot find with a 404, and a
+  // folder's DELETE takes everything under it — both are what the § 9 bug is.
+  const orphan = parents => (parents || []).find(id => !files.has(id));
+  const notFound = id => ({ status: 404, json: { error: { message: 'File not found: ' + id + '.' } } });
+  const drop = id => {
+    files.delete(id);
+    [...files.values()].filter(f => (f.parents || []).includes(id)).forEach(f => drop(f.id));
+  };
+  const deleted = [];
 
   return {
     files,
+    deleted,
     file: (name, parent) => [...files.values()].find(f => f.name === name && (!parent || (f.parents || []).includes(parent))),
     handle(req) {
       const url = new URL(req.url());
@@ -92,7 +102,12 @@ function fakeDrive(seed) {
         try { Object.assign(f, JSON.parse(req.postData() || '{}')); } catch (e) {}
         return { status: 200, json: { id: f.id, name: f.name } };
       }
-      if (m && method === 'DELETE') { files.delete(m[1]); return { status: 204, body: '' }; }
+      if (m && method === 'DELETE') {
+        deleted.push(m[1]);
+        if (!files.has(m[1])) return notFound(m[1]);
+        drop(m[1]);
+        return { status: 204, body: '' };
+      }
 
       // list
       if (p === '/drive/v3/files' && method === 'GET') {
@@ -114,6 +129,7 @@ function fakeDrive(seed) {
       if (p === '/drive/v3/files' && method === 'POST') {
         let b = {};
         try { b = JSON.parse(req.postData() || '{}'); } catch (e) {}
+        if (orphan(b.parents)) return notFound(orphan(b.parents));
         const f = { id: newId(), name: b.name, mimeType: b.mimeType, parents: b.parents || [], body: '' };
         files.set(f.id, f);
         return { status: 200, json: { id: f.id, name: f.name } };
@@ -131,6 +147,7 @@ function fakeDrive(seed) {
           f.body = parsed.body;
           return { status: 200, json: { id: f.id, name: f.name } };
         }
+        if (orphan(parsed.meta.parents)) return notFound(orphan(parsed.meta.parents));
         const f = { id: newId(), name: parsed.meta.name, mimeType: 'text/plain',
                     parents: parsed.meta.parents || [], body: parsed.body };
         files.set(f.id, f);
@@ -542,6 +559,100 @@ if (require.main !== module) return;
     check('the status line links to the folder it actually wrote to',
       !!link && link.href === 'https://drive.google.com/drive/folders/' + made.id, link);
     check('and names it in the tooltip', !!link && link.title.includes('Scula Markdown'), link);
+    await ctx.close();
+  }
+
+  // ---- 9. a workbook folder that is gone is made again, not written into ----
+  // What was reported: "Sincronizează acum" said "Google Drive: File not
+  // found", and the console filled with 404s on DELETE files/<id>. Every write
+  // into the dead folder threw, the pass died before the manifest went back,
+  // so the next pass replayed the grave list against files already deleted.
+  {
+    const drive = fakeDrive();
+    {
+      const { ctx, page } = await fresh(browser, drive);
+      await page.goto(BASE);
+      await page.waitForTimeout(600);
+      await seed(page);
+      await page.evaluate(() => cloudSync(true));
+      await page.waitForTimeout(700);
+      await ctx.close();
+    }
+    const deadDir = manifestOf(drive).books[0].driveId;
+    // a grave for a chapter file that is gone too — the replayed DELETE
+    const man = drive.file('index.json');
+    const m0 = JSON.parse(man.body);
+    m0.chapters.push({ id: 'ch_old', workbookId: 'wb_fiz', title: 'Old', file: 'old.md', updated: 1, driveId: 'nosuch' });
+    m0.deleted = { ch_old: Date.now() };
+    man.body = JSON.stringify(m0);
+    drive.files.delete(deadDir);
+    [...drive.files.values()].filter(f => (f.parents || []).includes(deadDir)).forEach(f => drive.files.delete(f.id));
+
+    const { ctx, page, errors } = await fresh(browser, drive);
+    await page.goto(BASE);
+    await page.waitForTimeout(600);
+    await seed(page);
+    const r = await page.evaluate(() => cloudSync(true).then(x => x, e => 'ERR ' + e.message));
+    check('a sync over a deleted workbook folder does not fail', r && typeof r === 'object', r);
+    check('no page errors either', errors.length === 0, errors);
+    const man1 = manifestOf(drive);
+    const dir = drive.files.get(man1.books[0].driveId);
+    check('the workbook gets a new folder, under the root',
+      !!dir && dir.id !== deadDir && dir.name === 'fizica', man1.books[0]);
+    check('its unchanged chapters are written into it anyway',
+      man1.chapters.every(c => { const f = drive.files.get(c.driveId); return f && f.parents.includes(dir.id); }) &&
+      drive.file('optica.md', dir.id).body === '# Optica\nlentile', man1.chapters);
+    check('the manifest went back, so the grave is not replayed',
+      !man1.chapters.some(c => c.id === 'ch_old') && !!man1.deleted.ch_old, man1.chapters.map(c => c.id));
+    const before = drive.deleted.length;
+    const r2 = await page.evaluate(() => cloudSync(true));
+    check('the next sync has nothing to do, and deletes nothing',
+      r2 && r2.up === 0 && r2.down === 0 && drive.deleted.length === before, [r2, drive.deleted.slice(before)]);
+    await ctx.close();
+  }
+
+  // ---- 10. one folder, one workbook ----
+  // Two workbooks with the same folder name (one per browser, say) used to be
+  // handed the same Drive folder by the name search, and deleting either took
+  // the other's chapter files down with it.
+  {
+    const drive = fakeDrive([
+      { id: 'root', name: 'Scula Markdown', mimeType: DIR, parents: [], body: '' },
+      { id: 'dirA', name: 'fizica', mimeType: DIR, parents: ['root'], body: '' },
+      { id: 'fm', name: 'mecanica.md', mimeType: 'text/plain', parents: ['dirA'], body: '# Mecanica\nviteza' },
+      { id: 'fo', name: 'optica.md', mimeType: 'text/plain', parents: ['dirA'], body: '# Optica\nlentile' },
+    ]);
+    drive.files.set('man', { id: 'man', name: 'index.json', mimeType: 'text/plain', parents: ['root'], body: JSON.stringify({
+      v: 1, deleted: {},
+      books: [{ id: 'wb_fiz', name: 'Fizică', folder: 'fizica', updated: 1000, driveId: 'dirA' },
+              { id: 'wb_bis', name: 'Fizică', folder: 'fizica', updated: 1000, driveId: 'dirA' }],
+      chapters: [{ id: 'ch_mec', workbookId: 'wb_fiz', title: 'Mecanica', file: 'mecanica.md', updated: 2000, driveId: 'fm' },
+                 { id: 'ch_opt', workbookId: 'wb_bis', title: 'Optica', file: 'optica.md', updated: 2000, driveId: 'fo' }]
+    }) });
+    const { ctx, page, errors } = await fresh(browser, drive);
+    page.on('dialog', d => d.accept());
+    await page.goto(BASE);
+    await page.waitForTimeout(600);
+    await seed(page);
+    await page.evaluate(async () => {
+      const bis = { id: 'wb_bis', name: 'Fizică', folder: 'fizica', created: 1000, updated: 1000, order: 1 };
+      wbBooks.push(bis); await wbPut(WB_BOOKS, bis);
+      const opt = wbChapter('ch_opt'); opt.workbookId = 'wb_bis'; await wbPut(WB_CHAPTERS, opt);
+    });
+    await page.evaluate(() => cloudSync(true));
+    const man1 = manifestOf(drive);
+    const [a, b] = ['wb_fiz', 'wb_bis'].map(id => man1.books.find(x => x.id === id).driveId);
+    check('two workbooks sharing a folder are given one each', a === 'dirA' && !!b && b !== a, man1.books);
+    const opt = drive.files.get(man1.chapters.find(c => c.id === 'ch_opt').driveId);
+    check('the second one\'s chapter moves into its own folder',
+      !!opt && opt.parents.includes(b) && opt.body === '# Optica\nlentile' && !drive.files.has('fo'), opt);
+
+    await page.evaluate(() => deleteWorkbook('wb_bis'));
+    await page.evaluate(() => cloudSync(true));
+    check('deleting one workbook leaves the other\'s folder and files',
+      drive.files.has('dirA') && drive.files.has('fm') && !drive.files.has(b),
+      [...drive.files.values()].map(f => f.name));
+    check('no page errors through it', errors.length === 0, errors);
     await ctx.close();
   }
 

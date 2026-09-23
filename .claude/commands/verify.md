@@ -52,7 +52,7 @@ binary and reports "binary file matches" instead of the line — a hit you
 cannot read looks the same as the known-good one.
 
 Expect **only** one known-good hit, prose *about* the cedilla rather than a
-user-facing string: `index.html:~8995` (a comment). `recipes.html` has none
+user-facing string: `index.html:~9378` (a comment). `recipes.html` has none
 (it uses `\u` escapes). Anything else in markup or a UI string is a bug —
 replace ş→ș (U+0219), ţ→ț (U+021B).
 
