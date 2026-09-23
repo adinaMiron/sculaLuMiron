@@ -7297,10 +7297,11 @@ async function openChapter(id) {
 
 // Picking a chapter from the Caiete panel: select it, then close just that
 // panel — but only once the switch actually went through (a pending unsaved
-// loose file can refuse it via canLeaveEditor's confirm()).
+// loose file can refuse it via canLeaveEditor's confirm()), and only on
+// phone/tablet (isSmallScreen, ≤1024px); on larger screens Caiete stays open.
 async function wbSelectChapter(id) {
   await openChapter(id);
-  if (wbCurrentId === id) closeWbPanel();
+  if (wbCurrentId === id && isSmallScreen()) closeWbPanel();
 }
 
 async function renameChapter(id, preset) {
