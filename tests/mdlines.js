@@ -38,6 +38,36 @@ const caretLine = page => page.evaluate(() => {
   await page.goto(URL);
   await page.waitForTimeout(400);
 
+  // Typing into the source must not leave a second painted copy behind it.
+  await page.evaluate(() => {
+    editor.value = 'first\nsecond';
+    editor.focus();
+    editor.setSelectionRange(9, 9);
+  });
+  await page.keyboard.press('Space');
+  const sourceLayers = await page.evaluate(() => ({
+    value: editor.value,
+    overlay: document.getElementById('editor-matches').textContent,
+    color: getComputedStyle(editor).color
+  }));
+  check('Space inserts one character in the source', sourceLayers.value === 'first\nsec ond', sourceLayers);
+  check('the search overlay stays empty while typing normally',
+    sourceLayers.overlay === '' && sourceLayers.color !== 'rgba(0, 0, 0, 0)', sourceLayers);
+
+  await page.evaluate(() => {
+    editor.setSelectionRange(0, 5);
+    highlightPageMatches(false);
+  });
+  const matchedLayers = await page.evaluate(() => ({
+    overlay: document.getElementById('editor-matches').textContent,
+    marks: document.querySelectorAll('#editor-matches mark.page-match').length,
+    color: getComputedStyle(editor).color
+  }));
+  check('search highlighting uses one visible source layer',
+    matchedLayers.overlay === sourceLayers.value && matchedLayers.marks === 1 &&
+    matchedLayers.color === 'rgba(0, 0, 0, 0)', matchedLayers);
+  await page.evaluate(() => { pageMatchQuery = ''; paintEditorMatches(); });
+
   // three lines, caret parked in the middle one
   await page.evaluate(() => {
     editor.value = 'first\nsecond\nthird';

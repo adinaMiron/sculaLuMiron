@@ -520,6 +520,9 @@
   }
   #editor::placeholder { color: var(--text-3); }
   #editor::selection { background: #C1BB4540; }
+  /* The search layer paints the source while matches are shown. Keep only
+     one copy of the text visible at a time. */
+  #editor.has-page-matches { color: transparent; }
 
   #preview {
     flex: 1;
@@ -6603,8 +6606,9 @@ let pageMatchQuery = '', pageMatchIndex = -1, pageMatchCaret = null;
 const editorMatches = document.getElementById('editor-matches');
 function paintEditorMatches(current = -1) {
   const text = editor.value, query = pageMatchQuery;
+  editor.classList.toggle('has-page-matches', !!query);
   const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  if (!query) { editorMatches.textContent = text; return; }
+  if (!query) { editorMatches.textContent = ''; return; }
   const lower = text.toLocaleLowerCase(), needle = query.toLocaleLowerCase();
   let from = 0, at, index = 0, html = '';
   while ((at = lower.indexOf(needle, from)) !== -1) {
