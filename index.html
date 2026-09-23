@@ -3403,28 +3403,6 @@
   </select>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="wrapSelection('**','**')" data-i-title="boldTip" title="Bold"><b>B</b></button>
-  <button class="tb-btn" onclick="wrapSelection('*','*')" data-i-title="italicTip" title="Italic"><i>I</i></button>
-
-  <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
-  <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
-  <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
-  <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
-  <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
-
-  <!-- Importance: marks the caret's line (or every line of the selection).
-       Picking again replaces the marker, "Remove" clears it. -->
-  <select class="tb-select" id="importance-select" onchange="setImportance(this.value)"
-          data-i-title="impTip" title="Mark how important this line is">
-    <option value="" data-i="impDefault">— Importance —</option>
-    <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
-    <option value="important" data-i="impImportantOpt">⭐ Important</option>
-    <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
-    <option value="none" data-i="impNoneOpt">✕ Remove</option>
-  </select>
-
-  <div class="toolbar-sep"></div>
   <span class="tb-label" data-i="lblSize">Size</span>
   <select class="tb-select" id="size-select" onchange="insertFontSize(this.value)">
     <option value="" data-i="sizeDefault">— Font Size —</option>
@@ -3446,9 +3424,29 @@
     <option value="28">28px</option>
     <option value="30">30px</option>
   </select>
-
   <label class="tb-btn tb-color-control" title="Text color" data-i-title="textColorTip">A <input type="color" aria-label="Text color" value="#c1bb45" onchange="applyTextColor(this.value)"></label>
   <label class="tb-btn tb-color-control" title="Highlight color" data-i-title="highlightColorTip">▰ <input type="color" aria-label="Highlight color" value="#f4d35e" onchange="applyHighlightColor(this.value)"></label>
+
+  <button class="tb-btn" onclick="wrapSelection('**','**')" data-i-title="boldTip" title="Bold"><b>B</b></button>
+  <button class="tb-btn" onclick="wrapSelection('*','*')" data-i-title="italicTip" title="Italic"><i>I</i></button>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
+  <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
+  <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
+  <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
+  <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
+
+  <!-- Importance: marks the caret's line (or every line of the selection).
+       Picking again replaces the marker, "Remove" clears it. -->
+  <select class="tb-select" id="importance-select" onchange="setImportance(this.value)"
+          data-i-title="impTip" title="Mark how important this line is">
+    <option value="" data-i="impDefault">— Importance —</option>
+    <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
+    <option value="important" data-i="impImportantOpt">⭐ Important</option>
+    <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
+    <option value="none" data-i="impNoneOpt">✕ Remove</option>
+  </select>
 
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
