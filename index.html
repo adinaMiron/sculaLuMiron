@@ -3462,6 +3462,10 @@
     <option value="!important" data-i="impInsertImportant">⭐ !important</option>
     <option value="!vital" data-i="impInsertVital">🔥 !vital</option>
   </select>
+  <select class="tb-select" id="responsible-select" onchange="selectResponsible(this.value)"
+          data-i-title="responsibleTip" title="Show only text assigned to one responsible" hidden>
+    <option value="" data-i="responsibleAll">— All responsibles —</option>
+  </select>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
@@ -4004,6 +4008,7 @@ const I18N = {
     impInsertTip:"Inserează un marcaj de importanță la cursor",
     impInsertDefault:"— Marcaje de importanță —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
+    responsibleAll:"— Toți responsabilii —", responsibleTip:"Arată doar capitolele și rândurile atribuite responsabilului ales",
     impDefault:"— Importanță —",
     impNiceOpt:"🌱 Bine de avut", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
     impNoneOpt:"✕ Scoate marcajul",
@@ -4374,6 +4379,7 @@ const I18N = {
     impInsertTip:"Insert an importance marker at the cursor",
     impInsertDefault:"— Importance markers —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
+    responsibleAll:"— All responsibles —", responsibleTip:"Show only chapters and lines assigned to the selected responsible",
     impDefault:"— Importance —",
     impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
     impNoneOpt:"✕ Remove",
@@ -6539,8 +6545,19 @@ function parseMarkdown(md, opts) {
 }
 
 function updatePreview() {
-  const src = wbTodoOnlyAll ? wbOpenTasksOnly(editor.value) : editor.value;
+  const responsibleChanged = wbPaintResponsibleSelect();
+  const filtered = wbPreviewFilteredText(editor.value);
+  const src = filtered.text;
+  wbPreviewLineMap = filtered.lineMap;
   preview.innerHTML = parseMarkdown(src);
+  const current = wbCurrentId ? wbChapter(wbCurrentId) : null;
+  const treeState = JSON.stringify([
+    wbCurrentId, wbResponsibleFilter,
+    wbResponsibleFilter && current ? wbNamesForChapter(current).has(wbResponsibleFilter) : null,
+    wbTodoOnlyAll ? WB_OPEN_TASK_RE.test(editor.value) : null
+  ]);
+  if (responsibleChanged || treeState !== wbPreviewTreeState) renderWorkbooks();
+  wbPreviewTreeState = treeState;
   updateNav();
   gvRefresh();          // the graph reads the open note; keep it honest
   fdLive();             // and so does the search panel
@@ -6553,8 +6570,10 @@ function updatePreview() {
 preview.addEventListener('click', e => {
   const cb = e.target.closest('.task-checkbox');
   if (cb && cb.dataset.line !== undefined) {
-    const lineIdx = Number(cb.dataset.line);
+    const previewLineIdx = Number(cb.dataset.line);
+    const lineIdx = wbPreviewLineMap ? wbPreviewLineMap[previewLineIdx] : previewLineIdx;
     const lines = editor.value.split('\n');
+    if (!Number.isInteger(lineIdx) || !lines[lineIdx]) return;
     lines[lineIdx] = lines[lineIdx].replace(/\[([ xX])\]/, (m, mark) => mark === ' ' ? '[x]' : '[ ]');
     undoMark(false);
     editor.value = lines.join('\n');
@@ -6757,11 +6776,128 @@ const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
 let wbTodoOnlyAll = false;       // toolbar "▣ Tasks only" — filters EVERY workbook to chapters with an open "- [ ]"
+let wbResponsibleFilter = '';    // normalized name chosen in the toolbar; empty means all
+let wbPreviewLineMap = null;     // filtered preview line -> original editor line (task checkbox clicks)
+let wbPreviewTreeState = '';
+let wbResponsibleOptions = '';
+const wbResponsibleSeen = new Map(); // names already recorded in IndexedDB, keyed without case
+const wbResponsibleScanCache = new Map();
+let wbResponsibleWrite = Promise.resolve();
+
+// Read the same leading Name>> marker the markdown renderer recognizes,
+// including one inside a list item, task, heading or quote. Code fences are
+// skipped because their contents are displayed literally.
+const WB_RESPONSIBLE_RE = new RegExp(
+  '^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
+  `(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})[ \\t]?>>(?=[ \\t])`, 'u'
+);
+function wbResponsibleKey(name) { return name.normalize('NFC').toLowerCase(); }
+function wbWalkResponsibleLines(text, visit) {
+  let fenced = false;
+  String(text || '').split('\n').forEach((line, index) => {
+    if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
+    if (fenced) return;
+    const match = line.match(WB_RESPONSIBLE_RE);
+    if (match) visit(match[1].replace(/[ \t]+/g, ' '), line, index);
+  });
+}
+function wbNamesIn(text) {
+  const names = new Map();
+  wbWalkResponsibleLines(text, name => {
+    const key = wbResponsibleKey(name);
+    if (!names.has(key)) names.set(key, name);
+  });
+  return names;
+}
+function wbNamesForChapter(ch) {
+  const text = ch.id === wbCurrentId ? editor.value : ch.content || '';
+  const cached = wbResponsibleScanCache.get(ch.id);
+  if (cached && cached.text === text) return cached.names;
+  const names = wbNamesIn(text);
+  wbResponsibleScanCache.set(ch.id, { text, names });
+  return names;
+}
+
+// The meta record only grows when a saved chapter introduces a new name.
+// Serializing writes keeps simultaneous autosaves/imports from losing names.
+function wbRecordResponsibles(text) {
+  let added = false;
+  wbNamesIn(text).forEach((name, key) => {
+    if (!wbResponsibleSeen.has(key)) { wbResponsibleSeen.set(key, name); added = true; }
+  });
+  if (added) {
+    wbResponsibleWrite = wbResponsibleWrite.then(() =>
+      wbMetaSet('responsibles', Array.from(wbResponsibleSeen.values()))
+    ).catch(() => {});
+  }
+}
+
+// Options reflect names still present in chapters; the IndexedDB list keeps
+// names once recorded even if their last marker is later removed.
+function wbPaintResponsibleSelect() {
+  if (!wbBooted) return false;
+  const select = document.getElementById('responsible-select');
+  if (!select) return false;
+  const names = new Map();
+  wbChapters.forEach(ch => {
+    wbNamesForChapter(ch).forEach((name, key) => { if (!names.has(key)) names.set(key, name); });
+  });
+  const sorted = Array.from(names, ([key, name]) => ({ key, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, UI));
+  const signature = JSON.stringify(sorted);
+  let changed = false;
+  if (signature !== wbResponsibleOptions) {
+    wbResponsibleOptions = signature;
+    select.replaceChildren(select.firstElementChild);
+    sorted.forEach(({ key, name }) => {
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    changed = true;
+  }
+  select.hidden = !sorted.length;
+  if (wbResponsibleFilter && !names.has(wbResponsibleFilter)) {
+    wbResponsibleFilter = '';
+    changed = true;
+  }
+  select.value = wbResponsibleFilter;
+  return changed;
+}
+function selectResponsible(value) {
+  wbResponsibleFilter = value;
+  renderWorkbooks();
+  updatePreview();
+}
+
+// Keep the original line numbers so a checkbox in a narrowed preview still
+// toggles the corresponding task in the unfiltered editor text.
+function wbPreviewFilteredText(text) {
+  if (!wbTodoOnlyAll && !wbResponsibleFilter) return { text, lineMap: null };
+  const keep = [];
+  const lineMap = [];
+  let fenced = false;
+  String(text || '').split('\n').forEach((line, index) => {
+    if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
+    if (fenced) return;
+    if (wbTodoOnlyAll && !WB_OPEN_TASK_RE.test(line)) return;
+    if (wbResponsibleFilter) {
+      const match = line.match(WB_RESPONSIBLE_RE);
+      if (!match || wbResponsibleKey(match[1].replace(/[ \t]+/g, ' ')) !== wbResponsibleFilter) return;
+    }
+    keep.push(line);
+    lineMap.push(index);
+  });
+  return { text: keep.join('\n'), lineMap };
+}
 
 /* A chapter "has an open task" when a line reads "- [ ]" (optionally indented,
    any of - * + as the bullet). Used only by the TODO filter button. */
 const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
-function wbChapterHasOpenTask(ch) { return !!ch && WB_OPEN_TASK_RE.test(ch.content || ''); }
+function wbChapterHasOpenTask(ch, content) {
+  return !!ch && WB_OPEN_TASK_RE.test(content === undefined ? ch.content || '' : content);
+}
 function wbIsTodoBook(book) { return !!book && /todo/i.test(book.name || ''); }
 /* Same regex, applied line by line to the open chapter's own text: what the
    preview shows while "▣ Tasks only" is on — every unchecked "- [ ]" line
@@ -6817,7 +6953,11 @@ const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
 async function wbPersist(store, value) {
-  try { await wbPut(store, value); return true; }
+  try {
+    await wbPut(store, value);
+    if (store === WB_CHAPTERS) wbRecordResponsibles(value.content);
+    return true;
+  }
   catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
 }
 
@@ -7189,6 +7329,8 @@ document.addEventListener('keydown', (e) => {
 
 function renderWorkbooks() {
   invalidateWikiIndex();      // titles and files are what [[links]] resolve against
+  const filterBeforePaint = wbResponsibleFilter;
+  wbPaintResponsibleSelect();
   const tree = document.getElementById('wb-tree');
   if (!tree) return;
   tree.textContent = '';
@@ -7205,9 +7347,13 @@ function renderWorkbooks() {
     const chapters = wbChaptersOf(book.id);
     const todoBook = wbIsTodoBook(book);
     const todoFiltered = wbTodoOnlyAll || (todoBook && wbTodoOnly.has(book.id));
-    const shownChapters = todoFiltered ? chapters.filter(wbChapterHasOpenTask) : chapters;
-    if (wbTodoOnlyAll && !shownChapters.length) return;   // nothing open here — hide the whole book
-    const open = wbOpenBooks.has(book.id) || (wbTodoOnlyAll && shownChapters.length > 0);
+    const shownChapters = chapters.filter(ch => {
+      const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
+      return (!todoFiltered || wbChapterHasOpenTask(ch, content)) &&
+        (!wbResponsibleFilter || wbNamesForChapter(ch).has(wbResponsibleFilter));
+    });
+    if ((wbTodoOnlyAll || wbResponsibleFilter) && !shownChapters.length) return;
+    const open = wbOpenBooks.has(book.id) || ((wbTodoOnlyAll || wbResponsibleFilter) && shownChapters.length > 0);
 
     const wrap = document.createElement('div');
     wrap.className = 'wb-book' + (open ? ' open' : '');
@@ -7232,7 +7378,7 @@ function renderWorkbooks() {
     });
     const count = document.createElement('span');
     count.className = 'wb-count';
-    count.textContent = todoFiltered ? shownChapters.length + '/' + chapters.length : chapters.length;
+    count.textContent = todoFiltered || wbResponsibleFilter ? shownChapters.length + '/' + chapters.length : chapters.length;
 
     const acts = document.createElement('div');
     acts.className = 'wb-acts';
@@ -7268,7 +7414,7 @@ function renderWorkbooks() {
       list.appendChild(none);
     }
     chapters.forEach((ch, chIdx) => {
-      if (todoFiltered && !wbChapterHasOpenTask(ch)) return;
+      if (!shownChapters.includes(ch)) return;
       const chRow = document.createElement('div');
       chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '') + (wbPendingIds.has(ch.id) ? ' modified' : '');
       chRow.title = book.folder + '/' + ch.file;
@@ -7296,6 +7442,7 @@ function renderWorkbooks() {
 
   paintWorkbookWhere();
   paintWorkbookCrumb();
+  if (filterBeforePaint && !wbResponsibleFilter) updatePreview();
 }
 function paintWorkbookWhere() {
   const el = document.getElementById('wb-where');
@@ -7957,6 +8104,14 @@ async function loadWorkbooks() {
     wbChapters = (chapters || []).sort(wbByOrder);
     try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }
+  try {
+    const saved = await wbMetaGet('responsibles');
+    if (Array.isArray(saved)) saved.forEach(name => {
+      if (typeof name === 'string' && name && !wbResponsibleSeen.has(wbResponsibleKey(name)))
+        wbResponsibleSeen.set(wbResponsibleKey(name), name);
+    });
+  } catch (e) {}
+  wbChapters.forEach(ch => wbRecordResponsibles(ch.content));
   wbBooted = true;
   renderWorkbooks();
   // The stored folder handle reloads asynchronously and the shared block

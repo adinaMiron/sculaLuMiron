@@ -685,8 +685,8 @@ gets one extra act button in its row: `☑`. It toggles the workbook's id in
 While a workbook is filtered, `renderWorkbooks()` hides every chapter whose
 text has no line matching `WB_OPEN_TASK_RE` — `/^[ \t]*[-*+] \[ \]/m`, i.e.
 an unchecked Markdown task box (`- [ ]`, any bullet, any indent).
-`wbChapterHasOpenTask(ch)` runs against `ch.content` straight from the store,
-so it reflects the last autosave without a disk read. The row count shows
+`wbChapterHasOpenTask(ch)` runs against saved content, or the live editor text
+for the open chapter, without a disk read. The row count shows
 `shown/total` and the button carries an `.on` style; if nothing matches, the
 list shows `wbNoOpenTasks`. Checked boxes (`- [x]`) don't count — only `- [ ]`.
 
@@ -700,13 +700,31 @@ the per-book `☑` act button is suppressed, and the toolbar button carries
 `.tb-btn.active`. Toggling it off restores everything.
 
 While it is on, `updatePreview()` also feeds the open chapter's text through
-`wbOpenTasksOnly()` before `parseMarkdown()` — a per-line filter against the
+`wbPreviewFilteredText()` before `parseMarkdown()` — a per-line filter against the
 same `WB_OPEN_TASK_RE`, so the preview shows only the unchecked `- [ ]`
 lines: no `- [x]` (completed) and no surrounding prose or headings. The
 editor's own text is untouched — only what `#preview` renders is filtered.
 `toggleTodoFilterAll()` calls `updatePreview()` alongside `renderWorkbooks()`
 so flipping the switch repaints the open chapter immediately, with no
 keystroke needed.
+
+### Responsible filter — `Name>>` across all workbooks
+
+The toolbar select immediately right of `#importance-insert-select` appears
+when a chapter contains a leading `Name>>` marker. It lists each currently
+present name once, across every workbook. Selecting one narrows the workbook
+tree to chapters with that name and the open chapter's preview to lines whose
+leading marker names that person. The editor still holds the complete text.
+The responsible filter and global tasks-only filter can be used together.
+
+The scan accepts the same one-to-four-word name syntax as the markdown
+assignee marker, after an optional Markdown list, task, heading, or quote
+prefix, and skips fenced code. Names compare without case and are sorted in
+the select. Every saved chapter is scanned when it is loaded or written; new
+names are added once to the `responsibles` array in the existing `scula-md`
+`meta` store. The stored list remembers names already seen, while the select
+shows only names still present in chapters. Filtered task checkboxes retain
+their original source line numbers when clicked.
 
 ### The mirror read back — "⇩ Sincronizează în dosar"
 
