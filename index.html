@@ -1001,6 +1001,8 @@
     cursor: pointer;
   }
   .find-hit mark:hover { background: var(--accent-2); }
+  #preview mark.page-match { background: #ffd54a; color: #211900; border-radius: 2px; }
+  #preview mark.page-match.current { background: #ff8a3d; outline: 2px solid #ff8a3d; }
   .find-where {
     display: block;
     font-family: var(--font-mono);
@@ -6518,6 +6520,51 @@ preview.addEventListener('keydown', e => {
   const hit = e.target.closest('.wikilink, .md-tag, .md-imp');
   if (hit) { e.preventDefault(); hit.click(); }
 });
+
+// Highlight the selected phrase in the rendered page. Ctrl+Shift+H advances
+// through matches; Ctrl+Alt+Shift+H marks every occurrence.
+let pageMatchQuery = '', pageMatchIndex = -1;
+function clearPageMatches() {
+  preview.querySelectorAll('mark.page-match').forEach(mark => {
+    mark.replaceWith(document.createTextNode(mark.textContent));
+  });
+  preview.normalize();
+}
+function highlightPageMatches(all) {
+  const selection = window.getSelection();
+  let query = selection && selection.toString().trim();
+  if (!query && document.activeElement === editor) {
+    query = editor.value.slice(editor.selectionStart, editor.selectionEnd).trim();
+  }
+  if (!query) query = pageMatchQuery;
+  if (!query) return;
+  if (query !== pageMatchQuery) { clearPageMatches(); pageMatchQuery = query; pageMatchIndex = -1; }
+  else clearPageMatches();
+  const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  const marks = [];
+  const needle = query.toLocaleLowerCase();
+  nodes.forEach(node => {
+    const text = node.nodeValue, lower = text.toLocaleLowerCase();
+    let from = 0, at;
+    const frag = document.createDocumentFragment();
+    while ((at = lower.indexOf(needle, from)) !== -1) {
+      if (at > from) frag.appendChild(document.createTextNode(text.slice(from, at)));
+      const mark = document.createElement('mark');
+      mark.className = 'page-match'; mark.textContent = text.slice(at, at + query.length);
+      frag.appendChild(mark); marks.push(mark); from = at + query.length;
+    }
+    if (!marks.length || from === 0) return;
+    if (from < text.length) frag.appendChild(document.createTextNode(text.slice(from)));
+    node.replaceWith(frag);
+  });
+  if (!marks.length) return;
+  if (all) { pageMatchIndex = -1; return; }
+  pageMatchIndex = (pageMatchIndex + 1) % marks.length;
+  marks[pageMatchIndex].classList.add('current');
+  marks[pageMatchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
 /* ── Navigation panel ── */
 function updateNav() {
@@ -12130,6 +12177,9 @@ document.addEventListener('keydown', e => {
     if (mbOpen) { closeMedia(); return; }
     closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal();
     if (isSmallScreen()) closeAllPanels();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyH') {
+    e.preventDefault(); highlightPageMatches(e.altKey); return;
   }
   // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → the editor's own history (undoMark).
   // Another field's focus is left alone — a modal's inputs keep the
