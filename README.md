@@ -15,6 +15,7 @@ open any `.html` file in a browser and it runs.
 | **Rețete** | `recipes.html` | Reads a meal plan or a recipe book out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. Reads its own PDFs and its own JPEG 2000 scans, recognises photos in the page, and lets a hundred days be searched, filtered and rearranged. |
 
 All eight share a common nav bar and link to each other.
+The Markdown editor's JavaScript lives in [`js/markdown/`](js/markdown/README.md).
 
 ## Running
 

@@ -1,14 +1,15 @@
 # CLAUDE.md
 
 Eight standalone browser tools. **No build step, no framework, no package
-manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
-file). Open in a browser; that's the whole toolchain.
+manager.** The apps open directly in a browser. `index.html` keeps its CSS and
+markup in the page and loads its editor JavaScript from `js/markdown/`;
+the other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `voice.html` | 3829 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` | 12991 | 111k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
+| `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 | `kanban.html` | ~1620 | ~12k | Kanban view of workbook checklist tasks, with scope, search, filters, and state updates | dark (earth) |
@@ -98,8 +99,10 @@ block's `SUBDIR` map, so the new page gets its own folder.
 
 ## Rule 3: respect the constraints
 
-- **Single file per app.** Don't split into `.css`/`.js` or introduce a
-  bundler, npm, or a framework. The apps are meant to run from `file://`.
+- **No build step.** `index.html` loads plain, ordered scripts from
+  `js/markdown/` (see its `README.md`); keep them usable from `file://`.
+  The other apps remain single-file. Don't introduce a bundler, npm, or a
+  framework for the apps.
 - **A browser API is not a dependency.** `transfer.html` speaks WebRTC and
   Web Bluetooth, and neither adds a file, a script tag or a server: the
   two devices talk to each other. The one thing it will not grow is a
