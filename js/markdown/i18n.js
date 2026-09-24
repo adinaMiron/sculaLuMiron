@@ -305,8 +305,11 @@ const I18N = {
       <h3>Caiete și capitole</h3>
       <ul>
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
+        <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus.</li>
         <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
+        <li>„⇩ Sincronizează în dosar” din panoul Caiete preia caietele și capitolele noi din folderul markdown, apoi scrie toate capitolele înapoi în acel folder.</li>
+        <li>„☁ Cont Google” conectează și sincronizează capitolele cu Google Drive; apasă din nou pentru sincronizare, iar clic dreapta deconectează contul. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
       <h3>Formatare</h3>
@@ -345,6 +348,7 @@ const I18N = {
       </ul>
       <h3>Căutare și filtrare</h3>
       <p>🔍 Find, <kbd>Ctrl+4</kbd> sau <kbd>Ctrl+Shift+F</kbd> deschide căutarea: capitol / caiet / tot ce ai scris, cu comutatoarele Aa (majuscule), ⌈ab⌉ (cuvinte întregi), .* (expresie regulată) și ăâ (ignoră diacriticele, activ implicit), plus filtre pe tipul liniei și pe etichete.</p>
+      <p>Filtrele din bara de instrumente pot limita caietele și previzualizarea la un responsabil sau la sarcini cu importanța aleasă. „▣ Doar sarcini” păstrează numai liniile de sarcini nebifate.</p>
       <h3>Idee rapidă</h3>
       <p>Butonul 💡 sau <kbd>Ctrl+Alt+I</kbd> deschide o casetă: scrii „Nume capitol: idee” și textul ajunge acolo — sau, fără nume, în caietul „Idei”, la capitolul de azi. <kbd>Ctrl+Enter</kbd> trimite, <kbd>Esc</kbd> închide.</p>
       <h3>Marcaje de importanță</h3>
@@ -352,6 +356,7 @@ const I18N = {
       <h3>Starea sarcinilor</h3>
       <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
       <p>Butonul ▦ Kanban deschide capitolul curent ca panou de sarcini. Poți alege un capitol, un caiet sau toate caietele, apoi poți căuta, filtra și muta sarcinile între stări. Scrie <code>start@2026-09-24</code> sau <code>end@2026-09-30</code> în sarcină pentru a arăta începutul ori termenul.</p>
+      <p>Butonul ▤ Gantt desenează sarcinile din capitolul curent pe zile, inclusiv modificările nesalvate. Pune <code>#1</code> pe o sarcină și <code>$1</code> pe cele care depind de ea; săgețile arată dependențele. Datele <code>start@</code> și <code>end@</code> stabilesc intervalul; o sarcină fără dată apare în ziua de azi. Apasă pe numele unei sarcini ca să ajungi la rândul ei în editor.</p>
       <h3>Responsabil</h3>
       <p><code>&gt;&gt;Nume</code> poate apărea oriunde în text, inclusiv în afara unei sarcini, pentru a marca un responsabil. Forma <code>Nume&gt;&gt; text</code> de la începutul rândului funcționează și ea.</p>
       <h3>Marcajul de dată @dată</h3>
@@ -370,7 +375,7 @@ const I18N = {
       <h3>Anulare / Refă</h3>
       <p><kbd>Ctrl+Z</kbd> anulează, <kbd>Ctrl+Shift+Z</kbd> sau <kbd>Ctrl+Y</kbd> reface — un istoric propriu al editorului, separat de cel al browserului, care ține pasul cu orice acțiune din bară.</p>
       <h3>Import / Export</h3>
-      <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod.</p>
+      <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod. „🌐 Deschide HTML” deschide într-o filă nouă o pagină HTML exportată anterior.</p>
       <h3>Dictare vocală</h3>
       <p>Iconița 🎙 din bară transcrie vorbirea direct la cursor, folosind setările din pagina „Caiet vocal”.</p>
       <h3>Scurtături</h3>
@@ -381,9 +386,9 @@ const I18N = {
         <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul ·
         <kbd>Ctrl+L</kbd> selectează rândul (apasă din nou pentru paragraf) ·
-        <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf ·
+        <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf · <kbd>Ctrl+5</kbd> grădină · <kbd>Ctrl+6</kbd> poze ·
         <kbd>Ctrl+Shift+L</kbd> legătură [[notiță]] ·
-        <kbd>Ctrl+Alt+I</kbd> idee rapidă · <kbd>Ctrl+Alt+D</kbd> trimite datele în calendar ·
+        <kbd>Ctrl+Alt+I</kbd> idee rapidă · <kbd>Ctrl+Alt+D</kbd> trimite datele în calendar · <kbd>Ctrl+Alt+M</kbd> hartă ·
         <kbd>Ctrl+Alt+1/2/3</kbd> importanță (<kbd>Ctrl+Alt+0</kbd> șterge) ·
         <kbd>F2</kbd> redenumește caietul/capitolul selectat · <kbd>Esc</kbd> închide fereastra deschisă.
       </p>
@@ -686,8 +691,11 @@ const I18N = {
       <h3>Workbooks and chapters</h3>
       <ul>
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
+        <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top.</li>
         <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
+        <li>"⇩ Sync to folder" in the Workbooks panel takes in new workbooks and chapters from the markdown folder, then writes every chapter back to that folder.</li>
+        <li>"☁ Google account" connects and syncs chapters with Google Drive; click again to sync, or right-click to disconnect. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>
       <h3>Formatting</h3>
@@ -726,6 +734,7 @@ const I18N = {
       </ul>
       <h3>Search and filter</h3>
       <p>🔍 Find, <kbd>Ctrl+4</kbd> or <kbd>Ctrl+Shift+F</kbd> opens search: chapter / workbook / everything, with Aa (match case), ⌈ab⌉ (whole words), .* (regular expression) and ăâ (ignore diacritics, on by default) toggles, plus filters by line kind and by tag.</p>
+      <p>The toolbar filters can narrow the workbooks and preview to one assignee or tasks with the selected importance. "▣ Tasks only" keeps just unchecked task lines.</p>
       <h3>Quick idea capture</h3>
       <p>The 💡 button or <kbd>Ctrl+Alt+I</kbd> opens one box: write "Chapter name: idea" and the text lands there — or, with no name, in the "Idei" workbook, under today's chapter. <kbd>Ctrl+Enter</kbd> files it, <kbd>Esc</kbd> closes the box.</p>
       <h3>Importance markers</h3>
@@ -733,6 +742,7 @@ const I18N = {
       <h3>Task status</h3>
       <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks. The preview checkbox marks a task done or returns it to to do.</p>
       <p>The ▦ Kanban button opens the current chapter as a task board. Select one chapter, one workbook, or every workbook, then search, filter, and move tasks between states. Write <code>start@2026-09-24</code> or <code>end@2026-09-30</code> in a task to show its start or due date.</p>
+      <p>The ▤ Gantt button draws the current chapter's tasks across days, including unsaved edits. Put <code>#1</code> on a task and <code>$1</code> on tasks that depend on it; arrows show the dependencies. <code>start@</code> and <code>end@</code> set the date range; an undated task appears on today's date. Click a task title to jump to its line in the editor.</p>
       <h3>Assignee marker</h3>
       <p><code>&gt;&gt;Name</code> can appear anywhere in the text, including outside a task, to mark a responsible person. The leading <code>Name&gt;&gt; text</code> form also works.</p>
       <h3>The @date marker</h3>
@@ -751,7 +761,7 @@ const I18N = {
       <h3>Undo / redo</h3>
       <p><kbd>Ctrl+Z</kbd> undoes, <kbd>Ctrl+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redoes — the editor's own history, separate from the browser's, which keeps up with every toolbar action too.</p>
       <h3>Import / export</h3>
-      <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks.</p>
+      <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks. "🌐 Open HTML" opens a previously exported HTML page in a new tab.</p>
       <h3>Voice dictation</h3>
       <p>The 🎙 icon in the toolbar transcribes speech straight at the caret, using the settings saved on the "Caiet vocal" page.</p>
       <h3>Shortcuts</h3>
@@ -762,9 +772,9 @@ const I18N = {
         <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line ·
         <kbd>Ctrl+L</kbd> select the line (press again for the paragraph) ·
-        <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph ·
+        <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph · <kbd>Ctrl+5</kbd> garden · <kbd>Ctrl+6</kbd> photos ·
         <kbd>Ctrl+Shift+L</kbd> [[note]] link ·
-        <kbd>Ctrl+Alt+I</kbd> quick idea · <kbd>Ctrl+Alt+D</kbd> push dates to calendar ·
+        <kbd>Ctrl+Alt+I</kbd> quick idea · <kbd>Ctrl+Alt+D</kbd> push dates to calendar · <kbd>Ctrl+Alt+M</kbd> map ·
         <kbd>Ctrl+Alt+1/2/3</kbd> importance (<kbd>Ctrl+Alt+0</kbd> clears) ·
         <kbd>F2</kbd> renames the selected workbook/chapter · <kbd>Esc</kbd> closes whatever's open.
       </p>
