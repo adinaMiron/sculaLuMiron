@@ -26,6 +26,20 @@ function check(name, ok, detail) {
     updatePreview(); updateStatus();
   }, [md, needle, last || '']);
 
+  await place('Call Ana\n', 'Call');
+  await pick('inwork');
+  check('status creates a task from plain Markdown', (await source()).startsWith('- [ ] ~inwork Call Ana'), await source());
+  await place('  - Call Ana\n', 'Call');
+  await pick('done');
+  check('status keeps an existing list bullet and indentation', (await source()).startsWith('  - [x] Call Ana'), await source());
+  await place('', '');
+  await pick('blocked');
+  check('status creates a task on an empty line', await source() === '- [ ] ~blocked', await source());
+  await place('Call Ana\n\nBuy milk', 'Call', 'milk');
+  await pick('todo');
+  check('status turns selected plain lines into tasks without filling blank lines',
+    await source() === '- [ ] Call Ana\n\n- [ ] Buy milk', await source());
+
   await place('- [ ] Call Ana\n- [ ] Buy milk\n', 'Call');
   await pick('inwork');
   check('in work writes an unchecked task marker', (await source()).startsWith('- [ ] ~inwork Call Ana'), await source());

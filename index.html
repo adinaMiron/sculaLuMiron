@@ -5085,7 +5085,14 @@ function taskSetLineStatus(line, status) {
     + (marker ? marker + (body ? ' ' : '') : '') + body;
 }
 
-// Change the task at the caret, or all task lines touched by a selection.
+function taskCreateLineStatus(line, status) {
+  const match = line.match(/^([ \t]*)(?:([-*+])[ \t]+)?(.*)$/);
+  const marker = TASK_STATUS_MARKERS[status];
+  return match[1] + (match[2] || '-') + (status === 'done' ? ' [x]' : ' [ ]')
+    + (marker ? ' ' + marker : '') + (match[3] ? ' ' + match[3] : '');
+}
+
+// Change existing tasks, or make the line(s) at the caret into tasks.
 function setTaskStatus(status) {
   const select = document.getElementById('task-status-select');
   if (select) select.value = '';
@@ -5097,7 +5104,10 @@ function setTaskStatus(status) {
   const nl = val.indexOf('\n', end);
   const to = nl === -1 ? val.length : nl;
   const old = val.slice(from, to);
-  const next = old.split('\n').map(line => taskSetLineStatus(line, status)).join('\n');
+  const lines = old.split('\n');
+  const hasTask = lines.some(line => TASK_LINE_RE.test(line));
+  const next = lines.map(line => hasTask ? taskSetLineStatus(line, status)
+    : (line.trim() || lines.length === 1 ? taskCreateLineStatus(line, status) : line)).join('\n');
   if (next === old) return;
   editor.setRangeText(next, from, to, 'end');
   updatePreview(); updateStatus(); scheduleAutosave();

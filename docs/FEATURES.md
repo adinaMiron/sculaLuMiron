@@ -695,7 +695,9 @@ is that record.
 ### The TODO filter — show only chapters with an open box
 
 The toolbar's **Task status** select sets the task at the caret, or every task
-line in a selection, to one of five states. `- [ ]` means **to do** and
+line in a selection, to one of five states. If the current line is plain text,
+the select turns it into a Markdown task; a selection of plain lines becomes
+multiple tasks. `- [ ]` means **to do** and
 `- [x]` means **done**. The three middle states keep an unchecked checkbox
 and put a marker at the start of the task text: `- [ ] ~inwork ...`,
 `- [ ] ~onhold ...`, and `- [ ] ~blocked ...`. Choosing another state replaces
