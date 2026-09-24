@@ -17,7 +17,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
    ```html
    <a href="new-tool.html" data-page="new-tool.html">New Tool</a>
    ```
-   Verify with `/verify` (parses all seven + diffs the nav block).
+   Verify with `/verify` (parses every app and diffs the nav block).
    Also add the page to `SUBDIR` in that block (§ D below) so its saves
    get a folder — again in every copy.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
@@ -746,6 +746,32 @@ names are added once to the `responsibles` array in the existing `scula-md`
 `meta` store. The stored list remembers names already seen, while the select
 shows only names still present in chapters. Filtered task checkboxes retain
 their original source line numbers when clicked.
+
+### Kanban board (`kanban.html`)
+
+The editor's **▦ Kanban** button saves the open chapter and opens the board
+scoped to it. The shared navigation opens the board with every workbook in
+scope. The scope picker also offers one workbook or one chapter. Search covers
+task text, workbook, chapter, and responsible; filters cover responsible,
+importance, date, and state. The five columns use the editor's existing
+Markdown task states: to do, in work, on hold, blocked, and done.
+
+Each card shows its source chapter, responsible (`Name>>` or `>>Name`),
+importance (`!nice`, `!important`, `!vital`), and any dates written inside
+the task. Write `start@2026-09-24`, `end@2026-09-30`, `start@14:00`, or
+`end@17:00` to label an explicit start or end. Existing `@date` markers
+also appear: a single all-day date is an end, a single timed date is a
+start, and an interval provides both. A plain date in a task is treated as
+an end; two plain dates provide a start and end. Cards display the labels without a
+space after `@`. Date filters use dated ends when present, otherwise starts;
+the overdue filter requires an end date.
+
+Changing a card's select or dropping it in another column updates only its
+Markdown checklist line, then stores the chapter and marks it pending for
+the folder mirror. The board refuses a change if the source line changed
+since it was displayed. **Open** returns to that chapter and selects the
+source line in the editor. The board reloads on focus so other tabs' saved
+changes appear.
 
 ### The mirror read back — "⇩ Sincronizează în dosar"
 

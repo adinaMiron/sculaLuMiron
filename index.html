@@ -2075,6 +2075,7 @@
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
   <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="kanban.html" data-page="kanban.html">Kanban</a>
   <a href="map.html" data-page="map.html">Hartă</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
@@ -2286,6 +2287,7 @@
   var SUBDIR = {
     "voice.html": "transcript",
     "calendar.html": "calendar",
+    "kanban.html": "kanban",
     "map.html": "harta",
     "editor.html": "desen",
     "index.html": "markdown",
@@ -3368,6 +3370,7 @@
     <button class="btn" id="btn-help" onclick="openHelpModal()" data-i="helpBtn" data-i-title="helpTip" title="Help">❓ Help</button>
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
+    <button class="btn" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
     <!-- Shown only while the open chapter holds a "^@" place — docs/FEATURES.md § S.
          mapRefresh() flips it on every keystroke, so the button appears the
          moment the first marker is typed and leaves when the last one goes. -->
@@ -4275,6 +4278,7 @@ const I18N = {
     /* Idee rapidă (Ctrl+Alt+I) — docs/FEATURES.md § J */
     ideaBtn:"💡 Idee", ideaTip:"Notează o idee direct în capitolul ei (Ctrl+Alt+I)",
     calSyncBtn:"📅 Trimite datele", calSyncTip:"Trimite fiecare „@dată” din toate caietele în calendar (Ctrl+Alt+D)",
+    kanbanBtn:"▦ Kanban", kanbanTip:"Deschide panoul de sarcini pentru acest capitol",
     calSynced:([n, gone]) => (n === 1 ? "1 dată trimisă în calendar" : n + " date trimise în calendar") +
                              (gone ? ", " + gone + " șterse" : "") + ".",
     calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
@@ -4347,6 +4351,7 @@ const I18N = {
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — din selectul din bară sau <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> șterge). Click pe pastilă caută tot ce mai are același marcaj.</p>
       <h3>Starea sarcinilor</h3>
       <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
+      <p>Butonul ▦ Kanban deschide capitolul curent ca panou de sarcini. Poți alege un capitol, un caiet sau toate caietele, apoi poți căuta, filtra și muta sarcinile între stări. Scrie <code>start@2026-09-24</code> sau <code>end@2026-09-30</code> în sarcină pentru a arăta începutul ori termenul.</p>
       <h3>Responsabil</h3>
       <p><code>Nume>> text</code> la începutul rândului marchează cine se ocupă de acea sarcină.</p>
       <h3>Marcajul de dată @dată</h3>
@@ -4651,6 +4656,7 @@ const I18N = {
     /* Quick idea capture (Ctrl+Alt+I) — docs/FEATURES.md § J */
     ideaBtn:"💡 Idea", ideaTip:"Capture an idea straight into its chapter (Ctrl+Alt+I)",
     calSyncBtn:"📅 Push dates", calSyncTip:"Send every \u201C@date\u201D in every workbook to the calendar (Ctrl+Alt+D)",
+    kanbanBtn:"▦ Kanban", kanbanTip:"Open the task board for this chapter",
     calSynced:([n, gone]) => (n === 1 ? "1 date sent to the calendar" : n + " dates sent to the calendar") +
                              (gone ? ", " + gone + " removed" : "") + ".",
     calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
@@ -4723,6 +4729,7 @@ const I18N = {
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — from the toolbar select or <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> clears). Clicking a pill searches for everything else carrying the same marker.</p>
       <h3>Task status</h3>
       <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks. The preview checkbox marks a task done or returns it to to do.</p>
+      <p>The ▦ Kanban button opens the current chapter as a task board. Select one chapter, one workbook, or every workbook, then search, filter, and move tasks between states. Write <code>start@2026-09-24</code> or <code>end@2026-09-30</code> in a task to show its start or due date.</p>
       <h3>Assignee marker</h3>
       <p><code>Name>> text</code> at the start of a line marks who owns that task.</p>
       <h3>The @date marker</h3>
@@ -6044,6 +6051,17 @@ function openMap() {
   location.href = 'map.html';
   return true;
 }
+// Open the board at the current chapter; its scope picker can widen to the
+// workbook or all workbooks. Flush first so the board sees the latest text.
+async function openKanban() {
+  await flushChapter();
+  const scope = wbCurrentId ? '?scope=' + encodeURIComponent('c:' + wbCurrentId) : '';
+  location.href = 'kanban.html' + scope;
+}
+document.querySelector('#site-nav a[data-page="kanban.html"]').addEventListener('click', event => {
+  event.preventDefault();
+  flushChapter().then(() => { location.href = 'kanban.html'; });
+});
 // The button exists only while there is something for it to show. Called
 // from updatePreview(), which every keystroke and every chapter opened ends
 // in, so it appears with the first marker and leaves with the last.
@@ -8238,7 +8256,8 @@ async function loadWorkbooks() {
     // chapter's keystrokes, otherwise the text the browser put back on screen
     // (that is what was last seen, and it cannot be older than the record).
     const ahead = wbDraftAhead(draft, ch);
-    const back = wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
+    const boardLink = new URLSearchParams(location.search).has('chapter');
+    const back = !boardLink && wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
     const recovered = ahead != null ? ahead : back;
     if (recovered != null) {
       editor.value = recovered;
@@ -8261,6 +8280,26 @@ async function loadWorkbooks() {
   wbPaintAttach();
   wbDraftWrite();
   setTimeout(wbSettleRestore, 1200);
+}
+
+// A Kanban card can return to its exact checklist line. Keep this URL-only
+// route independent of the normal last-chapter resume.
+async function openKanbanTaskLink() {
+  const query = new URLSearchParams(location.search);
+  const id = query.get('chapter');
+  if (!id || !wbChapter(id)) return;
+  if (wbCurrentId !== id) await openChapter(id);
+  if (wbCurrentId !== id) return;
+  wbUserEdited = true;  // browser form restoration must not replace the selected chapter
+  const line = Number(query.get('line'));
+  if (!Number.isInteger(line) || line < 0) return;
+  const lines = editor.value.split('\n');
+  if (line >= lines.length) return;
+  const at = lines.slice(0, line).reduce((n, item) => n + item.length + 1, 0);
+  setView('source');
+  editor.focus();
+  editor.setSelectionRange(at, at + lines[line].length);
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
 }
 
 /* The other side of the same race. Where the restoration lands *after* this
@@ -8286,6 +8325,30 @@ window.addEventListener('scula-folder', () => { wbMirrorAsked = false; });
    guaranteed to finish, and `beforeunload` alone never fires on a discard. */
 function wbPark() { wbDraftWrite(); flushChapter(); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) wbPark(); });
+// A Kanban tab writes the same chapter store. Pull its changed line into an
+// open editor before the next autosave can restore the previous task state.
+window.addEventListener('storage', async event => {
+  if (event.key !== 'scula:kanban-change' || !event.newValue || !wbBooted) return;
+  let change;
+  try { change = JSON.parse(event.newValue); } catch (e) { return; }
+  const ch = wbChapter(change.chapterId);
+  if (!ch) return;
+  wbPendingIds.add(ch.id);
+  if (ch.id === wbCurrentId) {
+    const lines = editor.value.split('\n');
+    if (lines[change.lineIndex] !== change.line) return;
+    lines[change.lineIndex] = taskSetLineStatus(lines[change.lineIndex], change.status);
+    editor.value = lines.join('\n');
+    updatePreview(); updateStatus(); scheduleAutosave();
+  } else {
+    try {
+      const latest = await wbTx(WB_CHAPTERS, 'readonly', store => store.get(ch.id));
+      if (latest) Object.assign(ch, latest);
+      renderWorkbooks();
+      cloudAutoSync();
+    } catch (e) {}
+  }
+});
 document.addEventListener('freeze', wbPark);
 window.addEventListener('pagehide', wbPark);
 window.addEventListener('beforeunload', wbPark);
@@ -13010,7 +13073,7 @@ function initWbPanelDrag() {
 
 setView('source');
 applyResponsiveDefaults();
-loadWorkbooks().then(cloudBoot, cloudBoot);   // § O: the tree first, then Drive
+loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); }, cloudBoot);   // § O: the tree first, then Drive
 initToolbarCollapse();
 initWbPanelResize();
 initWbPanelDrag();

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Seven standalone browser tools. **No build step, no framework, no package
+Eight standalone browser tools. **No build step, no framework, no package
 manager.** Each `.html` is a self-contained app (CSS + markup + JS in one
 file). Open in a browser; that's the whole toolchain.
 
@@ -11,6 +11,7 @@ file). Open in a browser; that's the whole toolchain.
 | `index.html` | 12991 | 111k | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
+| `kanban.html` | ~1620 | ~12k | Kanban view of workbook checklist tasks, with scope, search, filters, and state updates | dark (earth) |
 | `transfer.html` | 3108 | 30k | "Transfer" — a file, a pile of files or a whole folder tree to another device, over **Wi-Fi (WebRTC)** or **Bluetooth (Web Bluetooth)**, plus the device book it remembers them in | dark (earth) |
 | `map.html` | 2378 | 24k | "Hartă" — the `^@` places written in markdown, drawn on a **hand-rolled slippy map** (OSM tiles, no map library) and listed in layers beside it | dark (earth) |
 
@@ -20,8 +21,8 @@ file). Open in a browser; that's the whole toolchain.
 "editor.html" / "mazgaleste" / "drawing page" → `editor.html` ·
 "calendar" / "calendarul" → `calendar.html` · "transfer" / "sync" /
 "trimite pe alt dispozitiv" → `transfer.html` · "harta" / "hartă" /
-"locatii" / "map page" → `map.html`. The nav order is Markdown,
-Calendar, Hartă, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old
+"locatii" / "map page" → `map.html` · "kanban" / "task board" → `kanban.html`. The nav order is Markdown,
+Calendar, Kanban, Hartă, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old
 "Editor" label is now "Mazgaleste". `index.html` is the markdown editor — it's the file
 served at the site root, and its nav link is the one highlighted as
 current when the site loads at `/` (see the `here` fallback in the shared
@@ -76,21 +77,21 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all seven files — from the `<nav id="site-nav">` line through the
+in all eight files — from the `<nav id="site-nav">` line through the
 `<!-- ===== end toolbar nav ===== -->` marker (~1279 lines; starts near
 `voice.html:260`, `editor.html:452`, `index.html:2052`,
 `recipes.html:527`, `calendar.html:269`, `transfer.html:197`,
-`map.html:238`, but these
+`map.html:238`, `kanban.html:59`, but these
 **drift** — grep the `<nav` line). It carries the nav links, the UI-language toggle,
 **`window.ScuLaFolder`** — which decides where every saved file goes
 (`docs/FEATURES.md` § D) — **`window.ScuLaCal`**, the shared calendar
 store every page can write events into (`docs/FEATURES.md` § L) — **and
 `window.ScuLaGeo`**, the `^@` place marker and the scan behind the map
 (`docs/FEATURES.md` § S). Any change
-to it must be applied to **all seven** or they drift.
+to it must be applied to **all eight** or they drift.
 
 **Verify with `/verify`** — it extracts the block by those two anchors (no
-line numbers) and diffs all seven.
+line numbers) and diffs all eight.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -164,7 +165,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
 Run **`/verify`** — it does both the JS parse-check and the nav-sync diff.
 A PostToolUse hook (`.claude/hooks/check-html-js.sh`) already parse-checks
 the file you just edited on every save and blocks on a syntax error; `/verify`
-is the before-done check across all seven.
+is the before-done check across all eight.
 
 ```bash
 # JS in every <script> block still parses (verified working on all 7 files)

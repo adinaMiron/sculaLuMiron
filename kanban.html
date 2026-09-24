@@ -1,237 +1,58 @@
-<!doctype html><html lang="ro" data-theme="dark"><head>
+<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hartă — Scula lu Miron</title>
+<title>Kanban — Scula lu Miron</title>
 <style>
-  :root {
-    /* earth palette (shared brand base — see docs/THEME.md) */
-    --bg: #14201A;
-    --surface: #1B2A22;
-    --surface-2: #22342A;
-    --border: #2E4739;
-    --accent: #C1BB45;
-    --accent-2: #D3CD7C;
-    --on-accent: #1A2117;
-    --text: #F3EEE1;
-    --text-2: #9FB3A5;
-    --text-3: #5A6A60;
-    --danger: #C4643C;
-    --ok: #6E9E8A;
-    --radius: 10px;
-    --shadow: 0 12px 40px rgba(0,0,0,.5);
-    --font-mono: 'Courier New', monospace;
-    --font-ui: 'Trebuchet MS', sans-serif;
-    --side-w: 17rem;
-    /* the four states a place can be in, so the dot in the list and the pin
-       on the map are coloured from one place */
-    --pin-coord: #C1BB45;   /* written as coordinates — nothing to look up */
-    --pin-found: #6E9E8A;   /* the geocoder found it */
-    --pin-wait:  #9FB3A5;   /* queued or in flight */
-    --pin-none:  #C4643C;   /* nothing came back */
-  }
-
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-ui); font-size: 0.9rem;
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
-  button { cursor: pointer; }
-
-  /* ---------- header ---------- */
-  #map-head {
-    flex: 0 0 auto; display: flex; align-items: center; gap: .5rem;
-    flex-wrap: wrap; padding: .5rem .75rem;
-    background: var(--surface); border-bottom: 1px solid var(--border);
-  }
-  #map-head .logo { font-weight: 600; letter-spacing: .02em; }
-  #map-head .logo span { color: var(--text-3); font-weight: 400; }
-  #map-head .spacer { flex: 1 1 auto; }
-  #map-source {
-    color: var(--text-2); font-size: .82rem;
-    max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .btn {
-    background: var(--surface-2); color: var(--text);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    padding: .4rem .7rem; white-space: nowrap;
-  }
-  .btn:hover { border-color: var(--accent); }
-  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
-  .btn.ghost { background: transparent; }
-  .btn.icon { padding: .4rem .55rem; }
-  .btn[disabled] { opacity: .5; cursor: not-allowed; }
-
-  /* ---------- body ---------- */
-  #map-body { flex: 1 1 auto; display: flex; min-height: 0; }
-
-  /* ---------- the layered list ---------- */
-  #side {
-    flex: 0 0 var(--side-w); width: var(--side-w);
-    background: var(--surface); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; min-height: 0;
-  }
-  #side.hidden { display: none; }
-  .side-top { padding: .6rem; display: flex; flex-direction: column; gap: .45rem;
-              border-bottom: 1px solid var(--border); }
-  .side-top input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: .4rem .55rem;
-  }
-  .side-top input:focus { outline: none; border-color: var(--accent); }
-  #layers { flex: 1 1 auto; overflow-y: auto; padding: .35rem .4rem .8rem; }
-  .layer { margin-bottom: .35rem; }
-  .layer-head {
-    display: flex; align-items: center; gap: .4rem;
-    padding: .35rem .4rem; border-radius: var(--radius);
-    background: var(--surface-2); cursor: pointer; user-select: none;
-  }
-  .layer-head:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
-  .layer-head .tw { color: var(--text-3); width: .8rem; flex: 0 0 auto; }
-  .layer-head .nm { flex: 1 1 auto; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .layer-head .ct { color: var(--text-3); font-size: .78rem; }
-  .layer.off .layer-head .nm { color: var(--text-3); font-weight: 400; text-decoration: line-through; }
-  .layer.collapsed .places { display: none; }
-  .places { padding: .15rem 0 .15rem .5rem; }
-  .place {
-    display: flex; align-items: flex-start; gap: .4rem;
-    padding: .3rem .4rem; border-radius: var(--radius); cursor: pointer;
-    border: 1px solid transparent;
-  }
-  .place:hover { background: var(--surface-2); }
-  .place.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .place .dot { flex: 0 0 auto; width: .55rem; height: .55rem; border-radius: 50%;
-                margin-top: .35rem; background: var(--pin-wait); }
-  .place .txt { flex: 1 1 auto; min-width: 0; }
-  .place .q { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .place .sub { display: block; color: var(--text-3); font-size: .75rem;
-                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .place.none .q { color: var(--danger); }
-  .side-foot { flex: 0 0 auto; padding: .45rem .6rem; border-top: 1px solid var(--border);
-               color: var(--text-3); font-size: .76rem; min-height: 2rem; }
-  .empty { color: var(--text-3); padding: 1rem .6rem; line-height: 1.5; }
-  .empty code { font-family: var(--font-mono); color: var(--accent-2); }
-
-  /* ---------- the map ---------- */
-  #stage {
-    flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden;
-    background: var(--bg);
-    /* a graticule, so the page is still a map when no tile ever arrives
-       (offline, file://, or an empty tile field) */
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
-    background-size: 64px 64px;
-    touch-action: none; cursor: grab;
-  }
-  #stage.dragging { cursor: grabbing; }
-  #tiles, #pins { position: absolute; inset: 0; }
-  #pins { pointer-events: none; }
-  .tile {
-    position: absolute; top: 0; left: 0; width: 256px; height: 256px;
-    user-select: none; -webkit-user-drag: none; pointer-events: none;
-  }
-  .pin {
-    position: absolute; top: 0; left: 0; pointer-events: auto;
-    display: flex; align-items: center; gap: .3rem;
-    background: transparent; border: 0; padding: 0;
-    transform-origin: 0 0; white-space: nowrap;
-  }
-  .pin .bead {
-    width: .85rem; height: .85rem; border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg); flex: 0 0 auto;
-    background: var(--pin-found); border: 1px solid rgba(0,0,0,.45);
-    box-shadow: 0 1px 4px rgba(0,0,0,.5);
-  }
-  .pin.coord .bead { background: var(--pin-coord); }
-  .pin .lbl {
-    font-size: .74rem; color: var(--text);
-    background: color-mix(in srgb, var(--bg) 78%, transparent);
-    border: 1px solid var(--border); border-radius: 6px; padding: 0 .3rem;
-    max-width: 11rem; overflow: hidden; text-overflow: ellipsis;
-  }
-  .pin.on .bead { background: var(--accent); transform: rotate(-45deg) scale(1.25); }
-  .pin.on .lbl { border-color: var(--accent); color: var(--accent-2); }
-
-  #hud { position: absolute; right: .6rem; top: .6rem; display: flex; flex-direction: column; gap: .3rem; }
-  #hud .btn { background: color-mix(in srgb, var(--surface) 88%, transparent); }
-  #attrib {
-    position: absolute; right: .4rem; bottom: .35rem;
-    font-size: .68rem; color: var(--text-2);
-    background: color-mix(in srgb, var(--bg) 70%, transparent);
-    padding: .1rem .35rem; border-radius: 5px;
-  }
-  #attrib a { color: var(--text-2); }
-  #scale {
-    position: absolute; left: .6rem; bottom: .5rem; font-size: .68rem; color: var(--text-2);
-    border: 1px solid var(--text-2); border-top: 0; height: .5rem; min-width: 3rem;
-  }
-  #scale span { position: absolute; left: 0; bottom: .45rem; white-space: nowrap;
-                background: color-mix(in srgb, var(--bg) 70%, transparent); padding: 0 .2rem; }
-  #side-toggle { display: none; }
-
-  /* the popup that a pin opens */
-  #pop {
-    position: absolute; z-index: 5; display: none;
-    max-width: 17rem; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow); padding: .55rem .65rem;
-    transform: translate(-50%, -100%); margin-top: -1rem;
-  }
-  #pop.open { display: block; }
-  #pop h4 { margin: 0 0 .25rem; font-size: .92rem; }
-  #pop p { margin: 0 0 .3rem; color: var(--text-2); font-size: .8rem; line-height: 1.4; }
-  #pop .co { font-family: var(--font-mono); font-size: .76rem; color: var(--text-3); }
-  #pop .tags { color: var(--ok); font-size: .76rem; }
-  #pop .row { display: flex; gap: .3rem; margin-top: .35rem; flex-wrap: wrap; }
-  #pop .row .btn { padding: .25rem .45rem; font-size: .78rem; }
-  #pop .x { position: absolute; top: .15rem; right: .3rem; background: transparent;
-            border: 0; color: var(--text-3); font-size: 1rem; line-height: 1; }
-
-  /* ---------- modals (same chrome as calendar.html) ---------- */
-  .modal {
-    position: fixed; inset: 0; z-index: 40; display: none;
-    background: rgba(0,0,0,.55); align-items: center; justify-content: center; padding: 1rem;
-  }
-  .modal.open { display: flex; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-    width: min(34rem, 100%); max-height: 86vh; overflow-y: auto; padding: 1rem;
-  }
-  .card h3 { margin: 0 0 .7rem; }
-  .field { margin-bottom: .7rem; }
-  .field label { display: block; font-size: .78rem; color: var(--text-2); margin-bottom: .2rem; }
-  .field input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: .45rem .55rem; font-family: var(--font-mono); font-size: .8rem;
-  }
-  .field input:focus { outline: none; border-color: var(--accent); }
-  .field .hint { display: block; margin-top: .25rem; font-size: .74rem; color: var(--text-3); line-height: 1.45; }
-  .card .actions { display: flex; gap: .4rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .8rem; }
-  .help-body h3 { margin: .9rem 0 .35rem; font-size: .95rem; color: var(--accent-2); }
-  .help-body h3:first-child { margin-top: 0; }
-  .help-body p, .help-body li { color: var(--text-2); line-height: 1.55; margin: .3rem 0; }
-  .help-body ul { margin: .3rem 0; padding-left: 1.1rem; }
-  .help-body code { font-family: var(--font-mono); color: var(--accent-2); }
-  .help-body kbd {
-    font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: 5px; padding: 0 .3rem;
-  }
-
-  /* ---------- phones ---------- */
-  @media (max-width: 720px) {
-    #side {
-      position: absolute; z-index: 12; top: 0; bottom: 0; left: 0;
-      width: min(19rem, 86vw); flex-basis: auto; box-shadow: var(--shadow);
-    }
-    #map-body { position: relative; }
-    #side-toggle { display: inline-block; }
-    #map-source { max-width: 10rem; }
-    .btn { min-height: 44px; }
-    .place { padding: .5rem .4rem; }
-  }
+  :root { --bg:#14201A; --surface:#1B2A22; --surface-2:#22342A; --border:#2E4739; --accent:#C1BB45; --text:#F3EEE1; --muted:#9FB3A5; --quiet:#789084; --danger:#C4643C; --ok:#6E9E8A; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  button, input, select { font:inherit; }
+  button, select { cursor:pointer; }
+  .kanban-shell { padding:clamp(14px,2vw,30px); max-width:1800px; margin:auto; }
+  .kanban-head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin-bottom:20px; }
+  .kanban-head h1 { margin:0; font-size:clamp(24px,3vw,36px); letter-spacing:-.035em; }
+  .kanban-head p { margin:3px 0 0; color:var(--muted); }
+  .kanban-head button { margin-left:auto; }
+  .controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+  .control { display:flex; flex-direction:column; gap:5px; min-width:160px; flex:1 1 160px; }
+  .control.search { flex:2 1 230px; }
+  .control label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .control input, .control select, .card select { min-height:42px; width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--bg); }
+  .control input:focus-visible, .control select:focus-visible, .card select:focus-visible, button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn { border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text); padding:9px 14px; min-height:42px; }
+  .btn:hover, .card a:hover { border-color:var(--accent); color:var(--accent); }
+  .summary { display:flex; align-items:center; flex-wrap:wrap; gap:10px; min-height:48px; color:var(--muted); }
+  .summary strong { color:var(--accent); font-size:18px; }
+  .summary .sep { color:var(--border); }
+  #notice { color:var(--danger); margin-left:auto; }
+  .board { display:grid; grid-template-columns:repeat(5,minmax(220px,1fr)); gap:12px; overflow-x:auto; padding-bottom:18px; align-items:start; }
+  .lane { min-width:220px; border:1px solid var(--border); border-radius:13px; background:var(--surface); min-height:180px; overflow:hidden; }
+  .lane.over { outline:2px dashed var(--accent); outline-offset:-5px; }
+  .lane-head { display:flex; align-items:center; gap:8px; padding:13px 14px; border-bottom:1px solid var(--border); border-top:3px solid var(--lane-color); }
+  .lane-head h2 { margin:0; font-size:15px; flex:1; }
+  .lane-head span { border-radius:999px; min-width:25px; padding:2px 6px; text-align:center; background:var(--surface-2); color:var(--muted); font-size:12px; }
+  .lane-cards { display:flex; flex-direction:column; gap:9px; padding:10px; }
+  .lane-empty { padding:22px 8px; text-align:center; color:var(--quiet); font-size:12px; }
+  .card { padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); overflow-wrap:anywhere; }
+  .card[draggable="true"] { cursor:grab; }
+  .card.dragging { opacity:.5; }
+  .card.vital { border-left:3px solid var(--danger); }
+  .card.important { border-left:3px solid #D9A441; }
+  .card-title { margin:0 0 8px; font-size:14px; font-weight:650; line-height:1.4; white-space:pre-wrap; }
+  .card-path { color:var(--muted); font-size:11px; margin-bottom:9px; }
+  .card-meta { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  .pill { display:inline-flex; align-items:center; max-width:100%; padding:3px 7px; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:11px; }
+  .pill.priority { color:#E7C875; }
+  .pill.overdue { color:#F0A284; border-color:#8D4735; }
+  .card-actions { display:flex; align-items:center; gap:7px; }
+  .card-actions select { min-height:34px; font-size:12px; flex:1; }
+  .card-actions a { color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:7px 9px; text-decoration:none; font-size:12px; white-space:nowrap; }
+  .empty-page { grid-column:1/-1; padding:46px 16px; text-align:center; border:1px dashed var(--border); border-radius:14px; color:var(--muted); }
+  .empty-page a { color:var(--accent); }
+  @media(max-width:1150px) { .board { grid-template-columns:repeat(5,minmax(250px,1fr)); } }
+  @media(max-width:700px) { .kanban-shell { padding:12px; } .kanban-head button { margin-left:0; } .controls { gap:10px; padding:12px; } .control { min-width:calc(50% - 5px); } .control.search, .control.scope { min-width:100%; } .board { scroll-snap-type:x mandatory; } .lane { scroll-snap-align:start; } }
 </style>
 </head>
 <body>
@@ -1522,859 +1343,293 @@
 })();
 </script>
 <!-- ===== end toolbar nav ===== -->
-
-<header id="map-head">
-  <div class="logo">Hartă <span>/ locații</span></div>
-  <button class="btn icon ghost" id="side-toggle" onclick="toggleSide()" aria-label="Listă">☰</button>
-  <span id="map-source"></span>
-  <span class="spacer"></span>
-  <button class="btn" id="btn-fit" onclick="fitAll()" data-i="fitBtn" data-i-title="fitTip" title="Încadrează toate locurile găsite">⤢ Încadrează</button>
-  <button class="btn" id="btn-locate" onclick="locateAll(true)" data-i="locateBtn" data-i-title="locateTip" title="Caută din nou fiecare adresă">🔎 Caută adresele</button>
-  <button class="btn" id="btn-open-md" onclick="openMd()" data-i="openMdBtn" data-i-title="openMdTip" title="Citește marcajele „^@” dintr-un fișier .md">📄 Deschide .md</button>
-  <button class="btn" id="btn-export" onclick="exportGeoJSON()" data-i="exportBtn" data-i-title="exportTip" title="Salvează locurile ca .geojson">⬇ Exportă</button>
-  <button class="btn icon" id="btn-settings" onclick="openSettings()" data-i-title="settingsTip" title="Adresa hărții și a geocodorului">⚙</button>
-  <button class="btn icon" id="btn-help" onclick="openHelp()" data-i-title="helpTip" title="Ajutor">❓</button>
-  <input type="file" id="md-file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-</header>
-
-<div id="map-body">
-  <aside id="side">
-    <div class="side-top">
-      <input id="q" type="search" data-i-placeholder="filterHint" placeholder="Filtrează locurile…" autocomplete="off">
-      <input id="add" type="search" data-i-placeholder="addHint" placeholder="Caută un loc și adaugă-l…" autocomplete="off">
-    </div>
-    <div id="layers"></div>
-    <div class="side-foot" id="side-foot"></div>
-  </aside>
-
-  <div id="stage">
-    <div id="tiles"></div>
-    <div id="pins"></div>
-    <div id="hud">
-      <button class="btn icon" onclick="zoomBy(1)" aria-label="+">＋</button>
-      <button class="btn icon" onclick="zoomBy(-1)" aria-label="−">−</button>
-      <button class="btn icon" onclick="fitAll()" aria-label="fit">⤢</button>
-    </div>
-    <div id="scale"><span></span></div>
-    <div id="attrib"></div>
-    <div id="pop">
-      <button class="x" onclick="closePop()" aria-label="×">×</button>
-      <h4 id="pop-title"></h4>
-      <p id="pop-note"></p>
-      <p class="co" id="pop-co"></p>
-      <p class="tags" id="pop-tags"></p>
-      <div class="row">
-        <button class="btn" id="pop-osm" onclick="openOnOSM()" data-i="onOsmBtn">🌍 OpenStreetMap</button>
-        <button class="btn" id="pop-copy" onclick="copyCoords()" data-i="copyCoordsBtn">⧉ Coordonate</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="settings-modal">
-  <div class="card">
-    <h3 data-i="settingsTitle">Adresele</h3>
-    <div class="field">
-      <label for="f-tiles" data-i="tilesLabel">Adresa dalelor hărții</label>
-      <input id="f-tiles" type="text" spellcheck="false">
-      <span class="hint" data-i="tilesHint">Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.</span>
-    </div>
-    <div class="field">
-      <label for="f-geocoder" data-i="geocoderLabel">Adresa geocodorului</label>
-      <input id="f-geocoder" type="text" spellcheck="false">
-      <span class="hint" data-i="geocoderHint">Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.</span>
-    </div>
-    <div class="actions">
-      <button class="btn ghost" onclick="clearGeoCache()" data-i="clearCacheBtn">Golește memoria adreselor</button>
-      <button class="btn ghost" onclick="resetSettings()" data-i="resetBtn">Implicit</button>
-      <button class="btn" onclick="closeSettings()" data-i="cancelBtn">Renunță</button>
-      <button class="btn primary" onclick="saveSettings()" data-i="saveBtn">Salvează</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="help-modal">
-  <div class="card">
-    <h3 data-i="helpTitle">Harta locurilor</h3>
-    <div class="help-body" id="help-body"></div>
-    <div class="actions">
-      <button class="btn primary" onclick="closeHelp()" data-i="closeBtn">Închide</button>
-    </div>
-  </div>
-</div>
-
+<main class="kanban-shell">
+  <header class="kanban-head">
+    <div><h1 data-i="title">Kanban</h1><p data-i="subtitle">Sarcini din caiete, organizate după stare.</p></div>
+    <button id="refresh" class="btn" type="button" data-i="refresh">↻ Reîncarcă</button>
+  </header>
+  <section class="controls" aria-label="Filtre Kanban">
+    <div class="control scope"><label for="scope" data-i="scope">Arată sarcinile din</label><select id="scope"></select></div>
+    <div class="control search"><label for="search" data-i="search">Caută sarcini</label><input id="search" type="search" data-i-placeholder="searchHint" placeholder="Caută text, caiet sau capitol…"></div>
+    <div class="control"><label for="owner" data-i="owner">Responsabil</label><select id="owner"></select></div>
+    <div class="control"><label for="priority" data-i="priority">Prioritate</label><select id="priority"></select></div>
+    <div class="control"><label for="date-filter" data-i="dateFilter">Dată</label><select id="date-filter"></select></div>
+    <div class="control"><label for="state-filter" data-i="stateFilter">Stare</label><select id="state-filter"></select></div>
+    <button id="clear" class="btn" type="button" data-i="clear">Șterge filtrele</button>
+  </section>
+  <div class="summary" role="status"><strong id="count">0</strong><span id="count-label"></span><span class="sep">•</span><span id="progress"></span><span id="notice" aria-live="polite"></span></div>
+  <div id="board" class="board"></div>
+</main>
 <script>
-/* ============================================================
-   Hartă — the places flagged with "^@" in markdown, on a map.
-   ------------------------------------------------------------
-   The syntax and the scan live in window.ScuLaGeo, inside the shared nav
-   block, so this page and index.html read the exact same marker
-   (docs/FEATURES.md § S). This file owns three things and nothing else:
-   a slippy map hand-rolled out of <img> tiles (CLAUDE.md rule 3 - no
-   map library), a geocoder call against an address the person can see
-   and change, and the layered list beside it.
-   ============================================================ */
-
-/* ============================================================
-   1. i18n — docs/I18N.md
-   ============================================================ */
 const I18N = {
-  ro: {
-    fitBtn:"⤢ Încadrează", fitTip:"Încadrează toate locurile găsite",
-    locateBtn:"🔎 Caută adresele", locateTip:"Caută din nou fiecare adresă",
-    openMdBtn:"📄 Deschide .md", openMdTip:"Citește marcajele „^@” dintr-un fișier .md",
-    exportBtn:"⬇ Exportă", exportTip:"Salvează locurile ca .geojson",
-    settingsTip:"Adresa hărții și a geocodorului",
-    helpTip:"Ajutor",
-    filterHint:"Filtrează locurile…",
-    addHint:"Caută un loc și adaugă-l…",
-    manualLayer:"Căutate aici",
-    noSource:"Nicio listă de locuri încă",
-    fromChapter:n => "din „" + n + "”",
-    fromFile:n => "din " + n,
-    onOsmBtn:"🌍 OpenStreetMap",
-    copyCoordsBtn:"⧉ Coordonate",
-    copied:"Coordonatele au fost copiate.",
-    settingsTitle:"Adresele",
-    tilesLabel:"Adresa dalelor hărții",
-    tilesHint:"Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.",
-    geocoderLabel:"Adresa geocodorului",
-    geocoderHint:"Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.",
-    clearCacheBtn:"Golește memoria adreselor",
-    resetBtn:"Implicit", cancelBtn:"Renunță", saveBtn:"Salvează", closeBtn:"Închide",
-    cacheCleared:"Memoria adreselor a fost golită.",
-    helpTitle:"Harta locurilor",
-    emptyTitle:"Nimic de arătat încă.",
-    statusCounts:a => a[1] + " din " + a[0] + " găsite",
-    statusWorking:n => "Se caută… (" + n + " în coadă)",
-    statusNoGeocoder:"Fără geocodor: doar locurile scrise în coordonate.",
-    statusNone:n => n + " negăsite",
-    noPlaces:"Niciun loc găsit încă.",
-    savedGeo:n => n + " locuri salvate.",
-    nothingToSave:"Niciun loc găsit de salvat.",
-    readFile:a => a[1] + " locuri în " + a[0],
-    noMarks:"Fișierul nu are niciun marcaj „^@”.",
-    kindCoord:"coordonate", kindFound:"găsit", kindWait:"se caută", kindNone:"negăsit",
-    helpBody:`
-      <h3>De unde vin locurile</h3>
-      <p>Din marcajele <code>^@</code> scrise în markdown. Butonul 🗺 din pagina Markdown trimite aici capitolul deschis; <b>📄 Deschide .md</b> citește orice fișier markdown direct.</p>
-      <ul>
-        <li><code>^@Castelul Peleș</code> — un nume căutat pe hartă</li>
-        <li><code>^@Strada Lipscani 12, București</code> — o stradă cu număr</li>
-        <li><code>^@44.4268, 26.1025</code> — coordonate: nu se mai caută nimic online</li>
-        <li><code>^@Castelul Peleș | a doua zi, dimineața</code> — după <code>|</code> scrii o notă</li>
-      </ul>
-      <p>Un <code>#etichetă</code> de pe aceeași linie încheie adresa și rămâne al liniei.</p>
-      <h3>Straturile</h3>
-      <p>Fiecare loc intră în stratul titlului de deasupra lui (<code>## Ziua 2</code>). Clic pe numele stratului îl ascunde și îl arată; clic pe ▸ îl strânge. Clic pe un loc duce harta la el.</p>
-      <h3>Harta</h3>
-      <p>Trage cu degetul sau cu mausul, rotița sau <kbd>+</kbd>/<kbd>−</kbd> apropie și depărtează, <kbd>F</kbd> încadrează tot. Dalele vin de la OpenStreetMap, adresa lor se vede și se schimbă în ⚙ — un dosar local le înlocuiește, iar câmpul gol lasă doar caroiajul.</p>
-      <h3>Căutarea adreselor</h3>
-      <p>Numele și străzile sunt căutate cu geocodorul din ⚙ (implicit Nominatim, al OpenStreetMap), o cerere pe secundă, iar răspunsurile sunt ținute minte, așa că a doua oară nu se mai cere nimic.</p>
-    `
-  },
-  en: {
-    fitBtn:"⤢ Fit all", fitTip:"Frame every place that was found",
-    locateBtn:"🔎 Look up addresses", locateTip:"Look every address up again",
-    openMdBtn:"📄 Open .md", openMdTip:"Read the “^@” markers out of a .md file",
-    exportBtn:"⬇ Export", exportTip:"Save the places as .geojson",
-    settingsTip:"The map and geocoder addresses",
-    helpTip:"Help",
-    filterHint:"Filter the places…",
-    addHint:"Look a place up and add it…",
-    manualLayer:"Looked up here",
-    noSource:"No list of places yet",
-    fromChapter:n => "from “" + n + "”",
-    fromFile:n => "from " + n,
-    onOsmBtn:"🌍 OpenStreetMap",
-    copyCoordsBtn:"⧉ Coordinates",
-    copied:"Coordinates copied.",
-    settingsTitle:"The addresses",
-    tilesLabel:"Map tile address",
-    tilesHint:"A {z}/{x}/{y} template. Empty = no tiles: the graticule and the points stay, so the page works with no internet. A local folder (“./tiles/{z}/{x}/{y}.png”) works just as well.",
-    geocoderLabel:"Geocoder address",
-    geocoderHint:"A {q} template. Empty = nothing is looked up online: only places written as coordinates appear.",
-    clearCacheBtn:"Clear remembered addresses",
-    resetBtn:"Default", cancelBtn:"Cancel", saveBtn:"Save", closeBtn:"Close",
-    cacheCleared:"Remembered addresses cleared.",
-    helpTitle:"The map of places",
-    emptyTitle:"Nothing to show yet.",
-    statusCounts:a => a[1] + " of " + a[0] + " found",
-    statusWorking:n => "Looking up… (" + n + " queued)",
-    statusNoGeocoder:"No geocoder: only places written as coordinates.",
-    statusNone:n => n + " not found",
-    noPlaces:"No place found yet.",
-    savedGeo:n => n + " places saved.",
-    nothingToSave:"No located place to save.",
-    readFile:a => a[1] + " places in " + a[0],
-    noMarks:"That file has no “^@” marker.",
-    kindCoord:"coordinates", kindFound:"found", kindWait:"looking up", kindNone:"not found",
-    helpBody:`
-      <h3>Where the places come from</h3>
-      <p>From the <code>^@</code> markers written in markdown. The 🗺 button on the Markdown page sends the open chapter here; <b>📄 Open .md</b> reads any markdown file directly.</p>
-      <ul>
-        <li><code>^@Peleș Castle</code> — a name looked up on the map</li>
-        <li><code>^@12 Lipscani Street, Bucharest</code> — a street with a number</li>
-        <li><code>^@44.4268, 26.1025</code> — coordinates: nothing is looked up online</li>
-        <li><code>^@Peleș Castle | second day, morning</code> — what follows <code>|</code> is a note</li>
-      </ul>
-      <p>A <code>#tag</code> on the same line ends the address and stays the line's.</p>
-      <h3>The layers</h3>
-      <p>Each place joins the layer of the heading above it (<code>## Day 2</code>). Clicking a layer's name hides and shows it; clicking ▸ collapses it. Clicking a place takes the map there.</p>
-      <h3>The map</h3>
-      <p>Drag with a finger or the mouse, the wheel or <kbd>+</kbd>/<kbd>−</kbd> zooms, <kbd>F</kbd> frames everything. Tiles come from OpenStreetMap; their address is visible and editable under ⚙ — a local folder replaces them, and an empty field leaves just the graticule.</p>
-      <h3>Looking addresses up</h3>
-      <p>Names and streets are looked up with the geocoder under ⚙ (Nominatim, OpenStreetMap's own, by default), one request a second, and the answers are remembered, so the second time nothing is asked.</p>
-    `
-  }
+  ro: { title:'Kanban', subtitle:'Sarcini din caiete, organizate după stare.', refresh:'↻ Reîncarcă', scope:'Arată sarcinile din', search:'Caută sarcini', searchHint:'Caută text, caiet sau capitol…', owner:'Responsabil', priority:'Prioritate', dateFilter:'Dată', stateFilter:'Stare', clear:'Șterge filtrele', all:'Toate caietele și capitolele', allOwners:'Toți responsabilii', unassigned:'Fără responsabil', allPriorities:'Toate prioritățile', noPriority:'Fără prioritate', nice:'Utilă', important:'Importantă', vital:'Vitală', allDates:'Toate datele', overdue:'Întârziate', today:'Astăzi', next7:'Următoarele 7 zile', undated:'Fără dată', allStates:'Toate stările', todo:'De făcut', inwork:'În lucru', onhold:'În așteptare', blocked:'Blocate', done:'Terminate', tasks:n=>`${n} sarcini afișate`, progress:(d,n)=>`${d} din ${n} terminate`, noTasks:'Nu există sarcini în această selecție. Adaugă o listă „- [ ]” într-un capitol.', noMatches:'Nicio sarcină nu corespunde filtrelor.', emptyLane:'Nicio sarcină', open:'Deschide', move:'Schimbă starea', loadError:'Nu s-au putut încărca caietele.', saveError:'Sarcina s-a schimbat între timp. Am reîncărcat pagina.', saved:'Starea a fost salvată.', workbook:'Caiet', chapter:'Capitol' },
+  en: { title:'Kanban', subtitle:'Workbook tasks organized by state.', refresh:'↻ Refresh', scope:'Show tasks from', search:'Search tasks', searchHint:'Search text, workbook or chapter…', owner:'Responsible', priority:'Priority', dateFilter:'Date', stateFilter:'State', clear:'Clear filters', all:'All workbooks and chapters', allOwners:'All responsibles', unassigned:'Unassigned', allPriorities:'All priorities', noPriority:'No priority', nice:'Nice to have', important:'Important', vital:'Vital', allDates:'All dates', overdue:'Overdue', today:'Today', next7:'Next 7 days', undated:'No date', allStates:'All states', todo:'To do', inwork:'In work', onhold:'On hold', blocked:'Blocked', done:'Done', tasks:n=>`${n} tasks shown`, progress:(d,n)=>`${d} of ${n} done`, noTasks:'No tasks in this selection. Add a “- [ ]” list to a chapter.', noMatches:'No tasks match the filters.', emptyLane:'No tasks', open:'Open', move:'Change state', loadError:'Could not load workbooks.', saveError:'This task changed in the meantime. The board has been refreshed.', saved:'Status saved.', workbook:'Workbook', chapter:'Chapter' }
 };
-let UI = "ro";
-function t(k, a){
-  const v = (I18N[UI] || I18N.ro)[k];
-  return typeof v === "function" ? v(a) : v;
-}
-function applyUILang(){
-  document.documentElement.lang = UI;
-  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
-  ["placeholder","title","aria-label","value","alt"].forEach(attr => {
-    const d = "data-i-" + attr.replace("aria-label", "aria");
-    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
-  });
-  paintSource();
-  paintList();
-  paintAttrib();
-  if($("help-modal").classList.contains("open")) paintHelp();
-}
-
-/* ============================================================
-   2. Storage — never localStorage directly (file:// can throw)
-   ============================================================ */
-const store = {
-  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } },
-  set(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } },
-  drop(k){ try{ localStorage.removeItem(k); }catch(e){} }
-};
-const SET_KEY = "scula:map:settings";
-const CACHE_KEY = "scula:map:geocache";
-const DEFAULTS = {
-  tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  geocoder: "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}"
-};
-let S = Object.assign({}, DEFAULTS);
-(function loadSettings(){
-  try{ Object.assign(S, JSON.parse(store.get(SET_KEY, "{}")) || {}); }catch(e){}
-})();
-function saveS(){ store.set(SET_KEY, JSON.stringify(S)); }
-
-let CACHE = {};
-try{ CACHE = JSON.parse(store.get(CACHE_KEY, "{}")) || {}; }catch(e){ CACHE = {}; }
-const cacheKey = q => String(q).toLowerCase().replace(/\s+/g, " ").trim();
-function cacheGet(q){ const h = CACHE[cacheKey(q)]; return h && num(h.lat) && num(h.lon) ? h : null; }
-function cachePut(q, hit){
-  CACHE[cacheKey(q)] = { lat: hit.lat, lon: hit.lon, label: hit.label || "", at: Date.now() };
-  store.set(CACHE_KEY, JSON.stringify(CACHE));
-}
-
-/* ============================================================
-   3. State
-   ============================================================ */
+let UI = 'ro';
+try { UI = localStorage.getItem('scula:ui-lang') === 'en' ? 'en' : 'ro'; } catch(e) {}
+const t = (key, ...args) => { const v = I18N[UI][key]; return typeof v === 'function' ? v(...args) : v; };
 const $ = id => document.getElementById(id);
-const stage = $("stage"), tilesEl = $("tiles"), pinsEl = $("pins");
+const STATES = ['todo','inwork','onhold','blocked','done'];
+const COLORS = { todo:'#9FB3A5', inwork:'#C1BB45', onhold:'#D9A441', blocked:'#C4643C', done:'#6E9E8A' };
+const TASK_RE = /^([ \t]*[-*+][ \t]+)\[([ xX])\]([ \t]+|$)(.*)$/;
+const STATUS_RE = /^~(inwork|onhold|blocked)(?:[ \t]+|$)/;
+const NAME_WORD = "[\\p{L}\\p{N}][\\p{L}\\p{N}._'-]{0,20}";
+const OWNER_PREFIX = new RegExp('^(' + NAME_WORD + '(?:[ \\t]+' + NAME_WORD + '){0,3})[ \\t]?>>(?=[ \\t])', 'u');
+const OWNER_INLINE = new RegExp(">>(" + NAME_WORD + ")(?![\\p{L}\\p{N}._'-])", 'gu');
+const PRIORITY_RE = /(^|[\s(\[{])!(nice|important|vital)(?![\p{L}\p{N}_-])/u;
+const DATE_VALUE = '(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})(?:[ \\t]+(?:[01]?\\d|2[0-3]):[0-5]\\d)?|(?:[01]?\\d|2[0-3]):[0-5]\\d';
+const NAMED_DATE = new RegExp('(^|[ \\t(])(start|end)@[ \\t]*(' + DATE_VALUE + ')(?=$|[ \\t),;.!?])', 'giu');
+const PLAIN_DATE = /(^|[ \t(])(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})([ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?(?=$|[ \t),;.!?])/g;
+let books = [], chapters = [], tasks = [], visible = [];
+let dbBusy = false, loaded = false, scopeInitialized = false;
+const params = new URLSearchParams(location.search);
 
-let PLACES = [];        // every place, flat — the list and the pins share it
-let LAYERS = [];        // [{ name, off, collapsed }] in the order they appeared
-let SOURCE = null;      // { title, source } — where the list came from
-let selected = null;
-let filter = "";
-const TILE = 256, MIN_Z = 2, MAX_Z = 19;
-let view = { lat: 45.9432, lon: 24.9668, z: 6 };   // the whole country, to start
-const tileNodes = new Map();
-
-function layerOf(name){
-  let l = LAYERS.find(x => x.name === name);
-  if(!l){ l = { name, off:false, collapsed:false }; LAYERS.push(l); }
-  return l;
+function openDb() {
+  return new Promise((resolve,reject) => {
+    const request = indexedDB.open('scula-md', 2);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('workbooks')) db.createObjectStore('workbooks',{keyPath:'id'});
+      if (!db.objectStoreNames.contains('chapters')) db.createObjectStore('chapters',{keyPath:'id'}).createIndex('byWorkbook','workbookId');
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+      if (!db.objectStoreNames.contains('pending')) db.createObjectStore('pending',{keyPath:'chapterId'});
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
-
-/* ============================================================
-   4. Web Mercator — the only maths a slippy map needs
-   ============================================================ */
-const worldSize = z => TILE * Math.pow(2, z);
-function lon2x(lon, z){ return (lon + 180) / 360 * worldSize(z); }
-function lat2y(lat, z){
-  const s = Math.sin(Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI / 180);
-  return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * worldSize(z);
+async function readAll() {
+  const db = await openDb();
+  return new Promise((resolve,reject) => {
+    const tx = db.transaction(['workbooks','chapters'],'readonly');
+    const b = tx.objectStore('workbooks').getAll();
+    const c = tx.objectStore('chapters').getAll();
+    tx.oncomplete = () => { db.close(); resolve([b.result,c.result]); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 }
-function x2lon(x, z){ return x / worldSize(z) * 360 - 180; }
-function y2lat(y, z){
-  const n = Math.PI - 2 * Math.PI * y / worldSize(z);
-  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-}
-function stageSize(){ const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; }
-// The pixel coordinates of the viewport's top-left corner, in world space.
-function origin(){
-  const { w, h } = stageSize();
-  return { x: lon2x(view.lon, view.z) - w / 2, y: lat2y(view.lat, view.z) - h / 2 };
-}
-function pointToLatLon(px, py){
-  const o = origin();
-  return { lat: y2lat(o.y + py, view.z), lon: x2lon(o.x + px, view.z) };
-}
-
-/* ============================================================
-   5. Tiles
-   ============================================================ */
-function tileUrl(z, x, y){
-  const tpl = (S.tiles || "").trim();
-  if(!tpl) return "";
-  return tpl.replace("{z}", z).replace("{x}", x).replace("{y}", y)
-            .replace("{s}", "abc"[(x + y) % 3]);
-}
-function renderTiles(){
-  const tpl = (S.tiles || "").trim();
-  if(!tpl){ tileNodes.forEach(img => img.remove()); tileNodes.clear(); return; }
-  const { w, h } = stageSize(), z = view.z, n = Math.pow(2, z), o = origin();
-  const x0 = Math.floor(o.x / TILE), x1 = Math.floor((o.x + w) / TILE);
-  const y0 = Math.floor(o.y / TILE), y1 = Math.floor((o.y + h) / TILE);
-  const want = new Set();
-  for(let ty = y0; ty <= y1; ty++){
-    if(ty < 0 || ty >= n) continue;
-    for(let tx = x0; tx <= x1; tx++){
-      const wx = ((tx % n) + n) % n;              // the world wraps east-west
-      const key = z + "/" + wx + "/" + ty + "/" + tx;
-      want.add(key);
-      let img = tileNodes.get(key);
-      if(!img){
-        img = new Image();
-        img.className = "tile"; img.alt = ""; img.decoding = "async";
-        img.addEventListener("error", () => { img.style.visibility = "hidden"; });
-        img.src = tileUrl(z, wx, ty);
-        tilesEl.appendChild(img);
-        tileNodes.set(key, img);
+function order(a,b) { return (a.order||0)-(b.order||0) || (a.created||0)-(b.created||0); }
+function parseDates(body) {
+  const dates = {};
+  const named = Array.from(body.matchAll(NAMED_DATE));
+  named.forEach(m => { dates[m[2].toLowerCase()] = m[3]; });
+  let clean = body.replace(NAMED_DATE,' ');
+  if (window.ScuLaCal) {
+    const marks = ScuLaCal.findMarks(clean);
+    marks.forEach(hit => {
+      const m = hit.mark;
+      const start = m.date + (m.allDay ? '' : ' ' + m.time);
+      const end = (m.endDate || m.date) + (m.endTime ? ' ' + m.endTime : '');
+      const interval = m.endDate !== m.date || !!m.endTime;
+      if (interval && !dates.start) dates.start = start;
+      if (!dates.end && (interval || m.allDay)) dates.end = end;
+      if (!interval && !m.allDay && !dates.start) dates.start = start;
+    });
+    for (let i=marks.length-1;i>=0;i--) clean = clean.slice(0,marks[i].index) + clean.slice(marks[i].index+marks[i].length);
+    const plain = Array.from(clean.matchAll(PLAIN_DATE)).filter(hit => ScuLaCal.findMarks('@'+hit[2]+(hit[3]||'')).length);
+    if (plain.length) {
+      const values=plain.map(hit=>hit[2]+(hit[3]||''));
+      if (values.length>1 && !dates.start) dates.start=values[0];
+      if (!dates.end) dates.end=values[values.length-1];
+      for (let i=plain.length-1;i>=0;i--) {
+        const hit=plain[i], from=hit.index+hit[1].length;
+        clean=clean.slice(0,from)+clean.slice(from+hit[2].length+(hit[3]||'').length);
       }
-      img.style.transform = "translate3d(" + Math.round(tx * TILE - o.x) + "px," +
-                            Math.round(ty * TILE - o.y) + "px,0)";
     }
   }
-  tileNodes.forEach((img, key) => { if(!want.has(key)){ img.remove(); tileNodes.delete(key); } });
+  return { dates, clean };
 }
-function paintAttrib(){
-  const tpl = (S.tiles || "").trim();
-  $("attrib").innerHTML = /openstreetmap\.org/i.test(tpl)
-    ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-    : "";
+function parseTask(ch, book, line, lineIndex) {
+  const match = line.match(TASK_RE);
+  if (!match) return null;
+  const status = match[2].toLowerCase() === 'x' ? 'done' : ((match[4].match(STATUS_RE)||[])[1] || 'todo');
+  let body = match[4].replace(STATUS_RE,'');
+  const owners = [];
+  const lead = body.match(OWNER_PREFIX);
+  if (lead) { owners.push(lead[1].replace(/[ \t]+/g,' ')); body = body.slice(lead[0].length).trimStart(); }
+  for (const hit of body.matchAll(OWNER_INLINE)) if (!owners.some(n => n.toLowerCase() === hit[1].toLowerCase())) owners.push(hit[1]);
+  body = body.replace(OWNER_INLINE,' ');
+  const priority = (body.match(PRIORITY_RE)||[])[2] || '';
+  body = body.replace(PRIORITY_RE,'$1');
+  const parsed = parseDates(body);
+  const title = parsed.clean.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,target,alias)=>alias||target)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*_`]/g,'').replace(/\s+/g,' ').trim() || line.trim();
+  return { id:ch.id+':'+lineIndex, chapterId:ch.id, workbookId:ch.workbookId, book:book?.name||'', chapter:ch.title, lineIndex, line, title, status, owners, priority, dates:parsed.dates };
 }
-
-/* ============================================================
-   6. Pins
-   ============================================================ */
-// isFinite(null) is true - Number(null) is 0 - so "has it got coordinates
-// yet" has to ask for a real number, or every place not looked up yet lands
-// on Null Island and the list blows up on its first toFixed().
-function num(v){ return typeof v === "number" && isFinite(v); }
-function located(p){ return num(p.lat) && num(p.lon); }
-function shown(p){
-  if(layerOf(p.layer).off) return false;
-  if(!filter) return true;
-  const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
-  return hay.indexOf(filter) >= 0;
-}
-function renderPins(){
-  const { w, h } = stageSize(), o = origin();
-  PLACES.forEach(p => {
-    if(!located(p) || !shown(p)){ if(p.el) p.el.style.display = "none"; return; }
-    if(!p.el){
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "pin";
-      b.innerHTML = '<span class="bead"></span><span class="lbl"></span>';
-      b.addEventListener("click", ev => { ev.stopPropagation(); select(p, false); });
-      pinsEl.appendChild(b);
-      p.el = b;
-    }
-    p.el.querySelector(".lbl").textContent = p.q;
-    p.el.classList.toggle("coord", p.status === "coord");
-    p.el.classList.toggle("on", selected === p);
-    p.el.style.zIndex = selected === p ? 4 : 1;
-    const x = lon2x(p.lon, view.z) - o.x, y = lat2y(p.lat, view.z) - o.y;
-    if(x < -240 || y < -80 || x > w + 240 || y > h + 80){ p.el.style.display = "none"; return; }
-    p.el.style.display = "flex";
-    p.el.style.transform = "translate3d(" + Math.round(x) + "px," + Math.round(y) + "px,0) translate(-0.425rem,-50%)";
-  });
-  placePop();
-}
-function renderScale(){
-  const mPerPx = 156543.03392 * Math.cos(view.lat * Math.PI / 180) / Math.pow(2, view.z);
-  const target = 90 * mPerPx;
-  const pow = Math.pow(10, Math.floor(Math.log10(target)));
-  const nice = [1, 2, 5, 10].map(k => k * pow).filter(v => v >= target)[0] || pow;
-  const px = nice / mPerPx;
-  const el = $("scale");
-  el.style.width = Math.round(px) + "px";
-  el.querySelector("span").textContent = nice >= 1000 ? (nice / 1000) + " km" : nice + " m";
-}
-function render(){ renderTiles(); renderPins(); renderScale(); }
-
-/* ---- the popup ---- */
-function select(p, fromList){
-  selected = p;
-  if(fromList && located(p)) panTo(p.lat, p.lon, Math.max(view.z, 13));
-  paintList();
-  if(!located(p)){ closePop(); render(); return; }
-  $("pop-title").textContent = p.q;
-  $("pop-note").textContent = p.note || p.label || p.context || "";
-  $("pop-note").style.display = $("pop-note").textContent ? "" : "none";
-  $("pop-co").textContent = p.lat.toFixed(5) + ", " + p.lon.toFixed(5);
-  $("pop-tags").textContent = (p.tags || []).map(x => "#" + x).join(" ");
-  $("pop").classList.add("open");
-  render();
-}
-function placePop(){
-  const pop = $("pop");
-  if(!pop.classList.contains("open") || !selected || !located(selected)) return;
-  const o = origin(), { w } = stageSize();
-  const x = lon2x(selected.lon, view.z) - o.x, y = lat2y(selected.lat, view.z) - o.y;
-  pop.style.left = Math.max(90, Math.min(w - 90, x)) + "px";
-  pop.style.top = y + "px";
-}
-function closePop(){ $("pop").classList.remove("open"); }
-function openOnOSM(){
-  if(!selected || !located(selected)) return;
-  window.open("https://www.openstreetmap.org/?mlat=" + selected.lat + "&mlon=" + selected.lon +
-              "#map=17/" + selected.lat + "/" + selected.lon, "_blank", "noopener");
-}
-function copyCoords(){
-  if(!selected || !located(selected)) return;
-  const s = selected.lat.toFixed(6) + ", " + selected.lon.toFixed(6);
-  const done = () => ScuLaFolder.toast(t("copied"));
-  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(done, () => {});
-  else done();
-}
-
-/* ---- moving the map ---- */
-function panTo(lat, lon, z){
-  view.lat = lat; view.lon = lon;
-  if(z != null) view.z = Math.max(MIN_Z, Math.min(MAX_Z, z));
-  render();
-}
-function zoomBy(d, ax, ay){
-  const nz = Math.max(MIN_Z, Math.min(MAX_Z, view.z + d));
-  if(nz === view.z) return;
-  const { w, h } = stageSize();
-  if(ax == null){ ax = w / 2; ay = h / 2; }
-  const under = pointToLatLon(ax, ay);
-  view.z = nz;
-  const ox = lon2x(under.lon, nz) - ax, oy = lat2y(under.lat, nz) - ay;
-  view.lon = x2lon(ox + w / 2, nz);
-  view.lat = y2lat(oy + h / 2, nz);
-  render();
-}
-function fitAll(){
-  const pts = PLACES.filter(p => located(p) && shown(p));
-  if(!pts.length) return;
-  let n = pts[0].lat, s = pts[0].lat, e = pts[0].lon, wst = pts[0].lon;
-  pts.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lon); wst = Math.min(wst, p.lon); });
-  const { w, h } = stageSize();
-  let z = MAX_Z;
-  for(; z > MIN_Z; z--){
-    const dx = lon2x(e, z) - lon2x(wst, z), dy = lat2y(s, z) - lat2y(n, z);
-    if(dx <= w - 120 && dy <= h - 120) break;
-  }
-  view.z = z; view.lat = (n + s) / 2; view.lon = (e + wst) / 2;
-  render();
-}
-
-/* ============================================================
-   7. The layered list
-   ============================================================ */
-function statusWord(p){
-  return p.status === "coord" ? t("kindCoord")
-       : p.status === "found" ? t("kindFound")
-       : p.status === "none"  ? t("kindNone")
-       : t("kindWait");
-}
-function statusColor(p){
-  return p.status === "coord" ? "var(--pin-coord)"
-       : p.status === "found" ? "var(--pin-found)"
-       : p.status === "none"  ? "var(--pin-none)"
-       : "var(--pin-wait)";
-}
-function paintList(){
-  const box = $("layers");
-  box.innerHTML = "";
-  if(!PLACES.length){
-    const d = document.createElement("div");
-    d.className = "empty";
-    d.innerHTML = "<b>" + t("emptyTitle") + "</b><br>" +
-      (UI === "ro"
-        ? 'Scrie <code>^@Castelul Peleș</code> într-un capitol din pagina Markdown și apasă 🗺, sau deschide un fișier .md de aici.'
-        : 'Write <code>^@Peleș Castle</code> in a chapter on the Markdown page and press 🗺, or open a .md file from here.');
-    box.appendChild(d);
-    paintFoot();
-    return;
-  }
-  LAYERS.forEach(L => {
-    const mine = PLACES.filter(p => p.layer === L.name);
-    const vis = mine.filter(p => !filter || shown(p) || L.off);
-    const list = filter ? mine.filter(p => {
-      const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
-      return hay.indexOf(filter) >= 0;
-    }) : mine;
-    if(!list.length) return;
-    const wrap = document.createElement("div");
-    wrap.className = "layer" + (L.off ? " off" : "") + (L.collapsed ? " collapsed" : "");
-    const head = document.createElement("div");
-    head.className = "layer-head";
-    const tw = document.createElement("span");
-    tw.className = "tw"; tw.textContent = L.collapsed ? "▸" : "▾";
-    tw.addEventListener("click", ev => { ev.stopPropagation(); L.collapsed = !L.collapsed; paintList(); });
-    const nm = document.createElement("span");
-    nm.className = "nm"; nm.textContent = L.name; nm.title = L.name;
-    const ct = document.createElement("span");
-    ct.className = "ct";
-    ct.textContent = list.filter(located).length + "/" + list.length;
-    head.appendChild(tw); head.appendChild(nm); head.appendChild(ct);
-    head.addEventListener("click", () => { L.off = !L.off; paintList(); render(); });
-    wrap.appendChild(head);
-
-    const places = document.createElement("div");
-    places.className = "places";
-    list.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "place" + (selected === p ? " on" : "") + (p.status === "none" ? " none" : "");
-      const dot = document.createElement("span");
-      dot.className = "dot"; dot.style.background = statusColor(p);
-      const txt = document.createElement("span");
-      txt.className = "txt";
-      const q = document.createElement("span");
-      q.className = "q"; q.textContent = p.q; q.title = p.q;
-      const sub = document.createElement("span");
-      sub.className = "sub";
-      sub.textContent = p.note || (located(p) ? p.lat.toFixed(4) + ", " + p.lon.toFixed(4) : statusWord(p));
-      txt.appendChild(q); txt.appendChild(sub);
-      row.appendChild(dot); row.appendChild(txt);
-      row.addEventListener("click", () => select(p, true));
-      places.appendChild(row);
-    });
-    wrap.appendChild(places);
-    box.appendChild(wrap);
-  });
-  paintFoot();
-}
-function paintFoot(){
-  const total = PLACES.length, ok = PLACES.filter(located).length;
-  const queued = PLACES.filter(p => p.status === "pending" || p.status === "working").length;
-  const missing = PLACES.filter(p => p.status === "none").length;
-  let s = total ? t("statusCounts", [total, ok]) : t("noPlaces");
-  if(queued) s = t("statusWorking", queued);
-  else if(missing) s += " · " + t("statusNone", missing);
-  if(!(S.geocoder || "").trim() && total > ok) s += " · " + t("statusNoGeocoder");
-  $("side-foot").textContent = s;
-}
-function paintSource(){
-  const el = $("map-source");
-  if(!SOURCE) { el.textContent = t("noSource"); return; }
-  el.textContent = SOURCE.source === "file" ? t("fromFile", SOURCE.title) : t("fromChapter", SOURCE.title);
-  el.title = el.textContent;
-}
-function toggleSide(){ $("side").classList.toggle("hidden"); }
-
-/* ============================================================
-   8. Looking an address up
-   ============================================================ */
-const GAP_MS = 1100;          // Nominatim's usage policy: one request a second
-let queue = [], busy = false, lastCall = 0;
-
-function readGeoResult(j){
-  let r = null;
-  if(Array.isArray(j)) r = j[0];
-  else if(j && Array.isArray(j.features)){
-    const f = j.features[0];
-    if(f && f.geometry && f.geometry.coordinates){
-      return { lat: +f.geometry.coordinates[1], lon: +f.geometry.coordinates[0],
-               label: (f.properties && (f.properties.display_name || f.properties.name)) || "" };
-    }
-  }
-  else if(j && Array.isArray(j.results)) r = j.results[0];
-  else if(j && j.lat != null) r = j;
-  if(!r) return null;
-  const pick = v => (v === null || v === undefined || v === "") ? NaN : Number(v);
-  const lat = pick(r.lat != null ? r.lat : r.latitude);
-  const lon = pick(r.lon != null ? r.lon : (r.lng != null ? r.lng : r.longitude));
-  if(!num(lat) || !num(lon)) return null;
-  return { lat, lon, label: r.display_name || r.name || "" };
-}
-function geoFetch(q){
-  const tpl = (S.geocoder || "").trim();
-  if(!tpl) return Promise.reject(new Error("no-geocoder"));
-  const url = tpl.indexOf("{q}") >= 0 ? tpl.replace("{q}", encodeURIComponent(q))
-                                      : tpl + encodeURIComponent(q);
-  return fetch(url, { headers: { "Accept": "application/json" } })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-    .then(readGeoResult);
-}
-function enqueue(p){
-  if(p.status === "coord") return;
-  const hit = cacheGet(p.q);
-  if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; return; }
-  if(!(S.geocoder || "").trim()){ p.status = "none"; return; }
-  p.status = "pending";
-  queue.push(p);
-}
-function pump(){
-  if(busy) return;
-  const p = queue.shift();
-  if(!p){ paintFoot(); return; }
-  busy = true;
-  const wait = Math.max(0, GAP_MS - (Date.now() - lastCall));
-  setTimeout(() => {
-    lastCall = Date.now();
-    p.status = "working"; paintFoot();
-    geoFetch(p.q).then(hit => {
-      if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; cachePut(p.q, hit); }
-      else p.status = "none";
-    }).catch(() => { p.status = "none"; })
-      .then(() => {
-        busy = false;
-        paintList(); render();
-        if(!queue.length && PLACES.filter(located).length) fitAll();
-        pump();
-      });
-  }, wait);
-}
-function locateAll(force){
-  if(force){
-    PLACES.forEach(p => {
-      if(p.status === "coord") return;
-      p.lat = null; p.lon = null; p.status = "pending";
-    });
-    queue = [];
-  }
-  PLACES.forEach(p => { if(!located(p) && p.status !== "pending" && p.status !== "working") enqueue(p); });
-  if(force) PLACES.forEach(p => { if(p.status === "pending" && queue.indexOf(p) < 0) queue.push(p); });
-  paintList(); render(); pump();
-}
-
-/* ============================================================
-   9. Where the list comes from
-   ============================================================ */
-function adopt(payload){
-  if(!payload || !payload.layers) return false;
-  PLACES = []; LAYERS = []; selected = null; queue = [];
-  pinsEl.innerHTML = "";
-  payload.layers.forEach(L => {
-    layerOf(L.name);
-    (L.items || []).forEach(it => {
-      PLACES.push({
-        q: it.q, note: it.note || "", layer: L.name, line: it.line,
-        tags: it.tags || [], context: it.context || "",
-        lat: num(it.lat) ? it.lat : null,
-        lon: num(it.lon) ? it.lon : null,
-        label: "", status: num(it.lat) && num(it.lon) ? "coord" : "pending",
-        el: null
-      });
+function collectTasks() {
+  const byBook = new Map(books.map(b=>[b.id,b]));
+  tasks = [];
+  chapters.sort(order).forEach(ch => {
+    let fence = '';
+    String(ch.content||'').split('\n').forEach((line,i) => {
+      const marker=line.match(/^[ \t]*(`{3,}|~{3,})/);
+      if (marker) { if (!fence) fence=marker[1][0]; else if (fence===marker[1][0]) fence=''; return; }
+      if (fence) return;
+      const task = parseTask(ch,byBook.get(ch.workbookId),line,i);
+      if (task) tasks.push(task);
     });
   });
-  SOURCE = { title: payload.title || "", source: payload.source === "file" ? "file" : "chapter" };
-  paintSource();
-  PLACES.forEach(enqueue);
-  paintList();
-  if(PLACES.filter(located).length) fitAll(); else render();
-  pump();
-  return PLACES.length > 0;
 }
-function takePayload(){
-  const p = window.ScuLaGeo && ScuLaGeo.received();
-  if(p) adopt(p);
+function option(value,label) { const el=document.createElement('option'); el.value=value; el.textContent=label; return el; }
+function fill(select,items) {
+  const current=select.value;
+  select.replaceChildren(...items.map(([value,label])=>option(value,label)));
+  if (items.some(([value])=>value===current)) select.value=current;
 }
-function openMd(){ $("md-file").click(); }
-$("md-file").addEventListener("change", ev => {
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  f.text().then(text => {
-    const payload = ScuLaGeo.scan(text, { title: f.name, source: "file" });
-    if(!payload.count){ ScuLaFolder.toast(t("noMarks")); return; }
-    adopt(payload);
-    ScuLaFolder.toast(t("readFile", [f.name, payload.count]));
+function paintControls() {
+  const scope=$('scope'), old=scope.value;
+  scope.replaceChildren(option('all',t('all')));
+  books.sort(order).forEach(book => {
+    const group=document.createElement('optgroup'); group.label=book.name;
+    group.appendChild(option('b:'+book.id,t('workbook')+' · '+book.name));
+    chapters.filter(ch=>ch.workbookId===book.id).sort(order).forEach(ch=>group.appendChild(option('c:'+ch.id,t('chapter')+' · '+ch.title)));
+    scope.appendChild(group);
   });
-  ev.target.value = "";
-});
-
-/* Someone typed a place into the sidebar — one more pin, its own layer. */
-function addTyped(q){
-  q = String(q || "").trim();
-  if(!q) return;
-  const co = ScuLaGeo.coords(q);
-  const name = t("manualLayer");
-  layerOf(name);
-  const p = {
-    q, note: "", layer: name, line: null, tags: [], context: "",
-    lat: co ? co.lat : null, lon: co ? co.lon : null, label: "",
-    status: co ? "coord" : "pending", el: null
-  };
-  PLACES.push(p);
-  if(!SOURCE) { SOURCE = { title: name, source: "chapter" }; paintSource(); }
-  enqueue(p);
-  paintList();
-  if(located(p)) { select(p, true); } else render();
-  pump();
+  const initial=params.get('scope');
+  const available=Array.from(scope.options).map(o=>o.value);
+  scope.value=scopeInitialized && available.includes(old) ? old : (available.includes(initial) ? initial : 'all');
+  scopeInitialized=true;
+  const ownerMap=new Map();
+  tasks.flatMap(task=>task.owners).forEach(name=>{
+    const key=name.normalize('NFC').toLocaleLowerCase();
+    if (!ownerMap.has(key)) ownerMap.set(key,name);
+  });
+  const owners=Array.from(ownerMap,([key,name])=>[key,name]).sort((a,b)=>a[1].localeCompare(b[1],UI));
+  fill($('owner'),[['all',t('allOwners')],['none',t('unassigned')],...owners]);
+  fill($('priority'),[['all',t('allPriorities')],['none',t('noPriority')],['nice',t('nice')],['important',t('important')],['vital',t('vital')]]);
+  fill($('date-filter'),[['all',t('allDates')],['overdue',t('overdue')],['today',t('today')],['next7',t('next7')],['undated',t('undated')]]);
+  fill($('state-filter'),[['all',t('allStates')],...STATES.map(s=>[s,t(s)])]);
 }
-
-/* ============================================================
-   10. Export — through ScuLaFolder, like every other save here
-   ============================================================ */
-function exportGeoJSON(){
-  const pts = PLACES.filter(located);
-  if(!pts.length){ ScuLaFolder.toast(t("nothingToSave")); return; }
-  const fc = {
-    type: "FeatureCollection",
-    features: pts.map(p => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [+p.lon.toFixed(6), +p.lat.toFixed(6)] },
-      properties: {
-        name: p.q, layer: p.layer, note: p.note || "",
-        tags: p.tags || [], line: p.line, source: SOURCE ? SOURCE.title : ""
-      }
-    }))
-  };
-  const base = (SOURCE && SOURCE.title ? SOURCE.title.replace(/\.(md|markdown|txt)$/i, "") : "locatii")
-               .replace(/[\\/:*?"<>|]+/g, "-").trim() || "locatii";
-  const blob = new Blob([JSON.stringify(fc, null, 2)], { type: "application/geo+json" });
-  Promise.resolve(ScuLaFolder.save(base + ".geojson", blob)).then(() => {
-    ScuLaFolder.toast(t("savedGeo", pts.length));
-  });
+function dateDay(value) {
+  if (!value) return '';
+  const iso=value.match(/^\d{4}-\d{2}-\d{2}/);
+  if (iso) return iso[0];
+  const local=value.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  return local ? local[3]+'-'+local[2].padStart(2,'0')+'-'+local[1].padStart(2,'0') : '';
 }
-
-/* ============================================================
-   11. Dragging, wheeling and pinching
-   ============================================================ */
-(function interaction(){
-  let drag = null, pointers = new Map(), pinch = null;
-  stage.addEventListener("pointerdown", ev => {
-    if(ev.target.closest(".pin") || ev.target.closest("#pop") || ev.target.closest("#hud")) return;
-    stage.setPointerCapture(ev.pointerId);
-    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if(pointers.size === 2){
-      const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: view.z };
-      drag = null;
-    } else {
-      drag = { x: ev.clientX, y: ev.clientY, moved: false };
-      stage.classList.add("dragging");
-    }
-  });
-  stage.addEventListener("pointermove", ev => {
-    if(!pointers.has(ev.pointerId)) return;
-    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if(pinch && pointers.size === 2){
-      const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      const nz = Math.round(pinch.z + Math.log2(d / (pinch.d || 1)));
-      if(nz !== view.z){
-        const r = stage.getBoundingClientRect();
-        zoomBy(nz - view.z, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
-      }
-      return;
-    }
-    if(!drag) return;
-    const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
-    if(!dx && !dy) return;
-    drag.x = ev.clientX; drag.y = ev.clientY; drag.moved = true;
-    const { w, h } = stageSize(), o = origin();
-    view.lon = x2lon(o.x - dx + w / 2, view.z);
-    view.lat = y2lat(Math.max(0, Math.min(worldSize(view.z), o.y - dy + h / 2)), view.z);
-    render();
-  });
-  function up(ev){
-    pointers.delete(ev.pointerId);
-    if(pointers.size < 2) pinch = null;
-    if(!pointers.size){
-      if(drag && !drag.moved) closePop();
-      drag = null; stage.classList.remove("dragging");
-    }
+function localDay(date) { return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'); }
+function dateMatches(task,filter) {
+  if (filter==='all') return true;
+  if (filter==='undated') return !task.dates.start && !task.dates.end;
+  const day=dateDay(task.dates.end||task.dates.start);
+  if (!day || task.status==='done') return false;
+  const today=localDay(new Date());
+  if (filter==='overdue') return !!task.dates.end && day<today;
+  if (filter==='today') return day===today;
+  const next=new Date(); next.setDate(next.getDate()+7);
+  return day>today && day<=localDay(next);
+}
+function filterTasks() {
+  const scope=$('scope').value, q=$('search').value.trim().toLocaleLowerCase(), owner=$('owner').value, priority=$('priority').value, date=$('date-filter').value, state=$('state-filter').value;
+  const scoped=tasks.filter(task=>scope==='all'||(scope.startsWith('b:')&&task.workbookId===scope.slice(2))||(scope.startsWith('c:')&&task.chapterId===scope.slice(2)));
+  visible=scoped.filter(task =>
+    (!q || [task.title,task.book,task.chapter,...task.owners].join(' ').toLocaleLowerCase().includes(q)) &&
+    (owner==='all'||(owner==='none'?!task.owners.length:task.owners.some(n=>n.normalize('NFC').toLocaleLowerCase()===owner))) &&
+    (priority==='all'||(priority==='none'?!task.priority:task.priority===priority)) &&
+    (state==='all'||task.status===state) && dateMatches(task,date));
+  paintBoard(scoped.length);
+}
+function node(tag,className,textValue) { const el=document.createElement(tag); if(className) el.className=className; if(textValue!=null) el.textContent=textValue; return el; }
+function makeCard(task) {
+  const card=node('article','card'+(task.priority?' '+task.priority:''));
+  card.draggable=true; card.dataset.id=task.id;
+  card.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain',task.id); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
+  card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  card.append(node('h3','card-title',task.title),node('div','card-path',task.book+' › '+task.chapter));
+  const meta=node('div','card-meta');
+  task.owners.forEach(name=>meta.appendChild(node('span','pill','◉ '+name)));
+  if (!task.owners.length) meta.appendChild(node('span','pill',t('unassigned')));
+  if (task.priority) meta.appendChild(node('span','pill priority',t(task.priority)));
+  const today=localDay(new Date());
+  for (const kind of ['start','end']) if (task.dates[kind]) {
+    const late=kind==='end' && task.status!=='done' && dateDay(task.dates[kind]) && dateDay(task.dates[kind])<today;
+    meta.appendChild(node('span','pill'+(late?' overdue':''),kind+'@'+task.dates[kind]));
   }
-  stage.addEventListener("pointerup", up);
-  stage.addEventListener("pointercancel", up);
-  stage.addEventListener("wheel", ev => {
-    ev.preventDefault();
-    const r = stage.getBoundingClientRect();
-    zoomBy(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
-  }, { passive: false });
-  stage.addEventListener("dblclick", ev => {
-    const r = stage.getBoundingClientRect();
-    zoomBy(1, ev.clientX - r.left, ev.clientY - r.top);
+  card.appendChild(meta);
+  const actions=node('div','card-actions'), select=node('select');
+  select.setAttribute('aria-label',t('move')+': '+task.title);
+  STATES.forEach(s=>select.appendChild(option(s,t(s)))); select.value=task.status;
+  select.addEventListener('change',()=>changeStatus(task,select.value));
+  const link=node('a','',t('open')); link.href='index.html?chapter='+encodeURIComponent(task.chapterId)+'&line='+task.lineIndex; link.setAttribute('aria-label',t('open')+': '+task.title);
+  actions.append(select,link); card.appendChild(actions);
+  return card;
+}
+function paintBoard(scopedCount) {
+  $('count').textContent=visible.length; $('count-label').textContent=t('tasks',visible.length).replace(/^\d+\s*/, '');
+  $('progress').textContent=t('progress',visible.filter(task=>task.status==='done').length,visible.length);
+  const board=$('board'); board.replaceChildren();
+  if (!scopedCount || !visible.length) { board.appendChild(node('div','empty-page',!scopedCount?t('noTasks'):t('noMatches'))); return; }
+  STATES.forEach(state => {
+    const lane=node('section','lane'); lane.dataset.state=state; lane.style.setProperty('--lane-color',COLORS[state]);
+    const head=node('div','lane-head'); head.append(node('h2','',t(state)),node('span','',visible.filter(task=>task.status===state).length)); lane.appendChild(head);
+    const cards=node('div','lane-cards');
+    const subset=visible.filter(task=>task.status===state).sort((a,b)=>{
+      const p={vital:0,important:1,nice:2,'':3};
+      return p[a.priority]-p[b.priority] || (dateDay(a.dates.end||a.dates.start)||'9999').localeCompare(dateDay(b.dates.end||b.dates.start)||'9999') || a.title.localeCompare(b.title,UI);
+    });
+    if (!subset.length) cards.appendChild(node('div','lane-empty',t('emptyLane')));
+    else subset.forEach(task=>cards.appendChild(makeCard(task)));
+    lane.appendChild(cards);
+    lane.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; lane.classList.add('over'); });
+    lane.addEventListener('dragleave',e=>{ if (!lane.contains(e.relatedTarget)) lane.classList.remove('over'); });
+    lane.addEventListener('drop',e=>{ e.preventDefault(); lane.classList.remove('over'); const task=tasks.find(x=>x.id===e.dataTransfer.getData('text/plain')); if(task) changeStatus(task,state); });
+    board.appendChild(lane);
   });
-  window.addEventListener("resize", () => render());
-})();
-
-$("q").addEventListener("input", ev => { filter = ev.target.value.trim().toLowerCase(); paintList(); render(); });
-$("add").addEventListener("keydown", ev => {
-  if(ev.key !== "Enter") return;
-  addTyped(ev.target.value);
-  ev.target.value = "";
-});
-
-document.addEventListener("keydown", ev => {
-  if(ev.key === "Escape"){
-    if($("settings-modal").classList.contains("open")) closeSettings();
-    else if($("help-modal").classList.contains("open")) closeHelp();
-    else closePop();
-    return;
-  }
-  const el = document.activeElement;
-  if(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
-  if(ev.ctrlKey || ev.altKey || ev.metaKey) return;
-  if(ev.key === "+" || ev.key === "=") zoomBy(1);
-  else if(ev.key === "-" || ev.key === "_") zoomBy(-1);
-  else if(ev.key === "f" || ev.key === "F") fitAll();
-});
-
-/* ============================================================
-   12. The two modals
-   ============================================================ */
-function openSettings(){
-  $("f-tiles").value = S.tiles || "";
-  $("f-geocoder").value = S.geocoder || "";
-  $("settings-modal").classList.add("open");
 }
-function closeSettings(){ $("settings-modal").classList.remove("open"); }
-function saveSettings(){
-  S.tiles = $("f-tiles").value.trim();
-  S.geocoder = $("f-geocoder").value.trim();
-  saveS();
-  closeSettings();
-  tileNodes.forEach(img => img.remove()); tileNodes.clear();
-  paintAttrib(); render();
-  PLACES.forEach(p => { if(!located(p)) enqueue(p); });
-  paintList(); pump();
+function setLineStatus(line,status) {
+  const match=line.match(TASK_RE); if(!match) return line;
+  const body=match[4].replace(STATUS_RE,'');
+  const marker=({inwork:'~inwork',onhold:'~onhold',blocked:'~blocked'})[status];
+  return match[1]+(status==='done'?'[x]':'[ ]')+(match[3]||(marker?' ':''))+(marker?marker+(body?' ':''):'')+body;
 }
-function resetSettings(){ $("f-tiles").value = DEFAULTS.tiles; $("f-geocoder").value = DEFAULTS.geocoder; }
-function clearGeoCache(){
-  CACHE = {}; store.drop(CACHE_KEY);
-  ScuLaFolder.toast(t("cacheCleared"));
+async function writeStatus(task,status) {
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(['chapters','pending'],'readwrite');
+    const store=tx.objectStore('chapters');
+    const request=store.get(task.chapterId);
+    let conflict=false;
+    request.onsuccess=()=>{
+      const ch=request.result;
+      const lines=String(ch?.content||'').split('\n');
+      if (!ch || lines[task.lineIndex]!==task.line) { conflict=true; return; }
+      lines[task.lineIndex]=setLineStatus(lines[task.lineIndex],status);
+      ch.content=lines.join('\n'); ch.updated=Date.now();
+      store.put(ch);
+      tx.objectStore('pending').put({chapterId:ch.id,workbookId:ch.workbookId,content:ch.content,updated:ch.updated});
+    };
+    tx.oncomplete=()=>{ db.close(); conflict ? reject(new Error('conflict')) : resolve(); };
+    tx.onerror=()=>{ db.close(); reject(tx.error); };
+  });
 }
-function paintHelp(){ $("help-body").innerHTML = t("helpBody"); }
-function openHelp(){ paintHelp(); $("help-modal").classList.add("open"); }
-function closeHelp(){ $("help-modal").classList.remove("open"); }
-[["settings-modal", closeSettings], ["help-modal", closeHelp]].forEach(([id, close]) => {
-  $(id).addEventListener("click", ev => { if(ev.target.id === id) close(); });
-});
-
-/* ============================================================
-   13. Init
-   ============================================================ */
-try{ UI = localStorage.getItem("scula:ui-lang") || "ro"; }catch(e){}
-// The shared nav owns the language; it announces changes to whoever cares.
-window.addEventListener("scula-ui-lang", ev => {
-  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
-});
-// Another tab pressed 🗺 while this page was already open.
-window.addEventListener("storage", ev => {
-  if(ev.key === (window.ScuLaGeo ? ScuLaGeo.KEY : "scula:map:payload")) takePayload();
-});
-applyUILang();
-paintAttrib();
-takePayload();
-render();
+async function changeStatus(task,status) {
+  if (dbBusy || task.status===status) return;
+  dbBusy=true; $('notice').textContent='';
+  try {
+    await writeStatus(task,status);
+    try { localStorage.setItem('scula:kanban-change',JSON.stringify({chapterId:task.chapterId,lineIndex:task.lineIndex,line:task.line,status,at:Date.now()})); } catch(e) {}
+    await reload(); $('notice').textContent=t('saved');
+  } catch(e) { await reload(); $('notice').textContent=t('saveError'); }
+  finally { dbBusy=false; }
+}
+async function reload() {
+  try { [books,chapters]=await readAll(); loaded=true; collectTasks(); paintControls(); filterTasks(); }
+  catch(e) { $('notice').textContent=t('loadError'); }
+}
+function repaintLanguage() {
+  document.documentElement.lang=UI;
+  document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
+  document.querySelectorAll('[data-i-placeholder]').forEach(el=>el.placeholder=t(el.dataset.iPlaceholder));
+  if (loaded) { paintControls(); filterTasks(); }
+}
+window.addEventListener('scula-ui-lang',e=>{ UI=e.detail==='en'?'en':'ro'; repaintLanguage(); });
+window.addEventListener('focus',reload);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reload(); });
+for (const id of ['scope','owner','priority','date-filter','state-filter']) $(id).addEventListener('change',filterTasks);
+$('search').addEventListener('input',filterTasks);
+$('refresh').addEventListener('click',reload);
+$('clear').addEventListener('click',()=>{ $('search').value=''; ['scope','owner','priority','date-filter','state-filter'].forEach(id=>$(id).value='all'); filterTasks(); });
+repaintLanguage(); reload();
 </script>
 </body>
 </html>

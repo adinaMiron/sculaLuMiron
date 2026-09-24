@@ -1111,6 +1111,19 @@ mutation ends in it. Nothing else touches `style.transform`.
 
 ---
 
+## kanban.html — task board
+
+The shared nav block ends near line 1345. The page CSS and controls are at
+the top and just after the nav. The board script follows: `openDb`/`readAll`
+read the editor's `scula-md` workbooks and chapters; `parseTask` and
+`parseDates` extract checklist states, owners, importance, and dates from
+Markdown lines; `filterTasks` applies scope, search and filters; `paintBoard`
+builds the five columns; `writeStatus` updates one verified source line and
+the `pending` store in one transaction. The **Open** link returns to
+`index.html` with `chapter` and `line` query parameters.
+
+---
+
 ## Fast recipes
 
 ```bash
