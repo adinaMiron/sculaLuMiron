@@ -149,6 +149,23 @@
     outline: none;
   }
   .tb-select:focus { border-color: var(--accent); }
+  .toolbar-filters {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 7px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+  }
+  .toolbar-filters-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
   .tb-color-control { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .tb-color-control input[type="color"] { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
 
@@ -3456,15 +3473,6 @@
   </select>
   <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
 
-  <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
-  <select class="tb-select" id="importance-select" onchange="filterImportance(this.value)"
-          data-i-title="impTip" title="Show tasks with this importance in every workbook">
-    <option value="" data-i="impDefault">— All importance —</option>
-    <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
-    <option value="important" data-i="impImportantOpt">⭐ Important</option>
-    <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
-  </select>
-
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
   <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
@@ -3479,10 +3487,6 @@
     <option value="!important" data-i="impInsertImportant">⭐ !important</option>
     <option value="!vital" data-i="impInsertVital">🔥 !vital</option>
   </select>
-  <select class="tb-select" id="responsible-select" onchange="selectResponsible(this.value)"
-          data-i-title="responsibleTip" title="Show only text assigned to one responsible" hidden>
-    <option value="" data-i="responsibleAll">— All responsibles —</option>
-  </select>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
@@ -3496,6 +3500,21 @@
   <button class="tb-btn" id="btn-find" onclick="toggleFind(true)" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
+  <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
+  <div class="toolbar-filters" role="group" aria-labelledby="toolbar-filters-label">
+    <span class="toolbar-filters-label" id="toolbar-filters-label" data-i="toolbarFilters">Filters</span>
+    <select class="tb-select" id="responsible-select" onchange="selectResponsible(this.value)"
+            data-i-title="responsibleTip" title="Show only text assigned to one responsible" hidden>
+      <option value="" data-i="responsibleAll">— All responsibles —</option>
+    </select>
+    <select class="tb-select" id="importance-select" onchange="filterImportance(this.value)"
+            data-i-title="impTip" title="Show tasks with this importance in every workbook">
+      <option value="" data-i="impDefault">— All importance —</option>
+      <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
+      <option value="important" data-i="impImportantOpt">⭐ Important</option>
+      <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
+    </select>
+  </div>
   </div>
 </div>
 
@@ -4053,6 +4072,7 @@ const I18N = {
     dictateError:"Eroare la dictare:",
     explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
     navTip:"Navigare (Ctrl+1)", navBtn:"☰ Nav",
+    toolbarFilters:"Filtre",
     toolbarToggleTip:"Arată/ascunde bara de unelte",
     tabSource:"✎ Sursă", tabPreview:"👁 Previzualizare",
     explorerTitle:"Explorator imagini", closePanelTip:"Închide panoul",
@@ -4430,6 +4450,7 @@ const I18N = {
     dictateError:"Dictation error:",
     explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
     navTip:"Navigation (Ctrl+1)", navBtn:"☰ Nav",
+    toolbarFilters:"Filters",
     toolbarToggleTip:"Show/hide toolbar",
     tabSource:"✎ Source", tabPreview:"👁 Preview",
     explorerTitle:"Image Explorer", closePanelTip:"Close panel",
