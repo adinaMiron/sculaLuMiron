@@ -5685,6 +5685,11 @@ const ASSIGNEE_RE = new RegExp(
   `^(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})([ \\t]?)&gt;&gt;(?=[ \\t])`,
   'gmu'
 );
+// On task paragraphs, `>>Name` can sit anywhere in the text. Its direction
+// makes the boundary unambiguous, so this form uses one name token.
+const TASK_ASSIGNEE_RE = new RegExp(
+  '&gt;&gt;(' + ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}._\'-])', 'gu'
+);
 
 // "!nice" / "!important" / "!vital" — how much a line matters. Three levels,
 // one word each, written straight into the markdown so the file stays plain
@@ -6306,7 +6311,9 @@ function liWithTodo(mark, text, opts, lineIdx) {
   const key = status && 'taskStatus' + status.charAt(0).toUpperCase() + status.slice(1);
   const badge = status ? `<span class="task-status task-status-${status}"${opts && opts.forExport ? '' : ` data-i="${key}"`}>${attrEsc(t(key))}</span> ` : '';
   const body = statusMatch ? b.text.slice(statusMatch[0].length) : b.text;
-  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${badge}${applyInline(body, opts)}</li>`;
+  const taskBody = body.replace(TASK_ASSIGNEE_RE, (m, name) =>
+    `&gt;&gt;<span class="md-assignee">${name}</span>`);
+  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${badge}${applyInline(taskBody, opts)}</li>`;
 }
 
 /* ── Following a link ── */
@@ -6880,13 +6887,17 @@ const WB_RESPONSIBLE_RE = new RegExp(
   '^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
   `(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})[ \\t]?>>(?=[ \\t])`, 'u'
 );
+const WB_TASK_RESPONSIBLE_RE = new RegExp(
+  '^[ \\t]*[-*+][ \\t]+\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?[^\\n]*?>>(' + ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}._\'-])', 'u'
+);
 function wbResponsibleKey(name) { return name.normalize('NFC').toLowerCase(); }
 function wbWalkResponsibleLines(text, visit) {
   let fenced = false;
   String(text || '').split('\n').forEach((line, index) => {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
     if (fenced) return;
-    const match = line.match(WB_RESPONSIBLE_RE);
+    const taskMatch = line.match(WB_TASK_RESPONSIBLE_RE);
+    const match = taskMatch || line.match(WB_RESPONSIBLE_RE);
     if (match) visit(match[1].replace(/[ \t]+/g, ' '), line, index);
   });
 }
@@ -6972,7 +6983,8 @@ function wbPreviewFilteredText(text) {
     if (fenced) return;
     if (wbTodoOnlyAll && !WB_OPEN_TASK_RE.test(line)) return;
     if (wbResponsibleFilter) {
-      const match = line.match(WB_RESPONSIBLE_RE);
+      const taskMatch = line.match(WB_TASK_RESPONSIBLE_RE);
+      const match = taskMatch || line.match(WB_RESPONSIBLE_RE);
       if (!match || wbResponsibleKey(match[1].replace(/[ \t]+/g, ' ')) !== wbResponsibleFilter) return;
     }
     keep.push(line);

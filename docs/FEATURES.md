@@ -231,6 +231,11 @@ precedes an unrelated `>> ` elsewhere in the line. `renderAssignee()`
 the live preview and the HTML export (same function, both paths — see
 the note above).
 
+Within a task (`- [ ]`), `>>Name` is also accepted anywhere in the task text;
+the task renderer wraps the name while leaving the marker visible. This form
+uses one name token. The responsible filter scans it and can filter that task
+line. The legacy `Name>> ` prefix continues to work as described above.
+
 Styling is `.md-assignee` in the preview `<style>` (next to `.md-tag`,
 ~L1156) using `var(--danger)` — the shared terracotta status colour,
 reused rather than minting a new token because this is meant to read as
@@ -727,10 +732,10 @@ keystroke needed.
 ### Responsible filter — `Name>>` across all workbooks
 
 The toolbar select immediately right of `#importance-insert-select` appears
-when a chapter contains a leading `Name>>` marker. It lists each currently
+when a chapter contains a `Name>>` prefix or a `>>Name` marker in a task. It lists each currently
 present name once, across every workbook. Selecting one narrows the workbook
-tree to chapters with that name and the open chapter's preview to lines whose
-leading marker names that person. The editor still holds the complete text.
+tree to chapters with that name and the open chapter's preview to matching
+lines. The editor still holds the complete text.
 The responsible filter and global tasks-only filter can be used together.
 
 The scan accepts the same one-to-four-word name syntax as the markdown
