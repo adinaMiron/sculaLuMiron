@@ -838,6 +838,10 @@ builds the five columns; `writeStatus` updates one verified source line and
 the `pending` store in one transaction. The **Open** link returns to
 `index.html` with `chapter` and `line` query parameters.
 
+The chapter Gantt view stays in `index.html`: its modal and CSS are near the
+other editor modals, and `js/markdown/gantt.js` parses the open editor text,
+lays out dated task bars, and draws `#number` → `$number` dependencies.
+
 ---
 
 ## Fast recipes

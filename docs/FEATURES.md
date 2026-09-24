@@ -780,6 +780,27 @@ since it was displayed. **Open** returns to that chapter and selects the
 source line in the editor. The board reloads on focus so other tabs' saved
 changes appear.
 
+### Chapter Gantt view (`index.html`)
+
+The **▤ Gantt** button beside Kanban opens a diagram of checklist tasks in
+the current chapter, including edits still in the editor. Put `#1` on a task
+to identify it and `$1` on every task that depends on it. Repeat with other
+numbers; a dependent task may have several `$number` markers. Arrows run
+from each identified task to its dependents. Undefined and duplicate task
+numbers are reported above the chart. Markers are scoped to this chapter.
+
+The chart uses `start@date`, `end@date`, existing `@date` markers, or plain
+dates as on Kanban. A task with one date occupies one day; a task without a
+date appears at today with a dashed bar. Those placement defaults do not
+change the markdown. Responsible names, importance, dates, and dependencies
+appear under each task title. Clicking a title selects its source line.
+
+```md
+- [ ] Ana>> Design API #1 !vital start@2026-09-24 end@2026-09-27
+- [ ] Build client $1 >>Mihai !important start@2026-09-28 end@2026-10-02
+- [ ] Write docs $1 end@2026-10-03
+```
+
 ### The mirror read back — "⇩ Sincronizează în dosar"
 
 The mirror ran one way for a long time: records here, files there. But the

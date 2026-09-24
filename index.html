@@ -602,6 +602,35 @@
     gap: 14px;
   }
   .modal-title { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; color: var(--text); }
+  /* Chapter Gantt: a fixed task column and a horizontally scrolling day grid. */
+  #gantt-modal { padding: 12px; }
+  #gantt-modal .gantt-box { width: min(1500px, 100%); height: min(90vh, 900px); min-height: 300px; padding: 0; gap: 0; overflow: hidden; }
+  .gantt-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .gantt-head h2 { margin: 0; font-size: 18px; flex: 1; }
+  .gantt-head .btn { flex: none; }
+  .gantt-help { padding: 8px 18px; color: var(--text-2); font-size: 12px; border-bottom: 1px solid var(--border); }
+  #gantt-notice { padding: 8px 18px; color: var(--imp-important); font-size: 12px; }
+  #gantt-notice:empty { display: none; }
+  .gantt-body { display: flex; flex: 1; min-height: 0; overflow: auto; }
+  .gantt-labels { position: sticky; left: 0; z-index: 3; flex: 0 0 280px; background: var(--surface); border-right: 1px solid var(--border); }
+  .gantt-label-head { height: 44px; padding: 12px; font-weight: 600; border-bottom: 1px solid var(--border); }
+  .gantt-label { height: 68px; padding: 7px 11px; border-bottom: 1px solid var(--border); overflow: hidden; }
+  .gantt-label a { display: block; color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .gantt-label a:hover { color: var(--accent-2); }
+  .gantt-label small { display: block; color: var(--text-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .gantt-chart { position: relative; flex: none; }
+  .gantt-days { height: 44px; display: flex; border-bottom: 1px solid var(--border); }
+  .gantt-day { flex: none; padding: 4px 3px; border-right: 1px solid var(--border); font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; }
+  .gantt-row { position: relative; height: 68px; border-bottom: 1px solid var(--border); background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); }
+  .gantt-bar { position: absolute; top: 15px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--bg); z-index: 2; min-width: 8px; }
+  .gantt-bar.done { background: var(--imp-nice); }
+  .gantt-bar.vital { background: var(--imp-vital); color: white; }
+  .gantt-bar.important { background: var(--imp-important); }
+  .gantt-bar.inferred { opacity: .72; border: 2px dashed var(--text); }
+  .gantt-bar span { display: block; padding: 4px 7px; font-size: 11px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .gantt-arrows { position: absolute; top: 44px; left: 0; pointer-events: none; z-index: 2; overflow: visible; }
+  .gantt-empty { padding: 28px; color: var(--text-2); }
+  @media (max-width: 700px) { .gantt-labels { flex-basis: 170px; } .gantt-head { padding: 10px; } .gantt-help { padding: 7px 10px; } }
   .field label { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
   .field input, .field select, .field textarea {
     width: 100%;
@@ -3397,6 +3426,7 @@
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
     <button class="btn" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
+    <button class="btn" id="btn-gantt" onclick="openGantt()" data-i="ganttBtn" data-i-title="ganttTip" title="Show this chapter's tasks as a Gantt chart">▤ Gantt</button>
     <!-- Shown only while the open chapter holds a "^@" place — docs/FEATURES.md § S.
          mapRefresh() flips it on every keystroke, so the button appears the
          moment the first marker is typed and leaves when the last one goes. -->
@@ -3738,6 +3768,15 @@ Use the toolbar above to insert formatting.
   </div>
 </div>
 
+<div class="image-modal" id="gantt-modal" role="dialog" aria-modal="true" aria-labelledby="gantt-title">
+  <div class="modal-box gantt-box">
+    <div class="gantt-head"><h2 id="gantt-title" data-i="ganttTitle">Chapter Gantt</h2><button class="btn" id="gantt-close" type="button" onclick="closeGantt()" data-i="closeBtn">Close</button></div>
+    <div class="gantt-help" data-i="ganttHelp">Use #1 on a prerequisite task and $1 on each task that depends on it. Dates: start@2026-09-24 and end@2026-09-30.</div>
+    <div id="gantt-notice" role="status"></div>
+    <div class="gantt-body" id="gantt-body"><div class="gantt-labels" id="gantt-labels"></div><div class="gantt-chart" id="gantt-chart"></div></div>
+  </div>
+</div>
+
 <!-- Link modal -->
 <div class="image-modal" id="link-modal">
   <div class="modal-box">
@@ -4029,6 +4068,7 @@ Use the toolbar above to insert formatting.
 <script src="js/markdown/i18n.js"></script>
 <script src="js/markdown/editor.js"></script>
 <script src="js/markdown/markdown.js"></script>
+<script src="js/markdown/gantt.js"></script>
 <script src="js/markdown/workbooks.js"></script>
 <script src="js/markdown/idea.js"></script>
 <script src="js/markdown/graph.js"></script>

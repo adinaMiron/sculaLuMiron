@@ -276,6 +276,9 @@ const I18N = {
     ideaBtn:"💡 Idee", ideaTip:"Notează o idee direct în capitolul ei (Ctrl+Alt+I)",
     calSyncBtn:"📅 Trimite datele", calSyncTip:"Trimite fiecare „@dată” din toate caietele în calendar (Ctrl+Alt+D)",
     kanbanBtn:"▦ Kanban", kanbanTip:"Deschide panoul de sarcini pentru acest capitol",
+    ganttBtn:"▤ Gantt", ganttTip:"Arată diagrama Gantt pentru sarcinile din acest capitol",
+    ganttTitle:"Diagrama Gantt a capitolului", ganttHelp:"Pune #1 pe sarcina de care depind altele și $1 pe fiecare sarcină dependentă. Date: start@2026-09-24 și end@2026-09-30.",
+    ganttTasks:"Sarcini", ganttEmpty:"Nu există sarcini în acest capitol. Adaugă o linie „- [ ]”.", ganttNoDate:"fără dată · afișată astăzi", ganttStart:"Început", ganttEnd:"Sfârșit", ganttDepends:"Depinde de", ganttMissing:n=>`Nu există o sarcină #${n} în acest capitol.`, ganttDuplicate:n=>`Marcajul #${n} apare pe mai multe sarcini.`,
     calSynced:([n, gone]) => (n === 1 ? "1 dată trimisă în calendar" : n + " date trimise în calendar") +
                              (gone ? ", " + gone + " șterse" : "") + ".",
     calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
@@ -654,6 +657,9 @@ const I18N = {
     ideaBtn:"💡 Idea", ideaTip:"Capture an idea straight into its chapter (Ctrl+Alt+I)",
     calSyncBtn:"📅 Push dates", calSyncTip:"Send every \u201C@date\u201D in every workbook to the calendar (Ctrl+Alt+D)",
     kanbanBtn:"▦ Kanban", kanbanTip:"Open the task board for this chapter",
+    ganttBtn:"▤ Gantt", ganttTip:"Show this chapter's tasks as a Gantt chart",
+    ganttTitle:"Chapter Gantt chart", ganttHelp:"Put #1 on a prerequisite task and $1 on each task that depends on it. Dates: start@2026-09-24 and end@2026-09-30.",
+    ganttTasks:"Tasks", ganttEmpty:"No tasks in this chapter. Add a “- [ ]” line.", ganttNoDate:"undated · shown today", ganttStart:"Start", ganttEnd:"End", ganttDepends:"Depends on", ganttMissing:n=>`No task #${n} exists in this chapter.`, ganttDuplicate:n=>`Marker #${n} is on multiple tasks.`,
     calSynced:([n, gone]) => (n === 1 ? "1 date sent to the calendar" : n + " dates sent to the calendar") +
                              (gone ? ", " + gone + " removed" : "") + ".",
     calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
@@ -825,4 +831,3 @@ window.addEventListener("scula-ui-lang", e => { UI = e.detail; applyUILang(); st
   UI = saved === "en" || saved === "ro" ? saved : "ro";
   applyUILang();
 })();
-
