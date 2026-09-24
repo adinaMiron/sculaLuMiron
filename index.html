@@ -351,6 +351,14 @@
   }
   .wb-ch-row:hover { background: var(--surface-2); color: var(--text); }
   .wb-ch-row.current { border-left-color: var(--accent); background: var(--surface-2); color: var(--accent-2); }
+  .wb-ch-row[draggable="true"] { cursor: grab; }
+  .wb-ch-row.wb-dragging { opacity: 0.4; }
+  .wb-ch-row.wb-drop-before { box-shadow: inset 0 2px var(--accent); }
+  .wb-ch-row.wb-drop-after { box-shadow: inset 0 -2px var(--accent); }
+  .wb-book-row.wb-drop-append, .wb-chapters.wb-drop-append {
+    box-shadow: inset 0 -2px var(--accent);
+    background: var(--surface-2);
+  }
   .wb-ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* chapter edited since its last save — cleared by "Save to workbook" / "Save all modified" */
   .wb-ch-row.modified .wb-ch-name::after,

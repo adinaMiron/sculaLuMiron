@@ -376,10 +376,11 @@ async function cloudSync(interactive) {
       // changed or not: the old files went with a deleted folder, or sit in
       // another workbook's.
       const moved = rehomed.get(lc.workbookId);
+      const movedBook = rc && rc.workbookId !== lc.workbookId;
       if (!rc || moved || (lc.updated || 0) > (rc.updated || 0)) {
         const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }),
-                                   moved ? null : driveId);
-        if (moved === 'shared' && driveId) await gsTrash(driveId);
+                                   (moved || movedBook) ? null : driveId);
+        if ((moved === 'shared' || movedBook) && driveId) await gsTrash(driveId);
         driveId = file.id;
         up++;
       }

@@ -606,6 +606,34 @@ function wbBindName(span, type, id, singleClick) {
   });
 }
 
+let wbDraggedChapterId = null;
+let wbMovingChapter = false;
+function wbClearDropHint(endDrag = false) {
+  document.querySelectorAll('.wb-drop-before, .wb-drop-after, .wb-drop-append' + (endDrag ? ', .wb-dragging' : ''))
+    .forEach(el => el.classList.remove('wb-drop-before', 'wb-drop-after', 'wb-drop-append', 'wb-dragging'));
+}
+function wbBindChapterDrop(el, bookId, targetId = null) {
+  el.addEventListener('dragover', e => {
+    if (!wbDraggedChapterId || wbMovingChapter || !wbBook(bookId)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    wbClearDropHint();
+    const before = targetId && e.clientY < el.getBoundingClientRect().top + el.offsetHeight / 2;
+    el.classList.add(targetId ? (before ? 'wb-drop-before' : 'wb-drop-after') : 'wb-drop-append');
+  });
+  el.addEventListener('drop', e => {
+    if (!wbDraggedChapterId || wbMovingChapter) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const before = targetId && e.clientY < el.getBoundingClientRect().top + el.offsetHeight / 2;
+    const id = wbDraggedChapterId;
+    wbDraggedChapterId = null;
+    wbClearDropHint(true);
+    wbMoveChapterTo(id, bookId, targetId, before);
+  });
+}
+
 // Forget the remembered name once the user clicks anywhere that isn't a name.
 document.addEventListener('click', (e) => {
   if (!e.target.closest || !e.target.closest('.wb-book-name, .wb-ch-name')) wbLastName = null;
@@ -660,6 +688,7 @@ function renderWorkbooks() {
     const row = document.createElement('div');
     row.className = 'wb-book-row' + (chapters.some(c => wbPendingIds.has(c.id)) ? ' has-modified' : '');
     row.title = book.folder + '/';
+    wbBindChapterDrop(row, book.id);
     row.addEventListener('click', () => {
       if (open) wbOpenBooks.delete(book.id); else wbOpenBooks.add(book.id);
       renderWorkbooks();
@@ -701,6 +730,7 @@ function renderWorkbooks() {
 
     const list = document.createElement('div');
     list.className = 'wb-chapters';
+    wbBindChapterDrop(list, book.id);
     if (!chapters.length) {
       const none = document.createElement('div');
       none.className = 'wb-ch-empty';
@@ -717,6 +747,17 @@ function renderWorkbooks() {
       const chRow = document.createElement('div');
       chRow.className = 'wb-ch-row' + (ch.id === wbCurrentId ? ' current' : '') + (wbPendingIds.has(ch.id) ? ' modified' : '');
       chRow.title = book.folder + '/' + ch.file;
+      chRow.draggable = true;
+      chRow.addEventListener('dragstart', e => {
+        if (wbMovingChapter || e.target.closest('[contenteditable="true"]')) { e.preventDefault(); return; }
+        clearTimeout(wbNameClickTimer);
+        wbDraggedChapterId = ch.id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', ch.id);
+        requestAnimationFrame(() => chRow.classList.add('wb-dragging'));
+      });
+      chRow.addEventListener('dragend', () => { wbDraggedChapterId = null; wbClearDropHint(true); });
+      wbBindChapterDrop(chRow, book.id, ch.id);
       chRow.addEventListener('click', () => wbSelectChapter(ch.id));
 
       const chName = document.createElement('span');
@@ -954,6 +995,74 @@ async function moveChapter(id, dir) {
   });
   for (const c of changed) { if (!await wbPersist(WB_CHAPTERS, c)) return; }
   renderWorkbooks();
+}
+
+// Drop before/after a chapter, or onto a workbook header/empty list to append.
+// Persist the entire affected order in one transaction so a reload cannot see
+// half a move. The chapter keeps its id, content, and open editor state.
+async function wbMoveChapterTo(id, bookId, targetId, before) {
+  if (wbMovingChapter) return;
+  const ch = wbChapter(id), book = wbBook(bookId);
+  if (!ch || !book || targetId === id) return;
+  const target = targetId ? wbChapter(targetId) : null;
+  if (targetId && (!target || target.workbookId !== bookId)) return;
+  wbMovingChapter = true;
+  try {
+    if (id === wbCurrentId) await flushChapter();
+    const oldBook = wbBook(ch.workbookId);
+    const oldFile = ch.file;
+    const changingBooks = ch.workbookId !== bookId;
+    const source = wbChaptersOf(ch.workbookId).filter(c => c.id !== id);
+    const destination = changingBooks ? wbChaptersOf(bookId) : source;
+    const at = target ? destination.findIndex(c => c.id === targetId) + (before ? 0 : 1) : destination.length;
+    if (at < 0) return;
+    destination.splice(at, 0, ch);
+    const now = Date.now();
+    const changes = [];
+    const fileTaken = changingBooks && destination.some(item => item.id !== id && item.file.toLowerCase() === ch.file.toLowerCase());
+    const movedFile = fileTaken ? wbUniqueFile(bookId, ch.title, ch.id) : ch.file;
+    const reindex = (items, workbookId) => items.forEach((item, order) => {
+      const file = item.id === id && changingBooks ? movedFile : item.file;
+      if (item.workbookId !== workbookId || item.order !== order || item.file !== file) {
+        changes.push({ ...item, workbookId, order, file, updated: now });
+      }
+    });
+    if (changingBooks) reindex(source, oldBook.id);
+    reindex(destination, bookId);
+    if (!changes.length) return;
+    const pending = changingBooks && wbPendingIds.has(id)
+      ? { chapterId: id, workbookId: bookId, content: ch.content, updated: now } : null;
+    try {
+      const db = await wbDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(pending ? [WB_CHAPTERS, WB_PENDING] : [WB_CHAPTERS], 'readwrite');
+        changes.forEach(item => tx.objectStore(WB_CHAPTERS).put(item));
+        if (pending) tx.objectStore(WB_PENDING).put(pending);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      }).finally(() => db.close());
+    } catch (e) { wbSay(t('wbStoreFailed'), true); return; }
+    changes.forEach(item => Object.assign(wbChapter(item.id), item));
+    if (changingBooks) {
+      wbOpenBooks.add(bookId);
+      if (id === wbCurrentId) {
+        document.getElementById('current-file').textContent = ch.file;
+        wbDraftWrite();
+      }
+      if (wbFolderMode()) {
+        const written = await wbMirrorWrite(book, ch, ch.content || '');
+        if (written) {
+          await wbMirrorRemove(oldBook.folder, oldFile);
+          if (pending) await wbPendingClear(id);
+        } else {
+          await wbPendingMark(ch);
+        }
+      }
+    }
+    renderWorkbooks();
+    cloudAutoSync();
+  } finally { wbMovingChapter = false; }
 }
 
 // Hands one chapter out through the shared route: the markdown folder on
@@ -1208,4 +1317,3 @@ async function confirmSaveToWorkbook() {
   await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
 }
-
