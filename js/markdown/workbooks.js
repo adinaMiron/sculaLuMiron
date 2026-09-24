@@ -608,11 +608,14 @@ function wbBindName(span, type, id, singleClick) {
 
 let wbDraggedChapterId = null;
 let wbMovingChapter = false;
+let wbTouchDrag = null;
 function wbClearDropHint(endDrag = false) {
   document.querySelectorAll('.wb-drop-before, .wb-drop-after, .wb-drop-append' + (endDrag ? ', .wb-dragging' : ''))
     .forEach(el => el.classList.remove('wb-drop-before', 'wb-drop-after', 'wb-drop-append', 'wb-dragging'));
 }
 function wbBindChapterDrop(el, bookId, targetId = null) {
+  el.dataset.wbDropBook = bookId;
+  if (targetId) el.dataset.wbDropChapter = targetId;
   el.addEventListener('dragover', e => {
     if (!wbDraggedChapterId || wbMovingChapter || !wbBook(bookId)) return;
     e.preventDefault();
@@ -633,6 +636,61 @@ function wbBindChapterDrop(el, bookId, targetId = null) {
     wbMoveChapterTo(id, bookId, targetId, before);
   });
 }
+
+// A long press starts a chapter move on touch screens. Until then, the list
+// keeps its normal tap and vertical scroll behaviour.
+function wbTouchAt(x, y) {
+  const hit = document.elementFromPoint(x, y);
+  const el = hit && hit.closest('[data-wb-drop-book]');
+  if (!el || !document.getElementById('wb-tree').contains(el) || !wbBook(el.dataset.wbDropBook)) return null;
+  const targetId = el.dataset.wbDropChapter || null;
+  const before = !!targetId && y < el.getBoundingClientRect().top + el.offsetHeight / 2;
+  return { el, bookId: el.dataset.wbDropBook, targetId, before };
+}
+function wbTouchHint(x, y) {
+  wbClearDropHint();
+  const target = wbTouchAt(x, y);
+  if (target) target.el.classList.add(target.targetId ? (target.before ? 'wb-drop-before' : 'wb-drop-after') : 'wb-drop-append');
+  return target;
+}
+function wbTouchFor(e) {
+  return wbTouchDrag && Array.from(e.changedTouches).find(touch => touch.identifier === wbTouchDrag.identifier);
+}
+document.addEventListener('touchstart', e => {
+  if (!wbTouchDrag || e.touches.length < 2) return;
+  clearTimeout(wbTouchDrag.timer);
+  wbTouchDrag = null;
+  wbDraggedChapterId = null;
+  wbClearDropHint(true);
+}, { passive: true });
+function wbEndTouchDrag(e, cancelled = false) {
+  const touch = wbTouchFor(e);
+  if (!touch) return;
+  const drag = wbTouchDrag;
+  clearTimeout(drag.timer);
+  wbTouchDrag = null;
+  if (!drag.active) return;
+  e.preventDefault(); // also suppresses the synthetic click after a drop
+  const target = cancelled ? null : wbTouchAt(touch.clientX, touch.clientY);
+  wbDraggedChapterId = null;
+  wbClearDropHint(true);
+  if (target) wbMoveChapterTo(drag.id, target.bookId, target.targetId, target.before);
+}
+document.addEventListener('touchmove', e => {
+  const touch = wbTouchFor(e);
+  if (!touch) return;
+  if (!wbTouchDrag.active) {
+    if (Math.hypot(touch.clientX - wbTouchDrag.x, touch.clientY - wbTouchDrag.y) > 8) {
+      clearTimeout(wbTouchDrag.timer);
+      wbTouchDrag = null;
+    }
+    return;
+  }
+  e.preventDefault();
+  wbTouchHint(touch.clientX, touch.clientY);
+}, { passive: false });
+document.addEventListener('touchend', e => wbEndTouchDrag(e), { passive: false });
+document.addEventListener('touchcancel', e => wbEndTouchDrag(e, true), { passive: false });
 
 // Forget the remembered name once the user clicks anywhere that isn't a name.
 document.addEventListener('click', (e) => {
@@ -757,6 +815,21 @@ function renderWorkbooks() {
         requestAnimationFrame(() => chRow.classList.add('wb-dragging'));
       });
       chRow.addEventListener('dragend', () => { wbDraggedChapterId = null; wbClearDropHint(true); });
+      chRow.addEventListener('contextmenu', e => { if (wbTouchDrag && wbTouchDrag.active) e.preventDefault(); });
+      chRow.addEventListener('touchstart', e => {
+        if (wbTouchDrag || wbMovingChapter || e.touches.length !== 1 || e.target.closest('.wb-acts, [contenteditable="true"]')) return;
+        const touch = e.changedTouches[0];
+        const drag = { id: ch.id, identifier: touch.identifier, x: touch.clientX, y: touch.clientY, active: false, timer: null };
+        wbTouchDrag = drag;
+        drag.timer = setTimeout(() => {
+          if (wbTouchDrag !== drag) return;
+          drag.active = true;
+          clearTimeout(wbNameClickTimer);
+          wbDraggedChapterId = ch.id;
+          chRow.classList.add('wb-dragging');
+          wbTouchHint(drag.x, drag.y);
+        }, 350);
+      }, { passive: true });
       wbBindChapterDrop(chRow, book.id, ch.id);
       chRow.addEventListener('click', () => wbSelectChapter(ch.id));
 

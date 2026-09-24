@@ -63,5 +63,53 @@ const CHROME = process.env.PW_CHROME_PATH || undefined;
       wbChapter('drag_one').workbookId === 'drag_c' && wbChaptersOf('drag_b')[1].id === 'drag_two'
     ), 'moves persist after reload');
     assert(!errors.length, 'no page errors: ' + errors.join('; '));
+
+    const touchContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const touchPage = await touchContext.newPage();
+    const touchErrors = [];
+    touchPage.on('pageerror', error => touchErrors.push(error.message));
+    await touchPage.goto(URL);
+    await touchPage.waitForFunction(() => wbBooted);
+    await touchPage.evaluate(async () => {
+      const books = [
+        { id: 'touch_a', name: 'First', folder: 'touch-first', created: 1, updated: 1, order: 0 },
+        { id: 'touch_b', name: 'Second', folder: 'touch-second', created: 1, updated: 1, order: 1 }
+      ];
+      const chapters = [
+        { id: 'touch_one', workbookId: 'touch_a', title: 'One', file: 'one.md', content: 'One', created: 1, updated: 1, order: 0 },
+        { id: 'touch_two', workbookId: 'touch_a', title: 'Two', file: 'two.md', content: 'Two', created: 1, updated: 1, order: 1 }
+      ];
+      wbBooks.push(...books); wbChapters.push(...chapters);
+      for (const book of books) await wbPut(WB_BOOKS, book);
+      for (const ch of chapters) await wbPut(WB_CHAPTERS, ch);
+      wbOpenBooks.add('touch_a');
+      renderWorkbooks();
+      if (document.getElementById('wb-panel').classList.contains('collapsed')) toggleWorkbooks();
+    });
+    const touchRow = id => touchPage.locator('.wb-ch-name[data-wb-id="' + id + '"]').locator('..');
+    const touchBook = id => touchPage.locator('.wb-book-name[data-wb-id="' + id + '"]').locator('..');
+    const cdp = await touchContext.newCDPSession(touchPage);
+    const point = async (locator, nearTop = false) => {
+      const box = await locator.boundingBox();
+      return { x: Math.round(box.x + Math.min(35, box.width / 2)), y: Math.round(box.y + (nearTop ? 3 : box.height / 2)) };
+    };
+    const touchDrag = async (from, to) => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...from, id: 1 }] });
+      await touchPage.waitForTimeout(420);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...to, id: 1 }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await touchDrag(await point(touchRow('touch_two')), await point(touchRow('touch_one'), true));
+    await touchPage.waitForFunction(() => wbChaptersOf('touch_a')[0].id === 'touch_two');
+    assert(await touchPage.evaluate(() => wbChaptersOf('touch_a').map(ch => ch.id).join(',') === 'touch_two,touch_one'), 'touch hold and drag reorders chapters');
+    await touchDrag(await point(touchRow('touch_one')), await point(touchBook('touch_b')));
+    await touchPage.waitForFunction(() => wbChapter('touch_one').workbookId === 'touch_b');
+    assert(await touchPage.evaluate(() => wbChaptersOf('touch_b')[0].id === 'touch_one'), 'touch drag moves a chapter into another workbook');
+    assert(await touchPage.evaluate(() => wbCurrentId === null), 'touch drop does not also open a chapter');
+    await touchRow('touch_two').locator('.wb-ch-name').tap();
+    await touchPage.waitForFunction(() => wbCurrentId === 'touch_two');
+    assert(await touchPage.evaluate(() => wbCurrentId === 'touch_two'), 'ordinary touch tap still opens a chapter');
+    assert(!touchErrors.length, 'no touch page errors: ' + touchErrors.join('; '));
+    await touchContext.close();
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
