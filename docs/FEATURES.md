@@ -684,6 +684,16 @@ is that record.
 
 ### The TODO filter — show only chapters with an open box
 
+The toolbar's **Task status** select sets the task at the caret, or every task
+line in a selection, to one of five states. `- [ ]` means **to do** and
+`- [x]` means **done**. The three middle states keep an unchecked checkbox
+and put a marker at the start of the task text: `- [ ] ~inwork ...`,
+`- [ ] ~onhold ...`, and `- [ ] ~blocked ...`. Choosing another state replaces
+the marker; choosing to do or done removes it. The preview shows translated
+status badges, and clicking a checkbox marks a task done or returns it to to
+do. The same status appears in HTML export. Markers stay in Markdown files.
+Assignee and importance markers can follow the status marker.
+
 A workbook whose **name contains "TODO"** (case-insensitive, `wbIsTodoBook`)
 gets one extra act button in its row: `☑`. It toggles the workbook's id in
 `wbTodoOnly` (a `Set`, in-memory only — not persisted) and re-renders.
@@ -697,7 +707,7 @@ for the open chapter, without a disk read. The row count shows
 list shows `wbNoOpenTasks`. Checked boxes (`- [x]`) don't count — only `- [ ]`.
 
 **The global switch.** The editor toolbar has a `▣ Tasks only` button
-(`#btn-filter-todo`, right of `☑ Toggle Done`) — `toggleTodoFilterAll()`
+(`#btn-filter-todo`, right of the task status select) — `toggleTodoFilterAll()`
 flips `wbTodoOnlyAll` (a plain bool, in-memory only) and re-renders. While it
 is on, *every* workbook is filtered by `wbChapterHasOpenTask` regardless of
 its name, a book left with no matching chapter is dropped from the panel

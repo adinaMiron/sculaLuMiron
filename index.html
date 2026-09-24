@@ -545,6 +545,10 @@
   #preview ul.task-list { list-style: none; margin-left: 4px; }
   #preview li.task-list-item { margin: 4px 0; }
   #preview .task-checkbox { margin-right: 6px; cursor: pointer; accent-color: var(--accent); }
+  .task-status { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font-size: 0.82em; font-weight: 700; vertical-align: baseline; background: var(--surface-2); }
+  .task-status-inwork { color: var(--accent-2); }
+  .task-status-onhold { color: var(--text-2); }
+  .task-status-blocked { color: var(--danger); }
   #preview strong { color: var(--text); font-weight: 700; }
   #preview em { color: var(--accent-2); font-style: italic; }
   #preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; border: 1px solid var(--border); }
@@ -3438,6 +3442,15 @@
   <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
   <button class="tb-btn" onclick="insertTodoList()" data-i="todoListBtn" data-i-title="todoListTip" title="To-do List">☐ Todo</button>
   <button class="tb-btn" onclick="toggleTodoDone()" data-i="toggleTodoBtn" data-i-title="toggleTodoTip" title="Toggle Done">☑ Toggle Done</button>
+  <select class="tb-select" id="task-status-select" onchange="setTaskStatus(this.value)"
+          data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks">
+    <option value="" data-i="taskStatusDefault">— Task status —</option>
+    <option value="todo" data-i="taskStatusTodo">☐ To do</option>
+    <option value="inwork" data-i="taskStatusInwork">◐ In work</option>
+    <option value="onhold" data-i="taskStatusOnhold">Ⅱ On hold</option>
+    <option value="blocked" data-i="taskStatusBlocked">⛔ Blocked</option>
+    <option value="done" data-i="taskStatusDone">☑ Done</option>
+  </select>
   <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
 
   <!-- Importance: marks the caret's line (or every line of the selection).
@@ -4003,6 +4016,9 @@ const I18N = {
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
+    taskStatusTip:"Alege starea sarcinii de la cursor sau a sarcinilor selectate",
+    taskStatusDefault:"— Stare sarcină —", taskStatusTodo:"☐ De făcut", taskStatusInwork:"◐ În lucru",
+    taskStatusOnhold:"Ⅱ În așteptare", taskStatusBlocked:"⛔ Blocată", taskStatusDone:"☑ Terminată",
     filterAllTodoBtn:"▣ Doar sarcini", filterAllTodoTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”), din toate caietele, și în capitolul deschis doar liniile nebifate",
     // Importance markers. The *syntax* stays English (!nice / !important /
     // !vital) so a file reads the same in both languages — only the label
@@ -4329,6 +4345,8 @@ const I18N = {
       <p>Butonul 💡 sau <kbd>Ctrl+Alt+I</kbd> deschide o casetă: scrii „Nume capitol: idee” și textul ajunge acolo — sau, fără nume, în caietul „Idei”, la capitolul de azi. <kbd>Ctrl+Enter</kbd> trimite, <kbd>Esc</kbd> închide.</p>
       <h3>Marcaje de importanță</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — din selectul din bară sau <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> șterge). Click pe pastilă caută tot ce mai are același marcaj.</p>
+      <h3>Starea sarcinilor</h3>
+      <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
       <h3>Responsabil</h3>
       <p><code>Nume>> text</code> la începutul rândului marchează cine se ocupă de acea sarcină.</p>
       <h3>Marcajul de dată @dată</h3>
@@ -4377,6 +4395,9 @@ const I18N = {
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
+    taskStatusTip:"Set the status of the task at the caret or selected tasks",
+    taskStatusDefault:"— Task status —", taskStatusTodo:"☐ To do", taskStatusInwork:"◐ In work",
+    taskStatusOnhold:"Ⅱ On hold", taskStatusBlocked:"⛔ Blocked", taskStatusDone:"☑ Done",
     filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
     impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
     impInsertTip:"Insert an importance marker at the cursor",
@@ -4700,6 +4721,8 @@ const I18N = {
       <p>The 💡 button or <kbd>Ctrl+Alt+I</kbd> opens one box: write "Chapter name: idea" and the text lands there — or, with no name, in the "Idei" workbook, under today's chapter. <kbd>Ctrl+Enter</kbd> files it, <kbd>Esc</kbd> closes the box.</p>
       <h3>Importance markers</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — from the toolbar select or <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> clears). Clicking a pill searches for everything else carrying the same marker.</p>
+      <h3>Task status</h3>
+      <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks. The preview checkbox marks a task done or returns it to to do.</p>
       <h3>Assignee marker</h3>
       <p><code>Name>> text</code> at the start of a line marks who owns that task.</p>
       <h3>The @date marker</h3>
@@ -5045,6 +5068,38 @@ function insertTodoList() {
   updatePreview(); updateStatus();
 }
 
+// The three middle states stay plain Markdown markers after an unchecked
+// task box. A checked box is always done; an unmarked open box is to do.
+const TASK_STATUS_MARKERS = { inwork: '~inwork', onhold: '~onhold', blocked: '~blocked' };
+const TASK_STATUS_LEAD_RE = /^(~(?:inwork|onhold|blocked))(?:[ \t]+|$)/;
+const TASK_LINE_RE = /^([ \t]*[-*+][ \t]+)\[([ xX])\]([ \t]+|$)(.*)$/;
+function taskSetLineStatus(line, status) {
+  const match = line.match(TASK_LINE_RE);
+  if (!match) return line;
+  const body = match[4].replace(TASK_STATUS_LEAD_RE, '');
+  const marker = TASK_STATUS_MARKERS[status];
+  return match[1] + (status === 'done' ? '[x]' : '[ ]') + (match[3] || (marker ? ' ' : ''))
+    + (marker ? marker + (body ? ' ' : '') : '') + body;
+}
+
+// Change the task at the caret, or all task lines touched by a selection.
+function setTaskStatus(status) {
+  const select = document.getElementById('task-status-select');
+  if (select) select.value = '';
+  if (!['todo', 'inwork', 'onhold', 'blocked', 'done'].includes(status)) return;
+  editor.focus();
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  const val = editor.value;
+  const from = val.lastIndexOf('\n', start - 1) + 1;
+  const nl = val.indexOf('\n', end);
+  const to = nl === -1 ? val.length : nl;
+  const old = val.slice(from, to);
+  const next = old.split('\n').map(line => taskSetLineStatus(line, status)).join('\n');
+  if (next === old) return;
+  editor.setRangeText(next, from, to, 'end');
+  updatePreview(); updateStatus(); scheduleAutosave();
+}
+
 function insertLineBelow() {
   editor.focus();
   const start = editor.selectionStart;
@@ -5136,8 +5191,9 @@ function toggleTodoDone() {
   const start = editor.selectionStart, end = editor.selectionEnd;
   const val = editor.value;
   const toggleLine = l => {
-    if (/^(\s*[-*+]\s+)\[([ xX])\]/.test(l)) {
-      return l.replace(/^(\s*[-*+]\s+)\[([ xX])\]/, (m, bullet, mark) => bullet + (mark === ' ' ? '[x]' : '[ ]'));
+    const task = l.match(TASK_LINE_RE);
+    if (task) {
+      return taskSetLineStatus(l, task[2] === ' ' ? 'done' : 'todo');
     }
     if (/^\s*[-*+]\s+/.test(l)) {
       return l.replace(/^(\s*[-*+]\s+)/, '$1[ ] ');
@@ -5154,7 +5210,7 @@ function toggleTodoDone() {
     const line = val.substring(lineStart, lineEndPos);
     editor.setRangeText(toggleLine(line), lineStart, lineEndPos, 'end');
   }
-  updatePreview(); updateStatus();
+  updatePreview(); updateStatus(); scheduleAutosave();
 }
 
 function insertFontSize(size) {
@@ -5650,7 +5706,7 @@ const IMP_LEAD_RE = /^!(?:nice|important|vital)(?![\p{L}\p{N}_-])[ \t]*/u;
 // quote — and then an assignee prefix, because "Ana>> !vital call her" has
 // to keep matching ASSIGNEE_RE, which is anchored to the line start.
 const IMP_LINE_LEAD = new RegExp(
-  '^([ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
+  '^([ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
   `(?:${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3}[ \\t]?>>[ \\t]+)?)`,
   'u'
 );
@@ -5880,6 +5936,7 @@ function calTitleOf(line, hit) {
   let s = line.slice(0, hit.index) + line.slice(hit.index + hit.length);
   // the bullet, the "[ ]", the number, the hashes, the quote mark
   s = s.replace(/^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+|#{1,6}\s+|>\s+)/, '');
+  s = s.replace(TASK_STATUS_LEAD_RE, '');
   s = s.replace(IMP_RE, '$1');
   s = s.replace(/^\s*[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}(?:[ \t]+[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}){0,3}[ \t]?>>[ \t]+/u, '');
   s = s.replace(WIKI_RE, (m, bang, target, alias) => alias || target);
@@ -6244,7 +6301,12 @@ function liWithTodo(mark, text, opts, lineIdx) {
   const b = takeBlockId(text);
   const checked = mark.toLowerCase() === 'x';
   const dataLine = lineIdx === null || lineIdx === undefined ? '' : ` data-line="${lineIdx}"`;
-  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${applyInline(b.text, opts)}</li>`;
+  const statusMatch = b.text.match(TASK_STATUS_LEAD_RE);
+  const status = !checked && statusMatch ? Object.keys(TASK_STATUS_MARKERS).find(key => TASK_STATUS_MARKERS[key] === statusMatch[1]) : '';
+  const key = status && 'taskStatus' + status.charAt(0).toUpperCase() + status.slice(1);
+  const badge = status ? `<span class="task-status task-status-${status}"${opts && opts.forExport ? '' : ` data-i="${key}"`}>${attrEsc(t(key))}</span> ` : '';
+  const body = statusMatch ? b.text.slice(statusMatch[0].length) : b.text;
+  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${badge}${applyInline(body, opts)}</li>`;
 }
 
 /* ── Following a link ── */
@@ -6600,7 +6662,7 @@ preview.addEventListener('click', e => {
     const lineIdx = wbPreviewLineMap ? wbPreviewLineMap[previewLineIdx] : previewLineIdx;
     const lines = editor.value.split('\n');
     if (!Number.isInteger(lineIdx) || !lines[lineIdx]) return;
-    lines[lineIdx] = lines[lineIdx].replace(/\[([ xX])\]/, (m, mark) => mark === ' ' ? '[x]' : '[ ]');
+    lines[lineIdx] = taskSetLineStatus(lines[lineIdx], cb.checked ? 'done' : 'todo');
     undoMark(false);
     editor.value = lines.join('\n');
     updatePreview(); updateStatus(); scheduleAutosave();
@@ -6815,7 +6877,7 @@ let wbResponsibleWrite = Promise.resolve();
 // including one inside a list item, task, heading or quote. Code fences are
 // skipped because their contents are displayed literally.
 const WB_RESPONSIBLE_RE = new RegExp(
-  '^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
+  '^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
   `(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})[ \\t]?>>(?=[ \\t])`, 'u'
 );
 function wbResponsibleKey(name) { return name.normalize('NFC').toLowerCase(); }
@@ -12131,6 +12193,11 @@ function exportHtml() {
     .md-color { font-family: 'Courier New', monospace; font-size: 0.92em; white-space: nowrap; }
     .md-color-sw { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.12em; border-radius: 3px; border: 1px solid #ccc; }
     .md-assignee { color: #C4643C; font-weight: 600; }
+    .task-list { list-style: none; margin-left: 0; }
+    .task-status { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font-size: 0.82em; font-weight: 700; background: #f4f4f4; }
+    .task-status-inwork { color: #736c24; }
+    .task-status-onhold { color: #5f6c64; }
+    .task-status-blocked { color: #a1421c; }
     .md-imp { display: inline-block; padding: 0 8px; margin-right: 5px; border-radius: 10px; font-size: 0.85em; font-weight: 600; white-space: nowrap; }
     .md-imp-ico { margin-right: 4px; }
     .md-imp-nice { color: #3F7A63; background: #E6F0EA; border: 1px solid #B9D5C8; }
