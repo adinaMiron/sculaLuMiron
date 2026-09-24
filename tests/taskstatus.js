@@ -74,6 +74,23 @@ function check(name, ok, detail) {
   check('assignee filter sees status tasks', markers.names.length === 1 && markers.names[0] === 'Ana', markers);
   check('importance stays after status and assignee', markers.importance === '- [ ] ~inwork Ana>> !vital Call Ana', markers);
   check('calendar title omits task status', markers.calendarTitle === 'Call Ana', markers);
+  const anywhere = await page.evaluate(() => {
+    const text = 'Discuss with >>Ana and >>Ion.\n# Review >>Mara\n- [ ] Call >>Ana\n```\n>>Hidden\n```';
+    const html = parseMarkdown(text);
+    const names = [...wbNamesIn(text).values()];
+    const filtered = wbPreviewFilteredText;
+    const oldFilter = wbResponsibleFilter;
+    wbResponsibleFilter = wbResponsibleKey('Ion');
+    const matchingText = filtered(text).text;
+    wbResponsibleFilter = oldFilter;
+    return { html, names, matchingText };
+  });
+  check('inline responsible renders in prose, headings and tasks',
+    (anywhere.html.match(/class="md-assignee"/g) || []).length === 4, anywhere);
+  check('responsible names are found outside tasks and fences are ignored',
+    anywhere.names.join(',') === 'Ana,Ion,Mara', anywhere);
+  check('responsible filter finds a prose line',
+    anywhere.matchingText === 'Discuss with >>Ana and >>Ion.', anywhere);
   await page.evaluate(() => { editor.setSelectionRange(8, 8); });
   await pick('todo');
   check('to do clears only the chosen task marker', (await source()).startsWith('- [ ] Ana>> !vital Call Ana\n- [ ] ~inwork'), await source());

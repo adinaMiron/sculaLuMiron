@@ -4370,7 +4370,7 @@ const I18N = {
       <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
       <p>Butonul ▦ Kanban deschide capitolul curent ca panou de sarcini. Poți alege un capitol, un caiet sau toate caietele, apoi poți căuta, filtra și muta sarcinile între stări. Scrie <code>start@2026-09-24</code> sau <code>end@2026-09-30</code> în sarcină pentru a arăta începutul ori termenul.</p>
       <h3>Responsabil</h3>
-      <p><code>Nume>> text</code> la începutul rândului marchează cine se ocupă de acea sarcină.</p>
+      <p><code>&gt;&gt;Nume</code> poate apărea oriunde în text, inclusiv în afara unei sarcini, pentru a marca un responsabil. Forma <code>Nume&gt;&gt; text</code> de la începutul rândului funcționează și ea.</p>
       <h3>Marcajul de dată @dată</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, sau un interval de zile cu <code>..</code> — scris oriunde în text. 📅 „Trimite datele” sau <kbd>Ctrl+Alt+D</kbd> trimite toate marcajele către pagina Calendar.</p>
       <h3>Marcajul de loc ^@</h3>
@@ -4748,7 +4748,7 @@ const I18N = {
       <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks. The preview checkbox marks a task done or returns it to to do.</p>
       <p>The ▦ Kanban button opens the current chapter as a task board. Select one chapter, one workbook, or every workbook, then search, filter, and move tasks between states. Write <code>start@2026-09-24</code> or <code>end@2026-09-30</code> in a task to show its start or due date.</p>
       <h3>Assignee marker</h3>
-      <p><code>Name>> text</code> at the start of a line marks who owns that task.</p>
+      <p><code>&gt;&gt;Name</code> can appear anywhere in the text, including outside a task, to mark a responsible person. The leading <code>Name&gt;&gt; text</code> form also works.</p>
       <h3>The @date marker</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, or a day range with <code>..</code> — written anywhere in the text. 📅 "Push dates" or <kbd>Ctrl+Alt+D</kbd> sends every marker to the Calendar page.</p>
       <h3>The ^@ place marker</h3>
@@ -5715,14 +5715,15 @@ const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?)$/i;
 // swallows whatever sentence happens to precede an unrelated ">> "
 // elsewhere in the line.
 const ASSIGNEE_WORD = "[\\p{L}\\p{N}][\\p{L}\\p{N}._'-]{0,20}";
+const INLINE_ASSIGNEE_WORD = "[\\p{L}\\p{N}](?:[\\p{L}\\p{N}._'-]{0,19}[\\p{L}\\p{N}])?";
 const ASSIGNEE_RE = new RegExp(
   `^(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})([ \\t]?)&gt;&gt;(?=[ \\t])`,
   'gmu'
 );
-// On task paragraphs, `>>Name` can sit anywhere in the text. Its direction
-// makes the boundary unambiguous, so this form uses one name token.
-const TASK_ASSIGNEE_RE = new RegExp(
-  '&gt;&gt;(' + ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}._\'-])', 'gu'
+// `>>Name` can sit anywhere in a line, in a task or in ordinary text.
+// Its direction makes the boundary unambiguous, so this form uses one name token.
+const INLINE_ASSIGNEE_RE = new RegExp(
+  '&gt;&gt;(' + INLINE_ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}_\'-])', 'gu'
 );
 
 // "!nice" / "!important" / "!vital" — how much a line matters. Three levels,
@@ -5978,6 +5979,7 @@ function calTitleOf(line, hit) {
   s = s.replace(TASK_STATUS_LEAD_RE, '');
   s = s.replace(IMP_RE, '$1');
   s = s.replace(/^\s*[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}(?:[ \t]+[\p{L}\p{N}][\p{L}\p{N}._'-]{0,20}){0,3}[ \t]?>>[ \t]+/u, '');
+  s = s.replace(new RegExp('>>' + INLINE_ASSIGNEE_WORD + "(?![\\p{L}\\p{N}_'-])", 'gu'), '');
   s = s.replace(WIKI_RE, (m, bang, target, alias) => alias || target);
   s = s.replace(TAG_RE, '$1');
   s = s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1');
@@ -6354,9 +6356,7 @@ function liWithTodo(mark, text, opts, lineIdx) {
   const key = status && 'taskStatus' + status.charAt(0).toUpperCase() + status.slice(1);
   const badge = status ? `<span class="task-status task-status-${status}"${opts && opts.forExport ? '' : ` data-i="${key}"`}>${attrEsc(t(key))}</span> ` : '';
   const body = statusMatch ? b.text.slice(statusMatch[0].length) : b.text;
-  const taskBody = body.replace(TASK_ASSIGNEE_RE, (m, name) =>
-    `&gt;&gt;<span class="md-assignee">${name}</span>`);
-  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${badge}${applyInline(taskBody, opts)}</li>`;
+  return `<li${b.id ? ` id="block-${attrEsc(b.id)}"` : ''} class="task-list-item"><input type="checkbox" class="task-checkbox"${dataLine}${checked ? ' checked' : ''}> ${badge}${applyInline(body, opts)}</li>`;
 }
 
 /* ── Following a link ── */
@@ -6484,6 +6484,7 @@ function resolveImageSrc(src, forExport) {
 function applyInline(text, opts) {
   const forExport = !!(opts && opts.forExport);
   return text
+    .replace(INLINE_ASSIGNEE_RE, (m, name) => `&gt;&gt;<span class="md-assignee">${name}</span>`)
     // [[…]] before ![…](…): an embed is "![[" and both start with a bracket
     .replace(WIKI_RE, (m, bang, target, alias) => renderWikiLink(bang, target, alias, opts))
     // "Name>> " before the wikilink brackets are gone: an assignee name
@@ -6927,25 +6928,29 @@ const wbResponsibleSeen = new Map(); // names already recorded in IndexedDB, key
 const wbResponsibleScanCache = new Map();
 let wbResponsibleWrite = Promise.resolve();
 
-// Read the same leading Name>> marker the markdown renderer recognizes,
-// including one inside a list item, task, heading or quote. Code fences are
-// skipped because their contents are displayed literally.
+// Read both assignee forms wherever the renderer recognizes them. Code fences
+// are skipped because their contents are displayed literally.
 const WB_RESPONSIBLE_RE = new RegExp(
   '^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?)?|\\d+\\.[ \\t]+|#{1,6}[ \\t]+|>[ \\t]+)?' +
   `(${ASSIGNEE_WORD}(?:[ \\t]+${ASSIGNEE_WORD}){0,3})[ \\t]?>>(?=[ \\t])`, 'u'
 );
-const WB_TASK_RESPONSIBLE_RE = new RegExp(
-  '^[ \\t]*[-*+][ \\t]+\\[[ xX]\\][ \\t]+(?:~(?:inwork|onhold|blocked)[ \\t]+)?[^\\n]*?>>(' + ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}._\'-])', 'u'
+const WB_INLINE_RESPONSIBLE_RE = new RegExp(
+  '>>(' + INLINE_ASSIGNEE_WORD + ')(?![\\p{L}\\p{N}_\'-])', 'gu'
 );
 function wbResponsibleKey(name) { return name.normalize('NFC').toLowerCase(); }
+function wbLineResponsibles(line) {
+  const names = [];
+  const lead = line.match(WB_RESPONSIBLE_RE);
+  if (lead) names.push(lead[1].replace(/[ \t]+/g, ' '));
+  for (const match of line.matchAll(WB_INLINE_RESPONSIBLE_RE)) names.push(match[1]);
+  return names;
+}
 function wbWalkResponsibleLines(text, visit) {
   let fenced = false;
   String(text || '').split('\n').forEach((line, index) => {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
     if (fenced) return;
-    const taskMatch = line.match(WB_TASK_RESPONSIBLE_RE);
-    const match = taskMatch || line.match(WB_RESPONSIBLE_RE);
-    if (match) visit(match[1].replace(/[ \t]+/g, ' '), line, index);
+    wbLineResponsibles(line).forEach(name => visit(name, line, index));
   });
 }
 function wbNamesIn(text) {
@@ -7040,8 +7045,7 @@ function wbChapterHasImportanceTask(text, level, openOnly = false, responsible =
     if (fenced || !wbTaskHasImportance(line, level)) continue;
     if (openOnly && !WB_OPEN_TASK_RE.test(line)) continue;
     if (responsible) {
-      const match = line.match(WB_TASK_RESPONSIBLE_RE) || line.match(WB_RESPONSIBLE_RE);
-      if (!match || wbResponsibleKey(match[1].replace(/[ \t]+/g, ' ')) !== responsible) continue;
+      if (!wbLineResponsibles(line).some(name => wbResponsibleKey(name) === responsible)) continue;
     }
     return true;
   }
@@ -7061,9 +7065,7 @@ function wbPreviewFilteredText(text) {
     if (wbTodoOnlyAll && !WB_OPEN_TASK_RE.test(line)) return;
     if (wbImportanceFilter && !wbTaskHasImportance(line, wbImportanceFilter)) return;
     if (wbResponsibleFilter) {
-      const taskMatch = line.match(WB_TASK_RESPONSIBLE_RE);
-      const match = taskMatch || line.match(WB_RESPONSIBLE_RE);
-      if (!match || wbResponsibleKey(match[1].replace(/[ \t]+/g, ' ')) !== wbResponsibleFilter) return;
+      if (!wbLineResponsibles(line).some(name => wbResponsibleKey(name) === wbResponsibleFilter)) return;
     }
     keep.push(line);
     lineMap.push(index);
