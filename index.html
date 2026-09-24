@@ -3456,15 +3456,13 @@
   </select>
   <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
 
-  <!-- Importance: marks the caret's line (or every line of the selection).
-       Picking again replaces the marker, "Remove" clears it. -->
-  <select class="tb-select" id="importance-select" onchange="setImportance(this.value)"
-          data-i-title="impTip" title="Mark how important this line is">
-    <option value="" data-i="impDefault">— Importance —</option>
+  <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
+  <select class="tb-select" id="importance-select" onchange="filterImportance(this.value)"
+          data-i-title="impTip" title="Show tasks with this importance in every workbook">
+    <option value="" data-i="impDefault">— All importance —</option>
     <option value="nice" data-i="impNiceOpt">🌱 Nice to have</option>
     <option value="important" data-i="impImportantOpt">⭐ Important</option>
     <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
-    <option value="none" data-i="impNoneOpt">✕ Remove</option>
   </select>
 
   <div class="toolbar-sep"></div>
@@ -4026,14 +4024,13 @@ const I18N = {
     // Importance markers. The *syntax* stays English (!nice / !important /
     // !vital) so a file reads the same in both languages — only the label
     // on the pill and in the select is translated.
-    impTip:"Marchează cât de important e rândul (Ctrl+Alt+1/2/3, Ctrl+Alt+0 șterge)",
+    impTip:"Arată doar sarcinile cu importanța aleasă din toate caietele",
     impInsertTip:"Inserează un marcaj de importanță la cursor",
     impInsertDefault:"— Marcaje de importanță —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     responsibleAll:"— Toți responsabilii —", responsibleTip:"Arată doar capitolele și rândurile atribuite responsabilului ales",
-    impDefault:"— Importanță —",
+    impDefault:"— Toate importanțele —",
     impNiceOpt:"🌱 Bine de avut", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
-    impNoneOpt:"✕ Scoate marcajul",
     impNice:"Bine de avut", impImportant:"Important", impVital:"Vital",
     impFindTip:"Caută tot ce e marcat așa",
     lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
@@ -4404,14 +4401,13 @@ const I18N = {
     taskStatusDefault:"— Task status —", taskStatusTodo:"☐ To do", taskStatusInwork:"◐ In work",
     taskStatusOnhold:"Ⅱ On hold", taskStatusBlocked:"⛔ Blocked", taskStatusDone:"☑ Done",
     filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
-    impTip:"Mark how important this line is (Ctrl+Alt+1/2/3, Ctrl+Alt+0 clears)",
+    impTip:"Show only tasks with the selected importance across all workbooks",
     impInsertTip:"Insert an importance marker at the cursor",
     impInsertDefault:"— Importance markers —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     responsibleAll:"— All responsibles —", responsibleTip:"Show only chapters and lines assigned to the selected responsible",
-    impDefault:"— Importance —",
+    impDefault:"— All importance —",
     impNiceOpt:"🌱 Nice to have", impImportantOpt:"⭐ Important", impVitalOpt:"🔥 Vital",
-    impNoneOpt:"✕ Remove",
     impNice:"Nice to have", impImportant:"Important", impVital:"Vital",
     impFindTip:"Find everything marked this way",
     lblSize:"Size", sizeDefault:"— Font Size —",
@@ -6102,8 +6098,8 @@ function renderImportance(lead, level, opts) {
 }
 
 // The marker goes after the bullet / number / "[ ]" / hashes / assignee, so
-// the line stays valid markdown. Replaces whatever marker was there, which
-// is what makes the select idempotent; `level` empty removes it. Blank lines
+// the line stays valid markdown. Replaces whatever marker was there;
+// `level` empty removes it. Blank lines
 // are left alone — marking nothing is never what was meant.
 function impSetLine(line, level) {
   if (!line.trim()) return line;
@@ -6115,8 +6111,6 @@ function impSetLine(line, level) {
 
 // One click marks the caret's line, or every line the selection touches.
 function setImportance(value) {
-  const sel = document.getElementById('importance-select');
-  if (sel) sel.value = '';
   if (!value) return;
   const level = value === 'none' ? '' : value;
   if (level && IMP_LEVELS.indexOf(level) === -1) return;
@@ -6664,10 +6658,13 @@ function updatePreview() {
   wbPreviewLineMap = filtered.lineMap;
   preview.innerHTML = parseMarkdown(src);
   const current = wbCurrentId ? wbChapter(wbCurrentId) : null;
+  const currentBook = current ? wbBook(current.workbookId) : null;
+  const currentTodoFiltered = wbTodoOnlyAll || (wbIsTodoBook(currentBook) && wbTodoOnly.has(currentBook.id));
   const treeState = JSON.stringify([
-    wbCurrentId, wbResponsibleFilter,
+    wbCurrentId, wbResponsibleFilter, wbImportanceFilter,
     wbResponsibleFilter && current ? wbNamesForChapter(current).has(wbResponsibleFilter) : null,
-    wbTodoOnlyAll ? WB_OPEN_TASK_RE.test(editor.value) : null
+    currentTodoFiltered ? WB_OPEN_TASK_RE.test(editor.value) : null,
+    wbImportanceFilter && current ? wbChapterHasImportanceTask(editor.value, wbImportanceFilter, currentTodoFiltered, wbResponsibleFilter) : null
   ]);
   if (responsibleChanged || treeState !== wbPreviewTreeState) renderWorkbooks();
   wbPreviewTreeState = treeState;
@@ -6890,6 +6887,7 @@ const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
 let wbTodoOnlyAll = false;       // toolbar "▣ Tasks only" — filters EVERY workbook to chapters with an open "- [ ]"
+let wbImportanceFilter = '';     // selected importance level; empty shows all tasks
 let wbResponsibleFilter = '';    // normalized name chosen in the toolbar; empty means all
 let wbPreviewLineMap = null;     // filtered preview line -> original editor line (task checkbox clicks)
 let wbPreviewTreeState = '';
@@ -6988,11 +6986,41 @@ function selectResponsible(value) {
   renderWorkbooks();
   updatePreview();
 }
+function filterImportance(value) {
+  wbImportanceFilter = IMP_LEVELS.includes(value) ? value : '';
+  document.getElementById('importance-select').value = wbImportanceFilter;
+  renderWorkbooks();
+  updatePreview();
+}
+
+// Match checklist task lines using the marker boundaries of the renderer.
+// Ignore fenced examples rather than treating them as tasks.
+function wbTaskHasImportance(line, level) {
+  if (!TASK_LINE_RE.test(line)) return false;
+  for (const marker of line.matchAll(IMP_RE)) {
+    if (marker[2] === level) return true;
+  }
+  return false;
+}
+function wbChapterHasImportanceTask(text, level, openOnly = false, responsible = '') {
+  let fenced = false;
+  for (const line of String(text || '').split('\n')) {
+    if (/^[ \t]*```/.test(line)) { fenced = !fenced; continue; }
+    if (fenced || !wbTaskHasImportance(line, level)) continue;
+    if (openOnly && !WB_OPEN_TASK_RE.test(line)) continue;
+    if (responsible) {
+      const match = line.match(WB_TASK_RESPONSIBLE_RE) || line.match(WB_RESPONSIBLE_RE);
+      if (!match || wbResponsibleKey(match[1].replace(/[ \t]+/g, ' ')) !== responsible) continue;
+    }
+    return true;
+  }
+  return false;
+}
 
 // Keep the original line numbers so a checkbox in a narrowed preview still
 // toggles the corresponding task in the unfiltered editor text.
 function wbPreviewFilteredText(text) {
-  if (!wbTodoOnlyAll && !wbResponsibleFilter) return { text, lineMap: null };
+  if (!wbTodoOnlyAll && !wbResponsibleFilter && !wbImportanceFilter) return { text, lineMap: null };
   const keep = [];
   const lineMap = [];
   let fenced = false;
@@ -7000,6 +7028,7 @@ function wbPreviewFilteredText(text) {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
     if (fenced) return;
     if (wbTodoOnlyAll && !WB_OPEN_TASK_RE.test(line)) return;
+    if (wbImportanceFilter && !wbTaskHasImportance(line, wbImportanceFilter)) return;
     if (wbResponsibleFilter) {
       const taskMatch = line.match(WB_TASK_RESPONSIBLE_RE);
       const match = taskMatch || line.match(WB_RESPONSIBLE_RE);
@@ -7468,11 +7497,12 @@ function renderWorkbooks() {
     const todoFiltered = wbTodoOnlyAll || (todoBook && wbTodoOnly.has(book.id));
     const shownChapters = chapters.filter(ch => {
       const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
+      if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter);
       return (!todoFiltered || wbChapterHasOpenTask(ch, content)) &&
         (!wbResponsibleFilter || wbNamesForChapter(ch).has(wbResponsibleFilter));
     });
-    if ((wbTodoOnlyAll || wbResponsibleFilter) && !shownChapters.length) return;
-    const open = wbOpenBooks.has(book.id) || ((wbTodoOnlyAll || wbResponsibleFilter) && shownChapters.length > 0);
+    if ((wbTodoOnlyAll || wbResponsibleFilter || wbImportanceFilter) && !shownChapters.length) return;
+    const open = wbOpenBooks.has(book.id) || ((wbTodoOnlyAll || wbResponsibleFilter || wbImportanceFilter) && shownChapters.length > 0);
 
     const wrap = document.createElement('div');
     wrap.className = 'wb-book' + (open ? ' open' : '');
@@ -7497,7 +7527,7 @@ function renderWorkbooks() {
     });
     const count = document.createElement('span');
     count.className = 'wb-count';
-    count.textContent = todoFiltered || wbResponsibleFilter ? shownChapters.length + '/' + chapters.length : chapters.length;
+    count.textContent = todoFiltered || wbResponsibleFilter || wbImportanceFilter ? shownChapters.length + '/' + chapters.length : chapters.length;
 
     const acts = document.createElement('div');
     acts.className = 'wb-acts';

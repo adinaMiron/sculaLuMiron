@@ -1,9 +1,9 @@
 // Importance markers in index.html — "!nice" / "!important" / "!vital".
 //
-// Three levels written straight into the markdown, put there by the toolbar
-// select (or Ctrl+Alt+1/2/3, Ctrl+Alt+0 to clear) and rendered as a coloured
-// pill with an icon. Drives the real page off disk and asserts on the real
-// textarea, the real preview DOM and the real export string.
+// Three levels written straight into the markdown by the keyboard shortcuts
+// (or typed directly), rendered as coloured pills, and filtered across the
+// workbook tree and preview by the toolbar select. Drives the real page off
+// disk and asserts on the real textarea, preview DOM and export string.
 //
 //   node importance.js        # from tests/
 const path = require('path');
@@ -30,7 +30,7 @@ async function place(page, md, needle, needle2) {
   }, [md, needle, needle2 === undefined ? null : needle2]);
 }
 const src = page => page.evaluate(() => editor.value);
-const pick = (page, v) => page.selectOption('#importance-select', v);
+const pick = (page, v) => page.evaluate(level => setImportance(level), v);
 
 (async () => {
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
@@ -70,8 +70,8 @@ const pick = (page, v) => page.selectOption('#importance-select', v);
   check('and the paragraph gets the matching edge',
     !!pill && pill.edge === 'rgb(196, 100, 60)' && pill.edgeWidth === '3px', pill && { e: pill.edge, w: pill.edgeWidth });
 
-  // The select goes back to its placeholder, like the heading/size selects.
-  check('the select resets to the placeholder',
+  // Editing markers does not change the separate importance filter.
+  check('editing leaves the importance filter at All',
     (await page.inputValue('#importance-select')) === '');
 
   // ---- 2. picking again replaces, "Remove" clears ------------------------
@@ -186,6 +186,73 @@ const pick = (page, v) => page.selectOption('#importance-select', v);
   }));
   check('clicking a pill opens the search panel with its own token as the query',
     found.open && found.q === '!vital' && found.state === '!vital', found);
+
+  // ---- 12. toolbar importance filters tasks across every workbook -------
+  await page.evaluate(() => {
+    wbBooks.length = 0;
+    wbChapters.length = 0;
+    wbBooks.push(
+      { id: 'imp_a', name: 'First', folder: 'first', order: 0 },
+      { id: 'imp_b', name: 'Second', folder: 'second', order: 1 },
+      { id: 'imp_c', name: 'No matching tasks', folder: 'empty', order: 2 });
+    wbChapters.push(
+      { id: 'imp_a1', workbookId: 'imp_a', title: 'Mixed', file: 'mixed.md', order: 0,
+        content: '- [ ] !vital urgent\n- [x] !important done\n- [ ] !nice later\n!vital prose\n- [ ] !vitally false\n' },
+      { id: 'imp_a2', workbookId: 'imp_a', title: 'No match', file: 'no-match.md', order: 1,
+        content: '```\n- [ ] !vital example\n```\n- [ ] plain task\n' },
+      { id: 'imp_b1', workbookId: 'imp_b', title: 'Other book', file: 'other.md', order: 0,
+        content: '- [ ] !vital another\n- [ ] !important routine\n' },
+      { id: 'imp_c1', workbookId: 'imp_c', title: 'Prose only', file: 'prose.md', order: 0,
+        content: '!vital prose\n- [ ] !nice task\n' });
+    wbCurrentId = 'imp_a1';
+    editor.value = wbChapters[0].content;
+    wbBooted = true;
+    wbOpenBooks.add('imp_a'); wbOpenBooks.add('imp_b');
+    renderWorkbooks(); updatePreview();
+  });
+  await page.selectOption('#importance-select', 'vital');
+  let filtered = await page.evaluate(() => ({
+    books: [...document.querySelectorAll('.wb-book-name')].map(el => el.textContent.trim()),
+    chapters: [...document.querySelectorAll('.wb-ch-name')].map(el => el.textContent.trim()),
+    tasks: [...preview.querySelectorAll('li.task-list-item')].map(el => el.textContent.trim()),
+    source: editor.value,
+    selection: document.getElementById('importance-select').value
+  }));
+  check('vital shows matching chapters in both workbooks, excluding fenced examples',
+    filtered.books.length === 2 && filtered.chapters.length === 2 &&
+    filtered.chapters.some(s => s.includes('Mixed')) && filtered.chapters.some(s => s.includes('Other book')), filtered);
+  check('the preview shows only exactly matching task lines without editing source',
+    filtered.tasks.length === 1 && filtered.tasks[0].includes('urgent') &&
+    filtered.source.includes('!nice later') && filtered.selection === 'vital', filtered);
+  await page.locator('#preview .task-checkbox').click();
+  check('filtered checkbox updates the original task line',
+    (await src(page)).startsWith('- [x] !vital urgent\n- [x] !important done'), await src(page));
+  await page.selectOption('#importance-select', 'important');
+  check('changing the level includes completed matching tasks',
+    await page.locator('#preview li.task-list-item').count() === 1 &&
+    (await page.locator('#preview li.task-list-item').first().textContent()).includes('done'));
+  await page.selectOption('#importance-select', 'vital');
+  await page.evaluate(() => {
+    editor.value = editor.value.replace('!vital urgent', '!nice urgent');
+    updatePreview();
+  });
+  check('editing the open chapter updates the workbook list immediately',
+    (await page.locator('.wb-ch-name').allTextContents()).every(s => !s.includes('Mixed')));
+  await page.evaluate(() => {
+    editor.value = editor.value.replace('!nice urgent', '!vital urgent');
+    updatePreview();
+  });
+  check('adding the marker brings the chapter back without reselecting',
+    (await page.locator('.wb-ch-name').allTextContents()).some(s => s.includes('Mixed')));
+  await page.locator('#btn-filter-todo').click();
+  check('tasks-only combines with importance to keep only open vital tasks',
+    (await page.locator('.wb-ch-name').allTextContents()).length === 1 &&
+    (await page.locator('.wb-ch-name').first().textContent()).includes('Other book') &&
+    await page.locator('#preview li.task-list-item').count() === 0);
+  await page.locator('#btn-filter-todo').click();
+  await page.selectOption('#importance-select', '');
+  check('All restores every workbook chapter and the full preview',
+    await page.locator('.wb-ch-name').count() === 4 && await page.locator('#preview li.task-list-item').count() === 4);
 
   check('no page errors', errors.length === 0, errors);
   await browser.close();

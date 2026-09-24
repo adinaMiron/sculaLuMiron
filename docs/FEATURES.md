@@ -260,14 +260,19 @@ one word each and rendered as a coloured pill with an icon:
 | `!important` | ⭐ | `--imp-important` | `#D9A441` | `impImportant` |
 | `!vital` | 🔥 | `--imp-vital` | `#C4643C` | `impVital` |
 
-**Three ways in, all of them one gesture.** The toolbar's
-`#importance-select` (next to the todo buttons) marks the caret's line, or
-every line a selection touches; `Ctrl+Alt+1/2/3` do the same from the
-keyboard and `Ctrl+Alt+0` clears; or the word can just be typed. Picking a
-second time *replaces* the marker rather than stacking one on another,
-which is what lets the select double as "change my mind", and the select
-snaps back to its `— Importance —` placeholder afterwards, like the
-heading and font-size selects do.
+**Adding and changing markers.** `Ctrl+Alt+1/2/3` marks the caret's line or
+every line a selection touches; `Ctrl+Alt+0` clears. The
+`#importance-insert-select` inserts a marker at the cursor, and markers can
+also be typed. Marking a line again replaces its leading marker.
+
+**Filtering tasks.** The toolbar's `#importance-select` (next to the todo
+buttons) chooses an importance level across every workbook and chapter.
+The workbook panel shows only chapters with a checklist task containing that
+exact marker, and the open chapter's preview shows only matching task lines.
+Checked and unchecked tasks both count; fenced code and prose do not. The
+editor source is untouched, and choosing “All importance” restores the full
+list and preview. This filter combines with the responsible and tasks-only
+filters on the same task line.
 
 `impSetLine()` puts the marker **after** whatever legally leads the line —
 the bullet, the number, the `[ ]` of a task, the hashes of a heading, and
