@@ -1884,6 +1884,57 @@ The manifest is written **last**. A run that dies halfway leaves the old one
 in place, so the next run redoes the work rather than losing track of a file
 it had already uploaded.
 
+### Same name, same record — and Drive checked file by file
+
+Ids alone were not enough. A phone and a PC that each made a `fizica`
+workbook before syncing gave it two ids, and the id merge kept them apart
+for ever: two Drive folders called `fizica`, a `mecanica.md` in each. And the
+manifest is one file every device rewrites, so two devices syncing at once,
+or a pass that died before step 9, left `.md` files in Drive that no
+manifest named — and nothing ever looked at them again. So each pass
+(`cloudSync()`, steps 5 and 6) now also works **by name**:
+
+- **One folder name, one workbook** (compared case-insensitively, the way
+  `wbUniqueFolder()` compares them). Two local workbooks with the same
+  folder are folded into one. The survivor is chosen so that every device
+  picks the same one: the one the manifest already names, then the oldest
+  `created`, then the manifest's order, then the id. The folded-away
+  workbook is **graved**, so the other devices fold the same way instead of
+  pushing it back. A chapter whose workbook was folded away on another
+  device follows the manifest's `workbookId` to the survivor.
+- **One file name in a folder, one chapter.** Where the fold leaves two
+  chapters with the same file name, the **newer `updated`** is kept and the
+  older is graved. The survivor overwrites the loser's Drive file if it has
+  none of its own, so no new file is made beside the old one. Moving a
+  chapter never touches its `updated`: that stamp is when the text was
+  written, and a moved-but-older text must not beat a newer one.
+- **Drive, file by file.** `gsTree()` lists the workbook folders under the
+  root and every file in them, with Drive's own `modifiedTime`. That is two
+  requests for the whole tree (40 folders per query), not one per folder.
+  Anything no manifest names is matched by folder name and then file name:
+  - A folder only Drive has becomes a workbook (its name is the workbook's
+    name, as in § E).
+  - A file only Drive has becomes a chapter, and its Drive file is adopted
+    rather than uploaded again.
+  - A file that matches a chapter keeps whichever is newer:
+    `modifiedTime` against the chapter's `updated`. A newer Drive copy is
+    downloaded, and the extra copy is trashed once the chapter's own file
+    holds the newer text.
+
+  Local-only workbooks and chapters go up as before. A new workbook uses a
+  Drive folder that already has its name, if no other workbook owns it,
+  before it makes one.
+
+A second folder of a name another folder now stands for is trashed only once
+nothing that is kept is still in it. So that a delete that did not go through
+cannot come back as a "new" chapter on the next pass, every Drive file or
+folder trashed for a grave is graved by its own Drive id too.
+
+For records the manifest does name, the comparison is still `updated`
+against `updated`. That stamp is when the text was edited. `modifiedTime` is
+only when it was uploaded, which is always a little later, so the stamp is
+the fairer of the two wherever there is one.
+
 ### The remembered folder is checked, not trusted
 
 `gdrive_md_folder` holds the root folder's id, and an id is not a folder: it
@@ -1898,7 +1949,7 @@ instead of written into. The new root has no manifest in it, so the next pass
 re-uploads every chapter: the recovery is the ordinary sync, not a special
 path.
 
-**The workbook folders get the same doubt, and one folder is one workbook.**
+**The workbook folders get the same doubt.**
 A workbook's `driveId` in the manifest is a folder id too, and it can be gone
 just the same. It used to be trusted, so every chapter write into a deleted
 folder came back `404 File not found`, the pass died before the manifest was
@@ -1907,13 +1958,14 @@ against files that were already deleted — one sync button saying "Google
 Drive: File not found: …" over a console full of 404s on `DELETE files/<id>`.
 The usual way a folder vanished: two workbooks with the same folder name (one
 made in each browser, say) had both been handed one Drive folder by the name
-search, and deleting either one deleted the folder under the other. Now
-`gsDirLive()` confirms each workbook folder once per page-load (`gsDirOk`);
-a folder that is gone, or that another workbook already owns, is made anew
-and that workbook's chapters are written into it whether they changed or not
-(the old copies in a folder another workbook owns are deleted). A graved
-workbook's folder is not deleted while another workbook in the manifest
-still points at it.
+search, and deleting either one deleted the folder under the other. Such
+pairs are now folded into one workbook (above). Now
+`gsDirLive()` confirms each workbook folder once per page-load (`gsDirOk`).
+A folder that is gone is found again by name in the tree or made anew, and
+that workbook's chapters are written into it whether they changed or not. A
+chapter file already in the right folder is written in place; one elsewhere
+is copied and the old one trashed. A graved workbook's folder is not
+deleted while another workbook in the manifest still points at it.
 
 The status line is honest about *when*, too. `gsWhen()` prints a bare time only
 for a stamp from **today**; any older one carries its date. A sync that quietly
@@ -1956,11 +2008,19 @@ staying deleted on the other browser, disconnecting, and a binned root folder
 being made again rather than written into — with the status line's link
 asserted against the folder the run actually wrote to. The fake behaves like
 Drive where it matters: a folder's `DELETE` takes its contents, and a write
-into a missing parent is a 404. With that, it also checks a deleted workbook
-folder being made again with its unchanged chapters rewritten into it (and
-the next sync deleting nothing), and two workbooks that shared a folder
-being split apart so that deleting one leaves the other's files alone. No Google account is
-involved. Run: `/apptest gdsync`.
+into a missing parent is a 404. It also lists like Drive does: several
+`in parents` joined by `or`, `mimeType!=`, and a `modifiedTime` on every
+write. With that, it checks a deleted workbook folder being made again with
+its unchanged chapters rewritten into it (and the next sync deleting nothing).
+It checks two workbooks with one folder name being folded into one, and a
+phone that made its own `Fizica` before ever syncing folding into it: the
+older `mecanica.md` giving way, the newer `optica.md` winning on both
+devices, and the phone's extra chapter landing in the same Drive folder. And
+it checks the file-by-file pass: a folder and a file that only Drive has
+coming in, a newer copy in Drive winning and an older one not, the
+duplicates trashed, everything named in the manifest after, a second sync
+with nothing to do, and an empty device getting all of it. No Google account
+is involved. Run: `/apptest gdsync`.
 
 ---
 

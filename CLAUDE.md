@@ -239,8 +239,10 @@ click landing in the editor, both languages and the CSV), the **Google
 Drive sync** that makes the chapters follow the Gmail account (`gdsync.js` —
 an in-memory fake Drive: the push down to the file bodies and the manifest,
 the pull into an empty database, newest-`updated`-wins both ways, a rename
-keeping its Drive file, a delete travelling and staying deleted, and
-disconnecting), the
+keeping its Drive file, a delete travelling and staying deleted,
+disconnecting, two same-named workbooks folding into one with the newer of
+two same-named files kept, and Drive checked file by file for what no
+manifest names), the
 in-place rename of a workbook or chapter name (`wbrename.js`),
 "Save all modified" with its pending-edit tracking (`wbsaveall.js`), the
 **folder read back into the tree** (`wbadopt.js` — "Sincronizează în dosar"

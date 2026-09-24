@@ -19,7 +19,9 @@
    stable ids both devices agree on, each record's `updated` stamp, and the
    Drive file id to overwrite. Merge is per record, newest `updated` wins, and
    a delete leaves a tombstone so a chapter deleted here does not come back
-   from the other browser.
+   from the other browser. Names count too: one folder name is one workbook,
+   one file name in it is one chapter (newest kept), and every pass also
+   walks the Drive tree file by file for whatever no manifest names.
 
    IndexedDB stays the source of truth on each device; Drive is a third mirror
    beside the markdown folder, never ahead of it. A pulled chapter is marked
@@ -238,10 +240,50 @@ async function cloudTombstone(id) {
   try { await wbMetaSet('deleted', gsGraves); } catch (e) {}
 }
 
+/* ── The Drive tree, file by file ──
+   The manifest is what the devices agree on, but it is one file that every
+   device rewrites: two syncing at once, or a pass that died before the
+   manifest went back, leaves .md files in Drive that no manifest names. So
+   every pass also lists what is really there — the workbook folders under
+   the root and the files in them, each with Drive's own modifiedTime — and
+   compares it file by file (step 6). Two requests for the whole tree, not
+   one per folder. */
+async function gsList(q) {
+  const out = [];
+  let next = '';
+  do {
+    const r = await gsJson(GS_FILES + '?pageSize=1000&fields=nextPageToken,files(id,name,mimeType,parents,modifiedTime)'
+                           + '&q=' + encodeURIComponent(q) + (next ? '&pageToken=' + encodeURIComponent(next) : ''));
+    out.push(...(r.files || []));
+    next = r.nextPageToken || '';
+  } while (next);
+  return out;
+}
+async function gsTree(rootId) {
+  const dirs = await gsList("'" + rootId + "' in parents and trashed=false and mimeType='" + GS_DIR_MIME + "'");
+  const files = [];
+  for (let i = 0; i < dirs.length; i += 40) {          // keeps the query short on a big tree
+    const any = dirs.slice(i, i + 40).map(d => "'" + d.id + "' in parents").join(' or ');
+    files.push(...await gsList('(' + any + ") and trashed=false and mimeType!='" + GS_DIR_MIME + "'"));
+  }
+  const dirIds = new Set(dirs.map(d => d.id));
+  const parentOf = new Map();                            // file id → the workbook folder it sits in
+  for (const f of files) {
+    f.parent = (f.parents || []).find(id => dirIds.has(id)) || null;
+    if (f.parent) parentOf.set(f.id, f.parent);
+  }
+  return { dirs, files, parentOf };
+}
+// Names are compared the way the markdown folder compares them (wbUniqueFolder):
+// "Fizica" and "fizica" are one folder on every disk a phone or a PC has.
+const gsKey = s => String(s || '').normalize('NFC').toLowerCase();
+const gsTime = s => Date.parse(s || '') || 0;
+
 /* ── The sync ──
    One pass: read the manifest, merge it against IndexedDB record by record,
-   move only what differs, write the manifest back. Returns {up, down} so the
-   caller can say what happened. */
+   fold together what has the same name, take in whatever Drive holds that
+   the manifest does not name, move only what differs, write the manifest
+   back. Returns {up, down} so the caller can say what happened. */
 async function cloudSync(interactive) {
   if (gsBusy) return null;
   if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
@@ -249,6 +291,10 @@ async function cloudSync(interactive) {
 
   gsBusy = true; gsInteractive = !!interactive; paintCloud();
   let up = 0, down = 0;
+  const gone = new Set();         // Drive ids trashed this pass
+  const trash = id => { gone.add(id); return gsTrash(id); };
+  const later = new Set();        // Drive files to trash once everything kept is written
+  const laterDirs = new Set();    // Drive folders to trash if nothing kept is left in them
   try {
     await flushChapter();                        // the open chapter's latest text counts
     const rootId = (await gsRoot()).id;
@@ -262,6 +308,7 @@ async function cloudSync(interactive) {
     }
     const remBooks = new Map((man.books || []).map(b => [b.id, b]));
     const remChaps = new Map((man.chapters || []).map(c => [c.id, c]));
+    const named = new Set([...(man.books || []), ...(man.chapters || [])].map(r => r.driveId).filter(Boolean));
 
     /* 2. tombstones, merged both ways, then applied to both sides */
     const graves = Object.assign({}, man.deleted || {});
@@ -269,10 +316,17 @@ async function cloudSync(interactive) {
     const cutoff = Date.now() - GSYNC.GRAVE_MS;
     for (const id in graves) if (graves[id] < cutoff) delete graves[id];
 
+    // A trashed Drive file or folder is graved by its own id too, so that
+    // one whose DELETE did not go through is not taken for a new chapter by
+    // step 6 on the next pass.
+    const fileGraves = {};
     for (const id in graves) {
       const when = graves[id];
       const rc = remChaps.get(id);
-      if (rc) { if (rc.driveId) await gsTrash(rc.driveId); remChaps.delete(id); }
+      if (rc) {
+        if (rc.driveId) { await trash(rc.driveId); fileGraves[rc.driveId] = when; }
+        remChaps.delete(id);
+      }
       const rb = remBooks.get(id);
       if (rb) {
         remBooks.delete(id);
@@ -280,7 +334,7 @@ async function cloudSync(interactive) {
         // workbook still writes into (two same-named workbooks used to share
         // one) stays; only this workbook's chapters, graved above, go.
         const shared = rb.driveId && [...remBooks.values()].some(o => o.driveId === rb.driveId);
-        if (rb.driveId && !shared) { await gsTrash(rb.driveId); gsDirOk.delete(rb.driveId); }
+        if (rb.driveId && !shared) { await trash(rb.driveId); gsDirOk.delete(rb.driveId); fileGraves[rb.driveId] = when; }
       }
       // A local record edited *after* the delete was recorded elsewhere is a
       // deliberate re-creation, and wins over the grave.
@@ -298,6 +352,7 @@ async function cloudSync(interactive) {
         wbOpenBooks.delete(id);
       }
     }
+    Object.assign(graves, fileGraves);
     gsGraves = graves;
     try { await wbMetaSet('deleted', gsGraves); } catch (e) {}
 
@@ -316,38 +371,8 @@ async function cloudSync(interactive) {
         down++;
       }
     }
-    const outBooks = [];
-    const dirOf = new Map();          // book id → its Drive folder id, this pass
-    const rehomed = new Map();        // book id → 'gone' | 'shared': its chapter files must be written anew
-    const claimed = new Set();        // folder ids a workbook already owns — one folder, one workbook
-    for (const lb of wbBooks) {
-      const rb = remBooks.get(lb.id);
-      if (!rb || !rb.driveId || claimed.has(rb.driveId)) continue;
-      if (await gsDirLive(rb.driveId)) { claimed.add(rb.driveId); dirOf.set(lb.id, rb.driveId); }
-      else rehomed.set(lb.id, 'gone');
-    }
-    for (const lb of wbBooks) {
-      const rb = remBooks.get(lb.id);
-      let driveId = dirOf.get(lb.id);
-      if (driveId && rb.folder !== lb.folder && (lb.updated || 0) > (rb.updated || 0)) {
-        try { await gsRename(driveId, lb.folder); } catch (e) {}
-      }
-      if (!driveId) {
-        if (rb && rb.driveId && !rehomed.has(lb.id)) rehomed.set(lb.id, 'shared');
-        // A same-named folder is only reused when no other workbook owns it,
-        // or two workbooks end up in one folder and deleting either empties both.
-        let dir = await gsChild(lb.folder, rootId, true);
-        if (!dir || claimed.has(dir.id)) dir = await gsMakeFolder(lb.folder, rootId);
-        driveId = dir.id;
-        claimed.add(driveId);
-        gsDirOk.add(driveId);
-      }
-      dirOf.set(lb.id, driveId);
-      outBooks.push({ id: lb.id, name: lb.name, folder: lb.folder, created: lb.created || 0,
-                      updated: lb.updated || 0, order: lb.order || 0, driveId: driveId });
-    }
 
-    /* 4. chapters — the same rule, plus the file body either way */
+    /* 4. chapters the manifest has newer — the same rule, plus the body */
     for (const rc of remChaps.values()) {
       const lc = wbChapter(rc.id);
       if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
@@ -366,21 +391,217 @@ async function cloudSync(interactive) {
       if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
       down++;
     }
+
+    /* 5. one folder name, one workbook; one file name in it, one chapter.
+       A phone and a PC that each made a "fizica" workbook gave it two ids,
+       and ids alone kept them apart for ever — two Drive folders of the same
+       name, and a mecanica.md in each. Now a folder name is the workbook: the
+       two are folded into one, and where both hold a file of the same name
+       the newer `updated` is the one kept. Every device picks the same
+       survivor — the one the manifest already names, then the oldest — so
+       two devices folding at once agree. The folded-away ids are graved, so
+       the other devices fold the same way instead of pushing them back. */
+    const now = Date.now();
+    const manIndex = id => { const i = (man.books || []).findIndex(b => b.id === id); return i < 0 ? 1e9 : i; };
+    const byFolder = new Map();
+    for (const b of wbBooks) {
+      const k = gsKey(b.folder);
+      if (!byFolder.has(k)) byFolder.set(k, []);
+      byFolder.get(k).push(b);
+    }
+    const movedIds = new Set();
+    const adopt = new Map();           // chapter id → { id, fresh }: a Drive file no manifest gives it, to use as its file
+    for (const group of byFolder.values()) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => (remBooks.has(b.id) - remBooks.has(a.id)) || ((a.created || 0) - (b.created || 0))
+                           || (manIndex(a.id) - manIndex(b.id)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const keep = group[0];
+      for (const alias of group.slice(1)) {
+        for (const ch of wbChapters) if (ch.workbookId === alias.id) { ch.workbookId = keep.id; movedIds.add(ch.id); }
+        try { await wbDrop(WB_BOOKS, alias.id); } catch (e) {}
+        wbBooks = wbBooks.filter(b => b.id !== alias.id);
+        if (wbOpenBooks.delete(alias.id)) wbOpenBooks.add(keep.id);
+        graves[alias.id] = now;
+        const rb = remBooks.get(alias.id);
+        if (rb && rb.driveId) laterDirs.add(rb.driveId);
+        remBooks.delete(alias.id);
+      }
+    }
+    // A chapter whose workbook was folded away on another device (step 2
+    // dropped it here, by its grave) follows the manifest to the survivor.
+    for (const ch of wbChapters) {
+      const rc = remChaps.get(ch.id);
+      if (!wbBook(ch.workbookId) && rc && wbBook(rc.workbookId)) { ch.workbookId = rc.workbookId; movedIds.add(ch.id); }
+    }
+    const byFile = new Map();
+    for (const c of wbChapters) {
+      const k = c.workbookId + '\n' + gsKey(c.file);
+      if (!byFile.has(k)) byFile.set(k, []);
+      byFile.get(k).push(c);
+    }
+    for (const group of byFile.values()) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => ((b.updated || 0) - (a.updated || 0)) || (remChaps.has(b.id) - remChaps.has(a.id))
+                           || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const keep = group[0];
+      for (const dup of group.slice(1)) {
+        try { await wbDrop(WB_CHAPTERS, dup.id); } catch (e) {}
+        await wbPendingClear(dup.id);
+        wbChapters = wbChapters.filter(c => c.id !== dup.id);
+        movedIds.delete(dup.id);
+        graves[dup.id] = now;
+        // The survivor overwrites the loser's Drive file when it has none of
+        // its own, rather than a new file made beside it and the old trashed.
+        const rc = remChaps.get(dup.id), own = remChaps.get(keep.id);
+        if (rc && rc.driveId) {
+          if (!(own && own.driveId) && !adopt.has(keep.id)) adopt.set(keep.id, { id: rc.driveId, fresh: false });
+          else later.add(rc.driveId);
+        }
+        if (dup.id === wbCurrentId) loadChapterIntoEditor(keep);
+      }
+    }
+    // `updated` is left alone: it is when the text was written, and moving a
+    // chapter must not make an old text beat a newer one on another device.
+    // The others learn the move from the grave and the manifest (above).
+    for (const id of movedIds) {
+      const ch = wbChapter(id);
+      if (await wbPersist(WB_CHAPTERS, ch)) await wbPendingMark(ch);
+    }
+    try { await wbMetaSet('deleted', gsGraves); } catch (e) {}
+
+    /* 6. Drive, file by file. Whatever sits in a workbook folder that no
+       manifest names — a folder or an .md made by a pass that never got to
+       write the manifest, or one another device's manifest lost to ours —
+       is matched by folder name and file name. A match keeps the newer of
+       the two (Drive's modifiedTime against the chapter's `updated`); no
+       match is a workbook or a chapter this device did not have, and comes
+       in whole. */
+    const tree = await gsTree(rootId);
+    const dirById = new Map(tree.dirs.map(d => [d.id, d]));
+    const skip = id => named.has(id) || gone.has(id) || later.has(id) || laterDirs.has(id);
+    const bookOfDir = new Map();       // Drive folder id → the local workbook it is the folder of
+    for (const rb of remBooks.values()) if (rb.driveId && wbBook(rb.id)) bookOfDir.set(rb.driveId, wbBook(rb.id));
+    const adoptDir = new Map();        // book id → an unnamed Drive folder to use as its folder
+    const bookFor = async d => {
+      let book = bookOfDir.get(d.id);
+      if (book) return book;
+      book = wbBooks.find(b => gsKey(b.folder) === gsKey(d.name));
+      if (book) {
+        const rb = remBooks.get(book.id);
+        if (!(rb && rb.driveId) && !adoptDir.has(book.id)) adoptDir.set(book.id, d.id);
+        else laterDirs.add(d.id);      // a second folder of that name; emptied below
+      } else {
+        // The folder name is the workbook's name as well as its folder, the
+        // same as a folder found in the markdown folder on disk (§ E).
+        book = { id: wbNewId('wb_'), name: d.name, folder: d.name, created: Date.now(),
+                 updated: gsTime(d.modifiedTime) || Date.now(), order: wbBooks.length };
+        wbBooks.push(book);
+        if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); return null; }
+        wbOpenBooks.add(book.id);
+        adoptDir.set(book.id, d.id);
+        down++;
+      }
+      bookOfDir.set(d.id, book);
+      return book;
+    };
+    for (const d of tree.dirs) {
+      if (skip(d.id)) continue;
+      if (graves[d.id]) { await trash(d.id); continue; }
+      await bookFor(d);
+    }
+    for (const f of tree.files) {
+      if (skip(f.id) || !f.parent || gone.has(f.parent) || !WB_ADOPT_RE.test(f.name)) continue;
+      if (graves[f.id]) { await trash(f.id); continue; }
+      const book = await bookFor(dirById.get(f.parent));
+      if (!book) continue;
+      const mtime = gsTime(f.modifiedTime);
+      const lc = wbChapters.find(c => c.workbookId === book.id && gsKey(c.file) === gsKey(f.name));
+      const rc = lc && remChaps.get(lc.id);
+      const hasFile = lc && ((rc && rc.driveId) || adopt.has(lc.id));
+      if (lc && (lc.updated || 0) >= mtime) {
+        // Ours is newer, or the same: the file has nothing to give.
+        if (hasFile) later.add(f.id);
+        else adopt.set(lc.id, { id: f.id, fresh: false });
+        continue;
+      }
+      let text;
+      try { text = await gsDownload(f.id); } catch (e) { continue; }
+      const ch = lc || { id: wbNewId('ch_'), workbookId: book.id, file: f.name,
+                         title: wbTitleFromText(text, f.name.replace(/\.[^.]+$/, '')),
+                         created: mtime || Date.now(), order: wbChaptersOf(book.id).length };
+      ch.content = text;
+      ch.updated = mtime || Date.now();
+      if (!lc) wbChapters.push(ch);
+      if (!await wbPersist(WB_CHAPTERS, ch)) { if (!lc) wbChapters.pop(); continue; }
+      await wbPendingMark(ch);
+      if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
+      if (rc && rc.driveId) later.add(f.id);            // the chapter keeps its own file
+      else {
+        if (adopt.has(ch.id)) later.add(adopt.get(ch.id).id);
+        adopt.set(ch.id, { id: f.id, fresh: true });
+      }
+      down++;
+    }
+
+    /* 7. workbook folders — confirmed, renamed, or found by name / made */
+    const outBooks = [];
+    const dirOf = new Map();          // book id → its Drive folder id, this pass
+    const rehomed = new Map();        // book id → 'gone' | 'shared': its chapter files must be written anew
+    const claimed = new Set();        // folder ids a workbook already owns — one folder, one workbook
+    for (const lb of wbBooks) {
+      const rb = remBooks.get(lb.id);
+      if (!rb || !rb.driveId || claimed.has(rb.driveId)) continue;
+      if (await gsDirLive(rb.driveId)) { claimed.add(rb.driveId); dirOf.set(lb.id, rb.driveId); }
+      else rehomed.set(lb.id, 'gone');
+    }
+    for (const lb of wbBooks) {
+      const rb = remBooks.get(lb.id);
+      let driveId = dirOf.get(lb.id);
+      if (driveId && rb.folder !== lb.folder && (lb.updated || 0) > (rb.updated || 0)) {
+        try { await gsRename(driveId, lb.folder); } catch (e) {}
+      }
+      if (!driveId) {
+        if (rb && rb.driveId && !rehomed.has(lb.id)) rehomed.set(lb.id, 'shared');
+        // A folder already in Drive under this name is used rather than a
+        // second one made beside it — unless another workbook owns it, or
+        // two workbooks end up in one folder and deleting either empties both.
+        let dir = adoptDir.get(lb.id);
+        if (!dir || claimed.has(dir) || gone.has(dir)) {
+          const same = tree.dirs.find(d => gsKey(d.name) === gsKey(lb.folder) && !claimed.has(d.id) && !gone.has(d.id));
+          dir = same ? same.id : (await gsMakeFolder(lb.folder, rootId)).id;
+        }
+        driveId = dir;
+        laterDirs.delete(dir);
+        claimed.add(driveId);
+        gsDirOk.add(driveId);
+      }
+      dirOf.set(lb.id, driveId);
+      outBooks.push({ id: lb.id, name: lb.name, folder: lb.folder, created: lb.created || 0,
+                      updated: lb.updated || 0, order: lb.order || 0, driveId: driveId });
+    }
+
+    /* 8. chapter files — written where ours is newer or Drive has none */
     const outChaps = [];
     for (const lc of wbChapters) {
       const rc = remChaps.get(lc.id);
       const dir = dirOf.get(lc.workbookId);
       if (!dir) continue;               // an orphan chapter has nowhere to go
-      let driveId = rc && rc.driveId;
+      const ad = !(rc && rc.driveId) ? adopt.get(lc.id) : null;
+      let driveId = (rc && rc.driveId) || (ad && ad.id) || null;
+      const home = driveId ? tree.parentOf.get(driveId) : null;   // null: not seen in the tree
       // A workbook given a new folder this pass takes its chapters with it,
       // changed or not: the old files went with a deleted folder, or sit in
-      // another workbook's.
+      // another workbook's. A file already in the right folder is written in
+      // place instead of copied and trashed.
       const moved = rehomed.get(lc.workbookId);
       const movedBook = rc && rc.workbookId !== lc.workbookId;
-      if (!rc || moved || (lc.updated || 0) > (rc.updated || 0)) {
-        const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }),
-                                   (moved || movedBook) ? null : driveId);
-        if ((moved === 'shared' || movedBook) && driveId) await gsTrash(driveId);
+      let write = !rc || !!moved || movedBook || (lc.updated || 0) > (rc.updated || 0);
+      let target = (moved || movedBook) ? null : driveId;
+      if (home) { if (home === dir) target = driveId; else { target = null; write = true; } }
+      if (ad) write = !(ad.fresh && home === dir);
+      if (write) {
+        const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }), target);
+        if (driveId && file.id !== driveId && home) await trash(driveId);
         driveId = file.id;
         up++;
       }
@@ -389,13 +610,24 @@ async function cloudSync(interactive) {
                       driveId: driveId });
     }
 
-    /* 5. the manifest goes back last, so a run that died halfway leaves the
+    /* 9. the manifest goes back last, so a run that died halfway leaves the
        old one in place and the next run redoes the work rather than losing
        track of a file it had already written. */
     const out = { v: 1, updated: Date.now(), books: outBooks, chapters: outChaps, deleted: graves };
     const mf = await gsWrite(GSYNC.MANIFEST, rootId,
                              new Blob([JSON.stringify(out)], { type: 'application/json' }), manId);
     if (mf && mf.id) manId = mf.id;
+
+    /* 10. what the folding left behind: the older copy of a file, and a
+       folder of a name another folder now stands for — only once nothing
+       that is kept is still in it. */
+    const kept = new Set(outChaps.map(c => c.driveId));
+    for (const id of later) if (!kept.has(id) && !gone.has(id)) await trash(id);
+    const inUse = new Set(dirOf.values());
+    for (const id of laterDirs) {
+      if (inUse.has(id) || gone.has(id)) continue;
+      if (!tree.files.some(f => f.parent === id && !gone.has(f.id))) await trash(id);
+    }
 
     gsLastAt = Date.now();
     try { localStorage.setItem('gdrive_md_at', String(gsLastAt)); } catch (e) {}

@@ -75,10 +75,13 @@ function fakeDrive(seed) {
     [...files.values()].filter(f => (f.parents || []).includes(id)).forEach(f => drop(f.id));
   };
   const deleted = [];
+  const lists = [];
+  const stamp = () => new Date().toISOString();   // Drive's modifiedTime, set on every write
 
   return {
     files,
     deleted,
+    lists,
     file: (name, parent) => [...files.values()].find(f => f.name === name && (!parent || (f.parents || []).includes(parent))),
     handle(req) {
       const url = new URL(req.url());
@@ -109,20 +112,27 @@ function fakeDrive(seed) {
         return { status: 204, body: '' };
       }
 
-      // list
+      // list — by name, by any of several parents (`'a' in parents or 'b' in
+      // parents`, the way the tree is listed), folders or not-folders
       if (p === '/drive/v3/files' && method === 'GET') {
         let q = url.searchParams.get('q') || '';
         const nm = /name='((?:[^'\\]|\\.)*)'/.exec(q);
         const name = nm ? nm[1].replace(/\\'/g, "'") : null;
         q = q.replace(/name='(?:[^'\\]|\\.)*'/, '');
-        const pa = /'([^']+)' in parents/.exec(q);
-        const wantDir = q.includes(DIR);
+        const pas = [...q.matchAll(/'([^']+)' in parents/g)].map(x => x[1]);
+        const wantDir = q.includes("mimeType='" + DIR + "'");
+        const noDir = q.includes("mimeType!='" + DIR + "'");
         const hit = [...files.values()].filter(f =>
           !f.trashed &&
           (!name || f.name === name) &&
-          (!pa || (f.parents || []).includes(pa[1])) &&
-          (!wantDir || f.mimeType === DIR));
-        return { status: 200, json: { files: hit.slice(0, 1).map(f => ({ id: f.id, name: f.name })) } };
+          (!pas.length || pas.some(id => (f.parents || []).includes(id))) &&
+          (!wantDir || f.mimeType === DIR) &&
+          (!noDir || f.mimeType !== DIR));
+        lists.push(q);
+        const size = Number(url.searchParams.get('pageSize')) || 100;
+        return { status: 200, json: { files: hit.slice(0, size).map(f => ({
+          id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents || [],
+          modifiedTime: f.modifiedTime || new Date(0).toISOString() })) } };
       }
 
       // create a folder
@@ -130,7 +140,7 @@ function fakeDrive(seed) {
         let b = {};
         try { b = JSON.parse(req.postData() || '{}'); } catch (e) {}
         if (orphan(b.parents)) return notFound(orphan(b.parents));
-        const f = { id: newId(), name: b.name, mimeType: b.mimeType, parents: b.parents || [], body: '' };
+        const f = { id: newId(), name: b.name, mimeType: b.mimeType, parents: b.parents || [], body: '', modifiedTime: stamp() };
         files.set(f.id, f);
         return { status: 200, json: { id: f.id, name: f.name } };
       }
@@ -145,11 +155,12 @@ function fakeDrive(seed) {
           if (!f) return { status: 404, json: { error: { message: 'gone' } } };
           f.name = parsed.meta.name || f.name;
           f.body = parsed.body;
+          f.modifiedTime = stamp();
           return { status: 200, json: { id: f.id, name: f.name } };
         }
         if (orphan(parsed.meta.parents)) return notFound(orphan(parsed.meta.parents));
         const f = { id: newId(), name: parsed.meta.name, mimeType: 'text/plain',
-                    parents: parsed.meta.parents || [], body: parsed.body };
+                    parents: parsed.meta.parents || [], body: parsed.body, modifiedTime: stamp() };
         files.set(f.id, f);
         return { status: 200, json: { id: f.id, name: f.name } };
       }
@@ -611,10 +622,12 @@ if (require.main !== module) return;
     await ctx.close();
   }
 
-  // ---- 10. one folder, one workbook ----
+  // ---- 10. one folder name, one workbook ----
   // Two workbooks with the same folder name (one per browser, say) used to be
-  // handed the same Drive folder by the name search, and deleting either took
-  // the other's chapter files down with it.
+  // kept apart by their ids — two Drive folders called "fizica". A folder name
+  // is the workbook now: the two are folded into one, the older of two files
+  // with the same name gives way, and deleting the survivor's neighbour does
+  // not take anyone's files down.
   {
     const drive = fakeDrive([
       { id: 'root', name: 'Scula Markdown', mimeType: DIR, parents: [], body: '' },
@@ -629,31 +642,153 @@ if (require.main !== module) return;
       chapters: [{ id: 'ch_mec', workbookId: 'wb_fiz', title: 'Mecanica', file: 'mecanica.md', updated: 2000, driveId: 'fm' },
                  { id: 'ch_opt', workbookId: 'wb_bis', title: 'Optica', file: 'optica.md', updated: 2000, driveId: 'fo' }]
     }) });
+    {
+      const { ctx, page, errors } = await fresh(browser, drive);
+      await page.goto(BASE);
+      await page.waitForTimeout(600);
+      await seed(page);
+      await page.evaluate(async () => {
+        const bis = { id: 'wb_bis', name: 'Fizică', folder: 'fizica', created: 1000, updated: 1000, order: 1 };
+        wbBooks.push(bis); await wbPut(WB_BOOKS, bis);
+        const opt = wbChapter('ch_opt'); opt.workbookId = 'wb_bis'; await wbPut(WB_CHAPTERS, opt);
+      });
+      await page.evaluate(() => cloudSync(true));
+      const man1 = manifestOf(drive);
+      check('two workbooks with one folder name become one',
+        man1.books.length === 1 && man1.books[0].id === 'wb_fiz' && man1.books[0].driveId === 'dirA'
+        && (await page.evaluate(() => wbBooks.map(b => b.id).join())) === 'wb_fiz', man1.books);
+      check('the folded-away id is graved, so the other devices fold too', !!man1.deleted.wb_bis, man1.deleted);
+      check('its chapter joins the survivor, its file left where it was',
+        man1.chapters.find(c => c.id === 'ch_opt').workbookId === 'wb_fiz'
+        && drive.files.has('fo') && drive.files.get('fo').parents.includes('dirA'), man1.chapters);
+      check('and the folder is not trashed under it', drive.files.has('dirA') && drive.files.has('fm'));
+      check('no page errors through it', errors.length === 0, errors);
+      await ctx.close();
+    }
+
+    // Another device made its own "fizica" before it ever synced: its own id,
+    // an older mecanica.md, a newer optica.md, and a chapter nobody else has.
+    {
+      const { ctx, page, errors } = await fresh(browser, drive);
+      await page.goto(BASE);
+      await page.waitForTimeout(600);
+      await wipe(page);
+      await page.evaluate(async () => {
+        const b = { id: 'wb_tel', name: 'Fizica', folder: 'Fizica', created: 500, updated: 500, order: 0 };
+        const chs = [
+          { id: 'ch_tm', workbookId: 'wb_tel', title: 'Mecanica', file: 'mecanica.md', content: 'veche, de pe telefon', created: 500, updated: 1500, order: 0 },
+          { id: 'ch_to', workbookId: 'wb_tel', title: 'Optica', file: 'optica.md', content: 'noua, de pe telefon', created: 500, updated: 5000, order: 1 },
+          { id: 'ch_tt', workbookId: 'wb_tel', title: 'Termo', file: 'termo.md', content: '# Termo', created: 500, updated: 1500, order: 2 },
+        ];
+        wbBooks.push(b); await wbPut(WB_BOOKS, b);
+        for (const c of chs) { wbChapters.push(c); await wbPut(WB_CHAPTERS, c); }
+        wbBooted = true;
+      });
+      await page.evaluate(() => cloudSync(true));
+      const state = await page.evaluate(() => ({
+        books: wbBooks.map(b => b.id),
+        chaps: wbChapters.map(c => c.workbookId + '/' + c.file + '=' + c.content).sort()
+      }));
+      check('the phone\'s own "Fizica" folds into the one Drive already has',
+        state.books.join() === 'wb_fiz', state);
+      check('same folder, same file name: the newer one is kept on both sides',
+        state.chaps.includes('wb_fiz/mecanica.md=# Mecanica\nviteza')
+        && state.chaps.includes('wb_fiz/optica.md=noua, de pe telefon')
+        && drive.files.get('fo').body === 'noua, de pe telefon', state.chaps);
+      const inA = [...drive.files.values()].filter(f => (f.parents || []).includes('dirA')).map(f => f.name).sort();
+      check('a file only the phone had lands in the same Drive folder, no second folder made',
+        inA.join() === 'mecanica.md,optica.md,termo.md'
+        && [...drive.files.values()].filter(f => f.mimeType === DIR && /fizica/i.test(f.name)).length === 1, inA);
+      check('no page errors on the phone', errors.length === 0, errors);
+      await ctx.close();
+    }
+
+    // Back on the first device, which still has its own older optica.md.
+    {
+      const { ctx, page, errors } = await fresh(browser, drive);
+      await page.goto(BASE);
+      await page.waitForTimeout(600);
+      await seed(page);
+      await page.evaluate(() => cloudSync(true));
+      const chaps = await page.evaluate(() => wbChapters.map(c => c.file + '=' + c.content).sort());
+      check('the first device takes the newer file and keeps no second copy of it',
+        chaps.join('|') === 'mecanica.md=# Mecanica\nviteza|optica.md=noua, de pe telefon|termo.md=# Termo', chaps);
+      check('no page errors on the first device', errors.length === 0, errors);
+      await ctx.close();
+    }
+  }
+
+  // ---- 11. Drive, file by file: what no manifest names ----
+  // Two devices writing index.json at once, or a pass that died before
+  // writing it, leave files in Drive that the manifest does not name. They
+  // are matched by folder and file name and the newer copy wins, and what
+  // has no match comes in whole.
+  {
+    const drive = fakeDrive();
+    {
+      const { ctx, page } = await fresh(browser, drive);
+      await page.goto(BASE);
+      await page.waitForTimeout(600);
+      await seed(page);
+      await page.evaluate(() => cloudSync(true));
+      await ctx.close();
+    }
+    const man0 = manifestOf(drive);
+    const dirFiz = man0.books[0].driveId;
+    const rootId = drive.file('Scula Markdown').id;
+    const later = new Date(Date.now() + 3600e3).toISOString();
+    drive.files.set('xdir', { id: 'xdir', name: 'chimie', mimeType: DIR, parents: [rootId], body: '', modifiedTime: later });
+    drive.files.set('xac', { id: 'xac', name: 'acizi.md', mimeType: 'text/plain', parents: ['xdir'], body: '# Acizi\npH', modifiedTime: later });
+    drive.files.set('xun', { id: 'xun', name: 'unde.md', mimeType: 'text/plain', parents: [dirFiz], body: '# Unde', modifiedTime: later });
+    // a second optica.md in the same folder, newer than the one the manifest names
+    drive.files.set('xop', { id: 'xop', name: 'optica.md', mimeType: 'text/plain', parents: [dirFiz], body: '# Optica\nde pe telefon', modifiedTime: later });
+    // and an older copy of mecanica.md, which must not win
+    drive.files.set('xme', { id: 'xme', name: 'mecanica.md', mimeType: 'text/plain', parents: [dirFiz], body: 'vechi', modifiedTime: new Date(1000).toISOString() });
+
     const { ctx, page, errors } = await fresh(browser, drive);
-    page.on('dialog', d => d.accept());
     await page.goto(BASE);
     await page.waitForTimeout(600);
     await seed(page);
-    await page.evaluate(async () => {
-      const bis = { id: 'wb_bis', name: 'Fizică', folder: 'fizica', created: 1000, updated: 1000, order: 1 };
-      wbBooks.push(bis); await wbPut(WB_BOOKS, bis);
-      const opt = wbChapter('ch_opt'); opt.workbookId = 'wb_bis'; await wbPut(WB_CHAPTERS, opt);
-    });
-    await page.evaluate(() => cloudSync(true));
+    const r = await page.evaluate(() => cloudSync(true));
+    const state = await page.evaluate(() => ({
+      books: wbBooks.map(b => b.folder).sort(),
+      chaps: wbChapters.map(c => wbBook(c.workbookId).folder + '/' + c.file + '=' + c.content).sort()
+    }));
+    check('a folder only Drive has becomes a workbook, its file a chapter',
+      state.books.join() === 'chimie,fizica' && state.chaps.includes('chimie/acizi.md=# Acizi\npH'), state);
+    check('a file only Drive has joins the workbook of its folder',
+      state.chaps.includes('fizica/unde.md=# Unde'), state.chaps);
+    check('a newer copy in Drive replaces the local chapter',
+      state.chaps.includes('fizica/optica.md=# Optica\nde pe telefon'), state.chaps);
+    check('an older copy in Drive does not',
+      state.chaps.includes('fizica/mecanica.md=# Mecanica\nviteza'), state.chaps);
     const man1 = manifestOf(drive);
-    const [a, b] = ['wb_fiz', 'wb_bis'].map(id => man1.books.find(x => x.id === id).driveId);
-    check('two workbooks sharing a folder are given one each', a === 'dirA' && !!b && b !== a, man1.books);
-    const opt = drive.files.get(man1.chapters.find(c => c.id === 'ch_opt').driveId);
-    check('the second one\'s chapter moves into its own folder',
-      !!opt && opt.parents.includes(b) && opt.body === '# Optica\nlentile' && !drive.files.has('fo'), opt);
+    const named = new Set([...man1.books, ...man1.chapters].map(x => x.driveId));
+    check('everything is in the manifest now, reusing the files that were there',
+      named.has('xdir') && named.has('xac') && named.has('xun') && man1.chapters.length === 4, man1);
+    check('the duplicate copies are gone, the chapter keeps one file with the newer text',
+      !drive.files.has('xop') && !drive.files.has('xme')
+      && drive.files.get(man1.chapters.find(c => c.id === 'ch_opt').driveId).body === '# Optica\nde pe telefon',
+      [...drive.files.values()].map(f => f.id + ':' + f.name));
+    check('the pass counts what it took in', r && r.down >= 3, r);
 
-    await page.evaluate(() => deleteWorkbook('wb_bis'));
-    await page.evaluate(() => cloudSync(true));
-    check('deleting one workbook leaves the other\'s folder and files',
-      drive.files.has('dirA') && drive.files.has('fm') && !drive.files.has(b),
-      [...drive.files.values()].map(f => f.name));
+    const before = drive.files.size;
+    const del = drive.deleted.length;
+    const r2 = await page.evaluate(() => cloudSync(true));
+    check('the next sync finds nothing to move either way',
+      r2 && r2.up === 0 && r2.down === 0 && drive.files.size === before && drive.deleted.length === del, r2);
     check('no page errors through it', errors.length === 0, errors);
     await ctx.close();
+
+    // a device with an empty database gets the whole tree, the adopted files included
+    const other = await fresh(browser, drive);
+    await other.page.goto(BASE);
+    await other.page.waitForTimeout(600);
+    await wipe(other.page);
+    await other.page.evaluate(() => { wbBooted = true; return cloudSync(true); });
+    const got = await other.page.evaluate(() => wbChapters.map(c => c.file).sort().join());
+    check('and another device gets all of it', got === 'acizi.md,mecanica.md,optica.md,unde.md', got);
+    await other.ctx.close();
   }
 
   await browser.close();
