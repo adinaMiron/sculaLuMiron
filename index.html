@@ -161,12 +161,6 @@
     border-radius: 6px;
     background: var(--surface);
   }
-  .toolbar-filters-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-2);
-    white-space: nowrap;
-  }
   .tb-color-control { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .tb-color-control input[type="color"] { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
 
@@ -1177,7 +1171,6 @@
        .wb-save-sync-row above. */
     .toolbar-filters { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .toolbar-filters .tb-select { flex: 0 0 auto; }
-    .toolbar-filters-label { flex: 0 0 auto; }
 
     /* Panels float over the content instead of squeezing it */
     #img-panel, #nav-panel, #find-panel {
@@ -3574,7 +3567,7 @@
   <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
   <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
-  <div class="toolbar-filters" role="group" aria-labelledby="toolbar-filters-label">
+  <div class="toolbar-filters" role="group">
     <select class="tb-select" id="btn-filter-todo" onchange="filterTodoByStatus(this.value)"
             data-i-title="filterTaskStatusTip" title="Show only chapters with tasks in the selected state">
       <option value="" data-i="filterTaskStatusDefault">— All task states —</option>
@@ -3584,7 +3577,6 @@
       <option value="blocked" data-i="taskStatusBlocked">⛔ Blocked</option>
       <option value="done" data-i="taskStatusDone">☑ Done</option>
     </select>
-    <span class="toolbar-filters-label" id="toolbar-filters-label" data-i="toolbarFilters">Filters</span>
     <select class="tb-select" id="responsible-select" onchange="selectResponsible(this.value)"
             data-i-title="responsibleTip" title="Show only text assigned to one responsible" hidden>
       <option value="" data-i="responsibleAll">— All responsibles —</option>
