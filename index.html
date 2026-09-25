@@ -3510,8 +3510,6 @@
     <option value="blocked" data-i="taskStatusBlocked">⛔ Blocked</option>
     <option value="done" data-i="taskStatusDone">☑ Done</option>
   </select>
-  <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
-
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
   <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
@@ -3541,6 +3539,7 @@
   <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
   <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
   <div class="toolbar-filters" role="group" aria-labelledby="toolbar-filters-label">
+    <button class="tb-btn" id="btn-filter-todo" onclick="toggleTodoFilterAll()" data-i="filterAllTodoBtn" data-i-title="filterAllTodoTip" title="Show only chapters with an open task, across every workbook">▣ Tasks only</button>
     <span class="toolbar-filters-label" id="toolbar-filters-label" data-i="toolbarFilters">Filters</span>
     <select class="tb-select" id="responsible-select" onchange="selectResponsible(this.value)"
             data-i-title="responsibleTip" title="Show only text assigned to one responsible" hidden>
