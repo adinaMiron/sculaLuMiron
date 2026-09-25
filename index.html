@@ -3510,13 +3510,6 @@
     <option value="blocked" data-i="taskStatusBlocked">⛔ Blocked</option>
     <option value="done" data-i="taskStatusDone">☑ Done</option>
   </select>
-  <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
-  <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
-
-  <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
-  <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
   <select class="tb-select" id="importance-insert-select" onchange="insertImportanceAtCursor(this.value)"
           data-i-title="impInsertTip" title="Insert an importance marker at the cursor">
     <option value="" data-i="impInsertDefault">— Marcaje de importanță —</option>
@@ -3524,6 +3517,13 @@
     <option value="!important" data-i="impInsertImportant">⭐ !important</option>
     <option value="!vital" data-i="impInsertVital">🔥 !vital</option>
   </select>
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
+  <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
+
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
+  <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
