@@ -7,7 +7,7 @@
 const I18N = {
   ro:{
     newFileBtn:"Nou", openFileBtn:"Deschide .md", importDocxBtn:"Importă DOCX",
-    exportHtmlBtn:"Exportă HTML", saveFileBtn:"Salvează fisierul",
+    exportHtmlBtn:"Exportă HTML",
     openHtmlBtn:"🌐 Deschide HTML", openHtmlTip:"Deschide o pagină HTML exportată din folderul ales cu 📁",
     openHtmlBlocked:"Fereastra a fost blocată — permite ferestrele pop-up pentru această pagină și încearcă din nou.",
     headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
@@ -85,7 +85,6 @@ const I18N = {
     syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown și din Google Drive, apoi scrie fiecare capitol în dosar",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
     saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
-    saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
     wbNoChapters:"niciun capitol încă",
     wbNoOpenTasks:"niciun capitol cu bifă neterminată",
@@ -416,7 +415,7 @@ const I18N = {
   },
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
-    exportHtmlBtn:"Export HTML", saveFileBtn:"Save ↓",
+    exportHtmlBtn:"Export HTML",
     openHtmlBtn:"🌐 Open HTML", openHtmlTip:"Open an exported HTML page from the folder set with 📁",
     openHtmlBlocked:"Pop-up blocked — allow pop-ups for this page and try again.",
     headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
@@ -491,7 +490,6 @@ const I18N = {
     syncFolderTip:"Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
     saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
-    saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
     wbNoChapters:"no chapters yet",
     wbNoOpenTasks:"no chapter has an unchecked box",

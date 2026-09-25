@@ -171,11 +171,6 @@ function htmlToMarkdown(html) {
 // download. It reports the outcome in the shared toast itself.
 const saveOut = (filename, blob) => ScuLaFolder.save(filename, blob);
 
-function saveFile() {
-  const filename = document.getElementById('current-file').textContent || 'document.md';
-  saveOut(filename, new Blob([editor.value], { type: 'text/markdown' }));
-}
-
 function exportHtml() {
   const mdFilename = document.getElementById('current-file').textContent || 'document.md';
   const htmlFilename = mdFilename.replace(/\.(md|txt)$/i, '') + '.html';
