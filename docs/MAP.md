@@ -101,9 +101,9 @@ nothing keeps it in sync automatically.
 
 | Lines | Contents |
 |---|---|
-| 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the two keep-the-sound rows) **137–138**, `.melody-card` and the piano roll **216–232** |
+| 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the keep-the-sound rows) **137–140**, `.rec-sub` indenting the WAV row under its parent, `.melody-card` and the piano roll **216–232** |
 | 260–1544 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all 7 files) |
-| 1548–1774 | Markup: header, controls, `#keepAudio` **1561–1565**, `#melodyArm` **1567–1572**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
+| 1548–1774 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
 | 1776–3827 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
@@ -171,6 +171,21 @@ blob next to the transcript under the name the transcript actually got
 (`r.name`, which `freeName` may have bumped), so both land in
 `<folder>/transcript/`. Browser dictation has no stream of its own, so
 `startAudioKeep(null)` opens one and `stopOwnStream()` closes it.
+
+**The high-quality WAV** (`#keepWav`, persisted as `S.keepWav`, only meaningful
+under `#keepAudio` — ticking it ticks that, unticking that unticks it): a
+*third* tap, the `wav` object beside `audio`. No `MediaRecorder` can write
+lossless audio, so `startWav()` (called from `startAudioKeep`) opens its own
+`getUserMedia` stream with echo cancellation, noise suppression and AGC
+**off** (the transcription stream is mono with all three on), feeds it into
+a `ScriptProcessor` — not an AudioWorklet, which would be a module file and
+break `file://` — and `wavTake()` packs every block to 24-bit PCM at the
+context's native rate as it arrives, folding into a `Blob` every ~5 s so a
+long session can be paged out of memory. `stopWav()` (from `stopAudioKeep`)
+tears the graph down and prepends the 44-byte header (`wavPcmBlob()`; the
+melody's `wavBlob()` is the 16-bit stereo one). `#dlBtn` saves it as the
+third file under the same `r.name` stem, `.wav`. Checked by `tests/voice.js`
+case 4b — header, sizes, length and a non-silent peak.
 
 ---
 

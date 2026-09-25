@@ -136,6 +136,8 @@
      settings sheet, because it has to be decided before pressing record */
   .rec-opt{margin-top:18px}
   .rec-opt-tip{margin:6px 0 0}
+  .rec-sub{margin-left:32px}
+  label.rec-sub{margin-top:10px}
 
   /* ---------- transcript ---------- */
   .paper{
@@ -1581,6 +1583,12 @@
   </label>
   <p class="tiny rec-opt-tip" data-i="keepAudioTip">Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.</p>
 
+  <label class="toggle rec-opt rec-sub">
+    <input type="checkbox" id="keepWav">
+    <span data-i="keepWavLabel">Și ca WAV de calitate înaltă (fără pierderi)</span>
+  </label>
+  <p class="tiny rec-opt-tip rec-sub" data-i="keepWavTip">Sunetul brut al microfonului, 24 de biți, fără filtre și fără compresie. Se salvează lângă celălalt fișier audio. Ocupă mult: cam 9 MB pe minut, în mono.</p>
+
   <label class="toggle rec-opt">
     <input type="checkbox" id="melodyArm">
     <span data-i="melodyArmLabel">Păstrează sunetul și pentru melodie</span>
@@ -1793,6 +1801,9 @@ const I18N = {
     keepAudioLabel:"Salvează și sunetul înregistrării",
     keepAudioTip:"Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.",
     noAudio:"Nu s-a păstrat niciun fișier audio pentru acest text.",
+    keepWavLabel:"Și ca WAV de calitate înaltă (fără pierderi)",
+    keepWavTip:"Sunetul brut al microfonului, 24 de biți, fără filtre și fără compresie. Se salvează lângă celălalt fișier audio. Ocupă mult: cam 9 MB pe minut, în mono.",
+    noWav:"Nu s-a păstrat niciun WAV pentru acest text.",
     melodyArmLabel:"Păstrează sunetul și pentru melodie",
     melodyArmTip:"Bifează înainte de a înregistra. Sunetul rămâne în pagină, ca să poată fi transformat în melodie mai jos.",
     melodyTitle:"Melodie din înregistrare",
@@ -1878,6 +1889,7 @@ const I18N = {
       </ul>
       <h3>Păstrează și sunetul</h3>
       <p>Bifează căsuța <i>„Salvează și sunetul înregistrării”</i> <b>înainte</b> de a apăsa Înregistrează — nu în timpul înregistrării. Fișierul audio se salvează odată cu textul, sub același nume.</p>
+      <p>Bifează și <i>„Și ca WAV de calitate înaltă”</i> ca să primești în plus un <code>.wav</code> cu același nume: sunetul brut al microfonului, 24 de biți, la rata plăcii de sunet, fără anularea ecoului, fără reducerea zgomotului și fără compresie. E fișierul bun pentru editare; celălalt e cel mic, de ascultat.</p>
       <h3>După transcriere</h3>
       <p>Copiază, trimite (share), descarcă sau șterge textul cu butoanele de sub el. Poți transcrie și un fișier audio existent cu „Transcrie un fișier audio”.</p>
       <h3>Melodie din înregistrare</h3>
@@ -1906,6 +1918,9 @@ const I18N = {
     keepAudioLabel:"Also save the sound of the recording",
     keepAudioTip:"Tick this before recording. The audio file is saved on “Download”, under the same name as the text.",
     noAudio:"No audio was kept for this text.",
+    keepWavLabel:"Also as a high-quality WAV (lossless)",
+    keepWavTip:"The raw microphone sound, 24-bit, no filters and no compression. Saved next to the other audio file. It is big: about 9 MB a minute in mono.",
+    noWav:"No WAV was kept for this text.",
     melodyArmLabel:"Also keep the sound for the melody",
     melodyArmTip:"Tick this before recording. The sound stays in the page, so it can be turned into a melody below.",
     melodyTitle:"Melody from the recording",
@@ -1991,6 +2006,7 @@ const I18N = {
       </ul>
       <h3>Keeping the audio</h3>
       <p>Tick <i>"Also save the sound of the recording"</i> <b>before</b> pressing Record — not mid-recording. The audio file is saved alongside the text, under the same name.</p>
+      <p>Also tick <i>"Also as a high-quality WAV"</i> to get a <code>.wav</code> under the same name as well: the raw microphone sound, 24-bit, at the sound card's rate, with no echo cancellation, no noise suppression and no compression. That is the file to edit; the other one is the small one to listen to.</p>
       <h3>After transcribing</h3>
       <p>Copy, share, download or clear the text with the buttons below it. You can also transcribe an existing audio file with "Transcribe an audio file".</p>
       <h3>Melody from the recording</h3>
@@ -2068,7 +2084,7 @@ const S = {
   ui:"ro", lang:"ro", engine:"api",
   provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
   hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile",
-  keepAudio:false,
+  keepAudio:false, keepWav:false,
   melody:false, melLead:"piano", melChord:"strings",
   melDrums:true, melBass:true, melChords:true,
   melScale:"auto", melGrid:"2", melOct:"0"
@@ -2086,7 +2102,7 @@ const sheet=$("#sheet"), scrim=$("#scrim");
 const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
 const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
 const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
-const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio"), melodyArmEl=$("#melodyArm");
+const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio"), keepWavEl=$("#keepWav"), melodyArmEl=$("#melodyArm");
 
 function say(msg, kind){
   statusEl.className = "status" + (kind ? " " + kind : "");
@@ -2198,6 +2214,7 @@ async function load(){
   tidyEl.checked = !!S.tidy;
   tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
   keepAudioEl.checked = !!S.keepAudio;
+  keepWavEl.checked = !!(S.keepAudio && S.keepWav);
   melodyArmEl.checked = !!S.melody;
   mel.lead = S.melLead in INSTR ? S.melLead : "piano";
   mel.back.drums = S.melDrums !== false;
@@ -2269,6 +2286,15 @@ const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, tim
    that never stops does. */
 const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null };
 
+/* The WAV is a third tap, and a different kind: not a MediaRecorder (every
+   one of them compresses) but the raw float samples, read off a Web Audio
+   graph and packed as 24-bit PCM as they arrive. It asks for its own stream
+   with echo cancellation, noise suppression and gain control off - the
+   transcription stream has all three on and is mono, which is right for
+   speech recognition and wrong for a recording someone wants to keep. */
+const wav = { armed:false, ctx:null, node:null, src:null, own:null, sr:48000, ch:1,
+              parts:[], pend:[], pendBytes:0, bytes:0, blob:null };
+
 // Read the checkboxes once, when recording starts: what was ticked then is
 // what gets recorded. Any earlier take is dropped here, so a new recording
 // never leaves the previous session's sound behind to be saved with the new
@@ -2278,11 +2304,14 @@ const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null
 function armAudio(){
   audio.armed = !!(keepAudioEl.checked || melodyArmEl.checked);
   audio.blob = null; audio.chunks = [];
+  wav.armed = !!(keepAudioEl.checked && keepWavEl.checked);
+  wav.blob = null; wav.parts = []; wav.pend = []; wav.pendBytes = 0; wav.bytes = 0;
 }
 
 // `stream` is the recording stream when there is one (the API engine); browser
 // dictation has none, so ask for our own and stop it again when done.
 async function startAudioKeep(stream){
+  startWav(stream);
   if(!audio.armed || typeof MediaRecorder === "undefined") return;
   if(audio.mr && audio.mr.state === "recording") return;
   if(!stream){
@@ -2313,11 +2342,106 @@ function stopOwnStream(){
   if(audio.own){ audio.own.getTracks().forEach(tr => tr.stop()); audio.own = null; }
 }
 function stopAudioKeep(){
+  stopWav();
   try{ if(audio.mr && audio.mr.state !== "inactive"){ audio.mr.stop(); return; } }catch(e){}
   stopOwnStream();
 }
 
-keepAudioEl.addEventListener("change", () => { S.keepAudio = keepAudioEl.checked; save(); });
+async function startWav(fallback){
+  if(!wav.armed || wav.ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC){ wav.armed = false; return; }
+  let stream = null;
+  try{
+    stream = wav.own = await navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false,
+      channelCount:{ ideal:2 } } });
+  }catch(e){ stream = fallback; }
+  if(!stream || !wav.armed){ stopWavStream(); wav.armed = false; return; }
+  try{
+    const tr = stream.getAudioTracks()[0];
+    const set = tr && tr.getSettings ? tr.getSettings() : {};
+    wav.ch = set.channelCount === 2 ? 2 : 1;
+    wav.ctx = new AC();
+    wav.sr = wav.ctx.sampleRate;
+    wav.src = wav.ctx.createMediaStreamSource(stream);
+    // ScriptProcessor rather than an AudioWorklet: a worklet is a module
+    // loaded from a URL, and this page is one file that must open from file://.
+    wav.node = wav.ctx.createScriptProcessor(4096, wav.ch, wav.ch);
+    wav.node.onaudioprocess = ev => { if(wav.ctx) wavTake(ev.inputBuffer); };
+    wav.src.connect(wav.node);
+    // A processor only runs while it reaches the destination; its output
+    // buffer is never written, so what it passes on is silence.
+    wav.node.connect(wav.ctx.destination);
+    if(wav.ctx.state === "suspended") wav.ctx.resume().catch(() => {});
+  }catch(e){ wavTeardown(); wav.armed = false; }
+}
+
+// Pack each block as 24-bit little-endian PCM straight away - 3 bytes a sample
+// instead of the 4 a float copy would hold - and fold the blocks into a Blob
+// every few seconds, which the browser is free to page out of memory.
+function wavTake(buf){
+  const n = buf.length, ch = wav.ch;
+  const chans = [];
+  for(let c = 0; c < ch; c++) chans.push(buf.getChannelData(Math.min(c, buf.numberOfChannels - 1)));
+  const out = new Uint8Array(n * ch * 3);
+  let o = 0;
+  for(let i = 0; i < n; i++){
+    for(let c = 0; c < ch; c++){
+      let v = chans[c][i];
+      v = v >= 1 ? 8388607 : v <= -1 ? -8388608 : Math.round(v * 8388607);
+      out[o++] = v & 255; out[o++] = (v >> 8) & 255; out[o++] = (v >> 16) & 255;
+    }
+  }
+  wav.pend.push(out); wav.pendBytes += out.length; wav.bytes += out.length;
+  if(wav.pendBytes > wav.sr * ch * 3 * 5){ wav.parts.push(new Blob(wav.pend)); wav.pend = []; wav.pendBytes = 0; }
+}
+
+function stopWavStream(){
+  if(wav.own){ wav.own.getTracks().forEach(tr => tr.stop()); wav.own = null; }
+}
+function wavTeardown(){
+  try{ if(wav.src) wav.src.disconnect(); }catch(e){}
+  try{ if(wav.node){ wav.node.onaudioprocess = null; wav.node.disconnect(); } }catch(e){}
+  try{ if(wav.ctx) wav.ctx.close(); }catch(e){}
+  wav.ctx = wav.node = wav.src = null;
+  stopWavStream();
+}
+function stopWav(){
+  // A start still waiting on the microphone sees this and backs out.
+  wav.armed = false;
+  if(!wav.ctx) return;
+  wavTeardown();
+  if(wav.pend.length){ wav.parts.push(new Blob(wav.pend)); wav.pend = []; wav.pendBytes = 0; }
+  // Under a tenth of a second is a stray click, not a recording.
+  wav.blob = wav.bytes >= wav.sr * wav.ch * 3 / 10 ? wavPcmBlob(wav.parts, wav.bytes, wav.sr, wav.ch) : null;
+  wav.parts = [];
+}
+
+/* --- WAV (24-bit PCM, any channel count) ---------------------------- */
+function wavPcmBlob(parts, dataBytes, sr, ch){
+  const h = new DataView(new ArrayBuffer(44));
+  const str = (o, s) => { for(let i = 0; i < s.length; i++) h.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF");  h.setUint32(4, 36 + dataBytes, true); str(8, "WAVE");
+  str(12, "fmt "); h.setUint32(16, 16, true);
+  h.setUint16(20, 1, true); h.setUint16(22, ch, true);
+  h.setUint32(24, sr, true); h.setUint32(28, sr * ch * 3, true);
+  h.setUint16(32, ch * 3, true); h.setUint16(34, 24, true);
+  str(36, "data"); h.setUint32(40, dataBytes, true);
+  return new Blob([h.buffer].concat(parts), { type:"audio/wav" });
+}
+
+keepAudioEl.addEventListener("change", () => {
+  S.keepAudio = keepAudioEl.checked;
+  // The WAV is a second copy of the kept sound, so it cannot outlive the first.
+  if(!keepAudioEl.checked){ keepWavEl.checked = false; S.keepWav = false; }
+  save();
+});
+keepWavEl.addEventListener("change", () => {
+  S.keepWav = keepWavEl.checked;
+  if(keepWavEl.checked && !keepAudioEl.checked){ keepAudioEl.checked = true; S.keepAudio = true; }
+  save();
+});
 const queue = { items:[], busy:false, done:0 };
 let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
 
@@ -2653,12 +2777,21 @@ $("#dlBtn").addEventListener("click", async () => {
     } else {
       msgs.push(t("noAudio"));
     }
+    if(keepWavEl.checked){
+      if(wav.blob){
+        const wname = (r.name || name).replace(/\.[^.]+$/, "") + ".wav";
+        const rw = await ScuLaFolder.save(wname, wav.blob, { quiet:true });
+        msgs.push(rw.message);
+      } else if(audio.blob){
+        msgs.push(t("noWav"));
+      }
+    }
   }
   const msg = msgs.filter(Boolean).join(" · ");
   if(msg) say(msg);
 });
 $("#clearBtn").addEventListener("click", () => {
-  ta.value = ""; interim.textContent = ""; audio.blob = null; melReset(); updateCounts(); say(t("cleared"));
+  ta.value = ""; interim.textContent = ""; audio.blob = null; wav.blob = null; melReset(); updateCounts(); say(t("cleared"));
 });
 ta.addEventListener("input", updateCounts);
 

@@ -57,12 +57,12 @@ async function record(page, ms) {
   await sleep(700);
 }
 
-async function downloadAll(page, downloads) {
+async function downloadAll(page, downloads, want = 2) {
   const before = downloads.length;
   await page.click('#dlBtn');
-  // Two saves are two separate <a download> clicks; give the second one time
-  // to arrive before deciding it never came.
-  for (let i = 0; i < 40 && downloads.length < before + 2; i++) await sleep(50);
+  // Several saves are separate <a download> clicks; give the later ones time
+  // to arrive before deciding they never came.
+  for (let i = 0; i < 60 && downloads.length < before + want; i++) await sleep(50);
   await sleep(150);
   return downloads.slice(before);
 }
@@ -148,6 +148,44 @@ async function downloadAll(page, downloads) {
     const got = await downloadAll(page, downloads);
     check('re-recording unticked drops the earlier take', got.length === 1,
       got.map(d => d.suggestedFilename()).join(', '));
+    await ctx.close();
+  }
+
+  /* --- 4b. the high-quality WAV: a third file, same name, real 24-bit PCM
+          whose header agrees with its length, and not silence --- */
+  {
+    const { ctx, page, downloads } = await openPage(browser);
+    await page.check('#keepWav');
+    check('ticking WAV ticks the sound too', await page.isChecked('#keepAudio'));
+    await record(page, 1500);
+    await page.fill('#transcript', 'Cu WAV.');
+    const got = await downloadAll(page, downloads, 3);
+    const names = got.map(d => d.suggestedFilename());
+    check('WAV ticked -> three files saved', got.length === 3, names.join(', '));
+    const txt = names.find(n => n.endsWith('.txt'));
+    const w = got.find(d => /\.wav$/.test(d.suggestedFilename()));
+    check('the .wav shares the transcript name',
+      !!(w && txt && w.suggestedFilename() === txt.replace(/\.txt$/, '.wav')), names.join(', '));
+    check('the compressed file is still saved beside it', names.some(n => AUDIO_EXT.test(n)), names.join(', '));
+    if (w) {
+      const b = fs.readFileSync(await w.path());
+      const ch = b.readUInt16LE(22), sr = b.readUInt32LE(24), bits = b.readUInt16LE(34);
+      const data = b.readUInt32LE(40);
+      check('WAV header: RIFF/WAVE, PCM, 24-bit',
+        b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WAVE'
+          && b.readUInt16LE(20) === 1 && bits === 24, [ch, sr, bits].join('/'));
+      check('WAV header sizes agree with the file', data === b.length - 44 && b.readUInt32LE(4) === b.length - 8,
+        data + ' vs ' + (b.length - 44));
+      const secs = data / (sr * ch * 3);
+      check('WAV holds about the recorded length (0.8-2.5 s)', secs > 0.8 && secs < 2.5, secs.toFixed(2) + ' s @ ' + sr);
+      let peak = 0;
+      for (let o = 44; o + 3 <= b.length; o += 3) {
+        const v = Math.abs(b.readIntLE(o, 3)); if (v > peak) peak = v;
+      }
+      check('WAV is not silence', peak > 1000, 'peak ' + peak);
+    }
+    await page.uncheck('#keepAudio');
+    check('unticking the sound unticks the WAV', !(await page.isChecked('#keepWav')));
     await ctx.close();
   }
 
