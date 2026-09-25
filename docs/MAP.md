@@ -348,6 +348,7 @@ function within a feature file.
 | Editor event handlers and keyboard shortcuts | `js/markdown/events.js` | DOM event listeners |
 | Dictation into editor or idea | `js/markdown/dictation.js` | `toggleDictation`, `toggleIdeaDictation` |
 | Responsive layout and initial boot | `js/markdown/startup.js` | `applyResponsiveDefaults`, `loadWorkbooks` |
+| First-run modal on a new device (folder, then cloud) | `js/markdown/startup.js` | `welcomeMaybe`, `welcomeCloud`, `#welcome-modal` |
 | Google Drive chapter sync | `js/markdown/drive.js` | `cloudSync`, `cloudButton`, `cloudBoot` |
 
 For the behavior and design of each feature, use [`FEATURES.md`](FEATURES.md)

@@ -807,7 +807,9 @@ The mirror ran one way for a long time: records here, files there. But the
 folder is a folder, and a person who drops a directory of notes into
 `<root>/markdown`, or a `.md` next to the ones a workbook already owns,
 means those to be a workbook and a chapter. So the button
-(`syncAllToFolder()`) now **looks before it writes**:
+(`#btn-wb-sync`, `syncAllToFolder()`) now **looks before it writes**. It
+sits in the header right beside `#btn-wb-cloud` (it used to live inside the
+Caiete panel): on a new device the two are one gesture, folder and account.
 
 1. `wbAdoptFromFolder()` walks `<root>/markdown`. A directory whose name
    matches no `book.folder` becomes a workbook — the folder name is both
@@ -858,6 +860,33 @@ against an in-memory directory handle, the fake Drive from `tests/gdsync.js`
 and its stub Google sign-in — including the new phone: empty database, empty
 folder, an empty duplicate root listed first in Drive, and one press that
 fills the folder.
+
+### A new device — the first-run modal
+
+A phone or a second computer opens the page with an empty database, no
+folder and no Google account. Rather than leave the person to find the two
+buttons, `welcomeMaybe()` (`js/markdown/startup.js`, run once the tree has
+loaded) opens `#welcome-modal` and asks two things in the order the sync
+needs them:
+
+1. **The folder.** Desktop: the real directory picker
+   (`ScuLaFolder.pick()`); a cancelled picker leaves the question open. A
+   phone has no picker, so the "where do files go" sheet
+   (`ScuLaFolder.chooser()`) opens above the modal instead. "Later" skips.
+2. **The cloud.** "Yes" runs, inside that click's gesture, exactly what the
+   header press does: `syncAllToFolder()` with a folder (sign-in popup,
+   Drive pulled, folder written), `cloudButton()` without one. If the
+   account holds nothing, the status line says so (`welcomeCloudEmpty`).
+   "No" reads the chosen folder alone (`syncAllToFolder({ cloud: false })`),
+   in case it already held a markdown tree. Off `file://` the answer is
+   treated as "no", with the `cloudNoFile` toast.
+
+The answer is remembered under `welcomed` in the workbooks' own meta store,
+so it is per device. A device that already has workbooks, a folder or a
+Google connection is not new: it is marked welcomed without being asked.
+Automated browsers (`navigator.webdriver`) skip the modal unless the page
+has `window.__sculaWelcome` set, so the other checks are not blocked by it.
+Tested by `tests/welcome.js`.
 
 ### The three routes, for a chapter
 

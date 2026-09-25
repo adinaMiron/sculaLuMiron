@@ -251,6 +251,8 @@ overwritten by the file on disk, and the adopted records pushed to Drive in
 the same press — through the fake Drive `gdsync.js` now exports rather than
 a second copy of it — and a **new phone**: empty database, empty folder, one
 press pulling the chapters out of Drive and into the folder),
+the **first-run modal on a new device** (`welcome.js` — folder, then
+"bring your chapters from Google?", the yes pulling Drive into the folder),
 the open chapter surviving a reload and the draft journal under it
 (`wbresume.js` — the browser's own form restoration no longer keeping a
 chapter out of its editor, and nothing on screen thrown away),

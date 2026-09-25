@@ -1175,11 +1175,12 @@ function exportChapter(id) {
    never connected, or whose hour-long token lapsed, gets the popup here —
    first thing, while the click still counts as a gesture (the folder's own
    permission prompt, when there is one, goes just before it for the same
-   reason). Closing the popup is an answer: the folder half runs anyway. */
-async function syncAllToFolder() {
+   reason). Closing the popup is an answer: the folder half runs anyway.
+   { cloud: false } is the first-run modal's "no": the folder only. */
+async function syncAllToFolder(opts) {
   if (!wbFolderMode()) { ScuLaFolder.chooser(); return; }
   try { await ScuLaFolder.dir(!wbMirrorAsked); wbMirrorAsked = true; } catch (e) {}
-  let cloud = location.protocol !== 'file:';
+  let cloud = location.protocol !== 'file:' && !(opts && opts.cloud === false);
   let r = null, cloudMsg = '';
   if (cloud && !gsLive()) {
     try {

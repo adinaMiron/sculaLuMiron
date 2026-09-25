@@ -126,9 +126,83 @@ function initWbPanelDrag() {
   header.addEventListener('pointercancel', endDrag);
 }
 
+/* ── First run on a device (docs/FEATURES.md § E "A new device") ──
+   A phone or a second computer opens the page with an empty database, no
+   folder and no Google account. Instead of leaving the person to find the
+   two buttons that fix that, ask once: which folder, then whether to bring
+   the chapters down from Drive. The answer is remembered in the workbooks'
+   own meta store, so it is per device like everything it sets up.
+
+   A device that already has chapters, a folder or a Google connection is
+   not new — it is marked as welcomed without being asked. Automated
+   browsers skip it too (every Playwright check starts on an empty
+   database); a check that wants it sets window.__sculaWelcome first. */
+const WELCOME_KEY = 'welcomed';
+
+async function welcomeMaybe() {
+  if (navigator.webdriver && !window.__sculaWelcome) return;
+  try { if (await wbMetaGet(WELCOME_KEY)) return; } catch (e) { return; }
+  try { await ScuLaFolder.ready; } catch (e) {}
+  if (wbBooks.length || wbChapters.length || ScuLaFolder.isSet() || gsConnected()) {
+    wbMetaSet(WELCOME_KEY, Date.now()).catch(() => {});
+    return;
+  }
+  welcomeStep('folder');
+  document.getElementById('welcome-modal').classList.add('open');
+}
+
+function welcomeStep(step) {
+  document.getElementById('welcome-step-folder').hidden = step !== 'folder';
+  document.getElementById('welcome-step-cloud').hidden = step !== 'cloud';
+  welcomePaint();
+  const b = document.getElementById(step === 'folder' ? 'btn-welcome-folder' : 'btn-welcome-yes');
+  if (b) setTimeout(() => b.focus(), 40);
+}
+
+// The two texts that depend on the device and on the answer so far, so
+// data-i cannot carry them.
+function welcomePaint() {
+  const desk = ScuLaFolder.supported();
+  document.getElementById('welcome-folder-text').textContent = t(desk ? 'welcomeFolderDesktop' : 'welcomeFolderMobile');
+  document.getElementById('btn-welcome-folder').textContent = t(desk ? 'welcomeFolderBtn' : 'welcomeFolderBtnMobile');
+  const f = ScuLaFolder.name();
+  document.getElementById('welcome-cloud-text').textContent = (f ? t('welcomeCloudFolder', f) : '') + t('welcomeCloudText');
+}
+window.addEventListener('scula-ui-lang', () => setTimeout(() => {
+  if (document.getElementById('welcome-modal').classList.contains('open')) welcomePaint();
+}, 0));
+
+// Desktop: the real directory picker; a cancelled picker leaves the question
+// open. A phone has no picker, so the "where do files go" sheet stands in —
+// it opens above this modal, and the next question waits underneath it.
+async function welcomePickFolder() {
+  if (!ScuLaFolder.supported()) { ScuLaFolder.chooser(); welcomeStep('cloud'); return; }
+  if (await ScuLaFolder.pick()) welcomeStep('cloud');
+}
+function welcomeFolderLater() { welcomeStep('cloud'); }
+
+/* Yes goes through the same press as the header buttons, so a new device
+   gets exactly what "⇩ Sync to folder" does: the Google sign-in popup first
+   (still inside this click's gesture), the chapters pulled from Drive, then
+   written into the folder. Without a folder the ☁ button's path does the
+   pulling. No reads the chosen folder alone, in case it already held a
+   markdown tree from another device. */
+async function welcomeCloud(yes) {
+  document.getElementById('welcome-modal').classList.remove('open');
+  wbMetaSet(WELCOME_KEY, Date.now()).catch(() => {});
+  if (yes && location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); yes = false; }
+  if (!yes) {
+    if (wbFolderMode()) await syncAllToFolder({ cloud: false });
+    return;
+  }
+  if (wbFolderMode()) await syncAllToFolder();
+  else await cloudButton();
+  if (gsConnected() && !wbChapters.length) wbSay(t('welcomeCloudEmpty'), true);
+}
+
 setView('source');
 applyResponsiveDefaults();
-loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); }, cloudBoot);   // § O: the tree first, then Drive
+loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); welcomeMaybe(); }, cloudBoot);   // § O: the tree first, then Drive
 initToolbarCollapse();
 initWbPanelResize();
 initWbPanelDrag();

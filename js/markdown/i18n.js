@@ -146,6 +146,17 @@ const I18N = {
     cloudForgetAsk:"Uiți conexiunea cu contul Google? Capitolele rămân și aici, și în Drive.",
     cloudForgot:"Cont Google deconectat.",
 
+    /* ── Prima pornire pe un dispozitiv (docs/FEATURES.md § E) ── */
+    welcomeTitle:"Bun venit",
+    welcomeFolderDesktop:"Alege dosarul în care aplicația își ține fișierele pe acest dispozitiv. Caietele se scriu în subdosarul „markdown”, iar ce există deja acolo e preluat.",
+    welcomeFolderMobile:"Browserul acestui telefon nu poate alege un dosar. Alege unde merg fișierele salvate — foaia de partajare sau descărcările. Capitolele rămân oricum în aplicație.",
+    welcomeFolderBtn:"📁 Alege dosarul", welcomeFolderBtnMobile:"📁 Unde merg fișierele",
+    welcomeLaterBtn:"Mai târziu",
+    welcomeCloudText:"Vrei să aduci datele din cloud? Conectează contul tău Gmail: dacă în Google Drive există caiete salvate de pe alt dispozitiv, sunt aduse aici.",
+    welcomeCloudFolder:f=>`Dosar ales: „${f}”. `,
+    welcomeYesBtn:"☁ Da, conectează contul Google", welcomeNoBtn:"Nu, încep de la zero",
+    welcomeCloudEmpty:"Contul Google e conectat, dar în Drive nu există încă niciun capitol.",
+
     /* ── Graful cunoștințelor (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Notiță", wikilinkTip:"Leagă o notiță sau o secțiune (Ctrl+Shift+L)",
     graphBtn:"🕸 Graf", graphTip:"Graful cunoștințelor (Ctrl+3)", graphTitle:"Graful cunoștințelor",
@@ -310,7 +321,7 @@ const I18N = {
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus.</li>
         <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
-        <li>„⇩ Sincronizează în dosar” din panoul Caiete preia caietele și capitolele noi din folderul markdown, apoi scrie toate capitolele înapoi în acel folder.</li>
+        <li>„⇩ Sincronizează în dosar”, lângă „☁ Cont Google” în bara de sus, preia caietele și capitolele noi din folderul markdown și din Google Drive, apoi scrie toate capitolele înapoi în acel folder. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
         <li>„☁ Cont Google” conectează și sincronizează capitolele cu Google Drive; apasă din nou pentru sincronizare, iar clic dreapta deconectează contul. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
@@ -534,6 +545,17 @@ const I18N = {
     cloudForgetAsk:"Forget the Google account connection? The chapters stay both here and in Drive.",
     cloudForgot:"Google account disconnected.",
 
+    /* ── First run on a device (docs/FEATURES.md § E) ── */
+    welcomeTitle:"Welcome",
+    welcomeFolderDesktop:"Choose the folder where the app keeps its files on this device. Workbooks are written into its “markdown” subfolder, and whatever is already there is taken in.",
+    welcomeFolderMobile:"This phone's browser can't choose a folder. Pick where saved files go — the share sheet or downloads. The chapters stay in the app either way.",
+    welcomeFolderBtn:"📁 Choose folder", welcomeFolderBtnMobile:"📁 Where files go",
+    welcomeLaterBtn:"Later",
+    welcomeCloudText:"Bring your data from the cloud? Connect your Gmail account: if Google Drive holds workbooks saved from another device, they are brought here.",
+    welcomeCloudFolder:f=>`Folder chosen: “${f}”. `,
+    welcomeYesBtn:"☁ Yes, connect Google account", welcomeNoBtn:"No, start empty",
+    welcomeCloudEmpty:"Google account connected, but Drive holds no chapters yet.",
+
     /* ── Knowledge graph (docs/FEATURES.md § G) ── */
     wikilinkBtn:"⟦⟧ Note link", wikilinkTip:"Link to a note or a section (Ctrl+Shift+L)",
     graphBtn:"🕸 Graph", graphTip:"Knowledge graph (Ctrl+3)", graphTitle:"Knowledge graph",
@@ -698,7 +720,7 @@ const I18N = {
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top.</li>
         <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
-        <li>"⇩ Sync to folder" in the Workbooks panel takes in new workbooks and chapters from the markdown folder, then writes every chapter back to that folder.</li>
+        <li>"⇩ Sync to folder", beside "☁ Google account" in the top bar, takes in new workbooks and chapters from the markdown folder and from Google Drive, then writes every chapter back to that folder. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
         <li>"☁ Google account" connects and syncs chapters with Google Drive; click again to sync, or right-click to disconnect. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>

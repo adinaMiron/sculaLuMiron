@@ -602,6 +602,10 @@
     gap: 14px;
   }
   .modal-title { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; color: var(--text); }
+  /* First-run modal: prose, not a form — the steps swap in place. */
+  .welcome-step { display: flex; flex-direction: column; gap: 14px; }
+  .welcome-step[hidden] { display: none; }
+  .welcome-text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
   /* Chapter Gantt: a fixed task column and a horizontally scrolling day grid. */
   #gantt-modal { padding: 12px; }
   #gantt-modal .gantt-box { width: min(1500px, 100%); height: min(90vh, 900px); min-height: 300px; padding: 0; gap: 0; overflow: hidden; }
@@ -3438,6 +3442,9 @@
     <button class="btn" onclick="saveFile()" data-i="saveFileBtn" data-i-title="saveFileTip" title="Save a copy of the file (Ctrl+Shift+S)">Save ↓</button>
     <button class="btn" id="btn-save-all-modified" onclick="saveAllModifiedChapters()" data-i="saveAllModifiedBtn" data-i-title="saveAllModifiedTip" title="Save every modified chapter in every workbook (Ctrl+Alt+S)">📚 Save all modified</button>
     <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
+    <!-- Beside ☁ rather than inside the Caiete panel: the two are one
+         gesture on a new device (folder + account), so they sit together. -->
+    <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder">⇩ Sync to folder</button>
     <!-- Google Drive sync: the chapters follow the Google account, so every
          Chrome signed into it has them — docs/FEATURES.md § O. No data-i:
          the label depends on the connection, so paintCloud() writes both
@@ -3583,7 +3590,6 @@
     </div>
     <div class="panel-actions">
       <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
-      <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder">⇩ Sync to folder</button>
       <div id="wb-where"></div>
     </div>
     <div id="wb-tree"></div>
@@ -3771,6 +3777,30 @@ Use the toolbar above to insert formatting.
       <button class="btn" id="btn-idea-dictate" onclick="toggleIdeaDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
       <button class="btn" onclick="closeIdeaModal()" data-i="cancelBtn">Cancel</button>
       <button class="btn btn-primary" onclick="saveIdea()" data-i="ideaSaveBtn" data-i-title="ideaSaveTip" title="File this idea (Ctrl+Enter)">Save idea</button>
+    </div>
+  </div>
+</div>
+
+<!-- First run on a device — docs/FEATURES.md § E "A new device".
+     Two questions, in the order the sync needs them: where the files live
+     here, then whether to bring the chapters down from the Google account.
+     welcomeMaybe() in startup.js decides whether this opens at all. -->
+<div class="image-modal" id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+  <div class="modal-box">
+    <div class="modal-title" id="welcome-title" data-i="welcomeTitle">Welcome</div>
+    <div class="welcome-step" id="welcome-step-folder">
+      <p class="welcome-text" id="welcome-folder-text"></p>
+      <div class="modal-actions">
+        <button class="btn" id="btn-welcome-later" onclick="welcomeFolderLater()" data-i="welcomeLaterBtn">Later</button>
+        <button class="btn btn-primary" id="btn-welcome-folder" onclick="welcomePickFolder()" data-i="welcomeFolderBtn">📁 Choose folder</button>
+      </div>
+    </div>
+    <div class="welcome-step" id="welcome-step-cloud" hidden>
+      <p class="welcome-text" id="welcome-cloud-text"></p>
+      <div class="modal-actions">
+        <button class="btn" id="btn-welcome-no" onclick="welcomeCloud(false)" data-i="welcomeNoBtn">No, start empty</button>
+        <button class="btn btn-primary" id="btn-welcome-yes" onclick="welcomeCloud(true)" data-i="welcomeYesBtn">☁ Yes, sign in with Google</button>
+      </div>
     </div>
   </div>
 </div>
