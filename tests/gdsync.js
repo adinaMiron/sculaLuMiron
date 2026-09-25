@@ -122,7 +122,9 @@ function fakeDrive(seed) {
           (!name || f.name === name) &&
           (!pa || (f.parents || []).includes(pa[1])) &&
           (!wantDir || f.mimeType === DIR));
-        return { status: 200, json: { files: hit.slice(0, 1).map(f => ({ id: f.id, name: f.name })) } };
+        const size = Number(url.searchParams.get('pageSize')) || 100;
+        return { status: 200, json: { files: hit.slice(0, size).map(f => ({
+          id: f.id, name: f.name, modifiedTime: new Date(f.mtime || 0).toISOString() })) } };
       }
 
       // create a folder
@@ -145,11 +147,12 @@ function fakeDrive(seed) {
           if (!f) return { status: 404, json: { error: { message: 'gone' } } };
           f.name = parsed.meta.name || f.name;
           f.body = parsed.body;
+          f.mtime = Date.now();
           return { status: 200, json: { id: f.id, name: f.name } };
         }
         if (orphan(parsed.meta.parents)) return notFound(orphan(parsed.meta.parents));
         const f = { id: newId(), name: parsed.meta.name, mimeType: 'text/plain',
-                    parents: parsed.meta.parents || [], body: parsed.body };
+                    parents: parsed.meta.parents || [], body: parsed.body, mtime: Date.now() };
         files.set(f.id, f);
         return { status: 200, json: { id: f.id, name: f.name } };
       }
@@ -158,10 +161,28 @@ function fakeDrive(seed) {
   };
 }
 
+// Google Identity Services, as far as the page uses it: a token client whose
+// popup answers with window.__gsiAnswer — 'grant' hands back a token, anything
+// else (the default) is the person closing the popup.
+const GSI_STUB = `window.__gsi = 1;
+window.google = { accounts: { oauth2: {
+  revoke: function () {},
+  initTokenClient: function (cfg) {
+    var c = { callback: cfg.callback, error_callback: null };
+    c.requestAccessToken = function () {
+      setTimeout(function () {
+        if (window.__gsiAnswer === 'grant') c.callback({ access_token: 'stub-token', expires_in: 3600 });
+        else if (c.error_callback) c.error_callback({ type: 'popup_closed' });
+      }, 10);
+    };
+    return c;
+  }
+} } };`;
+
 async function stub(ctx, drive, hits) {
   await ctx.route('**://accounts.google.com/**', route => {
     if (hits) hits.push('gsi');
-    route.fulfill({ status: 200, contentType: 'text/javascript', body: 'window.__gsi=1;' });
+    route.fulfill({ status: 200, contentType: 'text/javascript', body: GSI_STUB });
   });
   await ctx.route('**://apis.google.com/**', route => {
     if (hits) hits.push('gapi');

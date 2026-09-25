@@ -20,7 +20,7 @@
 //
 //   node wbadopt.js        # from tests/, or /apptest wbadopt
 const { chromium } = require('playwright');
-const { fakeDrive, stub, serve, withToken } = require('./gdsync.js');
+const { fakeDrive, stub, serve, withToken, DIR } = require('./gdsync.js');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
 
@@ -285,7 +285,10 @@ const manifestOf = drive => {
     await ctx.close();
   }
 
-  // ---- 5. with no account linked nothing is asked of Google -------------
+  // ---- 5. with no account linked the press offers the sign-in ----------
+  // A device the account was never linked on may be a new phone whose
+  // chapters are all in Drive, so the press asks — and a closed popup is an
+  // answer: the folder half runs anyway and Drive is left alone.
   {
     const drive = fakeDrive();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
@@ -302,7 +305,89 @@ const manifestOf = drive => {
     const s = await stored(page);
     check('the folder is still read back without an account',
       s.chapters.length === 4, s.chapters.map(c => c.file));
-    check('and Google was not contacted', hits.length === 0 && drive.files.size === 0, hits);
+    check('the sign-in was offered', hits.includes('gsi'), hits);
+    check('and, declined, nothing reached Drive', drive.files.size === 0, [...drive.files.keys()]);
+    check('the status line says the account was not reached',
+      /nu a fost conectat/.test(await statusLine(page)), await statusLine(page));
+    await ctx.close();
+  }
+
+  // Drive as another device left it — plus an empty duplicate root, listed
+  // first, the way a root made twice leaves it.
+  const cloudFixture = () => {
+    const drive = fakeDrive([
+      { id: 'empty', name: 'Scula Markdown', mimeType: DIR, parents: [], body: '' },
+      { id: 'root', name: 'Scula Markdown', mimeType: DIR, parents: [], body: '' },
+      { id: 'dirA', name: 'fizica', mimeType: DIR, parents: ['root'], body: '' },
+      { id: 'fm', name: 'mecanica.md', mimeType: 'text/plain', parents: ['dirA'], body: '# Mecanica\nviteza' },
+      { id: 'fo', name: 'optica.md', mimeType: 'text/plain', parents: ['dirA'], body: '# Optica\nlentile' },
+    ]);
+    drive.files.set('man', { id: 'man', name: 'index.json', mimeType: 'text/plain', parents: ['root'], mtime: 5000,
+      body: JSON.stringify({ v: 1, deleted: {},
+        books: [{ id: 'wb_fiz', name: 'Fizică', folder: 'fizica', updated: 1000, driveId: 'dirA' }],
+        chapters: [{ id: 'ch_mec', workbookId: 'wb_fiz', title: 'Mecanica', file: 'mecanica.md', updated: 2000, driveId: 'fm' },
+                   { id: 'ch_opt', workbookId: 'wb_fiz', title: 'Optica', file: 'optica.md', updated: 2000, driveId: 'fo' }] }) });
+    return drive;
+  };
+  const wipe = page => page.evaluate(async () => {
+    for (const c of wbChapters.slice()) { try { await wbDrop(WB_CHAPTERS, c.id); } catch (e) {} }
+    for (const b of wbBooks.slice()) { try { await wbDrop(WB_BOOKS, b.id); } catch (e) {} }
+    wbBooks.length = 0; wbChapters.length = 0; wbPendingIds.clear(); wbCurrentId = null;
+    gsGraves = {};
+    renderWorkbooks();
+  });
+
+  // ---- 6. a new phone: empty database, an empty folder, one press -------
+  {
+    const drive = cloudFixture();
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    await stub(ctx, drive);
+    await ctx.addInitScript(() => { window.__gsiAnswer = 'grant'; });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
+    await page.goto(BASE);
+    await page.waitForTimeout(400);
+    await wipe(page);
+    await mountFolder(page, {});
+
+    await page.click('#btn-wb-sync');
+    await page.waitForFunction(() => /Sincronizat/.test(document.getElementById('stat-wb').textContent),
+                               null, { timeout: 15000 });
+
+    const disk = await page.evaluate(() => window.__disk());
+    check('the chapters in Drive reached the folder in the same press',
+      !!disk.fizica && disk.fizica['mecanica.md'] === '# Mecanica\nviteza' && disk.fizica['optica.md'] === '# Optica\nlentile', disk);
+    const s = await stored(page);
+    check('and IndexedDB', s.chapters.length === 2 && s.books.join() === 'fizica', s);
+    check('nothing is left pending — it is on disk',
+      await page.evaluate(() => wbPendingIds.size === 0));
+    check('the root holding the manifest was chosen, not the empty one',
+      await page.evaluate(() => gsFolder && gsFolder.id) === 'root' &&
+      ![...drive.files.values()].some(f => (f.parents || []).includes('empty')));
+    check('the status line says what came down',
+      /3 primite/.test(await statusLine(page)), await statusLine(page));   // a workbook and two chapters
+    check('no page errors', errors.length === 0, errors);
+    await ctx.close();
+  }
+
+  // ---- 7. the ☁ button, on a device with a folder, fills the folder too --
+  {
+    const drive = cloudFixture();
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    await stub(ctx, drive);
+    await withToken(ctx);
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.waitForTimeout(400);
+    await wipe(page);
+    await mountFolder(page, {});
+    await page.click('#btn-wb-cloud');
+    await page.waitForFunction(() => /Sincronizat/.test(document.getElementById('stat-wb').textContent),
+                               null, { timeout: 15000 });
+    const disk = await page.evaluate(() => window.__disk());
+    check('what ☁ pulled is written into the folder',
+      !!disk.fizica && disk.fizica['mecanica.md'] === '# Mecanica\nviteza', disk);
     await ctx.close();
   }
 

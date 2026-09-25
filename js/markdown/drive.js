@@ -200,7 +200,30 @@ async function gsRoot() {
     if (live && !live.trashed) return gsRootIs({ id: live.id, name: live.name });
     gsFolder = null;
   }
-  return gsRootIs((await gsChild(GSYNC.FOLDER_NAME, null, true)) || (await gsMakeFolder(GSYNC.FOLDER_NAME, null)));
+  return gsRootIs((await gsFindRoot()) || (await gsMakeFolder(GSYNC.FOLDER_NAME, null)));
+}
+/* A device with no remembered folder — a new phone, a new browser — finds
+   the root by name, and the name is not always unique: a root made again
+   after the old one was binned, or one made by a device that connected
+   before the first had synced, are the same name. Taking whichever Drive
+   lists first could land a new phone in an empty one and pull nothing; the
+   root that holds the newest manifest is the one the chapters are in. */
+async function gsFindRoot() {
+  const q = "name='" + GSYNC.FOLDER_NAME.replace(/'/g, "\\'") + "' and trashed=false and mimeType='" + GS_DIR_MIME + "'";
+  const r = await gsJson(GS_FILES + '?pageSize=20&fields=files(id,name)&q=' + encodeURIComponent(q));
+  const all = (r && r.files) || [];
+  if (all.length < 2) return all[0] || null;
+  let best = null, bestAt = -1;
+  for (const f of all) {
+    const mq = "name='" + GSYNC.MANIFEST + "' and trashed=false and '" + f.id + "' in parents";
+    let m = null;
+    try { m = await gsJson(GS_FILES + '?pageSize=1&fields=files(id,modifiedTime)&q=' + encodeURIComponent(mq)); }
+    catch (e) { continue; }
+    const hit = m && m.files && m.files[0];
+    const at = hit ? (Date.parse(hit.modifiedTime) || 0) : -1;
+    if (!best || at > bestAt) { best = f; bestAt = at; }
+  }
+  return best;
 }
 function gsRootIs(folder) {
   gsFolder = { id: folder.id, name: folder.name };
@@ -471,6 +494,17 @@ async function cloudButton() {
       if (first) ScuLaFolder.toast(t('cloudConnected', f.name));
     }
     const r = await cloudSync(true);
+    // What came down is pending (§ E). With a markdown folder chosen and
+    // already permitted, it goes straight into it — a new phone given a
+    // folder expects the files there, not a second press. No permission
+    // prompt this late in the press: without one they simply stay pending.
+    if (r && r.down && wbFolderMode() && await ScuLaFolder.dir(false)) {
+      for (const id of [...wbPendingIds]) {
+        const ch = wbChapter(id), book = ch && wbBook(ch.workbookId);
+        if (book && await wbMirrorWrite(book, ch, ch.content || '')) await wbPendingClear(id);
+      }
+      renderWorkbooks();
+    }
     if (r) wbSay(r.up || r.down ? t('cloudDone', r) : t('cloudNothing'), true);
   } catch (err) {
     cloudError(err);

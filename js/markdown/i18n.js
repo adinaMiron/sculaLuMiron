@@ -83,7 +83,7 @@ const I18N = {
     /* ── Caiete și capitole (vezi docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
     newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
-    syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown, apoi scrie fiecare capitol înapoi în el",
+    syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown și din Google Drive, apoi scrie fiecare capitol în dosar",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
     saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
     saveFileTip:"Salvează o copie a fișierului (Ctrl+Shift+S)",
@@ -140,6 +140,7 @@ const I18N = {
     cloudConnected:f=>`Cont Google conectat. Capitolele merg în „${f}”.`,
     cloudDone:r=>`Sincronizat: ${r.up} trimise, ${r.down} primite.`,
     cloudNothing:"Sincronizat — nimic de schimbat.",
+    cloudSkipped:"Google Drive nu a fost conectat — nimic adus din cont.",
     cloudError:m=>`Google Drive: ${m}`,
     cloudNoFile:"Sincronizarea nu merge cu pagina deschisă direct de pe disc (file://). Deschide-o prin http(s) — de pe site, de exemplu — și încearcă din nou.",
     cloudForgetAsk:"Uiți conexiunea cu contul Google? Capitolele rămân și aici, și în Drive.",
@@ -470,7 +471,7 @@ const I18N = {
     /* ── Workbooks and chapters (see docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
     newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
-    syncFolderTip:"Take in new workbooks and chapters from the markdown folder, then write every chapter back into it",
+    syncFolderTip:"Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
     saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
     saveFileTip:"Save a copy of the file (Ctrl+Shift+S)",
@@ -527,6 +528,7 @@ const I18N = {
     cloudConnected:f=>`Google account connected. Chapters go to “${f}”.`,
     cloudDone:r=>`Synced: ${r.up} sent, ${r.down} received.`,
     cloudNothing:"Synced — nothing to change.",
+    cloudSkipped:"Google Drive not connected — nothing brought from the account.",
     cloudError:m=>`Google Drive: ${m}`,
     cloudNoFile:"Sync can't work when the page is opened straight off disk (file://). Serve it over http(s) — from the site, say — and try again.",
     cloudForgetAsk:"Forget the Google account connection? The chapters stay both here and in Drive.",

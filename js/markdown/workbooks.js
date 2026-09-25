@@ -1160,15 +1160,51 @@ function exportChapter(id) {
   ScuLaFolder.save(name, new Blob([ch.content || ''], { type: 'text/markdown' }));
 }
 
-/* Both directions of the mirror, in that order: read the folder for
-   workbooks and chapters that only exist there yet, then write every
-   chapter back out. Whatever the read pass adopted is in IndexedDB by the
-   time the cloud is asked, which is all § O's merge needs to carry it up to
-   the Gmail account — a record Drive has never seen is an upload to it. */
+/* Every direction in one press, in this order: read the folder for
+   workbooks and chapters that only exist there yet, trade with Google Drive
+   (§ O), then write every chapter out into the folder.
+
+   The cloud sits in the middle for the new device's sake. A phone that has
+   just been handed a folder has nothing of its own, and what the person
+   means by the press is "bring my chapters here": so what Drive holds has to
+   reach IndexedDB *before* the write pass, or it would only be marked
+   pending and wait for another press. Whatever the read pass adopted is in
+   IndexedDB by then too, which is all the merge needs to carry it up.
+
+   A press is where a sign-in is allowed to happen, so a device that was
+   never connected, or whose hour-long token lapsed, gets the popup here —
+   first thing, while the click still counts as a gesture (the folder's own
+   permission prompt, when there is one, goes just before it for the same
+   reason). Closing the popup is an answer: the folder half runs anyway. */
 async function syncAllToFolder() {
   if (!wbFolderMode()) { ScuLaFolder.chooser(); return; }
+  try { await ScuLaFolder.dir(!wbMirrorAsked); wbMirrorAsked = true; } catch (e) {}
+  let cloud = location.protocol !== 'file:';
+  let r = null, cloudMsg = '';
+  if (cloud && !gsLive()) {
+    try {
+      gsInteractive = true;
+      await gsAuth(true);
+    } catch (e) {
+      cloud = false;
+      const m = (e && e.message) || String(e);
+      cloudMsg = /^(cancelled|popup_closed|popup_failed_to_open|stale)$/.test(m) ? t('cloudSkipped') : t('cloudError', m);
+    } finally { gsInteractive = false; paintCloud(); }
+  }
+
   await flushChapter();
   const found = await wbAdoptFromFolder();
+
+  if (cloud) {
+    try {
+      r = await cloudSync(true);
+      if (r) cloudMsg = (r.up || r.down) ? t('cloudDone', r) : t('cloudNothing');
+    } catch (e) {
+      const m = (e && e.message) || String(e);
+      cloudMsg = t('cloudError', m);
+    }
+  }
+
   let n = 0;
   for (const book of wbBooks) {
     for (const ch of wbChaptersOf(book.id)) {
@@ -1180,19 +1216,8 @@ async function syncAllToFolder() {
 
   let msg = t('wbSynced', n);
   if (found.books || found.chapters) msg = t('wbAdopted', found) + ' ' + msg;
+  if (cloudMsg) msg += ' ' + cloudMsg;
   wbSay(msg, true);
-
-  if (!(found.books || found.chapters)) { cloudAutoSync(); return; }
-  if (!gsConnected()) return;
-  // Something new, and an account linked: push it now rather than on the
-  // debounce, so the person who just pressed a sync button is told what
-  // happened. A lapsed token is not worth a popup here — the ☁ button's own
-  // label already says it needs pressing again.
-  if (!gsLive()) { wbSay(msg + ' ' + t('cloudStale'), true); return; }
-  try {
-    const r = await cloudSync(false);
-    if (r) wbSay(msg + ' ' + ((r.up || r.down) ? t('cloudDone', r) : t('cloudNothing')), true);
-  } catch (e) { cloudError(e); }
 }
 
 /* ── Autosave: the open chapter is written back to IndexedDB as you type,

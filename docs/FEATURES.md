@@ -822,31 +822,42 @@ means those to be a workbook and a chapter. So the button
    its file name) as `title`, and the file's `lastModified` as `created`
    and `updated`. Anything else in the folder — a picture, a PDF — is left
    exactly where it is.
-3. Then the old write pass runs and every chapter, adopted or not, is
-   written back out.
+3. **Then Google Drive** (§ O): `cloudSync(true)` trades with the account —
+   what the folder just gave goes up, what other devices wrote comes down.
+4. Then the old write pass runs and every chapter — adopted, pulled from
+   Drive, or already here — is written out into the folder.
 
 Matching is case-insensitive on both names, because two of the three file
 systems these apps run on are.
 
 **The pass only ever adds.** A file a chapter already owns is never read
 back: doing that would quietly overwrite an edit made here that hasn't
-reached disk yet, and the write pass in step 3 is what settles that
+reached disk yet, and the write pass in step 4 is what settles that
 direction. Nothing on disk is renamed or removed either — same promise
 `wbMirrorRemove()` already makes.
 
-Adopted records land in IndexedDB, which is all § O's merge needs to carry
-them up to the Gmail account: a record Drive has never seen is an upload to
-it. So when something was adopted *and* an account is linked,
-`syncAllToFolder()` calls `cloudSync(false)` itself rather than leaving it
-to the debounce — the person just pressed a sync button and is owed the
-count. A lapsed token is not worth a popup there; the status line says
-`cloudStale`, which is what the ☁ button's own label already says. With
-nothing adopted the press ends in the ordinary `cloudAutoSync()`.
+**Why the cloud sits in the middle — the new phone.** A device that has
+just been handed a folder has nothing of its own; what the person means by
+the press is "bring my chapters here". The cloud used to run *after* the
+write pass, and only when something had been adopted and the token was
+still live — so on a new phone (no token, nothing adopted) the press never
+asked Drive at all, and even a pull would only have marked the chapters
+pending, waiting for another press. Now Drive is read before the folder is
+written, and the press is allowed to sign in: a device never connected, or
+whose hour-long token lapsed, gets the Google popup **first thing** in the
+click, while it still counts as a gesture (the folder's own permission
+prompt, when there is one, goes just before it for the same reason).
+Closing the popup is an answer: the folder half runs anyway, Drive is left
+alone, and the status line says `cloudSkipped`. Off disk (`file://`) the
+cloud is skipped outright, as § O's refusal already says.
 
-The status line reports both directions: `wbAdopted` (what the folder had)
-in front of `wbSynced` (what was written), then the cloud's own
-`cloudDone` / `cloudNothing`. Tested by `tests/wbadopt.js`, against an
-in-memory directory handle and the fake Drive from `tests/gdsync.js`.
+The status line reports every direction: `wbAdopted` (what the folder had),
+`wbSynced` (what was written), then the cloud's own `cloudDone` /
+`cloudNothing` / `cloudSkipped` / `cloudError`. Tested by `tests/wbadopt.js`,
+against an in-memory directory handle, the fake Drive from `tests/gdsync.js`
+and its stub Google sign-in — including the new phone: empty database, empty
+folder, an empty duplicate root listed first in Drive, and one press that
+fills the folder.
 
 ### The three routes, for a chapter
 
@@ -1919,9 +1930,20 @@ The status line is honest about *when*, too. `gsWhen()` prints a bare time only
 for a stamp from **today**; any older one carries its date. A sync that quietly
 stopped working used to be indistinguishable from one that had just run.
 
+**A device with no remembered folder picks the root by its manifest.**
+`gsFindRoot()` lists every `Scula Markdown` folder, and when there is more
+than one — a root made again after the old one was binned, or by a device
+that connected before the first had synced — it takes the one whose
+`index.json` is newest. Taking whichever Drive listed first could land a
+new phone in an empty folder and pull nothing.
+
 IndexedDB stays the source of truth on each device — Drive is a third mirror
 beside the markdown folder (§ D), never ahead of it. A pulled chapter is
-marked **pending** (§ E), so the next explicit save writes it to disk too.
+marked **pending** (§ E), so the next explicit save writes it to disk too —
+except that the ☁ button, on a device whose markdown folder is chosen *and
+already permitted*, writes what it pulled straight into it (no permission
+prompt that late in the press; without one they stay pending). "⇩ Sync to
+folder" always writes them — § E, "The mirror read back".
 
 ### Sign-in, and why a background sync never asks for one
 
