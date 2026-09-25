@@ -283,48 +283,6 @@ ${bodyHtml}
   saveOut(htmlFilename, new Blob([fullHtml], { type: 'text/html' }));
 }
 
-// Opens an .html page that lives in the folder set with the nav 📁 button
-// (the same "markdown" subfolder "Export HTML" above writes into) — a
-// shareable page exported earlier, from here or from recipes.html. Picking
-// straight from that folder needs the File System Access API; where it is
-// missing (Firefox, Safari, phones) an ordinary file input still lets the
-// person browse to the file by hand.
-async function openHtmlPage() {
-  if (window.showOpenFilePicker) {
-    try {
-      const opts = {
-        types: [{ description: 'HTML page', accept: { 'text/html': ['.html', '.htm'] } }],
-        excludeAcceptAllOption: false
-      };
-      if (typeof ScuLaFolder !== 'undefined') {
-        const d = await ScuLaFolder.dir();
-        if (d) opts.startIn = d;
-      }
-      const [handle] = await window.showOpenFilePicker(opts);
-      openHtmlFile(await handle.getFile());
-    } catch (e) {
-      if (e.name !== 'AbortError') { console.error(e); document.getElementById('html-page-input').click(); }
-    }
-    return;
-  }
-  document.getElementById('html-page-input').click();
-}
-function handleHtmlPageOpen(event) {
-  const file = event.target.files[0]; if (!file) return;
-  openHtmlFile(file);
-  event.target.value = '';
-}
-function openHtmlFile(file) {
-  const url = URL.createObjectURL(file);
-  const win = window.open(url, '_blank');
-  if (!win) {
-    if (typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(t('openHtmlBlocked'));
-    URL.revokeObjectURL(url);
-    return;
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
-
 /* ── Table builder ── */
 function openTableModal() {
   saveSelection();

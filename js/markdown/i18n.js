@@ -8,8 +8,6 @@ const I18N = {
   ro:{
     newFileBtn:"Nou", openFileBtn:"Deschide .md", importDocxBtn:"Importă DOCX",
     exportHtmlBtn:"Exportă HTML",
-    openHtmlBtn:"🌐 Deschide HTML", openHtmlTip:"Deschide o pagină HTML exportată din folderul ales cu 📁",
-    openHtmlBlocked:"Fereastra a fost blocată — permite ferestrele pop-up pentru această pagină și încearcă din nou.",
     headingDefault:"— Titlu —", headingH1:"H1 — Titlu", headingH2:"H2 — Secțiune", headingH3:"H3 — Subsecțiune",
     undoBtn:"↶ Anulează", undoTip:"Anulează ultima modificare (Ctrl+Z)",
     redoBtn:"↷ Refă", redoTip:"Refă modificarea anulată (Ctrl+Shift+Z sau Ctrl+Y)",
@@ -394,7 +392,7 @@ const I18N = {
       <h3>Anulare / Refă</h3>
       <p><kbd>Ctrl+Z</kbd> anulează, <kbd>Ctrl+Shift+Z</kbd> sau <kbd>Ctrl+Y</kbd> reface — un istoric propriu al editorului, separat de cel al browserului, care ține pasul cu orice acțiune din bară.</p>
       <h3>Import / Export</h3>
-      <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod. „🌐 Deschide HTML” deschide într-o filă nouă o pagină HTML exportată anterior.</p>
+      <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod.</p>
       <h3>Dictare vocală</h3>
       <p>Iconița 🎙 din bară transcrie vorbirea direct la cursor, folosind setările din pagina „Caiet vocal”.</p>
       <h3>Scurtături</h3>
@@ -416,8 +414,6 @@ const I18N = {
   en:{
     newFileBtn:"New", openFileBtn:"Open .md", importDocxBtn:"Import DOCX",
     exportHtmlBtn:"Export HTML",
-    openHtmlBtn:"🌐 Open HTML", openHtmlTip:"Open an exported HTML page from the folder set with 📁",
-    openHtmlBlocked:"Pop-up blocked — allow pop-ups for this page and try again.",
     headingDefault:"— Heading —", headingH1:"H1 — Title", headingH2:"H2 — Section", headingH3:"H3 — Sub-section",
     undoBtn:"↶ Undo", undoTip:"Undo the last change (Ctrl+Z)",
     redoBtn:"↷ Redo", redoTip:"Redo the undone change (Ctrl+Shift+Z or Ctrl+Y)",
@@ -799,7 +795,7 @@ const I18N = {
       <h3>Undo / redo</h3>
       <p><kbd>Ctrl+Z</kbd> undoes, <kbd>Ctrl+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redoes — the editor's own history, separate from the browser's, which keeps up with every toolbar action too.</p>
       <h3>Import / export</h3>
-      <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks. "🌐 Open HTML" opens a previously exported HTML page in a new tab.</p>
+      <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks.</p>
       <h3>Voice dictation</h3>
       <p>The 🎙 icon in the toolbar transcribes speech straight at the caret, using the settings saved on the "Caiet vocal" page.</p>
       <h3>Shortcuts</h3>

@@ -344,7 +344,7 @@ function within a feature file.
 | Garden toolbox | `js/markdown/garden.js` | `openGarden`, `gdRender` |
 | Photo and film metadata | `js/markdown/media.js` | `openMedia`, `mbRead`, `mbRender` |
 | Wikilink picker and suggester | `js/markdown/wikilinks.js` | `openWikiModal`, `maybeWikiSuggest` |
-| Import, export, and file/table/link dialogs | `js/markdown/files.js` | `importDocx`, `exportHtml`, `openHtmlPage` |
+| Import, export, and file/table/link dialogs | `js/markdown/files.js` | `importDocx`, `exportHtml` |
 | Editor event handlers and keyboard shortcuts | `js/markdown/events.js` | DOM event listeners |
 | Dictation into editor or idea | `js/markdown/dictation.js` | `toggleDictation`, `toggleIdeaDictation` |
 | Responsive layout and initial boot | `js/markdown/startup.js` | `applyResponsiveDefaults`, `loadWorkbooks` |

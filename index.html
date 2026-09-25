@@ -3457,7 +3457,6 @@
     <button class="btn" onclick="openFile()" data-i="openFileBtn">Open .md</button>
     <button class="btn" onclick="importDocx()" data-i="importDocxBtn">Import DOCX</button>
     <button class="btn" onclick="exportHtml()" data-i="exportHtmlBtn">Export HTML</button>
-    <button class="btn" onclick="openHtmlPage()" data-i="openHtmlBtn" data-i-title="openHtmlTip" title="Open an exported HTML page from the folder set with 📁">🌐 Open HTML</button>
     <!-- Save/sync trio: kept in its own row so on tablet/mobile it never
          breaks apart or wraps under the other header buttons — it stays
          one readable row, scrolling sideways if it doesn't fit
@@ -4120,7 +4119,6 @@ Use the toolbar above to insert formatting.
 
 <input type="file" id="file-input" accept=".md,.txt" style="display:none" onchange="handleFileOpen(event)">
 <input type="file" id="docx-input" accept=".docx" style="display:none" onchange="handleDocxImport(event)">
-<input type="file" id="html-page-input" accept=".html,.htm,text/html" style="display:none" onchange="handleHtmlPageOpen(event)">
 <input type="file" id="img-local-input" accept="image/*" style="display:none" onchange="handleLocalImage(event)">
 
 <script src="js/markdown/i18n.js"></script>
