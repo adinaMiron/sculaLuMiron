@@ -315,6 +315,14 @@ const I18N = {
     helpBody:`
       <h3>Ce face pagina asta</h3>
       <p>Editorul Markdown ține notele în <b>caiete</b> cu <b>capitole</b> — un capitol e un fișier .md. Textul se scrie în stânga, previzualizarea apare în dreapta.</p>
+      <h3>Dosarul de pe dispozitiv și sincronizarea cu norul</h3>
+      <p>Cea mai importantă parte a paginii: unde ajung de fapt fișierele și cum rămân la fel pe toate dispozitivele.</p>
+      <ul>
+        <li>Butonul <b>📁</b> din bara de sus (sau „📁 Alege dosar…” din panoul Caiete) alege dosarul de pe disc unde se scriu caietele — pe calculator, un dosar adevărat; pe telefon, fișierele trec prin foaia de partajare a sistemului, pentru că niciun browser de telefon nu oferă o alegere de dosar. Fără un dosar ales, ce scrii rămâne doar în acest browser (localStorage) și se pierde dacă se șterg datele browserului.</li>
+        <li><b>☁ Cont Google</b>, în bara de sus, conectează contul Google și sincronizează capitolele cu Google Drive — câte un fișier pentru fiecare capitol, într-un folder propriu în Drive. Un clic conectează, un clic din nou sincronizează oricând, clic dreapta deconectează contul. Funcționează doar cu pagina deschisă prin HTTP(S), nu direct ca fișier local.</li>
+        <li><b>⇩ Sincronizează în dosar</b>, lângă „☁ Cont Google”, e cel mai important buton din pagină: citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive, apoi scrie înapoi în dosar toate capitolele. Așa ajung pe un dispozitiv nou caietele scrise pe altul.</li>
+        <li>La prima pornire pe un dispozitiv nou, o fereastră cere întâi dosarul, apoi întreabă dacă aduci datele din cloud — răspunde „Da” ca să tragi aici tot ce ai scris pe alt dispozitiv.</li>
+      </ul>
       <h3>Caiete și capitole</h3>
       <ul>
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
@@ -714,6 +722,14 @@ const I18N = {
     helpBody:`
       <h3>What this page does</h3>
       <p>The Markdown editor keeps notes in <b>workbooks</b> holding <b>chapters</b> — one chapter is one .md file. You write on the left, the preview renders on the right.</p>
+      <h3>The folder on your device, and syncing with the cloud</h3>
+      <p>The single most important part of this page: where your files actually live, and how they stay the same across every device.</p>
+      <ul>
+        <li>The <b>📁</b> button in the top bar (or "📁 Set folder…" in the Workbooks panel) picks the folder on disk where workbooks are written — a real folder on a computer; on a phone, files go through the system's share sheet instead, since no mobile browser offers a folder picker. Without a folder set, what you write stays only in this browser (localStorage) and is lost if the browser's data is cleared.</li>
+        <li><b>☁ Google account</b>, in the top bar, connects your Google account and syncs chapters with Google Drive — one file per chapter, in its own folder in Drive. Click once to connect, click again anytime to sync, right-click to disconnect. Only works with the page open over HTTP(S), not opened directly as a local file.</li>
+        <li><b>⇩ Sync to folder</b>, beside "☁ Google account", is the single most important button on the page: it reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive, then writes every chapter back into the folder. This is how workbooks written on one device reach another.</li>
+        <li>The first time the page runs on a new device, a window asks for the folder first, then asks whether to bring your data from the cloud — answer "Yes" to pull in everything written on another device.</li>
+      </ul>
       <h3>Workbooks and chapters</h3>
       <ul>
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
