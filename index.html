@@ -1171,6 +1171,13 @@
     .tb-select { font-size: 11px; padding: 4px 6px; }
     .toolbar-sep { margin: 0 4px; }
 
+    /* Keep the task-status/responsible/importance filters on one line
+       instead of wrapping — same nowrap + overflow-x:auto pattern as
+       .wb-save-sync-row above. */
+    .toolbar-filters { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .toolbar-filters .tb-select { flex: 0 0 auto; }
+    .toolbar-filters-label { flex: 0 0 auto; }
+
     /* Panels float over the content instead of squeezing it */
     #img-panel, #nav-panel, #find-panel {
       position: absolute;
