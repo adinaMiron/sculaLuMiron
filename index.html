@@ -389,6 +389,7 @@
   }
   .wb-crumb[hidden] { display: none; }
   #btn-map[hidden] { display: none; }
+  #btn-garden[hidden] { display: none; }
 
   #stat-wb { color: var(--text-2); }
 
@@ -3565,7 +3566,7 @@
   <div class="toolbar-sep"></div>
   <button class="tb-btn" onclick="openWikiModal()" data-i="wikilinkBtn" data-i-title="wikilinkTip" title="Link to a note or a section (Ctrl+Shift+L)">⟦⟧ Note link</button>
   <button class="tb-btn" onclick="toggleGraph()" data-i="graphBtn" data-i-title="graphTip" title="Knowledge graph (Ctrl+3)">🕸 Graph</button>
-  <button class="tb-btn" id="btn-garden" onclick="toggleGarden()" data-i="gardenBtn" data-i-title="gardenTip" title="Garden toolbox (Ctrl+5)">🌱 Garden</button>
+  <button class="tb-btn" id="btn-garden" onclick="toggleGarden()" data-i="gardenBtn" data-i-title="gardenTip" title="Garden toolbox (Ctrl+5)" hidden>🌱 Garden</button>
   <button class="tb-btn" id="btn-media" onclick="toggleMedia()" data-i="mediaBtn" data-i-title="mediaTip" title="Photos and films from a folder (Ctrl+6)">📸 Photos</button>
 
   <div class="toolbar-sep"></div>

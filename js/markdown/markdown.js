@@ -1048,6 +1048,7 @@ function updatePreview() {
   gvRefresh();          // the graph reads the open note; keep it honest
   fdLive();             // and so does the search panel
   gdRefresh();          // and the garden toolbox
+  gdBtnRefresh();        // 🌱 only exists while a garden chapter is open
   mapRefresh();         // and the 🗺 button only exists while a "^@" does
 }
 

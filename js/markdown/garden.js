@@ -686,6 +686,15 @@ function closeGarden() {
 }
 function toggleGarden() { if (gdOpen) closeGarden(); else openGarden(); }
 
+// The button exists only while the open chapter belongs to a garden
+// workbook — it follows the editor the same way btn-map does.
+function gdBtnRefresh() {
+  const btn = document.getElementById('btn-garden');
+  if (!btn) return;
+  const bookId = gvCurrentBookId();
+  btn.hidden = !gdIsGardenBook(bookId ? wbBook(bookId) : null);
+}
+
 /* The tables read the open chapter, so they follow the editor — debounced
    for the same reason the graph is. */
 let gdRefreshTimer = 0;
