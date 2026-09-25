@@ -1034,10 +1034,11 @@ function updatePreview() {
   preview.innerHTML = parseMarkdown(src);
   const current = wbCurrentId ? wbChapter(wbCurrentId) : null;
   const currentBook = current ? wbBook(current.workbookId) : null;
-  const currentTodoFiltered = wbTodoOnlyAll || (wbIsTodoBook(currentBook) && wbTodoOnly.has(currentBook.id));
+  const currentTodoFiltered = wbIsTodoBook(currentBook) && wbTodoOnly.has(currentBook.id);
   const treeState = JSON.stringify([
-    wbCurrentId, wbResponsibleFilter, wbImportanceFilter,
+    wbCurrentId, wbTaskStatusFilter, wbResponsibleFilter, wbImportanceFilter,
     wbResponsibleFilter && current ? wbNamesForChapter(current).has(wbResponsibleFilter) : null,
+    wbTaskStatusFilter ? wbChapterHasTaskStatus(editor.value, wbTaskStatusFilter) : null,
     currentTodoFiltered ? WB_OPEN_TASK_RE.test(editor.value) : null,
     wbImportanceFilter && current ? wbChapterHasImportanceTask(editor.value, wbImportanceFilter, currentTodoFiltered, wbResponsibleFilter) : null
   ]);
@@ -1223,4 +1224,3 @@ function updateStatus() {
   document.getElementById('stat-chars').textContent = t('statChars', text.length);
   wbEditorChanged();          // the draft journal and the "in no chapter" flag
 }
-

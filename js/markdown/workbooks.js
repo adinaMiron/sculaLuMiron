@@ -35,7 +35,7 @@ const wbBootText = editor.value;
 const wbOpenBooks = new Set();   // which workbooks are expanded in the panel
 const wbPendingIds = new Set();  // chapters edited but not yet written to their .md file — see docs/FEATURES.md § E
 const wbTodoOnly = new Set();    // TODO-titled workbooks currently filtered to chapters with an open "- [ ]"
-let wbTodoOnlyAll = false;       // toolbar "▣ Tasks only" — filters EVERY workbook to chapters with an open "- [ ]"
+let wbTaskStatusFilter = '';      // toolbar filter; empty means all task states
 let wbImportanceFilter = '';     // selected importance level; empty shows all tasks
 let wbResponsibleFilter = '';    // normalized name chosen in the toolbar; empty means all
 let wbPreviewLineMap = null;     // filtered preview line -> original editor line (task checkbox clicks)
@@ -172,14 +172,14 @@ function wbChapterHasImportanceTask(text, level, openOnly = false, responsible =
 // Keep the original line numbers so a checkbox in a narrowed preview still
 // toggles the corresponding task in the unfiltered editor text.
 function wbPreviewFilteredText(text) {
-  if (!wbTodoOnlyAll && !wbResponsibleFilter && !wbImportanceFilter) return { text, lineMap: null };
+  if (!wbTaskStatusFilter && !wbResponsibleFilter && !wbImportanceFilter) return { text, lineMap: null };
   const keep = [];
   const lineMap = [];
   let fenced = false;
   String(text || '').split('\n').forEach((line, index) => {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; return; }
     if (fenced) return;
-    if (wbTodoOnlyAll && !WB_OPEN_TASK_RE.test(line)) return;
+    if (wbTaskStatusFilter && !wbTaskHasStatus(line, wbTaskStatusFilter)) return;
     if (wbImportanceFilter && !wbTaskHasImportance(line, wbImportanceFilter)) return;
     if (wbResponsibleFilter) {
       if (!wbLineResponsibles(line).some(name => wbResponsibleKey(name) === wbResponsibleFilter)) return;
@@ -193,6 +193,22 @@ function wbPreviewFilteredText(text) {
 /* A chapter "has an open task" when a line reads "- [ ]" (optionally indented,
    any of - * + as the bullet). Used only by the TODO filter button. */
 const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
+function wbTaskHasStatus(line, status) {
+  if (!TASK_LINE_RE.test(line)) return false;
+  const match = line.match(TASK_LINE_RE);
+  const marker = match[4].match(TASK_STATUS_LEAD_RE);
+  const actual = match[2].toLowerCase() === 'x' ? 'done'
+    : marker ? marker[1].slice(1) : 'todo';
+  return actual === status;
+}
+function wbChapterHasTaskStatus(content, status) {
+  let fenced = false;
+  for (const line of String(content || '').split('\n')) {
+    if (/^[ \t]*```/.test(line)) { fenced = !fenced; continue; }
+    if (!fenced && wbTaskHasStatus(line, status)) return true;
+  }
+  return false;
+}
 function wbChapterHasOpenTask(ch, content) {
   return !!ch && WB_OPEN_TASK_RE.test(content === undefined ? ch.content || '' : content);
 }
@@ -204,14 +220,9 @@ function wbOpenTasksOnly(text) {
   return (text || '').split('\n').filter(line => WB_OPEN_TASK_RE.test(line)).join('\n');
 }
 
-/* Toolbar "▣ Tasks only": one switch that filters every workbook's chapter
-   list down to the ones with an open "- [ ]" — a global version of the
-   per-workbook ☑ act button — and, in the open chapter's own preview,
-   down to just those lines. Books left with nothing to show are hidden. */
-function toggleTodoFilterAll() {
-  wbTodoOnlyAll = !wbTodoOnlyAll;
-  const btn = document.getElementById('btn-filter-todo');
-  if (btn) btn.classList.toggle('active', wbTodoOnlyAll);
+/* Toolbar status select filters every workbook and the open chapter preview. */
+function filterTodoByStatus(status) {
+  wbTaskStatusFilter = ['todo', 'inwork', 'onhold', 'blocked', 'done'].includes(status) ? status : '';
   renderWorkbooks();
   updatePreview();
 }
@@ -730,15 +741,16 @@ function renderWorkbooks() {
   orderedBooks.forEach((book, bookIdx) => {
     const chapters = wbChaptersOf(book.id);
     const todoBook = wbIsTodoBook(book);
-    const todoFiltered = wbTodoOnlyAll || (todoBook && wbTodoOnly.has(book.id));
+    const todoFiltered = todoBook && wbTodoOnly.has(book.id);
     const shownChapters = chapters.filter(ch => {
       const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
+      if (wbTaskStatusFilter && !wbChapterHasTaskStatus(content, wbTaskStatusFilter)) return false;
       if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter);
       return (!todoFiltered || wbChapterHasOpenTask(ch, content)) &&
         (!wbResponsibleFilter || wbNamesForChapter(ch).has(wbResponsibleFilter));
     });
-    if ((wbTodoOnlyAll || wbResponsibleFilter || wbImportanceFilter) && !shownChapters.length) return;
-    const open = wbOpenBooks.has(book.id) || ((wbTodoOnlyAll || wbResponsibleFilter || wbImportanceFilter) && shownChapters.length > 0);
+    if ((wbTaskStatusFilter || wbResponsibleFilter || wbImportanceFilter) && !shownChapters.length) return;
+    const open = wbOpenBooks.has(book.id) || ((wbTaskStatusFilter || wbResponsibleFilter || wbImportanceFilter) && shownChapters.length > 0);
 
     const wrap = document.createElement('div');
     wrap.className = 'wb-book' + (open ? ' open' : '');
@@ -771,7 +783,7 @@ function renderWorkbooks() {
     if (bookIdx > 0) acts.appendChild(wbActBtn('▲', t('moveWorkbookUpTip'), () => moveWorkbook(book.id, -1)));
     if (bookIdx < orderedBooks.length - 1) acts.appendChild(wbActBtn('▼', t('moveWorkbookDownTip'), () => moveWorkbook(book.id, 1)));
     acts.appendChild(wbActBtn('＋', t('addChapterTip'), () => newChapter(book.id)));
-    if (todoBook && !wbTodoOnlyAll) {
+    if (todoBook) {
       const fBtn = wbActBtn('☑', t(todoFiltered ? 'filterTodoOffTip' : 'filterTodoOnTip'), () => {
         if (wbTodoOnly.has(book.id)) { wbTodoOnly.delete(book.id); }
         else { wbTodoOnly.add(book.id); wbOpenBooks.add(book.id); }
