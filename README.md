@@ -1,10 +1,11 @@
 # webPages
 
-Eight standalone browser tools. No build step, no dependencies to install —
+Nine standalone browser tools. No build step, no dependencies to install —
 open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
 |---|---|---|
+| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original 24-bit PCM WAV, local persistence and export. |
 | **Caiet vocal** | `voice.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `index.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`, and a folder of photos and films read through its own metadata — when each was taken, where, and the name hiding in the file name. |
@@ -14,7 +15,7 @@ open any `.html` file in a browser and it runs.
 | **Hartă** | `map.html` | Draws the places written in markdown with `^@` — a name, a street with a number, or plain coordinates — on a map, laid out in layers by the heading each one sits under. The map is hand-rolled (OpenStreetMap tiles, no map library); both the tile address and the geocoder are visible, editable fields, so a local tile folder makes it work with no internet. |
 | **Rețete** | `recipes.html` | Reads a meal plan or a recipe book out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. Reads its own PDFs and its own JPEG 2000 scans, recognises photos in the page, and lets a hundred days be searched, filtered and rearranged. |
 
-All eight share a common nav bar and link to each other.
+All nine share a common nav bar and link to each other.
 The Markdown editor's JavaScript lives in [`js/markdown/`](js/markdown/README.md).
 
 ## Running
@@ -61,7 +62,7 @@ This guide brings together the Help panels in the pages. The interface can be
 switched between Romanian and English; the guides below use the English labels.
 
 **Jump to:** [Markdown editor](#markdown-editor-indexhtml) ·
-[Voice notebook](#voice-notebook-voicehtml) ·
+[Voice notebook](#voice-notebook-voicehtml) · [Song Creation](#song-creation-songhtml) ·
 [Image Marker](#image-marker-editorhtml) ·
 [Calendar](#calendar-calendarhtml) · [Kanban](#kanban-kanbanhtml) ·
 [Transfer](#transfer-transferhtml) · [Map](#map-maphtml) ·
@@ -404,3 +405,22 @@ are best sent in batches or saved directly as they arrive.
   or **.html** for a self-contained, searchable page suited to sharing or
   printing. The 📁 button chooses a computer folder, phone share sheet or
   regular download destination.
+
+### Song Creation (`song.html`)
+
+Create or rename a project, allow microphone access, choose a microphone and
+record a named **Melody / humming** or **Instrument sample** take. Sample details
+are optional. Stop to retain the original WAV; play, rename, delete or save each
+take from the project list. Save metadata separately with **Save metadata**.
+
+Source WAVs are genuine 24-bit PCM, at the Web Audio capture rate shown on screen.
+The page requests 48 kHz and disabled speech processing, then reports actual
+microphone settings. Browser/device quality varies; 24-bit encoding does not
+prove 24-bit microphone precision. Keep the page in the foreground.
+
+Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
+browser storage removes them. Desktop folder saves use `Song Creation/<project>/`
+with `recordings/` and `samples/`; phones use the existing share/download route
+with ownership in filenames. Metadata export references the WAVs, without
+embedding audio. Importing exported projects is a future feature. See
+[architecture and testing](docs/FEATURES.md#v-song-creation-songhtml).

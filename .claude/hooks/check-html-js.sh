@@ -9,7 +9,7 @@ input=$(cat)
 file=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"//; s/"$//')
 
 case "$(basename "${file:-}")" in
-  voice.html|editor.html|index.html|recipes.html) ;;
+  voice.html|editor.html|index.html|recipes.html|calendar.html|transfer.html|map.html|kanban.html|song.html) ;;
   *) exit 0 ;;
 esac
 [ -f "$file" ] || exit 0

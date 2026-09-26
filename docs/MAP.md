@@ -9,7 +9,7 @@ change** — a stale anchor costs the next session a wasted read. Same for any
 flow you find yourself repeating: promote it to a `/command`, a skill, or a
 hook rather than re-typing it (see `CLAUDE.md` § "Keep this current").
 
-Shared shape of all seven files:
+Shared shape of all nine files:
 
 ```
 <style>  …app CSS, :root palette at the very top…  </style>
@@ -19,12 +19,12 @@ Shared shape of all seven files:
 <script>  …app logic, one IIFE/closure…  </script>
 ```
 
-## The shared block (byte-identical in all seven files)
+## The shared block (byte-identical in all nine files)
 
 From the `<nav id="site-nav">` line through `<!-- ===== end toolbar nav ===== -->`
-(~1279 lines). Rough starts: `voice.html:260` · `editor.html:452` ·
+(~1300 lines). Rough starts: `voice.html:260` · `editor.html:452` ·
 `index.html:1907` · `recipes.html:527` · `calendar.html:269` ·
-`transfer.html:197` · `map.html:238` — these drift; grep the
+`transfer.html:197` · `map.html:238` · `kanban.html:59` · `song.html:9` — these drift; grep the
 `<nav id="site-nav"` line.
 
 Four features share it, because all of them must exist before any app
@@ -69,7 +69,7 @@ of the three. In order: `KEY` (`scula:map:payload`) · **`markRe`** (the
 `findMarks`/`has` · `tagsOf`/`contextOf` · **`scan`** (text → the layered
 payload, one layer per heading) · `send`/`received` · `window.ScuLaGeo`.
 
-Any edit here goes into **all seven** files — run `/verify` to confirm they
+Any edit here goes into **all nine** files — run `/verify` to confirm they
 stayed identical.
 
 ---
@@ -95,67 +95,67 @@ nothing keeps it in sync automatically.
 
 ---
 
-## voice.html — 3829 lines · "Caiet vocal" (voice dictation)
+## voice.html — 3962 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. **The only app with a working i18n system** — copy its pattern.
 
 | Lines | Contents |
 |---|---|
 | 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the keep-the-sound rows) **137–140**, `.rec-sub` indenting the WAV row under its parent, `.melody-card` and the piano roll **216–232** |
-| 260–1544 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all 7 files) |
-| 1548–1774 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
-| 1776–3827 | App script, numbered sections below |
+| 262–1561 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
+| 1563–1798 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
+| 1800–3960 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1781 | **1. i18n** — `I18N` object (`ro:` 1770 / `en:` 1883), `t()` at 1998, `UI` at 1997 |
-| 2015 | 2. Providers |
-| 2040 | 3. Settings store — `KEY` 2026, `store` 2027 w/ memory fallback, `save()` 2159, `load()` 2160 |
-| 2076 | 4. DOM refs |
-| 2107 | 5. Language / engine chips |
-| 2122 | **6. UI language** — `applyUILang()` **2110** (it also calls `melSyncLabels()`) |
-| 2145 | 7. Settings sheet |
-| 2227 | 7b. Help |
-| 2239 | 8. Secure-context check |
-| 2244 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2248–2301** |
-| 2450 | 10. Transcription queue |
-| 2544 | 11. Browser dictation (Web Speech API) |
-| 2605 | 12. File import |
-| 2619 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| **2665** | **14. Melodie** — the recording turned into music (§ below) |
-| 3823 | 15. Init |
+| 1807 | **1. i18n** — `I18N` at 1807, `t()` at 2044 |
+| 2047 | 2. Providers |
+| 2072 | 3. Settings store — `store` at 2075 with memory fallback; `save`/`load` |
+| 2108 | 4. DOM refs |
+| 2139 | 5. Language / engine chips |
+| 2158 | **6. UI language** — `applyUILang()` **2158** (it also calls `melSyncLabels()`) |
+| 2177 | 7. Settings sheet |
+| 2260 | 7b. Help |
+| 2272 | 8. Secure-context check |
+| 2277 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2300–2430** |
+| 2574 | 10. Transcription queue |
+| 2668 | 11. Browser dictation (Web Speech API) |
+| 2729 | 12. File import |
+| 2743 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| **2798** | **14. Melodie** — the recording turned into music (§ below) |
+| 3956 | 15. Init |
 
 **Two independent language axes — do not conflate:**
-- `S.ui` (`UI`) = interface language. Toggle `#uiLangBtn`.
-- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), L1627.
+- `S.ui` (`UI`) = interface language. Toggle `#navLangBtn`.
+- `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), `#langChips`.
 
-### The melody (§ 14, 2651–3807)
+### The melody (§ 14, 2798–3940)
 
 Analysis and synthesis, both hand-rolled, no library and no samples — see
 `docs/FEATURES.md` § P for the why and the shape. Sub-banners inside it:
 
 | Line | Part |
 |---|---|
-| 2684 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
-| 2721 | `SINE` table (16384 entries) + `makeFFT` |
-| 2756 | `decodeMono`/`resample`/`decimate2`/`normalise` — blob → mono Float32Array at 22050 |
-| 2824 | `trackPitch` — YIN, 46 ms window / 23 ms hop at 11025 |
-| 2869 | `segmentNotes` — pitch frames → notes (octave repair, median smoothing, ±0.75-semitone hysteresis) |
-| 2954 | `onsetEnvelope`/`detectTempo`/`beatPhase` — spectral flux, then autocorrelation with a log-normal prior around 110 BPM |
-| 3024 | `detectKey` (**Pearson**, not a dot product — see the comment there), `snapMidi`, `chordsFor` |
-| 3113 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
-| 3204 | the drum one-shots |
-| 3243 | `place` (where the note release lives), `reverbTail`, `finishMix` |
-| 3316 | `wavBlob` · 3323 `midiBlob` (format 1, a track per part) |
-| 3386 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
-| 3444 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
-| 3569 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
-| 3636 | `drawRoll` — the piano roll |
-| 3700 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
+| 2823 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
+| 2850 | `SINE` table (16384 entries) + `makeFFT` |
+| 2901 | `decodeMono`/`resample`/`decimate2`/`normalise` — blob → mono Float32Array at 22050 |
+| 2962 | `trackPitch` — YIN, 46 ms window / 23 ms hop at 11025 |
+| 3016 | `segmentNotes` — pitch frames → notes (octave repair, median smoothing, ±0.75-semitone hysteresis) |
+| 3091 | `onsetEnvelope`/`detectTempo`/`beatPhase` — spectral flux, then autocorrelation with a log-normal prior around 110 BPM |
+| 3180 | `detectKey` (**Pearson**, not a dot product — see the comment there), `snapMidi`, `chordsFor` |
+| 3254 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
+| 3338 | the drum one-shots |
+| 3380 | `place` (where the note release lives), `reverbTail`, `finishMix` |
+| 3450 | `wavBlob` · 3496 `midiBlob` (format 1, a track per part) |
+| 3562 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
+| 3597 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
+| 3702 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
+| 3770 | `drawRoll` — the piano roll |
+| 3837 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
 
-`MEL_MAX` (2664) caps the source at 180 s — memory, not taste: the mix is
+`MEL_MAX` (2811) caps the source at 180 s — memory, not taste: the mix is
 three Float32Arrays of it at 44100.
 
 **Keeping the sound** (`#keepAudio`, off by default, persisted as
@@ -175,14 +175,14 @@ blob next to the transcript under the name the transcript actually got
 **The high-quality WAV** (`#keepWav`, persisted as `S.keepWav`, only meaningful
 under `#keepAudio` — ticking it ticks that, unticking that unticks it): a
 *third* tap, the `wav` object beside `audio`. No `MediaRecorder` can write
-lossless audio, so `startWav()` (called from `startAudioKeep`) opens its own
+lossless audio, so `startWav()` at 2364 (called from `startAudioKeep`) opens its own
 `getUserMedia` stream with echo cancellation, noise suppression and AGC
 **off** (the transcription stream is mono with all three on), feeds it into
 a `ScriptProcessor` — not an AudioWorklet, which would be a module file and
 break `file://` — and `wavTake()` packs every block to 24-bit PCM at the
 context's native rate as it arrives, folding into a `Blob` every ~5 s so a
 long session can be paged out of memory. `stopWav()` (from `stopAudioKeep`)
-tears the graph down and prepends the 44-byte header (`wavPcmBlob()`; the
+tears the graph down and prepends the 44-byte header (`wavPcmBlob()` delegates to `js/audio/pcm.js`; the
 melody's `wavBlob()` is the 16-bit stereo one). `#dlBtn` saves it as the
 third file under the same `r.name` stem, `.wav`. Checked by `tests/voice.js`
 case 4b — header, sizes, length and a non-silent peak.
@@ -735,7 +735,7 @@ read that before changing what it writes. Map only below.
 | Lines | Contents |
 |---|---|
 | 5–257 | App CSS. `:root` **6–38** (earth tokens plus `--hour-h` / `--gutter-w`, the hour grid's two knobs). Header 39–63, sidebar 64–100, month **101–148**, **hour grid 149–192**, agenda 193–210, modal 211–235, phones **236–256** — the `(pointer:coarse)` block keeps `px` on purpose (44px floor) |
-| 269–1553 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all seven files) |
+| 269–1553 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
 | 1550–1719 | Markup: header **1391–1552** (view switcher, `+ Eveniment`), sidebar `#side` **1555–1607** (search, the four facet boxes, export/import), `#stage` 1609, **`#ev-modal` 1613–1693** (the one editor — new and existing both land there), `#day-modal` 1695–1705 |
 | 1739–2784 | App script, numbered sections below |
 
@@ -778,7 +778,7 @@ never another browser — is **`docs/FEATURES.md` § Q**. Map only below.
 | Lines | Contents |
 |---|---|
 | 5–194 | App CSS. `:root` **6–23** (earth tokens, nothing page-specific). Header + `.btn` 37–59, **the link pill `.pill` 61–72**, panels 74–110, the transport tabs 112–117, **the device book `.dev` 119–133**, **the drop zone + `.tray` rows 135–166**, progress 168–172, modal + `.help-body` 174–186, touch 188–193 |
-| 197–1481 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all seven files) |
+| 197–1481 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
 | 1483–1637 | Markup: header **1483–1491**, **panel 1 the link 1496–1571** (the two transport panes, `#wifiBox` with `#myCode`/`#theirCode`, `#bleScan`, `#advanced`, `#devList`), **panel 2 what you send 1574–1600** (`#drop`, `#fFiles`, `#fFolder`, `#tray`), **panel 3 what arrived 1603–1625** (`#dest`, `#inbox`, the save buttons), Help modal 1627–1637 |
 | 1639–3107 | App script, numbered sections below |
 
@@ -817,7 +817,7 @@ only below.
 | Lines | Contents |
 |---|---|
 | 5–236 | App CSS. `:root` **6–30** (earth tokens + the four **`--pin-*`** place states). Header 44–71, **the layered list `#side` 74–117**, **the map `#stage` 120–167** (the graticule that stands in for tiles, `.tile`, `.pin`), the HUD/attribution/scale 169–185, **the pin popup `#pop` 188–203**, modals 206–225, phones 228–235 (the sidebar becomes a drawer) |
-| 238–1522 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all seven files) |
+| 238–1522 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
 | 1524–1604 | Markup: header **1524–1536**, **`#side` 1539–1546** (the filter field, the look-one-up field, `#layers`, the foot), **`#stage` 1548–1569** (`#tiles`, `#pins`, `#hud`, `#scale`, `#attrib`, **`#pop` 1559**), settings modal **1572–1592**, help modal **1594–1601** |
 | 1606–2372 | App script, numbered sections below |
 
@@ -876,3 +876,21 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 # confirm nav still in sync + JS still parses — one command
 /verify
 ```
+
+## song.html — ~1570 lines · Song Creation / Creează melodie
+
+See `docs/FEATURES.md` § V for the authoritative architecture and Phase 2 seam.
+
+| Locate | Contents |
+|---|---|
+| `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
+| `<nav id="site-nav">` (9) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
+| `<main>` (~1309) | Project, microphone/recording, sample metadata and take list controls |
+| `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
+| `openDB`, `read`, `persist`, `blobFor` | `scula-song` projects/audio stores, atomic commits, in-memory failure recovery |
+| `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references and ScuLaFolder exports |
+| `render`, `clearPlayers` | Recording cards, waveform, playback and object URL cleanup |
+| `constraints`, `listDevices` | Music constraints and permission-dependent microphone selection |
+| `makeTap`, `takeBlock`, `start`, `stop`, `cleanup` | Worklet/fallback PCM capture, flush, meter, teardown |
+| `js/audio/pcm.js` | Shared Voice/Song signed PCM24 interleaving and correct WAV header/padding |
+| `tests/song.js`, `tests/verify.js` | Behavioral checks and `/verify` implementation |

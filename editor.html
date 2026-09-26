@@ -455,6 +455,7 @@
   <a href="kanban.html" data-page="kanban.html">Kanban</a>
   <a href="map.html" data-page="map.html">Hartă</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="song.html" data-page="song.html">Creează melodie</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <a href="transfer.html" data-page="transfer.html">Transfer</a>
@@ -610,7 +611,7 @@
     if(a.getAttribute("data-page") === here) a.classList.add("current");
   });
   // Shared UI-language toggle - see docs/I18N.md "Shared preference across
-  // pages". This block is byte-identical in all three files (CLAUDE.md rule
+  // pages". This block is byte-identical in all nine files (CLAUDE.md rule
   // 2); it only paints itself from localStorage and broadcasts a
   // "scula-ui-lang" event. Each app's own script (loaded later, at the
   // bottom of the page) owns the actual translation via its own I18N/t()/
@@ -631,7 +632,10 @@
       window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
     });
   }
-  function paintLang(l){ btn.textContent = l === "ro" ? "EN" : "RO"; }
+  function paintLang(l){
+    btn.textContent = l === "ro" ? "EN" : "RO";
+    document.querySelector('#site-nav [data-page="song.html"]').textContent = l === "en" ? "Song Creation" : "Creează melodie";
+  }
 
   // Some apps toggle the language from their own controls; follow along.
   window.addEventListener("scula-ui-lang", function(ev){
@@ -657,12 +661,13 @@
                   there - the OS picker owns that choice.
        "download" last resort, and always available.
 
-     Byte-identical in all three files (CLAUDE.md rule 2) - see
+     Byte-identical in all nine files (CLAUDE.md rule 2) - see
      docs/FEATURES.md "Saving files".
      ============================================================ */
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
     "voice.html": "transcript",
+    "song.html": "Song Creation",
     "calendar.html": "calendar",
     "kanban.html": "kanban",
     "map.html": "harta",
@@ -1052,22 +1057,30 @@
   // and the shared toast speaks.
   function save(filename, blob, opts){
     var quiet = !!(opts && opts.quiet);
+    // Optional directories remain beneath this page's SUBDIR. On mobile,
+    // callers include ownership in the filename; share/download stay flat.
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) return Promise.resolve({ saved:false, message:tx("failed"), via:"folder" });
     var m = currentMode();
     if(m === "share") return shareOut(filename, blob, quiet);
     if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
     return dir().then(function(d){
       if(!d) return null;
-      return freeName(d, filename).then(function(name){
+      var nested = Promise.resolve(d);
+      folders.forEach(function(p){ nested = nested.then(function(h){ return h.getDirectoryHandle(p, { create:true }); }); });
+      return nested.then(function(d){ return freeName(d, filename).then(function(name){
         return d.getFileHandle(name, { create:true }).then(function(fh){
           return fh.createWritable().then(function(w){
             return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
           }).then(function(){
             return { saved:true, via:"folder", name:name,
-                     path: root.name + "/" + subdir() + "/" + name };
+                     path: root.name + "/" + subdir() + "/" + (folders.length ? folders.join("/") + "/" : "") + name };
           });
         });
       });
-    }).catch(function(){ return { failed:true }; }).then(function(r){
+    }); }).catch(function(){ return { failed:true }; }).then(function(r){
       if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
       return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
     });

@@ -7,6 +7,7 @@ light/dark, with no build step.
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
+| `song.html` | **dark** | earth palette, semantic tokens | olive `#C1BB45` |
 | `voice.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |

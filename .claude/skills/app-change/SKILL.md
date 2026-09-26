@@ -1,11 +1,11 @@
 ---
 name: app-change
-description: Make a change to one of the seven standalone browser apps (voice.html / editor.html / index.html / recipes.html / calendar.html / transfer.html / map.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", "in calendar", "on the transfer page", "on the map page", etc. — a feature, button, fix, or styling change inside one app file.
+description: Make a change to one of the nine standalone browser apps (voice.html / editor.html / index.html / recipes.html / calendar.html / transfer.html / map.html / kanban.html / song.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", "in calendar", "on the transfer page", "on the map page", etc. — a feature, button, fix, or styling change inside one app file. Song projects/capture route to song.html; Voice dictation and its existing melody panel remain in voice.html.
 ---
 
-# Changing one of the seven apps
+# Changing one of the nine apps
 
-Seven self-contained HTML files, no build step. See `CLAUDE.md` for the hard rules.
+Nine standalone HTML files, no build step. See `CLAUDE.md` for the hard rules.
 This skill is the repeatable loop for a change request.
 
 ## 1. Which file
@@ -14,8 +14,10 @@ This skill is the repeatable loop for a change request.
 |---|---|---|
 | "markdown page", "markdown editor" | `index.html` | Markdown |
 | "retete", "rețete", "recipe(s) page" | `recipes.html` | Rețete |
-| "index", "voice", "caiet vocal", "dictation" | `voice.html` | Caiet vocal |
+| "voice", "caiet vocal", "dictation" | `voice.html` | Caiet vocal |
 | "editor.html", "image marker", "mazgaleste", "drawing/canvas page" | `editor.html` | Mazgaleste (was "Editor") |
+| "song", "Song Creation", "creează melodie", "humming workstation" | `song.html` | Creează melodie / Song Creation |
+| "kanban", "task board" | `kanban.html` | Kanban |
 | "calendar", "calendarul" | `calendar.html` | Calendar |
 | "transfer", "sync", "trimite pe alt dispozitiv" | `transfer.html` | Transfer |
 | "harta", "hartă", "locatii", "map page" | `map.html` | Hartă |
@@ -38,13 +40,14 @@ budget.
 - Theme tokens, not hex. i18n keys (RO + EN both), not hardcoded strings.
   Preserve diacritics ă â î ș ț.
 - `rem` for chrome in `editor.html` (except inside `(pointer:coarse)` blocks).
+- Voice and Song share `js/audio/pcm.js` (24-bit packer/header); preserve both and run `/apptest voice` and `/apptest melody` after touching it. Song architecture: `docs/FEATURES.md` § V.
 - Save via `ScuLaFolder.save(name, blob)` — never a hand-rolled `<a download>`.
 - **Touching the `<nav id="site-nav">` block? Apply the identical change to all
-  seven files** — it is byte-identical across them.
+  nine files** — it is byte-identical across them.
 
 ## 4. Verify — run `/verify`
 
-Parse-checks the JS in all seven files and diffs the nav block. A PostToolUse
+Parse-checks the JS in all nine files and diffs the nav block. A PostToolUse
 hook already parse-checks the file you edited on each save, but run `/verify`
 before calling the change done. For behaviour changes, `/apptest <name>`.
 

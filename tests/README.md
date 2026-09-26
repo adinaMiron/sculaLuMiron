@@ -156,3 +156,14 @@ there too: Chrome treats `file://` as a secure context, so `getUserMedia`
 and `MediaRecorder` both work, and the opaque origin is what forces
 `ScuLaFolder` into the download route the check reads its results from. Set
 `PW_CHROME_PATH` for all of them the same way.
+
+## Song Creation
+
+`/apptest song` (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song.js`)
+uses a temporary localhost server for the AudioWorklet path and fake Chromium
+microphones. Covers WAV header/payload/decoding, projects, multiple takes, sample
+metadata, reload/delete/rename, actual constraints, desktop nested folder saves,
+mobile layout/share/download/cancellation, denied/missing APIs, PCM fallback and
+atomic storage failure with export recovery. No hardware or service is needed.
+Run `voice` and `melody` for shared PCM-helper regressions. `node tests/verify.js`
+is the `/verify` equivalent across all nine pages and plain JS helpers.

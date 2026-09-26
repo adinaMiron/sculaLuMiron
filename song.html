@@ -1,240 +1,11 @@
 <!doctype html><html lang="ro" data-theme="dark"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hartă — Scula lu Miron</title>
+<title>Creează melodie — Scula lu Miron</title>
 <style>
-  :root {
-    /* earth palette (shared brand base — see docs/THEME.md) */
-    --bg: #14201A;
-    --surface: #1B2A22;
-    --surface-2: #22342A;
-    --border: #2E4739;
-    --accent: #C1BB45;
-    --accent-2: #D3CD7C;
-    --on-accent: #1A2117;
-    --text: #F3EEE1;
-    --text-2: #9FB3A5;
-    --text-3: #5A6A60;
-    --danger: #C4643C;
-    --ok: #6E9E8A;
-    --radius: 10px;
-    --shadow: 0 12px 40px rgba(0,0,0,.5);
-    --font-mono: 'Courier New', monospace;
-    --font-ui: 'Trebuchet MS', sans-serif;
-    --side-w: 17rem;
-    /* the four states a place can be in, so the dot in the list and the pin
-       on the map are coloured from one place */
-    --pin-coord: #C1BB45;   /* written as coordinates — nothing to look up */
-    --pin-found: #6E9E8A;   /* the geocoder found it */
-    --pin-wait:  #9FB3A5;   /* queued or in flight */
-    --pin-none:  #C4643C;   /* nothing came back */
-  }
-
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-ui); font-size: 0.9rem;
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
-  button { cursor: pointer; }
-
-  /* ---------- header ---------- */
-  #map-head {
-    flex: 0 0 auto; display: flex; align-items: center; gap: .5rem;
-    flex-wrap: wrap; padding: .5rem .75rem;
-    background: var(--surface); border-bottom: 1px solid var(--border);
-  }
-  #map-head .logo { font-weight: 600; letter-spacing: .02em; }
-  #map-head .logo span { color: var(--text-3); font-weight: 400; }
-  #map-head .spacer { flex: 1 1 auto; }
-  #map-source {
-    color: var(--text-2); font-size: .82rem;
-    max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .btn {
-    background: var(--surface-2); color: var(--text);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    padding: .4rem .7rem; white-space: nowrap;
-  }
-  .btn:hover { border-color: var(--accent); }
-  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
-  .btn.ghost { background: transparent; }
-  .btn.icon { padding: .4rem .55rem; }
-  .btn[disabled] { opacity: .5; cursor: not-allowed; }
-
-  /* ---------- body ---------- */
-  #map-body { flex: 1 1 auto; display: flex; min-height: 0; }
-
-  /* ---------- the layered list ---------- */
-  #side {
-    flex: 0 0 var(--side-w); width: var(--side-w);
-    background: var(--surface); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; min-height: 0;
-  }
-  #side.hidden { display: none; }
-  .side-top { padding: .6rem; display: flex; flex-direction: column; gap: .45rem;
-              border-bottom: 1px solid var(--border); }
-  .side-top input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: .4rem .55rem;
-  }
-  .side-top input:focus { outline: none; border-color: var(--accent); }
-  #layers { flex: 1 1 auto; overflow-y: auto; padding: .35rem .4rem .8rem; }
-  .layer { margin-bottom: .35rem; }
-  .layer-head {
-    display: flex; align-items: center; gap: .4rem;
-    padding: .35rem .4rem; border-radius: var(--radius);
-    background: var(--surface-2); cursor: pointer; user-select: none;
-  }
-  .layer-head:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
-  .layer-head .tw { color: var(--text-3); width: .8rem; flex: 0 0 auto; }
-  .layer-head .nm { flex: 1 1 auto; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .layer-head .ct { color: var(--text-3); font-size: .78rem; }
-  .layer.off .layer-head .nm { color: var(--text-3); font-weight: 400; text-decoration: line-through; }
-  .layer.collapsed .places { display: none; }
-  .places { padding: .15rem 0 .15rem .5rem; }
-  .place {
-    display: flex; align-items: flex-start; gap: .4rem;
-    padding: .3rem .4rem; border-radius: var(--radius); cursor: pointer;
-    border: 1px solid transparent;
-  }
-  .place:hover { background: var(--surface-2); }
-  .place.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .place .dot { flex: 0 0 auto; width: .55rem; height: .55rem; border-radius: 50%;
-                margin-top: .35rem; background: var(--pin-wait); }
-  .place .txt { flex: 1 1 auto; min-width: 0; }
-  .place .q { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .place .sub { display: block; color: var(--text-3); font-size: .75rem;
-                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .place.none .q { color: var(--danger); }
-  .side-foot { flex: 0 0 auto; padding: .45rem .6rem; border-top: 1px solid var(--border);
-               color: var(--text-3); font-size: .76rem; min-height: 2rem; }
-  .empty { color: var(--text-3); padding: 1rem .6rem; line-height: 1.5; }
-  .empty code { font-family: var(--font-mono); color: var(--accent-2); }
-
-  /* ---------- the map ---------- */
-  #stage {
-    flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden;
-    background: var(--bg);
-    /* a graticule, so the page is still a map when no tile ever arrives
-       (offline, file://, or an empty tile field) */
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
-    background-size: 64px 64px;
-    touch-action: none; cursor: grab;
-  }
-  #stage.dragging { cursor: grabbing; }
-  #tiles, #pins { position: absolute; inset: 0; }
-  #pins { pointer-events: none; }
-  .tile {
-    position: absolute; top: 0; left: 0; width: 256px; height: 256px;
-    user-select: none; -webkit-user-drag: none; pointer-events: none;
-  }
-  .pin {
-    position: absolute; top: 0; left: 0; pointer-events: auto;
-    display: flex; align-items: center; gap: .3rem;
-    background: transparent; border: 0; padding: 0;
-    transform-origin: 0 0; white-space: nowrap;
-  }
-  .pin .bead {
-    width: .85rem; height: .85rem; border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg); flex: 0 0 auto;
-    background: var(--pin-found); border: 1px solid rgba(0,0,0,.45);
-    box-shadow: 0 1px 4px rgba(0,0,0,.5);
-  }
-  .pin.coord .bead { background: var(--pin-coord); }
-  .pin .lbl {
-    font-size: .74rem; color: var(--text);
-    background: color-mix(in srgb, var(--bg) 78%, transparent);
-    border: 1px solid var(--border); border-radius: 6px; padding: 0 .3rem;
-    max-width: 11rem; overflow: hidden; text-overflow: ellipsis;
-  }
-  .pin.on .bead { background: var(--accent); transform: rotate(-45deg) scale(1.25); }
-  .pin.on .lbl { border-color: var(--accent); color: var(--accent-2); }
-
-  #hud { position: absolute; right: .6rem; top: .6rem; display: flex; flex-direction: column; gap: .3rem; }
-  #hud .btn { background: color-mix(in srgb, var(--surface) 88%, transparent); }
-  #attrib {
-    position: absolute; right: .4rem; bottom: .35rem;
-    font-size: .68rem; color: var(--text-2);
-    background: color-mix(in srgb, var(--bg) 70%, transparent);
-    padding: .1rem .35rem; border-radius: 5px;
-  }
-  #attrib a { color: var(--text-2); }
-  #scale {
-    position: absolute; left: .6rem; bottom: .5rem; font-size: .68rem; color: var(--text-2);
-    border: 1px solid var(--text-2); border-top: 0; height: .5rem; min-width: 3rem;
-  }
-  #scale span { position: absolute; left: 0; bottom: .45rem; white-space: nowrap;
-                background: color-mix(in srgb, var(--bg) 70%, transparent); padding: 0 .2rem; }
-  #side-toggle { display: none; }
-
-  /* the popup that a pin opens */
-  #pop {
-    position: absolute; z-index: 5; display: none;
-    max-width: 17rem; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow); padding: .55rem .65rem;
-    transform: translate(-50%, -100%); margin-top: -1rem;
-  }
-  #pop.open { display: block; }
-  #pop h4 { margin: 0 0 .25rem; font-size: .92rem; }
-  #pop p { margin: 0 0 .3rem; color: var(--text-2); font-size: .8rem; line-height: 1.4; }
-  #pop .co { font-family: var(--font-mono); font-size: .76rem; color: var(--text-3); }
-  #pop .tags { color: var(--ok); font-size: .76rem; }
-  #pop .row { display: flex; gap: .3rem; margin-top: .35rem; flex-wrap: wrap; }
-  #pop .row .btn { padding: .25rem .45rem; font-size: .78rem; }
-  #pop .x { position: absolute; top: .15rem; right: .3rem; background: transparent;
-            border: 0; color: var(--text-3); font-size: 1rem; line-height: 1; }
-
-  /* ---------- modals (same chrome as calendar.html) ---------- */
-  .modal {
-    position: fixed; inset: 0; z-index: 40; display: none;
-    background: rgba(0,0,0,.55); align-items: center; justify-content: center; padding: 1rem;
-  }
-  .modal.open { display: flex; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-    width: min(34rem, 100%); max-height: 86vh; overflow-y: auto; padding: 1rem;
-  }
-  .card h3 { margin: 0 0 .7rem; }
-  .field { margin-bottom: .7rem; }
-  .field label { display: block; font-size: .78rem; color: var(--text-2); margin-bottom: .2rem; }
-  .field input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: .45rem .55rem; font-family: var(--font-mono); font-size: .8rem;
-  }
-  .field input:focus { outline: none; border-color: var(--accent); }
-  .field .hint { display: block; margin-top: .25rem; font-size: .74rem; color: var(--text-3); line-height: 1.45; }
-  .card .actions { display: flex; gap: .4rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .8rem; }
-  .help-body h3 { margin: .9rem 0 .35rem; font-size: .95rem; color: var(--accent-2); }
-  .help-body h3:first-child { margin-top: 0; }
-  .help-body p, .help-body li { color: var(--text-2); line-height: 1.55; margin: .3rem 0; }
-  .help-body ul { margin: .3rem 0; padding-left: 1.1rem; }
-  .help-body code { font-family: var(--font-mono); color: var(--accent-2); }
-  .help-body kbd {
-    font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: 5px; padding: 0 .3rem;
-  }
-
-  /* ---------- phones ---------- */
-  @media (max-width: 720px) {
-    #side {
-      position: absolute; z-index: 12; top: 0; bottom: 0; left: 0;
-      width: min(19rem, 86vw); flex-basis: auto; box-shadow: var(--shadow);
-    }
-    #map-body { position: relative; }
-    #side-toggle { display: inline-block; }
-    #map-source { max-width: 10rem; }
-    .btn { min-height: 44px; }
-    .place { padding: .5rem .4rem; }
-  }
-</style>
-</head>
-<body>
+:root{--bg:#14201A;--surface:#1B2A22;--surface-2:#22342A;--border:#2E4739;--text:#F3EEE1;--text-2:#9FB3A5;--accent:#C1BB45;--on-accent:#1A2117;--danger:#C4643C;--ok:#6E9E8A;--radius:.8rem}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem system-ui,sans-serif}main{max-width:64rem;margin:auto;padding:1.5rem 1rem 4rem}h1{margin:0}h2{font-size:1.2rem}p,small{line-height:1.5}small,.hint{color:var(--text-2)}.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-top:1rem}.row{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}label{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:0}input,select,textarea,button{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:.5rem;min-height:2.8rem;padding:.6rem;max-width:100%}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--accent);color:var(--on-accent);font-weight:700}#recordBtn{min-height:4rem;min-width:11rem;font-size:1.2rem}#recordBtn[aria-pressed=true]{background:var(--danger);color:var(--text)}#timer{font:2rem ui-monospace,monospace;min-width:6rem}meter{width:100%;height:1.5rem;accent-color:var(--accent)}#quality{white-space:pre-line;overflow-wrap:anywhere;font-size:.9rem}#status{min-height:1.5rem}#status.error,#recovery{color:var(--danger)}.take{padding:1rem 0;border-top:1px solid var(--border)}.take h3{margin:.3rem 0;overflow-wrap:anywhere}.take audio{width:100%;margin:.6rem 0}.take canvas{width:100%;height:3rem;display:block}.take .row{align-items:center}.badge{color:var(--accent)}[hidden]{display:none!important}@media(max-width:38rem){.grid{grid-template-columns:1fr}main{padding:1rem .75rem 3rem}.panel{padding:.9rem}.row>label{flex-basis:100%}#recordBtn{flex:1}}
+</style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
   <a href="calendar.html" data-page="calendar.html">Calendar</a>
@@ -1535,859 +1306,267 @@
 })();
 </script>
 <!-- ===== end toolbar nav ===== -->
-
-<header id="map-head">
-  <div class="logo">Hartă <span>/ locații</span></div>
-  <button class="btn icon ghost" id="side-toggle" onclick="toggleSide()" aria-label="Listă">☰</button>
-  <span id="map-source"></span>
-  <span class="spacer"></span>
-  <button class="btn" id="btn-fit" onclick="fitAll()" data-i="fitBtn" data-i-title="fitTip" title="Încadrează toate locurile găsite">⤢ Încadrează</button>
-  <button class="btn" id="btn-locate" onclick="locateAll(true)" data-i="locateBtn" data-i-title="locateTip" title="Caută din nou fiecare adresă">🔎 Caută adresele</button>
-  <button class="btn" id="btn-open-md" onclick="openMd()" data-i="openMdBtn" data-i-title="openMdTip" title="Citește marcajele „^@” dintr-un fișier .md">📄 Deschide .md</button>
-  <button class="btn" id="btn-export" onclick="exportGeoJSON()" data-i="exportBtn" data-i-title="exportTip" title="Salvează locurile ca .geojson">⬇ Exportă</button>
-  <button class="btn icon" id="btn-settings" onclick="openSettings()" data-i-title="settingsTip" title="Adresa hărții și a geocodorului">⚙</button>
-  <button class="btn icon" id="btn-help" onclick="openHelp()" data-i-title="helpTip" title="Ajutor">❓</button>
-  <input type="file" id="md-file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-</header>
-
-<div id="map-body">
-  <aside id="side">
-    <div class="side-top">
-      <input id="q" type="search" data-i-placeholder="filterHint" placeholder="Filtrează locurile…" autocomplete="off">
-      <input id="add" type="search" data-i-placeholder="addHint" placeholder="Caută un loc și adaugă-l…" autocomplete="off">
-    </div>
-    <div id="layers"></div>
-    <div class="side-foot" id="side-foot"></div>
-  </aside>
-
-  <div id="stage">
-    <div id="tiles"></div>
-    <div id="pins"></div>
-    <div id="hud">
-      <button class="btn icon" onclick="zoomBy(1)" aria-label="+">＋</button>
-      <button class="btn icon" onclick="zoomBy(-1)" aria-label="−">−</button>
-      <button class="btn icon" onclick="fitAll()" aria-label="fit">⤢</button>
-    </div>
-    <div id="scale"><span></span></div>
-    <div id="attrib"></div>
-    <div id="pop">
-      <button class="x" onclick="closePop()" aria-label="×">×</button>
-      <h4 id="pop-title"></h4>
-      <p id="pop-note"></p>
-      <p class="co" id="pop-co"></p>
-      <p class="tags" id="pop-tags"></p>
-      <div class="row">
-        <button class="btn" id="pop-osm" onclick="openOnOSM()" data-i="onOsmBtn">🌍 OpenStreetMap</button>
-        <button class="btn" id="pop-copy" onclick="copyCoords()" data-i="copyCoordsBtn">⧉ Coordonate</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="settings-modal">
-  <div class="card">
-    <h3 data-i="settingsTitle">Adresele</h3>
-    <div class="field">
-      <label for="f-tiles" data-i="tilesLabel">Adresa dalelor hărții</label>
-      <input id="f-tiles" type="text" spellcheck="false">
-      <span class="hint" data-i="tilesHint">Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.</span>
-    </div>
-    <div class="field">
-      <label for="f-geocoder" data-i="geocoderLabel">Adresa geocodorului</label>
-      <input id="f-geocoder" type="text" spellcheck="false">
-      <span class="hint" data-i="geocoderHint">Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.</span>
-    </div>
-    <div class="actions">
-      <button class="btn ghost" onclick="clearGeoCache()" data-i="clearCacheBtn">Golește memoria adreselor</button>
-      <button class="btn ghost" onclick="resetSettings()" data-i="resetBtn">Implicit</button>
-      <button class="btn" onclick="closeSettings()" data-i="cancelBtn">Renunță</button>
-      <button class="btn primary" onclick="saveSettings()" data-i="saveBtn">Salvează</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="help-modal">
-  <div class="card">
-    <h3 data-i="helpTitle">Harta locurilor</h3>
-    <div class="help-body" id="help-body"></div>
-    <div class="actions">
-      <button class="btn primary" onclick="closeHelp()" data-i="closeBtn">Închide</button>
-    </div>
-  </div>
-</div>
-
+<main>
+<header><h1 data-i="title">Creează melodie</h1><p class="hint" data-i="intro">Proiecte muzicale din voce, fredonat și propriile instrumente. Înregistrarea WAV originală rămâne sursa.</p></header>
+<section class="panel" aria-labelledby="projectHeading">
+<h2 id="projectHeading" data-i="project">Proiect muzical</h2>
+<div class="row"><label><span data-i="openProject">Deschide proiect</span><select id="projects"></select></label><button id="newProject" data-i="newProject">Proiect nou</button></div>
+<div class="row" style="margin-top:1rem"><label><span data-i="projectName">Numele proiectului</span><input id="projectName" maxlength="120"></label><button id="renameProject" data-i="rename">Redenumește</button><button id="exportProject" data-i="exportProject">Salvează metadatele</button></div>
+<p><strong id="currentProject"></strong></p><small data-i="storageHint">WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.</small>
+<p id="recovery" role="alert" hidden></p><button id="retry" data-i="retry" hidden>Reîncearcă păstrarea locală</button>
+</section>
+<section class="panel" aria-labelledby="recordHeading">
+<h2 id="recordHeading" data-i="source">Înregistrare sursă</h2>
+<div class="row"><label><span data-i="microphone">Microfon</span><select id="microphone"><option value="" data-i="defaultMic">Microfon implicit</option></select></label><button id="enableMic" data-i="enableMic">Permite / actualizează microfoanele</button></div>
+<div class="grid" style="margin-top:1rem"><label><span data-i="takeName">Numele înregistrării</span><input id="takeName" maxlength="120"></label><label><span data-i="purpose">Scop</span><select id="purpose"><option value="melody" data-i="melody">Melodie / fredonat</option><option value="sample" data-i="sample">Mostră de instrument</option></select></label></div>
+<fieldset id="sampleFields" hidden><legend data-i="sampleDetails">Detalii opționale ale mostrei</legend><div class="grid">
+<label><span data-i="instrument">Instrument</span><input id="instrument" maxlength="120"></label>
+<label><span data-i="note">Notă (ex. C4 / Do4)</span><input id="note" maxlength="40"></label>
+<label><span data-i="midiNote">Notă MIDI (0–127)</span><input id="midiNote" type="number" min="0" max="127" step="1"></label>
+<label><span data-i="articulation">Articulație</span><input id="articulation" maxlength="120"></label>
+<label><span data-i="dynamic">Dinamică / intensitate</span><input id="dynamic" maxlength="120"></label>
+<label><span data-i="notes">Observații</span><textarea id="notes" maxlength="2000"></textarea></label></div></fieldset>
+<p id="quality" class="hint"></p>
+<label><span data-i="level">Nivel de intrare</span><meter id="level" min="0" max="1" value="0"></meter></label>
+<div class="row" style="margin-top:1rem"><button id="recordBtn" class="primary" data-i="record" aria-pressed="false" disabled>● Înregistrează</button><button id="stopBtn" data-i="stop" disabled>Oprește</button><output id="timer" aria-label="Durată / Duration">00:00</output><span id="recordState" class="badge"></span></div>
+<p id="status" role="status" aria-live="polite"></p>
+<small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
+</section>
+<section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
+</main>
+<script src="js/audio/pcm.js"></script>
 <script>
-/* ============================================================
-   Hartă — the places flagged with "^@" in markdown, on a map.
-   ------------------------------------------------------------
-   The syntax and the scan live in window.ScuLaGeo, inside the shared nav
-   block, so this page and index.html read the exact same marker
-   (docs/FEATURES.md § S). This file owns three things and nothing else:
-   a slippy map hand-rolled out of <img> tiles (CLAUDE.md rule 3 - no
-   map library), a geocoder call against an address the person can see
-   and change, and the layered list beside it.
-   ============================================================ */
-
-/* ============================================================
-   1. i18n — docs/I18N.md
-   ============================================================ */
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
 const I18N = {
-  ro: {
-    fitBtn:"⤢ Încadrează", fitTip:"Încadrează toate locurile găsite",
-    locateBtn:"🔎 Caută adresele", locateTip:"Caută din nou fiecare adresă",
-    openMdBtn:"📄 Deschide .md", openMdTip:"Citește marcajele „^@” dintr-un fișier .md",
-    exportBtn:"⬇ Exportă", exportTip:"Salvează locurile ca .geojson",
-    settingsTip:"Adresa hărții și a geocodorului",
-    helpTip:"Ajutor",
-    filterHint:"Filtrează locurile…",
-    addHint:"Caută un loc și adaugă-l…",
-    manualLayer:"Căutate aici",
-    noSource:"Nicio listă de locuri încă",
-    fromChapter:n => "din „" + n + "”",
-    fromFile:n => "din " + n,
-    onOsmBtn:"🌍 OpenStreetMap",
-    copyCoordsBtn:"⧉ Coordonate",
-    copied:"Coordonatele au fost copiate.",
-    settingsTitle:"Adresele",
-    tilesLabel:"Adresa dalelor hărții",
-    tilesHint:"Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.",
-    geocoderLabel:"Adresa geocodorului",
-    geocoderHint:"Șablon cu {q}. Gol = nu se caută nimic online: apar doar locurile scrise direct în coordonate.",
-    clearCacheBtn:"Golește memoria adreselor",
-    resetBtn:"Implicit", cancelBtn:"Renunță", saveBtn:"Salvează", closeBtn:"Închide",
-    cacheCleared:"Memoria adreselor a fost golită.",
-    helpTitle:"Harta locurilor",
-    emptyTitle:"Nimic de arătat încă.",
-    statusCounts:a => a[1] + " din " + a[0] + " găsite",
-    statusWorking:n => "Se caută… (" + n + " în coadă)",
-    statusNoGeocoder:"Fără geocodor: doar locurile scrise în coordonate.",
-    statusNone:n => n + " negăsite",
-    noPlaces:"Niciun loc găsit încă.",
-    savedGeo:n => n + " locuri salvate.",
-    nothingToSave:"Niciun loc găsit de salvat.",
-    readFile:a => a[1] + " locuri în " + a[0],
-    noMarks:"Fișierul nu are niciun marcaj „^@”.",
-    kindCoord:"coordonate", kindFound:"găsit", kindWait:"se caută", kindNone:"negăsit",
-    helpBody:`
-      <h3>De unde vin locurile</h3>
-      <p>Din marcajele <code>^@</code> scrise în markdown. Butonul 🗺 din pagina Markdown trimite aici capitolul deschis; <b>📄 Deschide .md</b> citește orice fișier markdown direct.</p>
-      <ul>
-        <li><code>^@Castelul Peleș</code> — un nume căutat pe hartă</li>
-        <li><code>^@Strada Lipscani 12, București</code> — o stradă cu număr</li>
-        <li><code>^@44.4268, 26.1025</code> — coordonate: nu se mai caută nimic online</li>
-        <li><code>^@Castelul Peleș | a doua zi, dimineața</code> — după <code>|</code> scrii o notă</li>
-      </ul>
-      <p>Un <code>#etichetă</code> de pe aceeași linie încheie adresa și rămâne al liniei.</p>
-      <h3>Straturile</h3>
-      <p>Fiecare loc intră în stratul titlului de deasupra lui (<code>## Ziua 2</code>). Clic pe numele stratului îl ascunde și îl arată; clic pe ▸ îl strânge. Clic pe un loc duce harta la el.</p>
-      <h3>Harta</h3>
-      <p>Trage cu degetul sau cu mausul, rotița sau <kbd>+</kbd>/<kbd>−</kbd> apropie și depărtează, <kbd>F</kbd> încadrează tot. Dalele vin de la OpenStreetMap, adresa lor se vede și se schimbă în ⚙ — un dosar local le înlocuiește, iar câmpul gol lasă doar caroiajul.</p>
-      <h3>Căutarea adreselor</h3>
-      <p>Numele și străzile sunt căutate cu geocodorul din ⚙ (implicit Nominatim, al OpenStreetMap), o cerere pe secundă, iar răspunsurile sunt ținute minte, așa că a doua oară nu se mai cere nimic.</p>
-    `
-  },
-  en: {
-    fitBtn:"⤢ Fit all", fitTip:"Frame every place that was found",
-    locateBtn:"🔎 Look up addresses", locateTip:"Look every address up again",
-    openMdBtn:"📄 Open .md", openMdTip:"Read the “^@” markers out of a .md file",
-    exportBtn:"⬇ Export", exportTip:"Save the places as .geojson",
-    settingsTip:"The map and geocoder addresses",
-    helpTip:"Help",
-    filterHint:"Filter the places…",
-    addHint:"Look a place up and add it…",
-    manualLayer:"Looked up here",
-    noSource:"No list of places yet",
-    fromChapter:n => "from “" + n + "”",
-    fromFile:n => "from " + n,
-    onOsmBtn:"🌍 OpenStreetMap",
-    copyCoordsBtn:"⧉ Coordinates",
-    copied:"Coordinates copied.",
-    settingsTitle:"The addresses",
-    tilesLabel:"Map tile address",
-    tilesHint:"A {z}/{x}/{y} template. Empty = no tiles: the graticule and the points stay, so the page works with no internet. A local folder (“./tiles/{z}/{x}/{y}.png”) works just as well.",
-    geocoderLabel:"Geocoder address",
-    geocoderHint:"A {q} template. Empty = nothing is looked up online: only places written as coordinates appear.",
-    clearCacheBtn:"Clear remembered addresses",
-    resetBtn:"Default", cancelBtn:"Cancel", saveBtn:"Save", closeBtn:"Close",
-    cacheCleared:"Remembered addresses cleared.",
-    helpTitle:"The map of places",
-    emptyTitle:"Nothing to show yet.",
-    statusCounts:a => a[1] + " of " + a[0] + " found",
-    statusWorking:n => "Looking up… (" + n + " queued)",
-    statusNoGeocoder:"No geocoder: only places written as coordinates.",
-    statusNone:n => n + " not found",
-    noPlaces:"No place found yet.",
-    savedGeo:n => n + " places saved.",
-    nothingToSave:"No located place to save.",
-    readFile:a => a[1] + " places in " + a[0],
-    noMarks:"That file has no “^@” marker.",
-    kindCoord:"coordinates", kindFound:"found", kindWait:"looking up", kindNone:"not found",
-    helpBody:`
-      <h3>Where the places come from</h3>
-      <p>From the <code>^@</code> markers written in markdown. The 🗺 button on the Markdown page sends the open chapter here; <b>📄 Open .md</b> reads any markdown file directly.</p>
-      <ul>
-        <li><code>^@Peleș Castle</code> — a name looked up on the map</li>
-        <li><code>^@12 Lipscani Street, Bucharest</code> — a street with a number</li>
-        <li><code>^@44.4268, 26.1025</code> — coordinates: nothing is looked up online</li>
-        <li><code>^@Peleș Castle | second day, morning</code> — what follows <code>|</code> is a note</li>
-      </ul>
-      <p>A <code>#tag</code> on the same line ends the address and stays the line's.</p>
-      <h3>The layers</h3>
-      <p>Each place joins the layer of the heading above it (<code>## Day 2</code>). Clicking a layer's name hides and shows it; clicking ▸ collapses it. Clicking a place takes the map there.</p>
-      <h3>The map</h3>
-      <p>Drag with a finger or the mouse, the wheel or <kbd>+</kbd>/<kbd>−</kbd> zooms, <kbd>F</kbd> frames everything. Tiles come from OpenStreetMap; their address is visible and editable under ⚙ — a local folder replaces them, and an empty field leaves just the graticule.</p>
-      <h3>Looking addresses up</h3>
-      <p>Names and streets are looked up with the geocoder under ⚙ (Nominatim, OpenStreetMap's own, by default), one request a second, and the answers are remembered, so the second time nothing is asked.</p>
-    `
-  }
+ro:{title:'Creează melodie',intro:'Proiecte muzicale din voce, fredonat și propriile instrumente. Înregistrarea WAV originală rămâne sursa.',project:'Proiect muzical',openProject:'Deschide proiect',newProject:'Proiect nou',projectName:'Numele proiectului',rename:'Redenumește',exportProject:'Salvează metadatele',storageHint:'WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.',retry:'Reîncearcă păstrarea locală',source:'Înregistrare sursă',microphone:'Microfon',defaultMic:'Microfon implicit',enableMic:'Permite / actualizează microfoanele',takeName:'Numele înregistrării',purpose:'Scop',melody:'Melodie / fredonat',sample:'Mostră de instrument',sampleDetails:'Detalii opționale ale mostrei',instrument:'Instrument',note:'Notă (ex. C4 / Do4)',midiNote:'Notă MIDI (0–127)',articulation:'Articulație',dynamic:'Dinamică / intensitate',notes:'Observații',level:'Nivel de intrare',record:'● Înregistrează',stop:'Oprește',recordings:'Înregistrările proiectului',captureHint:'PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.',idle:'Pregătit',loading:'Se încarcă…',requesting:'Se deschide microfonul…',recording:'Se înregistrează',stopping:'Se finalizează WAV…',saving:'Se păstrează…',empty:'Nicio înregistrare încă.',untitled:'Proiect nou',take:'Înregistrare',save:'Salvează WAV',remove:'Șterge',deleteAsk:n=>`Ștergi „${n}” din browser? Copiile exportate rămân.`,renameAsk:'Numele înregistrării:',unsupported:'Înregistrarea necesită getUserMedia și Web Audio. Folosește un browser compatibil pe HTTPS sau localhost.',denied:'Accesul la microfon a fost refuzat. Permite microfonul în setările browserului și reîncearcă.',micError:'Microfonul nu poate fi deschis. Verifică dispozitivul și permisiunile.',storageError:'Păstrarea locală a eșuat. Datele noi rămân doar în această pagină: salvează WAV și metadatele înainte de reîncărcare sau reîncearcă.',recovered:'Datele sunt păstrate local.',missing:'WAV local lipsește. Folosește copia exportată; metadatele rămân disponibile.',short:'Nu au sosit eșantioane audio. Reîncearcă o înregistrare mai lungă.',unknown:'necunoscut',off:'oprit',on:'activ',processing:'Procesare raportată (ecou / zgomot / câștig)',rate:'Rată microfon',wavRate:'Rată WAV',channels:'Canale WAV',backend:'Captură',clip:'Vârf la limita PCM: redu nivelul microfonului pentru următoarea înregistrare.',interrupted:'Captura a fost întreruptă; partea primită a fost păstrată.',badNote:'Nota MIDI trebuie să fie un număr întreg între 0 și 127.',leave:'Înregistrarea sau datele nepăstrate se vor pierde.',fallback:'Compatibilitate ScriptProcessor; pot apărea întreruperi dacă pagina este ocupată.',noDevices:'Selecția microfonului nu este disponibilă.',failed:'Operația a eșuat.',size:'Dimensiune WAV',unverifiedChannels:'Canalele microfonului nu sunt raportate; sunt afișate canalele capturate de Web Audio (mono în modul de compatibilitate).',duration:'Durată'},
+en:{title:'Song Creation',intro:'Music projects from voice, humming and your own instruments. The original WAV recording remains the source.',project:'Song project',openProject:'Open project',newProject:'New project',projectName:'Project name',rename:'Rename',exportProject:'Save metadata',storageHint:'WAV and metadata stay in this browser. Export backup copies; clearing browser data removes them. On phones, each file is shared/downloaded separately.',retry:'Retry local storage',source:'Source recording',microphone:'Microphone',defaultMic:'Default microphone',enableMic:'Allow / refresh microphones',takeName:'Recording name',purpose:'Purpose',melody:'Melody / humming',sample:'Instrument sample',sampleDetails:'Optional sample details',instrument:'Instrument',note:'Note (e.g. C4)',midiNote:'MIDI note (0–127)',articulation:'Articulation',dynamic:'Velocity / dynamics',notes:'Notes',level:'Input level',record:'● Record',stop:'Stop',recordings:'Project recordings',captureHint:'24-bit PCM WAV; microphone target 48 kHz, effective rate shown. No normalization or effects. Use headphones and keep this page open in the foreground while recording.',idle:'Ready',loading:'Loading…',requesting:'Opening microphone…',recording:'Recording',stopping:'Finalizing WAV…',saving:'Storing…',empty:'No recordings yet.',untitled:'New project',take:'Recording',save:'Save WAV',remove:'Delete',deleteAsk:n=>`Delete “${n}” from this browser? Exported copies remain.`,renameAsk:'Recording name:',unsupported:'Recording needs getUserMedia and Web Audio. Use a compatible browser on HTTPS or localhost.',denied:'Microphone access was denied. Allow the microphone in browser settings and try again.',micError:'Cannot open the microphone. Check the device and permissions.',storageError:'Local storage failed. New data remains only in this page: save WAV and metadata before reloading, or retry.',recovered:'Data stored locally.',missing:'Local WAV is missing. Use the exported copy; metadata is still available.',short:'No audio samples arrived. Try a longer recording.',unknown:'unknown',off:'off',on:'on',processing:'Reported processing (echo / noise / gain)',rate:'Microphone rate',wavRate:'WAV rate',channels:'WAV channels',backend:'Capture',clip:'Peak reached the PCM limit: reduce microphone level for the next recording.',interrupted:'Capture was interrupted; the received portion was retained.',badNote:'MIDI note must be an integer between 0 and 127.',leave:'Recording or unstored data will be lost.',fallback:'ScriptProcessor compatibility mode; a busy page may interrupt capture.',noDevices:'Microphone selection is unavailable.',failed:'Operation failed.',size:'WAV size',unverifiedChannels:'Microphone channels are unreported; captured Web Audio channels are shown (mono in compatibility mode).',duration:'Duration'}
 };
-let UI = "ro";
-function t(k, a){
-  const v = (I18N[UI] || I18N.ro)[k];
-  return typeof v === "function" ? v(a) : v;
+const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
+let UI = prefs.get('scula:ui-lang') === 'en' ? 'en' : 'ro';
+const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
+let state='loading', db=null, projects=[], project=null, dirty=false, generation=0;
+let capture=null, lastQuality=null, statusKey=null;
+const pendingBlobs = new Map(), deleted = new Set(), urls = new Set();
+const AC = window.AudioContext || window.webkitAudioContext;
+const supported = () => !!(AC && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.ScuLaPCM);
+const id = () => 's' + (crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'') : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const now = () => new Date().toISOString();
+const time = seconds => `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
+function say(k,error=false){statusKey=k; $('status').textContent=t(k);$('status').classList.toggle('error',error);}
+function paintState(){
+  $('recordState').textContent=t(state);
+  const idle=state==='idle';
+  ['newProject','renameProject','projects','projectName','exportProject','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry'].forEach(k=>$(k).disabled=!idle);
+  $('recordBtn').disabled=!idle || !supported() || !project;
+  $('recordBtn').setAttribute('aria-pressed',String(state==='recording'));
+  $('stopBtn').disabled=state!=='recording';
+  document.querySelectorAll('.take button').forEach(b=>b.disabled=!idle);
+}
+function setState(s){state=s;paintState();}
+function quality(q){
+  if(!q){$('quality').textContent='';return;}
+  const val=v=>v===false?t('off'):v===true?t('on'):v===undefined?t('unknown'):String(v);
+  $('quality').textContent=`${q.label || t('defaultMic')} · ${t('rate')}: ${q.settings.sampleRate || t('unknown')} Hz\n${t('wavRate')}: ${q.sampleRate} Hz · PCM 24 bit · ${t('channels')}: ${q.channels} · ${t('backend')}: ${q.backend}\n${t('processing')}: ${['echoCancellation','noiseSuppression','autoGainControl'].map(k=>val(q.settings[k])).join(' / ')}${q.settings.channelCount ? '' : '\n'+t('unverifiedChannels')}${q.backend==='ScriptProcessor' ? '\n'+t('fallback') : ''}${q.size ? '\n'+t('size')+': '+(q.size/1048576).toFixed(2)+' MiB · '+t('duration')+': '+q.duration.toFixed(2)+' s' : ''}`;
+}
+function paintProjects(){
+  $('projects').replaceChildren(...projects.map(p=>new Option(p.name,p.id)));
+  if(project){$('projects').value=project.id;$('projectName').value=project.name;$('currentProject').textContent=project.name;}
+  $('recovery').hidden=!dirty;$('retry').hidden=!dirty;$('recovery').textContent=t('storageError');
 }
 function applyUILang(){
-  document.documentElement.lang = UI;
-  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
-  ["placeholder","title","aria-label","value","alt"].forEach(attr => {
-    const d = "data-i-" + attr.replace("aria-label", "aria");
-    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
-  });
-  paintSource();
-  paintList();
-  paintAttrib();
-  if($("help-modal").classList.contains("open")) paintHelp();
+  document.documentElement.lang=UI;document.title=t('title')+' — Scula lu Miron';
+  document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
+  if(statusKey)$('status').textContent=t(statusKey);
+  paintState();paintProjects();quality(lastQuality);render();
 }
-
-/* ============================================================
-   2. Storage — never localStorage directly (file:// can throw)
-   ============================================================ */
-const store = {
-  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } },
-  set(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } },
-  drop(k){ try{ localStorage.removeItem(k); }catch(e){} }
-};
-const SET_KEY = "scula:map:settings";
-const CACHE_KEY = "scula:map:geocache";
-const DEFAULTS = {
-  tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  geocoder: "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}"
-};
-let S = Object.assign({}, DEFAULTS);
-(function loadSettings(){
-  try{ Object.assign(S, JSON.parse(store.get(SET_KEY, "{}")) || {}); }catch(e){}
+window.addEventListener('scula-ui-lang',ev=>{UI=ev.detail==='en'?'en':'ro';applyUILang();});
+/* Metadata and authoritative WAV blobs live in separate IndexedDB stores.
+   Every project change and its new/deleted audio commit in one transaction. */
+function openDB(){return new Promise((resolve,reject)=>{
+  const r=indexedDB.open('scula-song',1);
+  r.onupgradeneeded=()=>{r.result.createObjectStore('projects',{keyPath:'id'});r.result.createObjectStore('audio');};
+  r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();db=null;dirty=true;paintProjects();};resolve(r.result);};
+  r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error('blocked'));
+});}
+function read(store,key){return new Promise((resolve,reject)=>{
+  if(!db)return reject(new Error('no storage'));
+  const tx=db.transaction(store),r=key===undefined?tx.objectStore(store).getAll():tx.objectStore(store).get(key);
+  r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+});}
+async function persist(){
+  try{
+    if(!db)db=await openDB();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(['projects','audio'],'readwrite');
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+      try{
+        projects.forEach(p=>tx.objectStore('projects').put(p));
+        pendingBlobs.forEach((blob,key)=>tx.objectStore('audio').put(blob,key));
+        deleted.forEach(key=>tx.objectStore('audio').delete(key));
+      }catch(e){tx.abort();reject(e);}
+    });
+    pendingBlobs.clear();deleted.clear();dirty=false;
+  }catch(_){dirty=true;say('storageError',true);}
+  paintProjects();return !dirty;
+}
+async function blobFor(r){return pendingBlobs.get(r.id) || await read('audio',r.id);}
+function newProject(){const stamp=now();project={schemaVersion:1,id:id(),name:t('untitled'),createdAt:stamp,updatedAt:stamp,recordings:[],derivedAssets:[]};projects.push(project);prefs.set('scula:song:project',project.id);paintProjects();}
+function touch(){project.updatedAt=now();}
+function safeName(s){return String(s).normalize('NFC').replace(/[\\/\x00-\x1f<>:"|?*]/g,'-').replace(/[. ]+$/g,'').trim().slice(0,60) || 'song';}
+function projectStem(){return safeName(project.name)+'-'+project.id;}
+function takeFilename(r){return projectStem()+'-'+(r.purpose==='sample'?'sample':'melody')+'-'+safeName(r.name)+'-'+r.id+'.wav';}
+async function exportTake(r){
+  const blob=await blobFor(r).catch(()=>null);
+  if(!blob){say('missing',true);return;}
+  const result=await ScuLaFolder.save(takeFilename(r),blob,{directories:[projectStem(),r.purpose==='sample'?'samples':'recordings']});
+  statusKey=null;$('status').textContent=result.message || '';
+}
+function projectManifest(){return {...project,recordings:project.recordings.map(r=>({...r,source:{...r.source,filename:takeFilename(r),relativePath:(r.purpose==='sample'?'samples/':'recordings/')+takeFilename(r)}}))};}
+async function exportMetadata(){
+  const result=await ScuLaFolder.save(projectStem()+'-project.json',new Blob([JSON.stringify(projectManifest(),null,2)],{type:'application/json'}),{directories:[projectStem()]});
+  statusKey=null;$('status').textContent=result.message || '';
+}
+function clearPlayers(){document.querySelectorAll('.take audio').forEach(a=>{a.pause();a.removeAttribute('src');a.load();});urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();}
+function button(key,action){const b=document.createElement('button');b.textContent=t(key);b.type='button';b.onclick=()=>run(action);return b;}
+async function render(){
+  const gen=++generation;clearPlayers();const host=$('recordings');host.replaceChildren();
+  if(!project || !project.recordings.length){host.textContent=t('empty');return;}
+  for(const r of project.recordings){
+    const card=document.createElement('article');card.className='take';card.dataset.id=r.id;
+    const title=document.createElement('h3');title.textContent=r.name;
+    const info=document.createElement('small');info.textContent=`${t(r.purpose==='sample'?'sample':'melody')} · ${r.duration.toFixed(2)} s · ${r.sampleRate} Hz · ${r.channelCount} ch · PCM 24 bit · ${(r.source.size/1048576).toFixed(2)} MiB`;
+    card.append(title,info);
+    if(r.sample){const meta=document.createElement('p');meta.textContent=Object.entries(r.sample).filter(([,v])=>v!=='' && v!==null).map(([k,v])=>t(k)+': '+v).join(' · ');card.append(meta);}
+    const canvas=document.createElement('canvas');canvas.width=600;canvas.height=48;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',r.name);const ctx=canvas.getContext('2d');ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');(r.waveform || []).forEach((v,i,a)=>ctx.fillRect(i*600/a.length,24-v*23,Math.max(1,600/a.length),Math.max(1,v*46)));card.append(canvas);
+    const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.setAttribute('aria-label',r.name);card.append(audio);
+    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));card.append(row);host.append(card);
+    const blob=await blobFor(r).catch(()=>null);if(gen!==generation)return;
+    if(blob){const url=URL.createObjectURL(blob);urls.add(url);audio.src=url;}else{audio.hidden=true;const warning=document.createElement('p');warning.textContent=t('missing');card.append(warning);}
+  }
+  paintState();
+}
+async function run(action){if(state!=='idle')return;setState('saving');try{await action();}catch(_){say('failed',true);}finally{setState('idle');}}
+/* Preferred music constraints; getSettings below reports what was granted. */
+function constraints(){const device=$('microphone').value || prefs.get('scula:song:mic') || '';return {audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2},...(device?{deviceId:{exact:device}}:{})}};}
+async function listDevices(){
+  if(!navigator.mediaDevices.enumerateDevices){say('noDevices');return;}
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  const chosen=$('microphone').value || prefs.get('scula:song:mic') || '';
+  $('microphone').replaceChildren(new Option(t('defaultMic'),''),...devices.map((d,i)=>new Option(d.label || `${t('microphone')} ${i+1}`,d.deviceId)));
+  if(devices.some(d=>d.deviceId===chosen))$('microphone').value=chosen;
+}
+function micFailure(e){say(e && ['NotAllowedError','SecurityError'].includes(e.name)?'denied':'micError',true);}
+$('enableMic').onclick=()=>run(async()=>{if(!supported()){say('unsupported',true);return;}let stream;try{stream=await navigator.mediaDevices.getUserMedia(constraints());await listDevices();}catch(e){micFailure(e);}finally{if(stream)stream.getTracks().forEach(t=>t.stop());}});
+$('microphone').onchange=()=>prefs.set('scula:song:mic',$('microphone').value);
+$('purpose').onchange=()=>{$('sampleFields').hidden=$('purpose').value!=='sample';};
+/* Worklet packs and transfers 4096-frame blocks off the UI thread, including
+   a stop/flush handshake. Blob module URL keeps file:// usable. */
+async function makeTap(c){
+  if(c.ctx.audioWorklet && window.AudioWorkletNode){
+    const code=`const pack24=${ScuLaPCM.pack24.toString()};
+class Capture extends AudioWorkletProcessor {
+ constructor(){super();this.channels=0;this.buffers=[];this.n=0;this.active=true;this.port.onmessage=e=>{if(e.data==='stop'){this.active=false;this.flush();this.port.postMessage({stopped:true});}};}
+ flush(){if(!this.n)return;const a=this.buffers.map(b=>b.subarray(0,this.n)),pcm=pack24(a);let peak=0,sum=0;for(const b of a)for(const x of b){peak=Math.max(peak,Math.abs(x));sum+=x*x;}this.port.postMessage({pcm,channels:this.channels,peak,rms:Math.sqrt(sum/(this.n*this.channels))},[pcm.buffer]);this.n=0;}
+ process(inputs){if(!this.active)return false;const input=inputs[0];if(input && input.length && !this.channels){this.channels=input.length;this.buffers=Array.from({length:this.channels},()=>new Float32Array(4096));}if(!input || ![1,2].includes(input.length) || input.length!==this.channels){if(input && input.length)this.port.postMessage({mismatch:true});return true;}for(let i=0;i<input[0].length;i++){for(let j=0;j<this.channels;j++)this.buffers[j][this.n]=input[j][i];if(++this.n===4096)this.flush();}return true;}
+}registerProcessor('song-pcm',Capture);`;
+    const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
+    try{
+      await c.ctx.audioWorklet.addModule(url);
+      const node=new AudioWorkletNode(c.ctx,'song-pcm',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+      node.port.onmessage=ev=>{if(ev.data.stopped){if(c.resolveStop)c.resolveStop();}else if(ev.data.mismatch){c.interrupted=true;if(state==='recording')stop();}else takeBlock(c,ev.data);};
+      c.backend='AudioWorklet';return node;
+    }catch(e){ console.warn('PCM worklet unavailable:', e.message); }
+    finally{URL.revokeObjectURL(url);}
+  }
+  if(!c.ctx.createScriptProcessor)throw new Error('no PCM capture');
+  const node=c.ctx.createScriptProcessor(4096,c.ch,1);
+  node.onaudioprocess=ev=>{
+    if(state!=='recording')return;
+    const channels=Array.from({length:c.ch},(_,i)=>ev.inputBuffer.getChannelData(i));
+    let peak=0,sum=0;for(const b of channels)for(const x of b){peak=Math.max(peak,Math.abs(x));sum+=x*x;}
+    takeBlock(c,{pcm:ScuLaPCM.pack24(channels),peak,rms:Math.sqrt(sum/(ev.inputBuffer.length*c.ch))});
+  };c.backend='ScriptProcessor';return node;
+}
+function takeBlock(c,block){
+  if(!block.pcm || capture!==c)return;
+  if(block.channels && !c.bytes){c.ch=block.channels;if(lastQuality){lastQuality.channels=c.ch;quality(lastQuality);}}
+  // Stay below RIFF's 32-bit size limit and bound long-session memory.
+  if(c.bytes+block.pcm.length>0xffffffff-37){c.interrupted=true;if(state==='recording')stop();return;}
+  c.pending.push(block.pcm);c.pendingBytes+=block.pcm.length;c.bytes+=block.pcm.length;
+  if(c.pendingBytes>=c.sr*c.ch*3*5){c.parts.push(new Blob(c.pending));c.pending=[];c.pendingBytes=0;}
+  c.peak=Math.max(c.peak,block.peak);c.waveform.push(block.peak);
+  if(c.waveform.length>512)c.waveform=Array.from({length:256},(_,i)=>Math.max(c.waveform[2*i],c.waveform[2*i+1]));
+  $('level').value=Math.min(1,block.rms*3);$('timer').textContent=time(c.bytes/(c.sr*c.ch*3));
+}
+async function cleanup(c){
+  if(!c)return;
+  clearInterval(c.timer);
+  if(c.node){c.node.onprocessorerror=null;c.node.onaudioprocess=null;if(c.node.port)c.node.port.onmessage=null;try{c.node.disconnect();}catch(_){}}
+  if(c.src)try{c.src.disconnect();}catch(_){}
+  if(c.stream)c.stream.getTracks().forEach(t=>{t.onended=null;t.stop();});
+  if(c.ctx){c.ctx.onstatechange=null;try{await c.ctx.close();}catch(_){}}
+  if(c.wake)try{await c.wake.release();}catch(_){}
+  $('level').value=0;
+}
+async function start(){
+  if(state!=='idle' || !supported())return;
+  const midi=$('midiNote').value;
+  if($('purpose').value==='sample' && midi!=='' && (!Number.isInteger(+midi)||+midi<0||+midi>127)){say('badNote',true);return;}
+  clearPlayers();setState('requesting');say('requesting');$('timer').textContent='00:00';
+  const c={stream:null,ctx:null,node:null,src:null,parts:[],pending:[],pendingBytes:0,bytes:0,peak:0,waveform:[],projectId:project.id,name:$('takeName').value.trim().slice(0,120) || t('take')+' '+(project.recordings.length+1),purpose:$('purpose').value,createdAt:now()};
+  if(c.purpose==='sample')c.sample=Object.fromEntries(['instrument','note','midiNote','articulation','dynamic','notes'].map(k=>[k,k==='midiNote'?(midi===''?null:+midi):$(k).value.trim()]));
+  capture=c;
+  try{
+    c.stream=await navigator.mediaDevices.getUserMedia(constraints());
+    const track=c.stream.getAudioTracks()[0];c.settings=track.getSettings?track.getSettings():{};c.label=track.label;
+    c.ch=c.settings.channelCount===2?2:1;
+    try{c.ctx=new AC(c.settings.sampleRate?{sampleRate:c.settings.sampleRate}:{});}catch(_){c.ctx=new AC();}
+    await c.ctx.resume();if(c.ctx.state!=='running')throw new Error('audio suspended');c.sr=c.ctx.sampleRate;
+    c.src=c.ctx.createMediaStreamSource(c.stream);c.node=await makeTap(c);
+    c.node.onprocessorerror=()=>{c.interrupted=true;if(state==='recording')stop();};
+    c.src.connect(c.node);c.node.connect(c.ctx.destination);
+    track.onended=()=>{c.interrupted=true;if(state==='recording')stop();};
+    c.ctx.onstatechange=()=>{if(c.ctx.state==='suspended' && state==='recording'){c.interrupted=true;stop();}};
+    lastQuality={label:c.label,settings:c.settings,sampleRate:c.sr,channels:c.ch,backend:c.backend};quality(lastQuality);
+    setState('recording');say('recording');
+    // Capture continues independently of the meter/timer UI.
+    c.timer=setInterval(()=>{$('timer').textContent=time(c.bytes/(c.sr*c.ch*3));},250);
+    listDevices().catch(()=>{});
+    if(navigator.wakeLock)navigator.wakeLock.request('screen').then(lock=>{if(capture===c && state==='recording')c.wake=lock;else lock.release().catch(()=>{});}).catch(()=>{});
+  }catch(e){await cleanup(c);capture=null;setState('idle');micFailure(e);render();}
+}
+async function stop(){
+  if(state!=='recording')return;
+  const c=capture;setState('stopping');say('stopping');
+  if(c.node.port && c.ctx.state==='running')await new Promise(resolve=>{let timer=setTimeout(()=>{c.interrupted=true;resolve();},2000);c.resolveStop=()=>{clearTimeout(timer);resolve();};c.node.port.postMessage('stop');});
+  await cleanup(c);capture=null;
+  if(!c.bytes){setState('idle');say('short',true);await render();return;}
+  if(c.pending.length)c.parts.push(new Blob(c.pending));
+  const blob=ScuLaPCM.wav(c.parts,c.bytes,c.sr,c.ch),duration=c.bytes/(c.sr*c.ch*3),recId=id();
+  const r={id:recId,name:c.name,createdAt:c.createdAt,duration,mimeType:'audio/wav',sampleRate:c.sr,channelCount:c.ch,bitDepth:24,purpose:c.purpose,...(c.sample?{sample:c.sample}:{}),source:{assetId:recId,immutable:true,size:blob.size,captureBackend:c.backend,inputSettings:c.settings,microphone:c.label,peak:c.peak,interrupted:!!c.interrupted},waveform:c.waveform,derivedAssets:[],performance:null};
+  project.recordings.push(r);pendingBlobs.set(r.id,blob);touch();
+  lastQuality={...lastQuality,size:blob.size,duration};quality(lastQuality);$('timer').textContent=time(duration);
+  const ok=await persist();setState('idle');if(ok)say(c.interrupted?'interrupted':c.peak>=1?'clip':'recovered',c.peak>=1);await render();
+}
+$('recordBtn').onclick=start;$('stopBtn').onclick=stop;
+$('newProject').onclick=()=>run(async()=>{newProject();await persist();await render();});
+$('projects').onchange=()=>run(async()=>{project=projects.find(p=>p.id===$('projects').value);prefs.set('scula:song:project',project.id);paintProjects();await render();});
+$('renameProject').onclick=()=>run(async()=>{const name=$('projectName').value.trim();if(name){project.name=name.slice(0,120);touch();await persist();}});
+$('exportProject').onclick=()=>run(exportMetadata);
+$('retry').onclick=()=>run(async()=>{if(await persist())say('recovered');});
+window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
+window.addEventListener('pagehide',()=>{clearPlayers();if(capture)cleanup(capture);});
+async function init(){
+  applyUILang();
+  try{db=await openDB();projects=await read('projects');}catch(_){dirty=true;}
+  project=projects.find(p=>p.id===prefs.get('scula:song:project')) || projects[0];
+  if(!project){newProject();await persist();}
+  await listDevices().catch(()=>{});
+  paintProjects();setState('idle');if(!supported())say('unsupported',true);else if(dirty)say('storageError',true);else say('idle');await render();
+}
+init();
 })();
-function saveS(){ store.set(SET_KEY, JSON.stringify(S)); }
-
-let CACHE = {};
-try{ CACHE = JSON.parse(store.get(CACHE_KEY, "{}")) || {}; }catch(e){ CACHE = {}; }
-const cacheKey = q => String(q).toLowerCase().replace(/\s+/g, " ").trim();
-function cacheGet(q){ const h = CACHE[cacheKey(q)]; return h && num(h.lat) && num(h.lon) ? h : null; }
-function cachePut(q, hit){
-  CACHE[cacheKey(q)] = { lat: hit.lat, lon: hit.lon, label: hit.label || "", at: Date.now() };
-  store.set(CACHE_KEY, JSON.stringify(CACHE));
-}
-
-/* ============================================================
-   3. State
-   ============================================================ */
-const $ = id => document.getElementById(id);
-const stage = $("stage"), tilesEl = $("tiles"), pinsEl = $("pins");
-
-let PLACES = [];        // every place, flat — the list and the pins share it
-let LAYERS = [];        // [{ name, off, collapsed }] in the order they appeared
-let SOURCE = null;      // { title, source } — where the list came from
-let selected = null;
-let filter = "";
-const TILE = 256, MIN_Z = 2, MAX_Z = 19;
-let view = { lat: 45.9432, lon: 24.9668, z: 6 };   // the whole country, to start
-const tileNodes = new Map();
-
-function layerOf(name){
-  let l = LAYERS.find(x => x.name === name);
-  if(!l){ l = { name, off:false, collapsed:false }; LAYERS.push(l); }
-  return l;
-}
-
-/* ============================================================
-   4. Web Mercator — the only maths a slippy map needs
-   ============================================================ */
-const worldSize = z => TILE * Math.pow(2, z);
-function lon2x(lon, z){ return (lon + 180) / 360 * worldSize(z); }
-function lat2y(lat, z){
-  const s = Math.sin(Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI / 180);
-  return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * worldSize(z);
-}
-function x2lon(x, z){ return x / worldSize(z) * 360 - 180; }
-function y2lat(y, z){
-  const n = Math.PI - 2 * Math.PI * y / worldSize(z);
-  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-}
-function stageSize(){ const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; }
-// The pixel coordinates of the viewport's top-left corner, in world space.
-function origin(){
-  const { w, h } = stageSize();
-  return { x: lon2x(view.lon, view.z) - w / 2, y: lat2y(view.lat, view.z) - h / 2 };
-}
-function pointToLatLon(px, py){
-  const o = origin();
-  return { lat: y2lat(o.y + py, view.z), lon: x2lon(o.x + px, view.z) };
-}
-
-/* ============================================================
-   5. Tiles
-   ============================================================ */
-function tileUrl(z, x, y){
-  const tpl = (S.tiles || "").trim();
-  if(!tpl) return "";
-  return tpl.replace("{z}", z).replace("{x}", x).replace("{y}", y)
-            .replace("{s}", "abc"[(x + y) % 3]);
-}
-function renderTiles(){
-  const tpl = (S.tiles || "").trim();
-  if(!tpl){ tileNodes.forEach(img => img.remove()); tileNodes.clear(); return; }
-  const { w, h } = stageSize(), z = view.z, n = Math.pow(2, z), o = origin();
-  const x0 = Math.floor(o.x / TILE), x1 = Math.floor((o.x + w) / TILE);
-  const y0 = Math.floor(o.y / TILE), y1 = Math.floor((o.y + h) / TILE);
-  const want = new Set();
-  for(let ty = y0; ty <= y1; ty++){
-    if(ty < 0 || ty >= n) continue;
-    for(let tx = x0; tx <= x1; tx++){
-      const wx = ((tx % n) + n) % n;              // the world wraps east-west
-      const key = z + "/" + wx + "/" + ty + "/" + tx;
-      want.add(key);
-      let img = tileNodes.get(key);
-      if(!img){
-        img = new Image();
-        img.className = "tile"; img.alt = ""; img.decoding = "async";
-        img.addEventListener("error", () => { img.style.visibility = "hidden"; });
-        img.src = tileUrl(z, wx, ty);
-        tilesEl.appendChild(img);
-        tileNodes.set(key, img);
-      }
-      img.style.transform = "translate3d(" + Math.round(tx * TILE - o.x) + "px," +
-                            Math.round(ty * TILE - o.y) + "px,0)";
-    }
-  }
-  tileNodes.forEach((img, key) => { if(!want.has(key)){ img.remove(); tileNodes.delete(key); } });
-}
-function paintAttrib(){
-  const tpl = (S.tiles || "").trim();
-  $("attrib").innerHTML = /openstreetmap\.org/i.test(tpl)
-    ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-    : "";
-}
-
-/* ============================================================
-   6. Pins
-   ============================================================ */
-// isFinite(null) is true - Number(null) is 0 - so "has it got coordinates
-// yet" has to ask for a real number, or every place not looked up yet lands
-// on Null Island and the list blows up on its first toFixed().
-function num(v){ return typeof v === "number" && isFinite(v); }
-function located(p){ return num(p.lat) && num(p.lon); }
-function shown(p){
-  if(layerOf(p.layer).off) return false;
-  if(!filter) return true;
-  const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
-  return hay.indexOf(filter) >= 0;
-}
-function renderPins(){
-  const { w, h } = stageSize(), o = origin();
-  PLACES.forEach(p => {
-    if(!located(p) || !shown(p)){ if(p.el) p.el.style.display = "none"; return; }
-    if(!p.el){
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "pin";
-      b.innerHTML = '<span class="bead"></span><span class="lbl"></span>';
-      b.addEventListener("click", ev => { ev.stopPropagation(); select(p, false); });
-      pinsEl.appendChild(b);
-      p.el = b;
-    }
-    p.el.querySelector(".lbl").textContent = p.q;
-    p.el.classList.toggle("coord", p.status === "coord");
-    p.el.classList.toggle("on", selected === p);
-    p.el.style.zIndex = selected === p ? 4 : 1;
-    const x = lon2x(p.lon, view.z) - o.x, y = lat2y(p.lat, view.z) - o.y;
-    if(x < -240 || y < -80 || x > w + 240 || y > h + 80){ p.el.style.display = "none"; return; }
-    p.el.style.display = "flex";
-    p.el.style.transform = "translate3d(" + Math.round(x) + "px," + Math.round(y) + "px,0) translate(-0.425rem,-50%)";
-  });
-  placePop();
-}
-function renderScale(){
-  const mPerPx = 156543.03392 * Math.cos(view.lat * Math.PI / 180) / Math.pow(2, view.z);
-  const target = 90 * mPerPx;
-  const pow = Math.pow(10, Math.floor(Math.log10(target)));
-  const nice = [1, 2, 5, 10].map(k => k * pow).filter(v => v >= target)[0] || pow;
-  const px = nice / mPerPx;
-  const el = $("scale");
-  el.style.width = Math.round(px) + "px";
-  el.querySelector("span").textContent = nice >= 1000 ? (nice / 1000) + " km" : nice + " m";
-}
-function render(){ renderTiles(); renderPins(); renderScale(); }
-
-/* ---- the popup ---- */
-function select(p, fromList){
-  selected = p;
-  if(fromList && located(p)) panTo(p.lat, p.lon, Math.max(view.z, 13));
-  paintList();
-  if(!located(p)){ closePop(); render(); return; }
-  $("pop-title").textContent = p.q;
-  $("pop-note").textContent = p.note || p.label || p.context || "";
-  $("pop-note").style.display = $("pop-note").textContent ? "" : "none";
-  $("pop-co").textContent = p.lat.toFixed(5) + ", " + p.lon.toFixed(5);
-  $("pop-tags").textContent = (p.tags || []).map(x => "#" + x).join(" ");
-  $("pop").classList.add("open");
-  render();
-}
-function placePop(){
-  const pop = $("pop");
-  if(!pop.classList.contains("open") || !selected || !located(selected)) return;
-  const o = origin(), { w } = stageSize();
-  const x = lon2x(selected.lon, view.z) - o.x, y = lat2y(selected.lat, view.z) - o.y;
-  pop.style.left = Math.max(90, Math.min(w - 90, x)) + "px";
-  pop.style.top = y + "px";
-}
-function closePop(){ $("pop").classList.remove("open"); }
-function openOnOSM(){
-  if(!selected || !located(selected)) return;
-  window.open("https://www.openstreetmap.org/?mlat=" + selected.lat + "&mlon=" + selected.lon +
-              "#map=17/" + selected.lat + "/" + selected.lon, "_blank", "noopener");
-}
-function copyCoords(){
-  if(!selected || !located(selected)) return;
-  const s = selected.lat.toFixed(6) + ", " + selected.lon.toFixed(6);
-  const done = () => ScuLaFolder.toast(t("copied"));
-  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(done, () => {});
-  else done();
-}
-
-/* ---- moving the map ---- */
-function panTo(lat, lon, z){
-  view.lat = lat; view.lon = lon;
-  if(z != null) view.z = Math.max(MIN_Z, Math.min(MAX_Z, z));
-  render();
-}
-function zoomBy(d, ax, ay){
-  const nz = Math.max(MIN_Z, Math.min(MAX_Z, view.z + d));
-  if(nz === view.z) return;
-  const { w, h } = stageSize();
-  if(ax == null){ ax = w / 2; ay = h / 2; }
-  const under = pointToLatLon(ax, ay);
-  view.z = nz;
-  const ox = lon2x(under.lon, nz) - ax, oy = lat2y(under.lat, nz) - ay;
-  view.lon = x2lon(ox + w / 2, nz);
-  view.lat = y2lat(oy + h / 2, nz);
-  render();
-}
-function fitAll(){
-  const pts = PLACES.filter(p => located(p) && shown(p));
-  if(!pts.length) return;
-  let n = pts[0].lat, s = pts[0].lat, e = pts[0].lon, wst = pts[0].lon;
-  pts.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lon); wst = Math.min(wst, p.lon); });
-  const { w, h } = stageSize();
-  let z = MAX_Z;
-  for(; z > MIN_Z; z--){
-    const dx = lon2x(e, z) - lon2x(wst, z), dy = lat2y(s, z) - lat2y(n, z);
-    if(dx <= w - 120 && dy <= h - 120) break;
-  }
-  view.z = z; view.lat = (n + s) / 2; view.lon = (e + wst) / 2;
-  render();
-}
-
-/* ============================================================
-   7. The layered list
-   ============================================================ */
-function statusWord(p){
-  return p.status === "coord" ? t("kindCoord")
-       : p.status === "found" ? t("kindFound")
-       : p.status === "none"  ? t("kindNone")
-       : t("kindWait");
-}
-function statusColor(p){
-  return p.status === "coord" ? "var(--pin-coord)"
-       : p.status === "found" ? "var(--pin-found)"
-       : p.status === "none"  ? "var(--pin-none)"
-       : "var(--pin-wait)";
-}
-function paintList(){
-  const box = $("layers");
-  box.innerHTML = "";
-  if(!PLACES.length){
-    const d = document.createElement("div");
-    d.className = "empty";
-    d.innerHTML = "<b>" + t("emptyTitle") + "</b><br>" +
-      (UI === "ro"
-        ? 'Scrie <code>^@Castelul Peleș</code> într-un capitol din pagina Markdown și apasă 🗺, sau deschide un fișier .md de aici.'
-        : 'Write <code>^@Peleș Castle</code> in a chapter on the Markdown page and press 🗺, or open a .md file from here.');
-    box.appendChild(d);
-    paintFoot();
-    return;
-  }
-  LAYERS.forEach(L => {
-    const mine = PLACES.filter(p => p.layer === L.name);
-    const vis = mine.filter(p => !filter || shown(p) || L.off);
-    const list = filter ? mine.filter(p => {
-      const hay = (p.q + " " + (p.note || "") + " " + (p.tags || []).join(" ") + " " + p.layer).toLowerCase();
-      return hay.indexOf(filter) >= 0;
-    }) : mine;
-    if(!list.length) return;
-    const wrap = document.createElement("div");
-    wrap.className = "layer" + (L.off ? " off" : "") + (L.collapsed ? " collapsed" : "");
-    const head = document.createElement("div");
-    head.className = "layer-head";
-    const tw = document.createElement("span");
-    tw.className = "tw"; tw.textContent = L.collapsed ? "▸" : "▾";
-    tw.addEventListener("click", ev => { ev.stopPropagation(); L.collapsed = !L.collapsed; paintList(); });
-    const nm = document.createElement("span");
-    nm.className = "nm"; nm.textContent = L.name; nm.title = L.name;
-    const ct = document.createElement("span");
-    ct.className = "ct";
-    ct.textContent = list.filter(located).length + "/" + list.length;
-    head.appendChild(tw); head.appendChild(nm); head.appendChild(ct);
-    head.addEventListener("click", () => { L.off = !L.off; paintList(); render(); });
-    wrap.appendChild(head);
-
-    const places = document.createElement("div");
-    places.className = "places";
-    list.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "place" + (selected === p ? " on" : "") + (p.status === "none" ? " none" : "");
-      const dot = document.createElement("span");
-      dot.className = "dot"; dot.style.background = statusColor(p);
-      const txt = document.createElement("span");
-      txt.className = "txt";
-      const q = document.createElement("span");
-      q.className = "q"; q.textContent = p.q; q.title = p.q;
-      const sub = document.createElement("span");
-      sub.className = "sub";
-      sub.textContent = p.note || (located(p) ? p.lat.toFixed(4) + ", " + p.lon.toFixed(4) : statusWord(p));
-      txt.appendChild(q); txt.appendChild(sub);
-      row.appendChild(dot); row.appendChild(txt);
-      row.addEventListener("click", () => select(p, true));
-      places.appendChild(row);
-    });
-    wrap.appendChild(places);
-    box.appendChild(wrap);
-  });
-  paintFoot();
-}
-function paintFoot(){
-  const total = PLACES.length, ok = PLACES.filter(located).length;
-  const queued = PLACES.filter(p => p.status === "pending" || p.status === "working").length;
-  const missing = PLACES.filter(p => p.status === "none").length;
-  let s = total ? t("statusCounts", [total, ok]) : t("noPlaces");
-  if(queued) s = t("statusWorking", queued);
-  else if(missing) s += " · " + t("statusNone", missing);
-  if(!(S.geocoder || "").trim() && total > ok) s += " · " + t("statusNoGeocoder");
-  $("side-foot").textContent = s;
-}
-function paintSource(){
-  const el = $("map-source");
-  if(!SOURCE) { el.textContent = t("noSource"); return; }
-  el.textContent = SOURCE.source === "file" ? t("fromFile", SOURCE.title) : t("fromChapter", SOURCE.title);
-  el.title = el.textContent;
-}
-function toggleSide(){ $("side").classList.toggle("hidden"); }
-
-/* ============================================================
-   8. Looking an address up
-   ============================================================ */
-const GAP_MS = 1100;          // Nominatim's usage policy: one request a second
-let queue = [], busy = false, lastCall = 0;
-
-function readGeoResult(j){
-  let r = null;
-  if(Array.isArray(j)) r = j[0];
-  else if(j && Array.isArray(j.features)){
-    const f = j.features[0];
-    if(f && f.geometry && f.geometry.coordinates){
-      return { lat: +f.geometry.coordinates[1], lon: +f.geometry.coordinates[0],
-               label: (f.properties && (f.properties.display_name || f.properties.name)) || "" };
-    }
-  }
-  else if(j && Array.isArray(j.results)) r = j.results[0];
-  else if(j && j.lat != null) r = j;
-  if(!r) return null;
-  const pick = v => (v === null || v === undefined || v === "") ? NaN : Number(v);
-  const lat = pick(r.lat != null ? r.lat : r.latitude);
-  const lon = pick(r.lon != null ? r.lon : (r.lng != null ? r.lng : r.longitude));
-  if(!num(lat) || !num(lon)) return null;
-  return { lat, lon, label: r.display_name || r.name || "" };
-}
-function geoFetch(q){
-  const tpl = (S.geocoder || "").trim();
-  if(!tpl) return Promise.reject(new Error("no-geocoder"));
-  const url = tpl.indexOf("{q}") >= 0 ? tpl.replace("{q}", encodeURIComponent(q))
-                                      : tpl + encodeURIComponent(q);
-  return fetch(url, { headers: { "Accept": "application/json" } })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-    .then(readGeoResult);
-}
-function enqueue(p){
-  if(p.status === "coord") return;
-  const hit = cacheGet(p.q);
-  if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; return; }
-  if(!(S.geocoder || "").trim()){ p.status = "none"; return; }
-  p.status = "pending";
-  queue.push(p);
-}
-function pump(){
-  if(busy) return;
-  const p = queue.shift();
-  if(!p){ paintFoot(); return; }
-  busy = true;
-  const wait = Math.max(0, GAP_MS - (Date.now() - lastCall));
-  setTimeout(() => {
-    lastCall = Date.now();
-    p.status = "working"; paintFoot();
-    geoFetch(p.q).then(hit => {
-      if(hit){ p.lat = hit.lat; p.lon = hit.lon; p.label = hit.label; p.status = "found"; cachePut(p.q, hit); }
-      else p.status = "none";
-    }).catch(() => { p.status = "none"; })
-      .then(() => {
-        busy = false;
-        paintList(); render();
-        if(!queue.length && PLACES.filter(located).length) fitAll();
-        pump();
-      });
-  }, wait);
-}
-function locateAll(force){
-  if(force){
-    PLACES.forEach(p => {
-      if(p.status === "coord") return;
-      p.lat = null; p.lon = null; p.status = "pending";
-    });
-    queue = [];
-  }
-  PLACES.forEach(p => { if(!located(p) && p.status !== "pending" && p.status !== "working") enqueue(p); });
-  if(force) PLACES.forEach(p => { if(p.status === "pending" && queue.indexOf(p) < 0) queue.push(p); });
-  paintList(); render(); pump();
-}
-
-/* ============================================================
-   9. Where the list comes from
-   ============================================================ */
-function adopt(payload){
-  if(!payload || !payload.layers) return false;
-  PLACES = []; LAYERS = []; selected = null; queue = [];
-  pinsEl.innerHTML = "";
-  payload.layers.forEach(L => {
-    layerOf(L.name);
-    (L.items || []).forEach(it => {
-      PLACES.push({
-        q: it.q, note: it.note || "", layer: L.name, line: it.line,
-        tags: it.tags || [], context: it.context || "",
-        lat: num(it.lat) ? it.lat : null,
-        lon: num(it.lon) ? it.lon : null,
-        label: "", status: num(it.lat) && num(it.lon) ? "coord" : "pending",
-        el: null
-      });
-    });
-  });
-  SOURCE = { title: payload.title || "", source: payload.source === "file" ? "file" : "chapter" };
-  paintSource();
-  PLACES.forEach(enqueue);
-  paintList();
-  if(PLACES.filter(located).length) fitAll(); else render();
-  pump();
-  return PLACES.length > 0;
-}
-function takePayload(){
-  const p = window.ScuLaGeo && ScuLaGeo.received();
-  if(p) adopt(p);
-}
-function openMd(){ $("md-file").click(); }
-$("md-file").addEventListener("change", ev => {
-  const f = ev.target.files && ev.target.files[0];
-  if(!f) return;
-  f.text().then(text => {
-    const payload = ScuLaGeo.scan(text, { title: f.name, source: "file" });
-    if(!payload.count){ ScuLaFolder.toast(t("noMarks")); return; }
-    adopt(payload);
-    ScuLaFolder.toast(t("readFile", [f.name, payload.count]));
-  });
-  ev.target.value = "";
-});
-
-/* Someone typed a place into the sidebar — one more pin, its own layer. */
-function addTyped(q){
-  q = String(q || "").trim();
-  if(!q) return;
-  const co = ScuLaGeo.coords(q);
-  const name = t("manualLayer");
-  layerOf(name);
-  const p = {
-    q, note: "", layer: name, line: null, tags: [], context: "",
-    lat: co ? co.lat : null, lon: co ? co.lon : null, label: "",
-    status: co ? "coord" : "pending", el: null
-  };
-  PLACES.push(p);
-  if(!SOURCE) { SOURCE = { title: name, source: "chapter" }; paintSource(); }
-  enqueue(p);
-  paintList();
-  if(located(p)) { select(p, true); } else render();
-  pump();
-}
-
-/* ============================================================
-   10. Export — through ScuLaFolder, like every other save here
-   ============================================================ */
-function exportGeoJSON(){
-  const pts = PLACES.filter(located);
-  if(!pts.length){ ScuLaFolder.toast(t("nothingToSave")); return; }
-  const fc = {
-    type: "FeatureCollection",
-    features: pts.map(p => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [+p.lon.toFixed(6), +p.lat.toFixed(6)] },
-      properties: {
-        name: p.q, layer: p.layer, note: p.note || "",
-        tags: p.tags || [], line: p.line, source: SOURCE ? SOURCE.title : ""
-      }
-    }))
-  };
-  const base = (SOURCE && SOURCE.title ? SOURCE.title.replace(/\.(md|markdown|txt)$/i, "") : "locatii")
-               .replace(/[\\/:*?"<>|]+/g, "-").trim() || "locatii";
-  const blob = new Blob([JSON.stringify(fc, null, 2)], { type: "application/geo+json" });
-  Promise.resolve(ScuLaFolder.save(base + ".geojson", blob)).then(() => {
-    ScuLaFolder.toast(t("savedGeo", pts.length));
-  });
-}
-
-/* ============================================================
-   11. Dragging, wheeling and pinching
-   ============================================================ */
-(function interaction(){
-  let drag = null, pointers = new Map(), pinch = null;
-  stage.addEventListener("pointerdown", ev => {
-    if(ev.target.closest(".pin") || ev.target.closest("#pop") || ev.target.closest("#hud")) return;
-    stage.setPointerCapture(ev.pointerId);
-    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if(pointers.size === 2){
-      const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: view.z };
-      drag = null;
-    } else {
-      drag = { x: ev.clientX, y: ev.clientY, moved: false };
-      stage.classList.add("dragging");
-    }
-  });
-  stage.addEventListener("pointermove", ev => {
-    if(!pointers.has(ev.pointerId)) return;
-    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if(pinch && pointers.size === 2){
-      const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      const nz = Math.round(pinch.z + Math.log2(d / (pinch.d || 1)));
-      if(nz !== view.z){
-        const r = stage.getBoundingClientRect();
-        zoomBy(nz - view.z, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
-      }
-      return;
-    }
-    if(!drag) return;
-    const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
-    if(!dx && !dy) return;
-    drag.x = ev.clientX; drag.y = ev.clientY; drag.moved = true;
-    const { w, h } = stageSize(), o = origin();
-    view.lon = x2lon(o.x - dx + w / 2, view.z);
-    view.lat = y2lat(Math.max(0, Math.min(worldSize(view.z), o.y - dy + h / 2)), view.z);
-    render();
-  });
-  function up(ev){
-    pointers.delete(ev.pointerId);
-    if(pointers.size < 2) pinch = null;
-    if(!pointers.size){
-      if(drag && !drag.moved) closePop();
-      drag = null; stage.classList.remove("dragging");
-    }
-  }
-  stage.addEventListener("pointerup", up);
-  stage.addEventListener("pointercancel", up);
-  stage.addEventListener("wheel", ev => {
-    ev.preventDefault();
-    const r = stage.getBoundingClientRect();
-    zoomBy(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
-  }, { passive: false });
-  stage.addEventListener("dblclick", ev => {
-    const r = stage.getBoundingClientRect();
-    zoomBy(1, ev.clientX - r.left, ev.clientY - r.top);
-  });
-  window.addEventListener("resize", () => render());
-})();
-
-$("q").addEventListener("input", ev => { filter = ev.target.value.trim().toLowerCase(); paintList(); render(); });
-$("add").addEventListener("keydown", ev => {
-  if(ev.key !== "Enter") return;
-  addTyped(ev.target.value);
-  ev.target.value = "";
-});
-
-document.addEventListener("keydown", ev => {
-  if(ev.key === "Escape"){
-    if($("settings-modal").classList.contains("open")) closeSettings();
-    else if($("help-modal").classList.contains("open")) closeHelp();
-    else closePop();
-    return;
-  }
-  const el = document.activeElement;
-  if(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
-  if(ev.ctrlKey || ev.altKey || ev.metaKey) return;
-  if(ev.key === "+" || ev.key === "=") zoomBy(1);
-  else if(ev.key === "-" || ev.key === "_") zoomBy(-1);
-  else if(ev.key === "f" || ev.key === "F") fitAll();
-});
-
-/* ============================================================
-   12. The two modals
-   ============================================================ */
-function openSettings(){
-  $("f-tiles").value = S.tiles || "";
-  $("f-geocoder").value = S.geocoder || "";
-  $("settings-modal").classList.add("open");
-}
-function closeSettings(){ $("settings-modal").classList.remove("open"); }
-function saveSettings(){
-  S.tiles = $("f-tiles").value.trim();
-  S.geocoder = $("f-geocoder").value.trim();
-  saveS();
-  closeSettings();
-  tileNodes.forEach(img => img.remove()); tileNodes.clear();
-  paintAttrib(); render();
-  PLACES.forEach(p => { if(!located(p)) enqueue(p); });
-  paintList(); pump();
-}
-function resetSettings(){ $("f-tiles").value = DEFAULTS.tiles; $("f-geocoder").value = DEFAULTS.geocoder; }
-function clearGeoCache(){
-  CACHE = {}; store.drop(CACHE_KEY);
-  ScuLaFolder.toast(t("cacheCleared"));
-}
-function paintHelp(){ $("help-body").innerHTML = t("helpBody"); }
-function openHelp(){ paintHelp(); $("help-modal").classList.add("open"); }
-function closeHelp(){ $("help-modal").classList.remove("open"); }
-[["settings-modal", closeSettings], ["help-modal", closeHelp]].forEach(([id, close]) => {
-  $(id).addEventListener("click", ev => { if(ev.target.id === id) close(); });
-});
-
-/* ============================================================
-   13. Init
-   ============================================================ */
-try{ UI = localStorage.getItem("scula:ui-lang") || "ro"; }catch(e){}
-// The shared nav owns the language; it announces changes to whoever cares.
-window.addEventListener("scula-ui-lang", ev => {
-  if(ev.detail && ev.detail !== UI){ UI = ev.detail; applyUILang(); }
-});
-// Another tab pressed 🗺 while this page was already open.
-window.addEventListener("storage", ev => {
-  if(ev.key === (window.ScuLaGeo ? ScuLaGeo.KEY : "scula:map:payload")) takePayload();
-});
-applyUILang();
-paintAttrib();
-takePayload();
-render();
 </script>
-</body>
-</html>
+</body></html>

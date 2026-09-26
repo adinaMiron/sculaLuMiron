@@ -1,13 +1,15 @@
 # CLAUDE.md
 
-Eight standalone browser tools. **No build step, no framework, no package
+Nine standalone browser tools. **No build step, no framework, no package
 manager.** The apps open directly in a browser. `index.html` keeps its CSS and
 markup in the page and loads its editor JavaScript from `js/markdown/`;
-the other apps keep their JavaScript inline. There is no build step.
+Song keeps its workspace logic inline; Voice and Song share `js/audio/pcm.js`.
+The other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `voice.html` | 3829 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
+| `song.html` | ~1570 | ~15k | "Creează melodie" / "Song Creation" — projects and immutable source WAV recordings | dark (earth) |
+| `voice.html` | 3962 | 37k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts and mind maps + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
@@ -22,8 +24,8 @@ the other apps keep their JavaScript inline. There is no build step.
 "editor.html" / "mazgaleste" / "drawing page" → `editor.html` ·
 "calendar" / "calendarul" → `calendar.html` · "transfer" / "sync" /
 "trimite pe alt dispozitiv" → `transfer.html` · "harta" / "hartă" /
-"locatii" / "map page" → `map.html` · "kanban" / "task board" → `kanban.html`. The nav order is Markdown,
-Calendar, Kanban, Hartă, Caiet vocal, Rețete, Mazgaleste, Transfer, and the old
+"locatii" / "map page" → `map.html` · "kanban" / "task board" → `kanban.html` · "song" / "song creation" / "creează melodie" → `song.html`. The nav order is Markdown,
+Calendar, Kanban, Hartă, Caiet vocal, Creează melodie, Rețete, Mazgaleste, Transfer, and the old
 "Editor" label is now "Mazgaleste". `index.html` is the markdown editor — it's the file
 served at the site root, and its nav link is the one highlighted as
 current when the site loads at `/` (see the `here` fallback in the shared
@@ -35,8 +37,7 @@ sync docs).
 
 ## Rule 1: never read a whole HTML file
 
-Reading all seven costs ~319k tokens; `recipes.html` alone is 89k and
-`index.html` 76k. **Never `view` an entire app file.** Locate
+The large pages cost tens of thousands of tokens each. **Never `view` an entire app file.** Locate
 first, then read a narrow range.
 
 ```bash
@@ -44,7 +45,7 @@ grep -n "functionName\|#elementId" editor.html   # locate
 sed -n '1084,1144p' editor.html                  # read just that
 ```
 
-`docs/MAP.md` has line anchors for every section of all seven files. Read
+`docs/MAP.md` has line anchors for every section of all nine files. Read
 it instead of exploring. It is far cheaper than one file scan.
 
 ## Routing — read only what the task needs
@@ -65,6 +66,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | Markdown syntax in `index.html` — the parser, `Name>> `, the `!vital` importance markers | `docs/FEATURES.md` § C |
 | Searching or filtering inside a workbook or a chapter | `docs/FEATURES.md` § H |
 | The 💡 idea box (Ctrl+Alt+I) — how an idea finds its chapter | `docs/FEATURES.md` § J |
+| **Song projects and source WAV capture** | `docs/FEATURES.md` § V (`song.html`) |
 | **The melody in `voice.html`** — pitch and beat detection, the instruments, the WAV and MIDI exports, why nothing is sampled | `docs/FEATURES.md` § P |
 | Undo/redo in `index.html`, or any new action that edits the textarea | `docs/FEATURES.md` § K |
 | **Why a chapter is or isn't saved** — autosave, the `localStorage` draft journal, the open chapter surviving a reload, `untitled.md`, **and the folders and files a person added to the markdown folder by hand becoming workbooks and chapters** | `docs/FEATURES.md` § E |
@@ -79,21 +81,21 @@ Do not read a doc the task doesn't touch.
 ## Rule 2: the nav block is copied into every app file
 
 `<nav id="site-nav">` plus its `<style>` and `<script>` is **byte-identical**
-in all eight files — from the `<nav id="site-nav">` line through the
-`<!-- ===== end toolbar nav ===== -->` marker (~1279 lines; starts near
+in all nine files — from the `<nav id="site-nav">` line through the
+`<!-- ===== end toolbar nav ===== -->` marker (~1300 lines; starts near
 `voice.html:260`, `editor.html:452`, `index.html:2052`,
 `recipes.html:527`, `calendar.html:269`, `transfer.html:197`,
-`map.html:238`, `kanban.html:59`, but these
+`map.html:238`, `kanban.html:59`, `song.html:9`, but these
 **drift** — grep the `<nav` line). It carries the nav links, the UI-language toggle,
 **`window.ScuLaFolder`** — which decides where every saved file goes
 (`docs/FEATURES.md` § D) — **`window.ScuLaCal`**, the shared calendar
 store every page can write events into (`docs/FEATURES.md` § L) — **and
 `window.ScuLaGeo`**, the `^@` place marker and the scan behind the map
 (`docs/FEATURES.md` § S). Any change
-to it must be applied to **all eight** or they drift.
+to it must be applied to **all nine** or they drift.
 
 **Verify with `/verify`** — it extracts the block by those two anchors (no
-line numbers) and diffs all eight.
+line numbers) and diffs all nine.
 
 Adding a page means adding a link to every nav copy **and** an entry in the
 block's `SUBDIR` map, so the new page gets its own folder.
@@ -102,7 +104,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
 
 - **No build step.** `index.html` loads plain, ordered scripts from
   `js/markdown/` (see its `README.md`); keep them usable from `file://`.
-  The other apps remain single-file. Don't introduce a bundler, npm, or a
+  Voice and Song also load the plain `js/audio/pcm.js` helper. Don't introduce a bundler, npm, or a
   framework for the apps.
 - **A browser API is not a dependency.** `transfer.html` speaks WebRTC and
   Web Bluetooth, and neither adds a file, a script tag or a server: the
@@ -166,22 +168,14 @@ block's `SUBDIR` map, so the new page gets its own folder.
 
 ## Verification (no test framework exists)
 
-Run **`/verify`** — it does both the JS parse-check and the nav-sync diff.
+Run **`/verify`** (`node tests/verify.js`) — JS parse-check, nav-sync diff, and diacritics.
 A PostToolUse hook (`.claude/hooks/check-html-js.sh`) already parse-checks
 the file you just edited on every save and blocks on a syntax error; `/verify`
-is the before-done check across all eight.
+is the before-done check across all nine.
 
-```bash
-# JS in every <script> block still parses (verified working on all 7 files)
-for f in voice.html editor.html index.html recipes.html calendar.html transfer.html map.html; do
-  awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' "$f" > /tmp/c.js
-  printf "%-24s " "$f"; node --check /tmp/c.js && echo OK
-done
-```
-
-Note: the `awk` guard matches `<script>` on its **own line**. The CDN tag
-in `index.html:2047` has attributes and is correctly skipped. If
-you add an attributed `<script …>` on its own line, adjust the pattern.
+`tests/verify.js` is the single verification implementation; the edit hook
+checks bare inline script tags immediately, while `/verify` also checks shared
+plain scripts such as `js/audio/pcm.js`.
 
 For behaviour, ad-hoc Playwright scripts are the established approach. The
 canonical description of how they work (pixel assertions not screenshots,
@@ -285,6 +279,7 @@ export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out) and
+Song Creation (`song.js` — source PCM/WAV, projects, persistence, microphone and save routes), and
 its **melody** (`melody.js` — a hummed C-major phrase at a known tempo fed
 in both ways, through the file picker and through the microphone itself
 with Chromium playing a real WAV into it, then the notes read back out of
@@ -293,7 +288,7 @@ the guarantee that arming the melody does not make "Descarcă" write an
 audio file).
 It is dev-only
 tooling with its own `package.json` — `cd tests && npm install && npm test`
-— and none of the seven apps reference it; it doesn't count against Rule 3.
+— and none of the nine apps reference it; it doesn't count against Rule 3.
 
 **Playwright's bundled browser is not what's installed here.** Every test run
 must point at whatever browser the machine does have through `PW_CHROME_PATH`

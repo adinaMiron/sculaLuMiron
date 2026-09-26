@@ -7,8 +7,9 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 
 ## A. New app page (a new tool in the suite)
 
-1. **Copy the closest existing app** as the skeleton. Keep it single-file:
-   `<style>` → markup → `<script>`. No build step, no framework, no npm.
+1. **Copy the closest existing app** as the skeleton. Keep workspace logic inline:
+   `<style>` → markup → `<script>`. Voice/Song share `js/audio/pcm.js`,
+   and Markdown loads plain scripts from `js/markdown/`. No build step, no framework, no npm.
 2. **Paste the shared nav** verbatim — from the `<nav id="site-nav">` line
    through the `<!-- ===== end toolbar nav ===== -->` marker in any app file
    (line numbers drift; the markers don't).
@@ -23,7 +24,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 4. **Start themed and bilingual.** Use `var(--…)` tokens (`docs/THEME.md`)
    and an `I18N` object with `data-i` attributes (`docs/I18N.md`) from the
    first commit. Retrofitting is what makes the other two apps expensive.
-5. Reuse the storage wrapper from `voice.html:1133-1153` — never call
+5. Reuse the guarded settings-store pattern from `voice.html` § 3 — never call
    `localStorage` directly (these run from `file://`, where it can throw).
 6. Add a row to the table in `CLAUDE.md` and a section in `docs/MAP.md`.
 
@@ -402,6 +403,9 @@ Full surface:
   | `recipes.html` | `retete` |
   | `calendar.html` | `calendar` |
   | `transfer.html` | `transfer` |
+  | `map.html` | `harta` |
+  | `kanban.html` | `kanban` |
+  | `song.html` | `Song Creation` |
 
 - **Permission is re-asked, not remembered.** Chrome drops the grant on
   reload, so on startup the block only *queries* (no gesture available)
@@ -461,7 +465,9 @@ page that wants to offer the choice without going through the nav
 
 ### Adding a save, or a page
 
-Build the `Blob`, call `ScuLaFolder.save()`, print `r.message`. A new page
+Build the `Blob`, call `ScuLaFolder.save()`, print `r.message`. Optional
+`{directories:[safeComponent,...]}` creates nested directories beneath the page
+subfolder in folder mode; share/download remain flat (Song, § V). A new page
 also needs an entry in `SUBDIR` — in all copies of the block.
 
 ### Google Drive — a fourth destination, per page
@@ -2699,3 +2705,99 @@ because the root font-size floors at 14px on narrow phones, below the
 canonical description). In short: no framework, ad-hoc Playwright per
 feature, pixel assertions not screenshots, `getDisplayMedia` needs a headed
 browser under Xvfb. Run scripts with `/apptest <name>`.
+
+## V. Song Creation (`song.html`)
+
+**Creează melodie / Song Creation** is the ninth standalone page. Phase 1 is a
+song workspace with multiple authoritative source recordings, not transcription
+or a second melody editor. Projects can be created, opened and renamed; takes
+can be played, renamed, deleted with confirmation and exported. Purposes are
+`melody` (humming) and `sample`; sample metadata includes instrument, note,
+optional MIDI note, articulation, dynamics and free notes.
+
+### Capture and WAV
+
+One `getUserMedia` stream requests `sampleRate:{ideal:48000}`, stereo if available,
+and echo cancellation, noise suppression and AGC off. A device ID can be selected
+after permission; its small preference is remembered locally. `getSettings()`
+reports actual values separately from the WAV rate; unknown settings are shown
+as unknown. The worklet retains the actual one/two channels arriving in Web Audio;
+ScriptProcessor uses the reported one/two channels, defaulting to mono when
+unreported. Unknown settings are disclosed. Stereo content cannot be
+verified as independent microphones. No stereo is manufactured from mono.
+
+Web Audio runs at the reported input rate when possible, otherwise its actual
+context rate. There is no application resampling. A device/context mismatch may
+mean browser resampling; both rates are visible. An AudioWorklet created from a
+Blob URL packs raw samples off the UI thread in 4096-frame blocks; Stop flushes
+partial blocks before graph teardown. Where loading fails (including Chromium
+`file://`), the existing Voice-style ScriptProcessor path is used and disclosed.
+It is deprecated and can drop audio if the main thread stalls. The page must stay
+open in the foreground; background/mobile suspension is not reliable. A screen
+wake lock is requested when available. Suspended contexts/ended tracks stop and
+retain received audio, marked interrupted.
+
+Masters are **24-bit signed little-endian integer PCM WAV**, with correct RIFF,
+fmt/data lengths, channel interleaving, sample rate, block alignment and odd-byte
+padding. This encoding does not assert microphone hardware bit depth. No
+MediaRecorder/compressed intermediate, normalization, denoising, trimming, pitch
+quantization or effects touch the master. Peaks at the PCM limit warn the user.
+PCM is folded into Blobs every five seconds; RIFF's 32-bit limit bounds capture.
+The live meter and small stored peak waveform do not change the audio.
+
+`js/audio/pcm.js` is a plain script used by Song and Voice: `pack24(channels)` and
+`wav(parts,dataBytes,sampleRate,channels)`. Voice's capture, compressed retention,
+transcription and melody behavior remain in its page; only its PCM pack/header
+functions delegate to this helper. Keep script tags usable from `file://`.
+
+### Persistence and exports
+
+IndexedDB `scula-song` v1 separates `projects` (schemaVersion 1 metadata) from
+`audio` (WAV Blobs keyed by recording ID). Project metadata and audio changes are
+atomic. Failed storage retains new Blobs in memory, displays a persistent warning
+and offers retry; users can export the take and metadata without storage working.
+No WAV/base64 lives in localStorage. Small preferences only: active project ID,
+microphone ID and shared UI language. Clearing site storage loses local projects;
+export backups. Active takes are retained at Stop, not crash-journaled while
+recording. Refresh/crash during capture can lose that take. Multiple simultaneous
+Song tabs are not merged; use one editing tab.
+
+All exports call `ScuLaFolder.save`. Its optional `directories` array creates
+validated components **beneath the calling page's SUBDIR**; old callers keep the
+same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
+`Song Creation/<safe-project-name>-<id>/recordings/` or `samples/`. Project JSON
+is in the project folder; `exports/` is reserved for future rendered assets.
+Nothing is overwritten. Mobile share/download cannot enforce nested folders;
+filenames include project and recording IDs and purpose. JSON references each
+WAV filename/path and does not embed it. Save WAVs and JSON separately. Exported
+project import/automatic disk mirroring are not implemented in Phase 1.
+
+### Phase 2 seam
+
+`SongRecording.source.assetId` resolves the immutable WAV; derived assets and a
+nullable `performance` field are separate. Project/recording IDs, timestamps,
+duration, rate, channels, MIME, purpose and sample metadata survive refresh.
+Phase 2 should introduce a versioned `MusicalPerformance` with raw pitch contour,
+onset/offset/confidence, cents deviation, dynamics, vibrato, legato and attack/
+release, keeping original timing and quantized timing separate. MIDI is an
+export, never canonical. Derived harmony/arrangement/rendered sample instruments
+can reference the performance and master by IDs; no SFZ or sample library is
+bundled now.
+
+The precise Voice analysis seam is `melSetSource(blob,kind)` →
+`decodeMono(blob,AN_SR)` → `normalise`/`decimate2` → `trackPitch` → `segmentNotes`,
+plus `onsetEnvelope`/`detectTempo`/`beatPhase` and `detectKey` (§ P). Extract these
+into plain versioned analysis helpers in Phase 2, preserving **raw pitch frames
+and original note timing before** `buildScore` snaps/quantizes. Decoding,
+mono conversion and normalization must operate on a derived analysis buffer,
+never on the Song master. Add accuracy fixtures before sharing the analyzer.
+
+### Testing
+
+`/apptest song` covers actual fake-device PCM, WAV binary dimensions and Web Audio
+decoding/playback, project persistence, sample details, deletion, permission/error
+paths, fallback capture, desktop folder and mobile share/download behavior,
+storage failures and navigation synchronization. `/apptest voice` and
+`/apptest melody` cover existing behavior. `/verify` parses all nine pages and
+shared scripts, diffs navigation and checks diacritics. Real phone/hardware and
+long recording behavior need manual testing beyond Chromium emulation.
