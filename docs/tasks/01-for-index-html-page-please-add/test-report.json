@@ -1,0 +1,6 @@
+{
+  "task_id": "task-01",
+  "status": "pass",
+  "summary": "Ran tests/01-for-index-html-page-please-add/diagram.js in Chrome against index.html: 34 checks, all pass, no page errors. Covered: flow parser/serializer canonical round-trip, all four edge ops (including a-->b without spaces), comments kept in extra, auto-placement grid, duplicate ids, implicit nodes, mindmap normalisation, empty input; preview SVG for both kinds with edit button and unparsed-line warning, other fences staying code, HTML/script injection via labels (escaped), unclosed fence, empty blocks, uppercase FLOW, 300-node render time; export output (no edit button/data-line); modal open via Edit and double-click, Esc close, source edit + Update note replacing the block in place with markdown undo, Insert at caret, R-key rectangle tool, undo/redo storm, mindmap Tab+Esc. Not covered in depth: pinch/touch gestures, dragging to connect/resize by pointer, and both-language UI text; the test suite does not assert on those.",
+  "bugs": []
+}
