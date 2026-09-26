@@ -2593,6 +2593,86 @@ both languages. Run: `/apptest media`.
 
 ---
 
+## U. Diagrams — flowcharts and mind maps (`index.html`)
+
+Two fenced-block kinds, ` ```flow ` and ` ```mindmap `, are drawn as inline
+SVG in the preview and in the HTML export, and edited in a full-screen modal
+(**◇ Diagram** in the toolbar, **✎ Edit** or a double-click on a drawn
+diagram). Everything lives in `js/markdown/diagram.js`; `parseMarkdown()`
+hands the two kinds to `renderDiagramBlock()`, every other fence stays a code
+block. Fenced text is blanked by the graph/causality scanner, so `a -> b`
+inside a ` ```flow ` never becomes a causal edge.
+
+### Why a text block and not Mâzgilește
+
+Mâzgilește (`editor.html`) is raster annotation: its arrows are strokes that
+do not attach to shapes, and its output would be a PNG that can never be
+edited again, invisible to search, diff and the Drive merge. A flowchart's
+defining property is that a connector stays attached when a box moves — that
+needs a structural model. A text block keeps the diagram editable, searchable,
+tiny and Drive-safe, with **no new dependency** (no Mermaid, no JointJS —
+Rule 3). What was ported from `editor.html`: the arrowhead geometry of
+`drawArrow()`, zoom around a fixed point (`setZoomAt`), and the pointer model
+(one `pointers` map, capture, a second finger cancels the one-finger action
+and pinches).
+
+### The ` ```flow ` grammar (canonical copy)
+
+The kind is `codeLang.trim().toLowerCase()`, exactly `flow` or `mindmap`.
+One statement per line; blank lines ignored. The edge regex is tried first.
+
+- **Node** `DG_NODE_RE`:
+  `^\s*([A-Za-z0-9_-]+)\s*:\s*(rect|round|pill|ellipse|diamond|para|text)?\s*(?:(-?\d+)\s*,\s*(-?\d+))?\s*(?:(\d+)\s*x\s*(\d+))?\s*(#[0-9a-fA-F]{6})?\s*(?:\|\s?(.*))?$`
+  → id, shape (default `rect`), `x,y` top-left, `w x h`, colour, label.
+- **Edge** `DG_EDGE_RE`:
+  `^\s*([A-Za-z0-9_-]+)\s*(<->|-->|->|--)\s*([A-Za-z0-9_-]+)\s*(#[0-9a-fA-F]{6})?\s*(?:\|\s?(.*))?$`
+  → from, op (`->` arrow, `-->` dashed arrow, `--` line, `<->` both ways),
+  to, colour, label.
+- Labels: `\n` is a line break, `\\` a backslash.
+- Missing size → shape default (`rect round pill para` 160×60, `diamond`
+  160×90, `ellipse` 140×70, `text` 140×30). Missing position → the k-th
+  positionless node gets `x = 40 + (k % 4)·200`, `y = 40 + ⌊k/4⌋·130`.
+- An id defined twice: the later line wins, the node keeps its first place.
+- An edge naming an undefined id creates an implicit `rect` whose label is
+  the id.
+- A line matching neither regex (e.g. a `%%` comment) is kept verbatim in
+  `extra`: not drawn, but written back by every save from the modal. The
+  preview says how many such lines there are.
+
+Canonical form (`dgSerializeFlow`) — nodes, then edges, then `extra`:
+
+```
+<id>: <shape> <x>,<y> <w>x<h>[ <#RRGGBB>] | <label>
+<from> <op> <to>[ <#RRGGBB>][ | <label>]
+```
+
+Node colour only when it is not the default `#C1BB45`; hex upper-case;
+integers; a node line always has ` | `. `dgSerializeFlow(dgParseFlow(s)) === s`
+for canonical `s`.
+
+### The ` ```mindmap ` grammar
+
+An indented outline, one node per line (a tab counts as two spaces; a
+leading `- `, `* ` or `+ ` is dropped, so a pasted list works). The first
+line is the root. Canonical form: two spaces per depth, no bullets. The
+layout is automatic: the first half of the root's children go right, the
+rest left, each branch takes one palette colour, and connectors are cubic
+curves.
+
+### The modal's keys
+
+| Where | Keys |
+|---|---|
+| Flowchart | `V` select · `A` connector · `R` rectangle · `D` decision · `E` ellipse · `T` text · `F2`/`Enter` or double-click label · `Del`/`Backspace` delete (a node takes its edges with it) · drag the dots of a selected box to connect, its corner handle to resize |
+| Mind map | `Tab` child · `Enter` sibling · `F2` rename · arrows move the selection · `Del` deletes the branch · `Tab` then `Esc` leaves nothing behind |
+| Both | `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` modal undo/redo · wheel or two fingers zoom · drag the empty stage to pan · `Esc` cancels a connector, then the selection, then the modal (asks if changed) · in the label box `Esc` only cancels the label |
+
+**Insert into note** writes the block at the caret, **Update note** replaces
+the block it was opened from — each one markdown undo step (§ K). If the
+block moved or changed in the editor meanwhile, it is searched for by its
+text; failing that the diagram is inserted at the caret with a toast. The
+global shortcuts in `events.js` stand aside while the modal is open.
+
 ## Definition of done (any feature)
 
 - [ ] Works from `file://`, no console errors

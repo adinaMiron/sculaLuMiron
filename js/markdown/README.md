@@ -11,6 +11,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `i18n.js` | Romanian and English strings, UI language, `store` |
 | `editor.js` | Editor selection, undo/redo, formatting actions, image paste and explorer, responsive panels |
 | `markdown.js` | Wikilink/date/place/importance/timeline rendering, Markdown parser, preview, navigation |
+| `diagram.js` | ` ```flow ` / ` ```mindmap ` diagrams: parsers, serializers, SVG layout and the diagram modal — loaded right after `markdown.js` ([FEATURES § U](../../docs/FEATURES.md)) |
 | `workbooks.js` | IndexedDB, workbooks and chapters, folder mirroring, pending edits, autosave and restore |
 | `idea.js` | Quick idea capture and chapter routing |
 | `graph.js` | Knowledge graph, causality diagram, graph canvas and settings |
