@@ -23,3 +23,6 @@ tests/package-lock.json
 /ocr/
 100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf
 100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.md
+
+# The task pipeline's run log (absolute timestamps, task text) — local state, not repo content.
+/orchestrator_state.json

@@ -382,7 +382,7 @@ function closeDiagram(force) {
   if (!force && dg.dirty && !confirm(t('dgDiscardAsk'))) return false;
   dgLabelEnd(false);
   dg.open = false; dg.drag = null; dg.pinch = null; dg.pointers.clear();
-  clearTimeout(dg.srcTimer);
+  clearTimeout(dg.srcTimer); dg.srcTimer = 0;
   dgEl('diagram-modal').hidden = true;
   editor.focus();
   return true;
@@ -390,6 +390,7 @@ function closeDiagram(force) {
 
 function dgApply() {
   if (!dg.open) return;
+  dgSourceFlush();
   dgLabelEnd(true);
   const block = '```' + dg.kind + '\n' + dgCanon() + '\n```';
   const val = editor.value;
@@ -429,6 +430,7 @@ function dgPush(before) {
   dg.dirty = true;
 }
 function dgRestore(from, to) {
+  dgSourceFlush();
   if (!from.length) return;
   dgLabelEnd(false);
   to.push(dgCanon());
@@ -683,6 +685,7 @@ function dgLabelEnd(commit) {
 /* ── Source text ── */
 function dgToggleSource() {
   const src = dgEl('dg-source'), show = src.hidden;
+  if (!show) dgSourceFlush();
   src.hidden = !show;
   dgEl('dg-source-btn').setAttribute('aria-pressed', String(show));
   if (show) src.value = dgCanon();
@@ -692,13 +695,22 @@ function dgSourceInput() {
   if (now - dg.srcLast > 700) dgPush();
   dg.srcLast = now;
   clearTimeout(dg.srcTimer);
-  dg.srcTimer = setTimeout(() => {
-    const sel = dg.sel;
-    dgLoad(dg.kind, dgEl('dg-source').value);
-    dg.sel = dgSelValid(sel) ? sel : null;
-    dg.dirty = true;
-    dgRender();
-  }, 150);
+  dg.srcTimer = setTimeout(dgSourceParse, 150);
+}
+function dgSourceParse() {
+  dg.srcTimer = 0;
+  const sel = dg.sel;
+  dgLoad(dg.kind, dgEl('dg-source').value);
+  dg.sel = dgSelValid(sel) ? sel : null;
+  dg.dirty = true;
+  dgRender();
+}
+/* Typing waits 150 ms before it is parsed; whatever reads the model (apply, undo, hiding
+   the panel) takes the pending text first, so a quick click never writes a stale model. */
+function dgSourceFlush() {
+  if (!dg.srcTimer) return;
+  clearTimeout(dg.srcTimer);
+  dgSourceParse();
 }
 
 /* ── Pointers: one map, capture on the stage, a second finger pinches ── */
@@ -765,7 +777,12 @@ function dgPointerDown(e) {
     dg.drag = { type: 'move', node: n, sx, sy, start: { x: n.x, y: n.y }, before: dgCanon(), moved: false };
     return;
   }
-  if (hit && hit.type === 'edge') { dg.sel = { type: 'edge', i: hit.i }; dgRender(); return; }
+  // Re-render only when the selection changes: a re-render replaces #dg-world, and a
+  // double-click whose targets were detached never reaches the stage.
+  if (hit && hit.type === 'edge') {
+    if (!dg.sel || dg.sel.type !== 'edge' || dg.sel.i !== hit.i) { dg.sel = { type: 'edge', i: hit.i }; dgRender(); }
+    return;
+  }
   if (dg.sel) { dg.sel = null; dgRender(); }
   pan();
 }
