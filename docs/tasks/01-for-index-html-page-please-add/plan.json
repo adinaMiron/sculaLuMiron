@@ -1,0 +1,8 @@
+{
+  "task_id": "task-01",
+  "difficulty": "high",
+  "reasoning": "A new ~1000-line feature: two text formats with canonical round-trip, an SVG renderer with edge clipping and an automatic mind-map layout, and a full-screen pointer/pinch/zoom editor wired into the parser, export, undo and i18n — it needs the strongest model at high effort. The tester must drive real SVG pointer drags and assert geometry in Playwright, which is demanding but well-specified, so Sonnet at high effort is enough.",
+  "spec_path": "docs/tasks/01-for-index-html-page-please-add/spec.md",
+  "implementer": {"model": "claude-opus-5-5", "effort": "high"},
+  "tester": {"model": "claude-sonnet-5", "effort": "high"}
+}
