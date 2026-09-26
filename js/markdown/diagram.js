@@ -366,7 +366,7 @@ function openDiagram(opts) {
   else { dg.mode = 'new'; dg.edit = null; dgLoad('flow', dgSeed('flow')); }
   dg.open = true; dg.dirty = false; dg.tool = 'select'; dg.sel = null; dg.label = null; dg.drag = null; dg.pinch = null;
   dg.pointers.clear();
-  dgUndo = []; dgRedo = [];
+  dgUndo = []; dgRedo = []; dg.srcLast = 0;   // a new session's first typing burst is its own undo step
   if (dg.kind === 'mindmap' && dg.mm.root) dg.sel = { type: 'mm', path: '' };
   dgEl('diagram-modal').hidden = false;
   dgEl('dg-source').hidden = true; dgEl('dg-source-btn').setAttribute('aria-pressed', 'false');
@@ -692,7 +692,7 @@ function dgToggleSource() {
 }
 function dgSourceInput() {
   const now = Date.now();
-  if (now - dg.srcLast > 700) dgPush();
+  if (now - dg.srcLast > 700) { dgPush(); dgState(); }   // the undo button is live at once
   dg.srcLast = now;
   clearTimeout(dg.srcTimer);
   dg.srcTimer = setTimeout(dgSourceParse, 150);

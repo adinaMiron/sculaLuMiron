@@ -268,7 +268,11 @@ shortcuts (`mdlines.js` — Ctrl+Enter / Ctrl+Shift+Enter, caret placement
 and one-step undo), the **timeline** (`timeline.js` — the run of
 `#date - !what` lines becoming one block, text · image · link, the dot
 placed by its date asserted on real geometry, what must *not* become a
-timeline, both languages and the export) and the **photos and films**
+timeline, both languages and the export), the **flowcharts and mind
+maps** (`diagram.js` — both formats round-tripped, an edge ending on its
+target's outline, the mind map's left/right split, a real drag and the
+connector in the ◇ modal, its undo, Tab/Enter/Delete, both languages) and
+the **photos and films**
 toolbox (`media.js` — a folder walked through a stubbed picker, every fixture
 assembled byte by byte in the test: a JPEG with a real `APP1` segment and a
 GPS IFD, a PNG with an `eXIf` chunk, an MP4 whose `moov` holds `©day` and
