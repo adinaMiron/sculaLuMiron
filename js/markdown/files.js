@@ -243,6 +243,12 @@ function exportHtml() {
     code { background: #f4f4f4; border: 1px solid #e0e0e0; border-radius: 3px; padding: 1px 5px; font-family: 'Courier New', monospace; font-size: 0.88em; }
     pre { background: #f6f8fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; overflow-x: auto; margin: 0 0 1em; }
     pre code { background: none; border: none; padding: 0; font-size: 0.9em; }
+    .md-diagram { margin: 14px 0; padding: 12px; border: 1px solid #e2e2e2; border-radius: 8px; background: #fafafa; overflow: auto; }
+    .dg-svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .dg-label, .dg-edge-label { fill: #222; font-family: 'Trebuchet MS', sans-serif; }
+    .dg-edge-line { stroke: #666; }
+    .dg-edge-head { fill: #666; }
+    .dg-edge-label-bg { fill: #fafafa; }
     .code-block { position: relative; }
     .code-block pre { margin: 0 0 1em; }
     .code-copy { position: absolute; top: 8px; right: 8px; font-family: 'Trebuchet MS', sans-serif; font-size: 0.8em; padding: 3px 10px; color: #444; background: #fff; border: 1px solid #d0d0d0; border-radius: 4px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }

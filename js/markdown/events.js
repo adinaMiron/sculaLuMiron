@@ -28,6 +28,7 @@ document.getElementById('idea-text').addEventListener('keydown', function(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) e.stopPropagation();
 });
 document.addEventListener('keydown', e => {
+  if (typeof dgIsOpen === 'function' && dgIsOpen()) return;   // the diagram modal owns every key
   if (e.key === 'Escape') {
     // Innermost first: the graph and the garden toolbox cover everything,
     // so they close on their own

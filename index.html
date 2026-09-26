@@ -1468,6 +1468,81 @@
   .md-cause-delay { opacity: 0.75; }
   li > .md-causal { margin: 4px 0; }
 
+  /* ── Diagrams — ```flow and ```mindmap, drawn as inline SVG ──
+     The shape colours are document data written into the block; the chrome
+     around them is tokens. docs/FEATURES.md § U. */
+  .md-diagram {
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    position: relative;
+    overflow: auto;
+  }
+  .dg-svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  .dg-label, .dg-edge-label { fill: var(--text); }
+  .dg-edge-line { stroke: var(--text-2); }
+  .dg-edge-head { fill: var(--text-2); }
+  .dg-edge-label-bg { fill: var(--surface); }
+  .dg-edit {
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--font-ui); font-size: 12px;
+    padding: 3px 10px; border-radius: 4px; cursor: pointer;
+    color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .md-diagram:hover .dg-edit, .md-diagram:focus-within .dg-edit { opacity: 1; }
+  @media (hover: none) { .dg-edit { opacity: 1; } }
+  .dg-warn, .dg-empty { color: var(--text-3); font-size: 12px; margin: 6px 0 0; }
+
+  /* The diagram modal — full screen, above .image-modal */
+  .dg-modal { position: fixed; inset: 0; z-index: 120; background: var(--bg); display: flex; flex-direction: column; }
+  .dg-modal[hidden] { display: none; }
+  .dg-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  .dg-title { font-weight: 700; color: var(--accent-2); margin-right: 6px; }
+  .dg-seg { display: flex; gap: 2px; }
+  .dg-seg[hidden], .dg-colors[hidden], #dg-edge-kind[hidden] { display: none; }
+  .dg-seg button, .dg-btn, #dg-edge-kind {
+    font-family: var(--font-ui); font-size: 12px; min-width: 28px; padding: 4px 8px;
+    color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+  }
+  .dg-seg button:hover:not(:disabled), .dg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-2); }
+  .dg-seg button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .dg-seg button:disabled, .dg-btn:disabled { opacity: 0.45; cursor: default; }
+  .dg-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-2); }
+  .dg-colors { display: flex; gap: 4px; }
+  .dg-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
+  .dg-swatch.active { border-color: var(--text); }
+  .dg-spacer { flex: 1; }
+  .dg-body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .dg-stage { flex: 1; position: relative; overflow: hidden; touch-action: none; outline: none; cursor: default; }
+  .dg-stage.dg-placing { cursor: crosshair; }
+  #dg-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; }
+  #dg-grid circle { fill: var(--border); }
+  .dg-node, .dg-mm-node, .dg-edge { cursor: pointer; }
+  .dg-outline { fill: none; stroke: var(--accent-2); stroke-dasharray: 4 3; stroke-width: 1.5; pointer-events: none; }
+  .dg-port { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; cursor: crosshair; }
+  .dg-resize { fill: var(--accent-2); stroke: var(--bg); stroke-width: 1; cursor: nwse-resize; }
+  .dg-rubber { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+  #dg-label-input {
+    position: absolute; z-index: 2; box-sizing: border-box; resize: none; padding: 2px 4px;
+    font-family: var(--font-ui); text-align: center; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--accent); border-radius: 4px; outline: none;
+  }
+  #dg-source {
+    width: 320px; flex: none; resize: none; padding: 10px; box-sizing: border-box;
+    font-family: var(--font-mono); font-size: 13px; color: var(--text);
+    background: var(--surface); border: none; border-left: 1px solid var(--border); outline: none;
+  }
+  @media (max-width: 720px) { #dg-source { position: absolute; inset: 0; width: 100%; z-index: 3; } }
+  @media (hover: none) and (pointer: coarse) {
+    .dg-bar button, .dg-bar select { min-height: 44px; min-width: 44px; }
+  }
+
   /* ── A timeline — "#1969 - !Primul om pe Lună" ──
      A run of those lines is one block: the <svg> on top is the drawing (the
      spine, and a dot per entry placed where its date falls between the first
@@ -3553,6 +3628,7 @@
   <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
   <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
+  <button class="tb-btn" id="btn-diagram" onclick="openDiagram()" data-i="diagramBtn" data-i-title="diagramTip" title="Draw a flowchart or a mind map">◇ Diagram</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
   <div class="toolbar-sep"></div>
@@ -3831,6 +3907,64 @@ Use the toolbar above to insert formatting.
     <div class="gantt-help" data-i="ganttHelp">Use #1 on a prerequisite task and $1 on each task that depends on it. Dates: start@2026-09-24 and end@2026-09-30.</div>
     <div id="gantt-notice" role="status"></div>
     <div class="gantt-body" id="gantt-body"><div class="gantt-labels" id="gantt-labels"></div><div class="gantt-chart" id="gantt-chart"></div></div>
+  </div>
+</div>
+
+<!-- Diagram modal — ```flow / ```mindmap, js/markdown/diagram.js, docs/FEATURES.md § U -->
+<div id="diagram-modal" class="dg-modal" role="dialog" aria-modal="true" aria-labelledby="dg-title" hidden>
+  <div class="dg-bar">
+    <span class="dg-title" id="dg-title" data-i="dgTitleNew"></span>
+    <div class="dg-seg" id="dg-kind">
+      <button type="button" data-kind="flow" data-i="dgKindFlow">Flowchart</button>
+      <button type="button" data-kind="mindmap" data-i="dgKindMindmap">Mind map</button>
+    </div>
+    <div class="dg-seg" id="dg-tools">
+      <button type="button" data-tool="select" data-i-title="dgToolSelect" data-i-aria="dgToolSelect">▢</button>
+      <button type="button" data-tool="connect" data-i-title="dgToolConnect" data-i-aria="dgToolConnect">⇄</button>
+      <button type="button" data-tool="rect" data-i-title="dgToolRect" data-i-aria="dgToolRect">▭</button>
+      <button type="button" data-tool="round" data-i-title="dgToolRound" data-i-aria="dgToolRound">▢</button>
+      <button type="button" data-tool="pill" data-i-title="dgToolPill" data-i-aria="dgToolPill">⬭</button>
+      <button type="button" data-tool="ellipse" data-i-title="dgToolEllipse" data-i-aria="dgToolEllipse">◯</button>
+      <button type="button" data-tool="diamond" data-i-title="dgToolDiamond" data-i-aria="dgToolDiamond">◇</button>
+      <button type="button" data-tool="para" data-i-title="dgToolPara" data-i-aria="dgToolPara">▱</button>
+      <button type="button" data-tool="text" data-i-title="dgToolText" data-i-aria="dgToolText">T</button>
+    </div>
+    <div class="dg-seg" id="dg-mm-tools">
+      <button type="button" id="dg-mm-child" data-i="dgAddChild">+ Child (Tab)</button>
+      <button type="button" id="dg-mm-sibling" data-i="dgAddSibling">+ Sibling (Enter)</button>
+      <button type="button" id="dg-mm-rename" data-i="dgRename">Rename (F2)</button>
+    </div>
+    <div class="dg-colors" id="dg-colors">
+      <button type="button" class="dg-swatch" data-color="#C1BB45" style="background:#C1BB45" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+      <button type="button" class="dg-swatch" data-color="#6E9E8A" style="background:#6E9E8A" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+      <button type="button" class="dg-swatch" data-color="#C4643C" style="background:#C4643C" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+      <button type="button" class="dg-swatch" data-color="#D9A441" style="background:#D9A441" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+      <button type="button" class="dg-swatch" data-color="#7A9CC6" style="background:#7A9CC6" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+      <button type="button" class="dg-swatch" data-color="#9FB3A5" style="background:#9FB3A5" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
+    </div>
+    <select id="dg-edge-kind" hidden>
+      <option value="->" data-i="dgEdgeArrow">→ Arrow</option>
+      <option value="-->" data-i="dgEdgeDashed">⇢ Dashed</option>
+      <option value="--" data-i="dgEdgeLine">— Line</option>
+      <option value="<->" data-i="dgEdgeBoth">↔ Both ways</option>
+    </select>
+    <button type="button" class="dg-btn" id="dg-delete" data-i="dgDelete">Delete (Del)</button>
+    <button type="button" class="dg-btn" id="dg-undo" data-i-title="dgUndoTip" data-i-aria="dgUndoTip">↶</button>
+    <button type="button" class="dg-btn" id="dg-redo" data-i-title="dgRedoTip" data-i-aria="dgRedoTip">↷</button>
+    <button type="button" class="dg-btn" id="dg-zoom-out" data-i-title="dgZoomOutTip" data-i-aria="dgZoomOutTip">−</button>
+    <button type="button" class="dg-btn" id="dg-zoom-in" data-i-title="dgZoomInTip" data-i-aria="dgZoomInTip">+</button>
+    <button type="button" class="dg-btn" id="dg-fit" data-i="dgFit">⤢ Fit</button>
+    <button type="button" class="dg-btn" id="dg-source-btn" aria-pressed="false" data-i="dgSourceBtn">Source text</button>
+    <span class="dg-spacer"></span>
+    <button type="button" class="btn" id="dg-cancel" data-i="dgCancel">Cancel</button>
+    <button type="button" class="btn btn-primary" id="dg-apply" data-i="dgInsert">Insert into note</button>
+  </div>
+  <div class="dg-body">
+    <div class="dg-stage" id="dg-stage" tabindex="0">
+      <svg id="dg-svg" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="dg-grid" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.8"/></pattern></defs><rect class="dg-grid-bg" width="100%" height="100%" fill="url(#dg-grid)"/><g id="dg-world"></g></svg>
+      <textarea id="dg-label-input" rows="1" spellcheck="false" hidden></textarea>
+    </div>
+    <textarea id="dg-source" spellcheck="false" hidden></textarea>
   </div>
 </div>
 
@@ -4124,6 +4258,7 @@ Use the toolbar above to insert formatting.
 <script src="js/markdown/i18n.js"></script>
 <script src="js/markdown/editor.js"></script>
 <script src="js/markdown/markdown.js"></script>
+<script src="js/markdown/diagram.js"></script>
 <script src="js/markdown/gantt.js"></script>
 <script src="js/markdown/workbooks.js"></script>
 <script src="js/markdown/idea.js"></script>

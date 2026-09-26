@@ -37,6 +37,19 @@ const I18N = {
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
     codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
     timelineTip:"Inserează o cronologie (#dată - !ce s-a întâmplat)", timelineBtn:"⏳ Cronologie",
+    diagramBtn:"◇ Diagramă", diagramTip:"Desenează o schemă logică sau o hartă mentală",
+    dgTitleNew:"Diagramă nouă", dgTitleEdit:"Editează diagrama", dgKindFlow:"Schemă logică", dgKindMindmap:"Hartă mentală",
+    dgToolSelect:"Selectează (V)", dgToolConnect:"Conector (A)", dgToolRect:"Dreptunghi (R)", dgToolRound:"Colțuri rotunjite",
+    dgToolPill:"Început / sfârșit", dgToolEllipse:"Elipsă (E)", dgToolDiamond:"Decizie (D)", dgToolPara:"Intrare / ieșire", dgToolText:"Text liber (T)",
+    dgAddChild:"+ Copil (Tab)", dgAddSibling:"+ Frate (Enter)", dgRename:"Redenumește (F2)", dgDelete:"Șterge (Del)",
+    dgUndoTip:"Anulează (Ctrl+Z)", dgRedoTip:"Refă (Ctrl+Shift+Z)", dgZoomInTip:"Mărește", dgZoomOutTip:"Micșorează", dgFit:"⤢ Încadrează",
+    dgSourceBtn:"Text sursă", dgEdgeArrow:"→ Săgeată", dgEdgeDashed:"⇢ Punctată", dgEdgeLine:"— Linie", dgEdgeBoth:"↔ Dublă",
+    dgColorTip:"Culoare", dgCancel:"Renunță", dgInsert:"Inserează în notă", dgUpdate:"Actualizează nota",
+    dgDiscardAsk:"Renunți la modificările din diagramă?", dgEdit:"✎ Editează", dgEditTip:"Deschide diagrama în editor (sau dublu-clic)",
+    dgEmpty:"Diagramă goală", dgIgnored:n=>`${n} rânduri neînțelese — păstrate, dar nedesenate`, dgNewShape:"Text", dgNewNode:"Idee nouă",
+    dgSeedStart:"Început", dgSeedStep:"Pas", dgSeedAsk:"Întrebare?", dgSeedFix:"Corectează", dgSeedEnd:"Sfârșit", dgSeedYes:"da", dgSeedNo:"nu",
+    dgSeedRoot:"Idee centrală", dgSeedBranch:n=>`Ramura ${n}`,
+    dgMovedInserted:"Blocul original se mutase — diagrama a fost inserată la cursor.",
     timelineSeedText:"ce s-a întâmplat", timelineSeedLink:"o legătură", timelineSeedImage:"o poză",
     dictateTip:"Dictare vocală — folosește setările din Caiet vocal", dictateBtn:"🎤 Dictare",
     dictateListening:"Ascult…", dictateRecording:s=>`Înregistrez · ${s}`,
@@ -389,6 +402,15 @@ const I18N = {
         <li>După <code>!</code> scrii text, o poză — <code>![lună](luna.png)</code> — sau o legătură — <code>![Apollo 11](https://nasa.gov)</code>. Aceeași formă; unde duce spune ce e.</li>
         <li>Butonul ⏳ Cronologie din bară scrie trei rânduri peste care poți scrie ale tale.</li>
       </ul>
+      <h3>Diagrame</h3>
+      <ul>
+        <li>Butonul ◇ Diagramă deschide un editor pe tot ecranul pentru o <b>schemă logică</b> sau o <b>hartă mentală</b>; „Inserează în notă” scrie diagrama ca bloc de text în capitol. <code>✎ Editează</code> sau dublu-clic pe desenul din previzualizare o redeschide.</li>
+        <li>Schemă logică: <code>\`\`\`flow</code>, apoi rânduri ca <code>start: pill 40,40 160x60 | Început</code>, <code>pas: rect | Pas</code>, <code>start -> pas | da</code> (<code>-></code> săgeată, <code>--></code> punctată, <code>--</code> linie, <code>&lt;-></code> dublă).</li>
+        <li>Hartă mentală: <code>\`\`\`mindmap</code>, apoi o listă indentată — <code>Idee</code>, <code>&nbsp;&nbsp;Ramura 1</code>, <code>&nbsp;&nbsp;&nbsp;&nbsp;Detaliu</code>. Așezarea e automată.</li>
+        <li>În schemă: <kbd>V</kbd> selectează, <kbd>A</kbd> conector, <kbd>R</kbd> dreptunghi, <kbd>D</kbd> decizie, <kbd>E</kbd> elipsă, <kbd>T</kbd> text; <kbd>F2</kbd>/<kbd>Enter</kbd> sau dublu-clic scrie eticheta; <kbd>Del</kbd> șterge.</li>
+        <li>În harta mentală: <kbd>Tab</kbd> copil, <kbd>Enter</kbd> frate, <kbd>F2</kbd> redenumește, săgețile mută selecția, <kbd>Del</kbd> șterge ramura.</li>
+        <li>În ambele: <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> anulare și refacere în diagramă, rotița mărește, două degete fac zoom, <kbd>Esc</kbd> renunță.</li>
+      </ul>
       <h3>Anulare / Refă</h3>
       <p><kbd>Ctrl+Z</kbd> anulează, <kbd>Ctrl+Shift+Z</kbd> sau <kbd>Ctrl+Y</kbd> reface — un istoric propriu al editorului, separat de cel al browserului, care ține pasul cu orice acțiune din bară.</p>
       <h3>Import / Export</h3>
@@ -440,6 +462,19 @@ const I18N = {
     tableTip:"Insert table", tableBtn:"⊞ Table",
     codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
     timelineTip:"Insert a timeline (#date - !what happened)", timelineBtn:"⏳ Timeline",
+    diagramBtn:"◇ Diagram", diagramTip:"Draw a flowchart or a mind map",
+    dgTitleNew:"New diagram", dgTitleEdit:"Edit diagram", dgKindFlow:"Flowchart", dgKindMindmap:"Mind map",
+    dgToolSelect:"Select (V)", dgToolConnect:"Connector (A)", dgToolRect:"Rectangle (R)", dgToolRound:"Rounded box",
+    dgToolPill:"Start / end", dgToolEllipse:"Ellipse (E)", dgToolDiamond:"Decision (D)", dgToolPara:"Input / output", dgToolText:"Free text (T)",
+    dgAddChild:"+ Child (Tab)", dgAddSibling:"+ Sibling (Enter)", dgRename:"Rename (F2)", dgDelete:"Delete (Del)",
+    dgUndoTip:"Undo (Ctrl+Z)", dgRedoTip:"Redo (Ctrl+Shift+Z)", dgZoomInTip:"Zoom in", dgZoomOutTip:"Zoom out", dgFit:"⤢ Fit",
+    dgSourceBtn:"Source text", dgEdgeArrow:"→ Arrow", dgEdgeDashed:"⇢ Dashed", dgEdgeLine:"— Line", dgEdgeBoth:"↔ Both ways",
+    dgColorTip:"Colour", dgCancel:"Cancel", dgInsert:"Insert into note", dgUpdate:"Update note",
+    dgDiscardAsk:"Discard the changes to this diagram?", dgEdit:"✎ Edit", dgEditTip:"Open this diagram in the editor (or double-click)",
+    dgEmpty:"Empty diagram", dgIgnored:n=>`${n} lines not understood — kept, not drawn`, dgNewShape:"Text", dgNewNode:"New idea",
+    dgSeedStart:"Start", dgSeedStep:"Step", dgSeedAsk:"Question?", dgSeedFix:"Fix it", dgSeedEnd:"End", dgSeedYes:"yes", dgSeedNo:"no",
+    dgSeedRoot:"Central idea", dgSeedBranch:n=>`Branch ${n}`,
+    dgMovedInserted:"The original block had moved — the diagram was inserted at the cursor.",
     timelineSeedText:"what happened", timelineSeedLink:"a link", timelineSeedImage:"a picture",
     dictateTip:"Voice dictation — uses the Caiet vocal settings", dictateBtn:"🎤 Dictate",
     dictateListening:"Listening…", dictateRecording:s=>`Recording · ${s}`,
@@ -791,6 +826,15 @@ const I18N = {
         <li>The date can be a year, a month or a day: <code>#1969</code>, <code>#2026-09</code>, <code>#2026-09-21</code>, <code>#21.09.2026</code>.</li>
         <li>After the <code>!</code> write text, a picture — <code>![moon](moon.png)</code> — or a link — <code>![Apollo 11](https://nasa.gov)</code>. The same shape; where it points says which it is.</li>
         <li>The ⏳ Timeline toolbar button writes three lines to write over.</li>
+      </ul>
+      <h3>Diagrams</h3>
+      <ul>
+        <li>The ◇ Diagram button opens a full-screen editor for a <b>flowchart</b> or a <b>mind map</b>; "Insert into note" writes the diagram into the chapter as a block of text. <code>✎ Edit</code> or a double-click on the drawing in the preview reopens it.</li>
+        <li>Flowchart: <code>\`\`\`flow</code>, then lines like <code>start: pill 40,40 160x60 | Start</code>, <code>step: rect | Step</code>, <code>start -> step | yes</code> (<code>-></code> arrow, <code>--></code> dashed, <code>--</code> line, <code>&lt;-></code> both ways).</li>
+        <li>Mind map: <code>\`\`\`mindmap</code>, then an indented outline — <code>Idea</code>, <code>&nbsp;&nbsp;Branch 1</code>, <code>&nbsp;&nbsp;&nbsp;&nbsp;Detail</code>. The layout is automatic.</li>
+        <li>In a flowchart: <kbd>V</kbd> select, <kbd>A</kbd> connector, <kbd>R</kbd> rectangle, <kbd>D</kbd> decision, <kbd>E</kbd> ellipse, <kbd>T</kbd> text; <kbd>F2</kbd>/<kbd>Enter</kbd> or a double-click writes the label; <kbd>Del</kbd> deletes.</li>
+        <li>In a mind map: <kbd>Tab</kbd> child, <kbd>Enter</kbd> sibling, <kbd>F2</kbd> rename, the arrow keys move the selection, <kbd>Del</kbd> deletes the branch.</li>
+        <li>In both: <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> undo and redo inside the diagram, the wheel zooms, two fingers pinch-zoom, <kbd>Esc</kbd> cancels.</li>
       </ul>
       <h3>Undo / redo</h3>
       <p><kbd>Ctrl+Z</kbd> undoes, <kbd>Ctrl+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redoes — the editor's own history, separate from the browser's, which keeps up with every toolbar action too.</p>

@@ -867,6 +867,15 @@ function renderCodeBlock(codeLines, codeLang, forExport) {
   return `<div class="code-block"><button type="button" class="code-copy" aria-label="Copiază codul">Copiază</button>${inner}</div>`;
 }
 
+/* A ```flow / ```mindmap fence is a diagram (js/markdown/diagram.js,
+   docs/FEATURES.md § U); every other fence stays a code block. */
+function mdFenceHtml(codeLines, codeLang, codeStart, opts) {
+  const kind = codeLang.trim().toLowerCase();
+  if ((kind === 'flow' || kind === 'mindmap') && typeof renderDiagramBlock === 'function')
+    return renderDiagramBlock(codeLines, kind, codeStart, opts);
+  return renderCodeBlock(codeLines, codeLang, !!(opts && opts.forExport));
+}
+
 function parseMarkdown(md, opts) {
   const forExport = !!(opts && opts.forExport);
   let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -881,7 +890,7 @@ function parseMarkdown(md, opts) {
 
   const lines = html.split('\n');
   const out = []; let inUL = false; let inOL = false;
-  let inCode = false; let codeLang = ''; let codeLines = [];
+  let inCode = false; let codeLang = ''; let codeLines = []; let codeStart = 0;
   let tableBuffer = [];
   let timelineBuffer = [];
   const slugSeen = {};      // keeps two headings of the same name apart
@@ -928,8 +937,9 @@ function parseMarkdown(md, opts) {
         inCode = true;
         codeLang = line.slice(3).trim();
         codeLines = [];
+        codeStart = lineIdx;
       } else {
-        out.push(renderCodeBlock(codeLines, codeLang, forExport));
+        out.push(mdFenceHtml(codeLines, codeLang, codeStart, opts));
         inCode = false; codeLines = []; codeLang = '';
       }
       continue;
@@ -1020,7 +1030,7 @@ function parseMarkdown(md, opts) {
       : `<p${pb.id ? ` id="block-${attrEsc(pb.id)}"` : ''}>${applyInline(pb.text, opts)}</p>`);
   }
   flushTable(); flushTimeline();
-  if (inCode) out.push(renderCodeBlock(codeLines, codeLang, forExport));
+  if (inCode) out.push(mdFenceHtml(codeLines, codeLang, codeStart, opts));
   if (inUL) out.push('</ul>');
   if (inOL) out.push('</ol>');
   return out.join('\n');
@@ -1067,6 +1077,12 @@ preview.addEventListener('click', e => {
     updatePreview(); updateStatus(); scheduleAutosave();
     return;
   }
+  const dgEdit = e.target.closest('.dg-edit');
+  if (dgEdit) {
+    const line = mdDiagramLine(dgEdit.closest('.md-diagram'));
+    if (line !== null) { e.preventDefault(); openDiagram({ line }); }
+    return;
+  }
   const wl = e.target.closest('.wikilink');
   if (wl) {
     e.preventDefault();
@@ -1077,6 +1093,20 @@ preview.addEventListener('click', e => {
   if (tg) { e.preventDefault(); openGraphForTag(tg.dataset.tag || ''); return; }
   const im = e.target.closest('.md-imp');
   if (im) { e.preventDefault(); impFind(im.dataset.imp || ''); }
+});
+/* The editor line of a rendered diagram's opening fence, mapped the same
+   way the task checkboxes are (the preview may be a filtered copy). */
+function mdDiagramLine(fig) {
+  if (!fig || fig.dataset.line === undefined) return null;
+  const previewLineIdx = Number(fig.dataset.line);
+  const lineIdx = wbPreviewLineMap ? wbPreviewLineMap[previewLineIdx] : previewLineIdx;
+  return Number.isInteger(lineIdx) ? lineIdx : null;
+}
+preview.addEventListener('dblclick', e => {
+  const fig = e.target.closest('.md-diagram');
+  if (!fig) return;
+  const line = mdDiagramLine(fig);
+  if (line !== null) { e.preventDefault(); openDiagram({ line }); }
 });
 preview.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
