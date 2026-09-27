@@ -181,3 +181,22 @@ timing, preview/MIDI/JSON, reload, RO/EN, phone layout, invalid input, storage
 failure/retry, failed decoding and `file://` without IndexedDB. Master exports are compared byte for
 byte with the imported WAV, including its extra RIFF chunk. Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
+
+
+Phase 3 adds `node tests/song-synthesis.js` (seeded instrument/drum, stereo mix,
+WAV/MIDI and harmony fixtures captured before extracting Voice's code),
+`node tests/song-arrangement-generation.js` (snapshot references, edited melody,
+selected timing, tempo/key/harmony, independent controls, MIDI tracks/programs/
+CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrangement`
+(`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-arrangement.js`).
+The browser check opens the shipped page from `file://`, imports a synthetic WAV
+with an extra RIFF chunk, extracts/edits it and drives arrangement controls.
+It checks roll pixels, independent versions/reload, real WAV/MIDI exports,
+explicit Stop/render cancellation/natural completion/edit/language/page-exit and
+resume/start-error cleanup, RO/EN, phone layout, quota recovery and unavailable
+IndexedDB. Source WAV bytes, metadata, analysis and edited performances are
+compared unchanged. Both derived exports are checked through `ScuLaFolder.save`,
+including nested `exports/` options. Run these alongside `song-analysis`,
+`song-performance`, `song`, `voice`, `melody` and `node tests/verify.js` when changing
+shared synthesis or arrangements. Real phone audio and long mixes need manual
+verification beyond Chromium emulation; see HANDOFF.md's testing approach.

@@ -8,7 +8,7 @@ new markdown syntax, or the recipe pipeline. Pick the section you need.
 ## A. New app page (a new tool in the suite)
 
 1. **Copy the closest existing app** as the skeleton. Keep workspace logic inline:
-   `<style>` → markup → `<script>`. Voice/Song share `js/audio/pcm.js`,
+   `<style>` → markup → `<script>`. Voice/Song share plain PCM, analysis and synthesis helpers in `js/audio/`,
    and Markdown loads plain scripts from `js/markdown/`. No build step, no framework, no npm.
 2. **Paste the shared nav** verbatim — from the `<nav id="site-nav">` line
    through the `<!-- ===== end toolbar nav ===== -->` marker in any app file
@@ -2040,6 +2040,11 @@ This is the same answer as the JPEG 2000 decoder and the USDA table in
 beats a dependency, and here it is also the only answer that leaves the
 result unencumbered.
 
+The kernels now live in plain `js/audio/synthesis.js` (`ScuLaSynthesis` v1),
+shared with Song Phase 3 (§ V). Voice still builds its own score and mix. Seeded
+accuracy fixtures were captured before extraction; run `node tests/song-synthesis.js`
+alongside the Voice and melody checks after changes to this helper.
+
 ### The chain
 
 ```
@@ -2710,7 +2715,7 @@ browser under Xvfb. Run scripts with `/apptest <name>`.
 
 **Creează melodie / Song Creation** is the ninth standalone page. The workspace
 keeps multiple authoritative source recordings; Phase 2 derives an editable
-melody from a recorded or imported hummed WAV. Projects can be created, opened and renamed; takes
+melody from a recorded or imported hummed WAV. Phase 3 creates separate instrumental arrangement versions from that performance. Projects can be created, opened and renamed; takes
 can be played, renamed, deleted with confirmation and exported. Purposes are
 `melody` (humming) and `sample`; sample metadata includes instrument, note,
 optional MIDI note, articulation, dynamics and free notes.
@@ -2769,7 +2774,7 @@ All exports call `ScuLaFolder.save`. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
 same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
 `Song Creation/<safe-project-name>-<id>/recordings/` or `samples/`. Project JSON
-is in the project folder; `exports/` holds melody MIDI exports and is available for future rendered assets.
+is in the project folder; `exports/` holds melody MIDI and arrangement stereo WAV/multitrack MIDI exports.
 Nothing is overwritten. Mobile share/download cannot enforce nested folders;
 filenames include project and recording IDs and purpose. JSON references each
 WAV filename/path and does not embed it. Name components are limited to 60 UTF-8
@@ -2794,7 +2799,7 @@ Analysis errors leave the source and any existing performance available.
 `js/audio/analysis.js` exposes frozen `ScuLaAnalysis` v1 as a plain script,
 shared with Voice. It extracts the existing `decodeMono`, resampling,
 normalization/decimation, YIN `trackPitch`, `segmentNotes`, spectral-flux
-`onsetEnvelope`, tempo/phase and key helpers. Voice's arrangement and rendering
+`onsetEnvelope`, tempo/phase and key helpers. Voice's score and rendering orchestration
 remain in its page; its analysis behavior stays the same. Accuracy fixtures in
 `tests/song-analysis.js` were added and run before switching Voice to the helper.
 Decoding, mono mixing, resampling and normalization use a derived buffer.
@@ -2835,9 +2840,93 @@ It exports integer pitch, selected timing and velocity as format 0 MIDI;
 continuous pitch, cents and expression remain in the canonical performance JSON,
 not in MIDI. **Save metadata** includes the complete performance and source
 references. No analyzer, edit, preview or MIDI export writes the master WAV.
-Derived assets and future harmony/arrangements can reference both IDs.
+Phase 3 arrangements reference both IDs.
+
+### Phase 3: performance → instrumental arrangement
+
+**Create arrangement version** takes a snapshot of the current edited melody.
+Each new version gets a unique ID and increasing per-recording `version`; choose
+older versions in the arrangement picker. Later performance edits/reanalysis do
+not change saved arrangements: create a new version to use those edits. Existing
+Phase 1/2 projects need no IndexedDB migration (`arrangements` defaults to empty).
+Deleting a recording also deletes its arrangements from the project.
+
+`project.arrangements` stores `InstrumentalArrangement` records with
+`schemaVersion:1`, `generatorVersion:1`, ID, version, edit revision and timestamps;
+`sourceRecordingId`, `sourceAssetId`, `sourcePerformanceId` and the performance's
+snapshot timestamp identify provenance. `performanceSnapshot` keeps edited
+notes, original and quantized timing, source tempo/key and quantization settings.
+`tempoBpm`, `timingMode`, `key`, `parts`, `chords` and `duration` are arrangement
+metadata. Each part stores instrument, enable flag, volume (0–1) and generated
+notes. Settings validate and regenerate a copy before updating the saved version.
+Master Blobs, detected evidence and the editable performance stay separate.
+
+`js/audio/arrangement.js` exposes frozen `ScuLaArrangement` v1 as an ordered plain
+script. Lead preserves the edited melody, cents and velocity; selected timing
+preserves leading silence. Quantized timing is taken from the snapshot, or derived
+on a copy using its source grid/phase when no snapped timing was saved. Times are
+converted to beats at the source performance tempo and scaled at the arrangement
+tempo (40–220 BPM). Key transposes the lead by the tonic difference; major/minor
+controls backing harmony without resnapping edited lead pitches. MIDI pitches
+remain within 0–127. Duration-weighted diatonic chords use Voice's existing
+harmony, with a tonic final bar. Plucked chord instruments arpeggiate; sustained
+ones play triads. Bass plays roots twice per bar; drums use a four-beat kick/snare
+and eighth-note hat pattern, including open hats on alternating bars.
+
+Each of **Lead / Chords / Bass / Drums** has its own instrument, enable and volume
+controls. Pitched parts offer the fourteen synthesized instruments; drums offer
+standard, soft and electronic kits. The roll draws all four parts in the same
+colors as its legend; disabled/zero-volume parts fade. RO/EN controls repaint
+with the shared language toggle, and part controls stack on narrow phone screens.
+
+`js/audio/synthesis.js` exposes frozen `ScuLaSynthesis` v1: Voice's instrument
+models, additive/Karplus-Strong and drum kernels, weighted harmony/voicing/range,
+panning/release, reverb and WAV/MIDI writers. `tests/song-synthesis.js` and
+`fixtures/voice-synthesis-v1.json` captured seeded reference bytes and known
+harmony before extraction. Voice imports these exact kernels but retains its
+score, quantization, mix normalization, playback and export behavior.
+No modules, samples, network requests or app dependencies are added; scripts
+load from `file://`.
+
+**Play arrangement** renders a 44.1 kHz stereo mix, then plays a buffer source.
+Cents are audible in synthesis. Song uses fixed headroom and only attenuates
+peaks above 0.95, so reducing volume does not get normalized away. Rendering
+caches tones, yields between note batches/parts and checks cancellation; caches
+and mixes are temporary, not persisted. Rendering the whole mix requires memory,
+especially at a slow tempo; long recordings on real phones need manual checks.
+**Stop arrangement** remains enabled during rendering, cancels pending work,
+stops/disconnects the source and closes the AudioContext. Natural completion,
+errors, edits, project/language switches, capture, source playback, backgrounding
+and page exit release arrangement playback too.
+
+**Save stereo WAV** renders derived 16-bit PCM stereo at 44100 Hz. **Save multitrack
+MIDI** writes format 1 with a tempo/time-signature track and four named part
+tracks, integer edited/transposed pitch, selected timing, exact lead velocity,
+General MIDI programs and CC7 volume. Disabled or zero-volume parts have empty
+note tracks; drums use MIDI channel 10 (zero-based 9). Cents remain in JSON and
+WAV, without pitch bends in MIDI. Both saves use `ScuLaFolder.save` under the
+project's `exports/` folder; filenames include project ID, arrangement ID and
+version. Shared desktop/share/download/cancellation behavior is preserved.
+**Save metadata** includes every arrangement snapshot and control setting;
+rendered WAVs are saved separately and never replace the source WAV.
+
+Arrangement changes use the existing atomic project/audio commit. Quota or
+unavailable-storage failures leave arrangements and source Blobs in memory with
+the persistent recovery warning; metadata, WAV and MIDI can still be exported,
+and **Retry local storage** commits them. No audio is stored in localStorage.
 
 ### Testing
+
+`node tests/song-synthesis.js` verifies the pre-extraction Voice sound/harmony
+fixtures. `node tests/song-arrangement-generation.js` checks version/source
+references, edited expression, timing/tempo/key/harmony, independent controls,
+MIDI notes/programs/CC7, stereo WAV dimensions, proportional volume, mute and
+cancellation without mutating inputs. `/apptest song-arrangement` drives real
+WAV import/extraction and arrangement controls, roll pixels, WAV/MIDI readback,
+versions/reload, invalid inputs, playback lifecycle/errors/cancellation, RO/EN,
+phone layout, storage failure/retry and `file://` without IndexedDB. Master
+exports remain byte-identical (including extra RIFF chunks); source metadata,
+analysis and edited performances remain unchanged.
 
 `node tests/song-analysis.js` checks known pitch/onset/offset/tempo/key, repeated
 notes, detuning, vibrato, measured dynamics, legato, silence/short input, duration

@@ -5,7 +5,7 @@ open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
 |---|---|---|
-| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original WAV, humming extraction, editable melody, local persistence and export. |
+| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original WAV, humming extraction, editable melody and instrumental arrangement versions, local persistence and export. |
 | **Caiet vocal** | `voice.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `index.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`, and a folder of photos and films read through its own metadata — when each was taken, where, and the name hiding in the file name. |
@@ -428,9 +428,17 @@ preview the melody and save MIDI. Metadata keeps the full detected performance
 and your edits; the master WAV stays byte-for-byte unchanged. Analysis accepts
 monophonic humming up to 180 seconds. Imported WAVs retain their original format.
 
+Choose **Create arrangement version** to turn the edited melody into lead,
+chords, bass and drums. Select instruments and independently enable or adjust
+each part's volume. Change arrangement tempo, key and original/quantized timing;
+the arrangement roll shows all four parts. Play/Stop releases audio resources,
+and **Save stereo WAV** / **Save multitrack MIDI** export through the same folder,
+share or download route. Versions retain snapshots, so later melody edits do not
+change an earlier arrangement. Save metadata to back up all versions and settings.
+
 Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
 browser storage removes them. Desktop folder saves use `Song Creation/<project>/`
-with `recordings/` and `samples/`; phones use the existing share/download route
+with `recordings/`, `samples/` and derived `exports/`; phones use the existing share/download route
 with ownership in filenames. Metadata export references the WAVs, without
 embedding audio. Importing exported projects is a future feature. See
 [architecture and testing](docs/FEATURES.md#v-song-creation-songhtml).

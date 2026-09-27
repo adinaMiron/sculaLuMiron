@@ -1,0 +1,64 @@
+{
+  "piano": "4a4da49ace7ac7c47e27b2592f11c9d6159e855eb9be1ca29c81b02a3b16c8f6",
+  "guitar": "2ea51d0d1e4faab1115c3cd64cb6ff4d88af8850ee1bed8cbbf778e05d102875",
+  "harp": "46d7c257313bfed96ca44400b64916827bd353966c8235171f8925056f9b1c9b",
+  "box": "f0b8f63f393f9dd6b276264281b526676700b83cc32513c9caf29ed14e6751f3",
+  "xylo": "d65bfbe4d7d5ce00f71f9b9cd23dae7125461ae0de1cc794c1abf5b52872711f",
+  "violin": "3eef64b47c41194fe10b7872608396e1736cbb7f152d6c27de563f56b4e83d85",
+  "cello": "1a046b051d4050151580743636195247d22a43b1aaec68352d73924e5e036acb",
+  "strings": "9b6c8538ba93bd43b83b268bb4b002abcf72f33bec8c97ffd0f1c33b0320fb04",
+  "flute": "f610182d13851cb24ea25fd946965c7d861d8b1c4bea71e8c9a221a7c8931a1a",
+  "clarinet": "ec5fde132582dec9729777d55e83ce51bd99492c9b0334e0dad09a0c09169413",
+  "trumpet": "1634446264e1be98726098c8986c3f0af7b54516c5d6ec91c4770c08b0a2d526",
+  "organ": "bf57cc5208f865891dae641417569b65baf837587fb2bea2e67510db5f6c5231",
+  "synth": "8ee231ddd4840ab92bfb40b4dd829b3f86eb854cf6523391e4b6fa1a33836058",
+  "bass": "eebba124f043182410a2f550c27847ba1ade1c24faa2a6a0f7c58daa78f2ffbd",
+  "kick": "ca6f4ee3c53226a7bd5508e801fc0f6d54d20c1c6e6c497b98c7f532522020cf",
+  "snare": "2411cb4f4363c2de756a8205d358c446810b1028b0f0518605abc3709ffcd2bf",
+  "hat": "92f8cf5a06e4a4d5097179551e86b018676384df020dd1c878b96413ef4ed6c8",
+  "openHat": "a4ffe73355876c0338d21ad1a5abf2e6f2fb977e656f4b05d1458fb33f2a0410",
+  "mix": "2dde7f3d0dc208b59f8db0f91c9592ccefd68ffe48d681cc067fe885811001c8",
+  "chords": [
+    {
+      "bar": 0,
+      "root": 0,
+      "q": "maj",
+      "tones": [
+        0,
+        4,
+        7
+      ]
+    },
+    {
+      "bar": 1,
+      "root": 5,
+      "q": "maj",
+      "tones": [
+        5,
+        9,
+        0
+      ]
+    },
+    {
+      "bar": 2,
+      "root": 7,
+      "q": "maj",
+      "tones": [
+        7,
+        11,
+        2
+      ]
+    },
+    {
+      "bar": 3,
+      "root": 0,
+      "q": "maj",
+      "tones": [
+        0,
+        4,
+        7
+      ]
+    }
+  ],
+  "midi": "89a732ede903bb78a93030f91c07bd2cebc938b463a70dda96804535e19b1842"
+}

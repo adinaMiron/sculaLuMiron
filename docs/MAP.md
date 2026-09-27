@@ -95,7 +95,7 @@ nothing keeps it in sync automatically.
 
 ---
 
-## voice.html — 3625 lines · "Caiet vocal" (voice dictation)
+## voice.html — ~3262 lines · "Caiet vocal" (voice dictation)
 
 `lang="ro"`. Uses the shared RO/EN i18n pattern described in `docs/I18N.md`.
 
@@ -104,7 +104,7 @@ nothing keeps it in sync automatically.
 | 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the keep-the-sound rows) **137–140**, `.rec-sub` indenting the WAV row under its parent, `.melody-card` and the piano roll **216–232** |
 | 262–1561 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
 | 1563–1798 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
-| 1801–3623 | App script, numbered sections below |
+| ~1802–3260 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
@@ -125,35 +125,31 @@ Script sections (comment banners `/* === N. Title === */`):
 | 2730 | 12. File import |
 | 2744 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
 | **2799** | **14. Melodie** — the recording turned into music (§ below) |
-| 3619 | 15. Init |
+| ~3257 | 15. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#navLangBtn`.
 - `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), `#langChips`.
 
-### The melody (§ 14, 2799–3603)
+### The melody (§ 14, ~2800–3240)
 
 Analysis and synthesis, both hand-rolled, no library and no samples — see
 `docs/FEATURES.md` § P for the why and the shape. Sub-banners inside it:
 
 | Line | Part |
 |---|---|
-| 2824 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
-| 2851 | `SINE` table (16384 entries) |
-| 2855 | Shared analysis import from `ScuLaAnalysis` — implementation in `js/audio/analysis.js` |
+| `js/audio/synthesis.js` | `INSTR` (fourteen models), pickers/note names/scales, sine table, `snapMidi`/`chordsFor`, `fitRange`/`chordVoicing`, additive/Karplus-Strong, drums, mixing/reverb, WAV/MIDI writers; unchanged Voice kernels shared with Song |
+| ~2824 | `ScuLaSynthesis` import; accuracy baseline in `tests/song-synthesis.js` |
+| ~2827 | `ScuLaAnalysis` import — implementation in `js/audio/analysis.js` |
 | `js/audio/analysis.js` | `decodeMono`/`resample`/`normalise`/`decimate2`, YIN `trackPitch`, `segmentNotes`, spectral-flux/tempo/phase, Pearson `detectKey` |
-| 2857 | `snapMidi`, `chordsFor` — Voice arrangement only |
-| 2917 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
-| 3001 | the drum one-shots |
-| 3043 | `place` (where the note release lives), `reverbTail`, `finishMix` |
-| 3113 | `wavBlob` · 3159 `midiBlob` (format 1, a track per part) |
-| 3225 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
-| 3260 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
-| 3365 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
-| 3433 | `drawRoll` — the piano roll |
-| 3500 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
+| ~2830 | `mel` state and `quantise` — Voice's own arrangement controls |
+| ~2862 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
+| ~2897 | `renderAudio` — Voice's lead / chords / bass / drums, cache and normalization |
+| ~3002 | the panel: DOM refs, generated chips, `melSay`/`melButtons`/`melSyncLabels` |
+| ~3070 | `drawRoll` — the piano roll |
+| ~3137 | `melMake`, `melPlay`/`melStop`, two saves and listeners |
 
-`MEL_MAX` (2812) caps the source at 180 s — memory, not taste: the mix is
+`MEL_MAX` (~2813) caps the source at 180 s — memory, not taste: the mix is
 three Float32Arrays of it at 44100.
 
 **Keeping the sound** (`#keepAudio`, off by default, persisted as
@@ -875,9 +871,9 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~1700 lines · Song Creation / Creează melodie
+## song.html — ~1800 lines · Song Creation / Creează melodie
 
-See `docs/FEATURES.md` § V for the authoritative architecture and Phase 2 performance schema.
+See `docs/FEATURES.md` § V for the authoritative architecture, Phase 2 performance and Phase 3 arrangement schemas.
 
 | Locate | Contents |
 |---|---|
@@ -896,4 +892,10 @@ See `docs/FEATURES.md` § V for the authoritative architecture and Phase 2 perfo
 | `previewMelody`, `stopPreview`, `exportMidi` | Synthetic preview lifecycle and ScuLaFolder MIDI export |
 | `js/audio/analysis.js` | Versioned decoding/pitch/onset/beat/key helper shared with Voice |
 | `js/audio/performance.js` | `analyzeBuffer`/`analyze`, raw evidence/expression, editable notes, quantization, WAV validation and MIDI |
-| `tests/song.js`, `tests/song-analysis.js`, `tests/song-performance.js`, `tests/verify.js` | Capture regressions, analysis accuracy, editing/exports/immutable masters and `/verify` |
+| `createArrangement`, `changeArrangement`, `arrangementEditor`, `drawArrangement` | Project-level versions/snapshots, independent parts and instrument/mix/tempo/key/timing controls, piano roll |
+| `arrangementAudio`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
+| `js/audio/synthesis.js` | Versioned Voice/Song instrument, harmony, rendering and export kernels |
+| `js/audio/arrangement.js` | Versioned snapshot/generation/validation, MIDI CC7/part tracks, fixed-headroom stereo mix |
+| `tests/song.js`, `tests/song-analysis.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, editing/exports/immutable masters |
+| `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json` | Pre-extraction Voice accuracy reference; synthesis/harmony/WAV/MIDI regression fixtures |
+| `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
