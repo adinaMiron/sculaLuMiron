@@ -871,18 +871,22 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~1800 lines · Song Creation / Creează melodie
+## song.html — ~1860 lines · Song Creation / Creează melodie
 
-See `docs/FEATURES.md` § V for the authoritative architecture, Phase 2 performance and Phase 3 arrangement schemas.
+See `docs/FEATURES.md` § V for the authoritative architecture, performance/arrangement schemas and staged backup restoration.
 
 | Locate | Contents |
 |---|---|
 | `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
 | `<nav id="site-nav">` (10) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
 | `<main>` (~1310) | Project, microphone/recording, WAV import, sample metadata and take list controls |
+| `#backupHeading`, `#backupJson`, `#backupWavs` (~1320) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
 | `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
 | `openDB`, `read`, `persist`, `blobFor` | `scula-song` projects/audio stores, atomic commits, in-memory failure recovery |
-| `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references and ScuLaFolder exports |
+| `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references, complete WAV SHA-256 hashes and cancelable ScuLaFolder exports |
+| `paintBackup`, `cancelBackup`, `backupSelection`, `validateBackup`, `restoreBackup` (~1482–1518) | Cancelable staging, reserved audio keys, reviewed publication through atomic persistence and in-memory recovery |
+| `js/audio/integrity.js` | `ScuLaIntegrity.sha256`: incremental exact-byte SHA-256, 64 KiB Blob slices, progress and timer-yield cancellation; no Web Crypto or secure-origin dependency |
+| `js/audio/backup.js` | `ScuLaSongBackup` v1: `validate`, `occupied`, `stage`; schema/helper versions, relationships, exact filename matching, WAV/metadata checks, strict integrity metadata, declared digest verification/legacy warnings and consistent entity ID remapping without musical changes |
 | `render`, `clearPlayers` | Recording cards, waveform, playback and object URL cleanup |
 | `constraints`, `openMicrophone`, `listDevices` | Music constraints, stale-device recovery and permission-dependent microphone selection |
 | `makeTap`, `takeBlock`, `start`, `stop`, `cleanup` | Worklet/fallback PCM capture, flush, meter, teardown |
@@ -899,3 +903,5 @@ See `docs/FEATURES.md` § V for the authoritative architecture, Phase 2 performa
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, editing/exports/immutable masters |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json` | Pre-extraction Voice accuracy reference; synthesis/harmony/WAV/MIDI regression fixtures |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
+| `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
+| `tests/song-integrity.js` | Published SHA-256 vectors, Node crypto comparison, padding/read boundaries, exact RIFF/padding bytes and cooperative cancellation |

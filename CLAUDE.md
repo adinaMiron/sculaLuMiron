@@ -4,12 +4,12 @@ Nine standalone browser tools. **No build step, no framework, no package
 manager.** The apps open directly in a browser. `index.html` keeps its CSS and
 markup in the page and loads its editor JavaScript from `js/markdown/`;
 Song keeps its workspace logic inline; Voice and Song share `js/audio/pcm.js` and the versioned `js/audio/analysis.js` and `js/audio/synthesis.js`;
-Song adds `js/audio/performance.js` and `js/audio/arrangement.js`.
+Song adds `js/audio/performance.js`, `js/audio/arrangement.js`, `js/audio/integrity.js` and `js/audio/backup.js` for staged project restoration.
 The other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `song.html` | ~1800 | ~23k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances and instrumental arrangements | dark (earth) |
+| `song.html` | ~1860 | ~24k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, instrumental arrangements and backup restoration | dark (earth) |
 | `voice.html` | ~3262 | ~30k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts and mind maps + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
@@ -105,7 +105,7 @@ block's `SUBDIR` map, so the new page gets its own folder.
 
 - **No build step.** `index.html` loads plain, ordered scripts from
   `js/markdown/` (see its `README.md`); keep them usable from `file://`.
-  Voice and Song also load the plain `js/audio/pcm.js`, `js/audio/analysis.js` and `js/audio/synthesis.js` helpers; Song adds `js/audio/performance.js` and `js/audio/arrangement.js`. Don't introduce a bundler, npm, or a
+  Voice and Song also load the plain `js/audio/pcm.js`, `js/audio/analysis.js` and `js/audio/synthesis.js` helpers; Song adds `js/audio/performance.js`, `js/audio/arrangement.js`, `js/audio/integrity.js` and `js/audio/backup.js`. Don't introduce a bundler, npm, or a
   framework for the apps.
 - **A browser API is not a dependency.** `transfer.html` speaks WebRTC and
   Web Bluetooth, and neither adds a file, a script tag or a server: the
@@ -280,7 +280,7 @@ export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out) and
-Song Creation (`song.js` — source PCM/WAV, projects, persistence, microphone and save routes; `song-analysis.js` and `song-performance.js` — humming accuracy, editable melody, exports and immutable evidence/masters; `song-synthesis.js`, `song-arrangement-generation.js` and `song-arrangement.js` — shared sound fixtures, instrumental arrangement controls/audio/exports/recovery), and
+Song Creation (`song.js` — source PCM/WAV, projects, persistence, microphone and save routes; `song-analysis.js` and `song-performance.js` — humming accuracy, editable melody, exports and immutable evidence/masters; `song-synthesis.js`, `song-arrangement-generation.js` and `song-arrangement.js` — shared sound fixtures, instrumental arrangement controls/audio/exports/recovery; `song-backup-import.js` — staged JSON/WAV restore, validation, collisions, immutable round trips, cancellation, storage recovery, SHA-256 integrity and audio cleanup; `song-integrity.js` — SHA-256 vectors, exact byte hashing and cooperative cancellation), and
 its **melody** (`melody.js` — a hummed C-major phrase at a known tempo fed
 in both ways, through the file picker and through the microphone itself
 with Chromium playing a real WAV into it, then the notes read back out of

@@ -2780,15 +2780,94 @@ filenames include project and recording IDs and purpose. JSON references each
 WAV filename/path and does not embed it. Name components are limited to 60 UTF-8
 bytes, preserving complete Unicode characters, so filenames retain both IDs
 within common filesystem limits. Save WAVs and JSON separately. Exported
-project import/automatic disk mirroring are not implemented in Phase 1.
+project import is described below; automatic disk mirroring is not implemented.
+
+### Restore an exported project
+
+**Restore an exported project** / **Restaurează un proiect exportat** uses two
+ordinary file inputs: select the project JSON and multi-select its source WAVs,
+then **Validate backup**. Desktop and phone browsers need no directory picker.
+The preview lists the project name and the exact WAV filenames that will be
+used; extra selected files are ignored. **Import separate project** publishes
+the validated copy. **Cancel import** discards the staged copy, including while
+file reads are pending. Changing either selection invalidates the preview.
+Validation and cancellation leave existing project metadata and storage intact.
+
+The ordered plain helper `js/audio/backup.js` exposes `ScuLaSongBackup` v1.
+It parses and validates project schema v1, performance schema/analyzer v1 and
+arrangement schema/generator v1 before publication. It checks IDs, timestamps,
+recording/sample metadata, analysis and edited note structure, source relationships,
+version uniqueness, snapshots and generated part references. Phase 1 projects
+without performances and Phase 2 projects without arrangements are accepted;
+the missing optional fields remain missing. Nonempty `derivedAssets` are reserved
+for a future format and rejected, as are unsupported schema/helper versions.
+Historical performance IDs in arrangements remain valid after reanalysis:
+their ownership and snapshots are validated without substituting the current
+performance or regenerating musical content.
+
+Source matching uses `source.filename`, or the basename of `source.relativePath`
+when filename is absent. When both exist they must agree. Names match exactly,
+including case; missing files, duplicate selected names and duplicate manifest
+references are rejected explicitly. WAV RIFF dimensions, supported PCM16/24/32
+or float32 mono/stereo at 8–192 kHz, size, rate, channels, bit depth, encoding and
+duration must agree with the manifest. The original selected File/Blob is retained,
+including extra chunks and padding; no audio decoding, analysis, normalization or
+synthesis runs during restore. New metadata exports declare each complete source
+WAV's digest as `source.integrity: {algorithm: "SHA-256", digest: "<64 hex digits>"}`.
+The two fields are required when integrity is present; no extra format fields are
+accepted. Import accepts upper/lowercase hexadecimal digits, rejects malformed
+metadata and unsupported algorithms/formats, and compares the digest before
+remapping IDs or publishing/writing anything. A mismatch names the affected file
+in RO/EN, including substitutions that preserve filename, size and WAV dimensions.
+Digests never select or substitute a file: exact filename matching still applies.
+Older backups with no integrity field remain accepted. The preview explicitly
+lists every file whose audio integrity cannot be verified cryptographically;
+mixed backups verify the declared digests and warn for the remaining files.
+SHA-256 detects changes relative to the manifest; it is not a signature and cannot
+authenticate a manifest and WAV that were both maliciously replaced.
+Malformed or duplicate fmt/data chunks are rejected by the shared WAV inspector.
+
+Every import receives new project, recording, source asset, performance and
+arrangement IDs, including historical performance provenance IDs. References are
+remapped consistently; note IDs remain local to their performance/snapshot and
+musical values, analysis, snapshots and timestamps stay unchanged. Existing
+metadata, pending audio and stored audio keys (including orphan keys) are reserved
+when allocating IDs. Importing the same backup again creates another independent
+project. Subsequent exports generate filenames with the new IDs through
+`ScuLaFolder.save`.
+
+Publication uses the existing atomic projects/audio transaction. A failed commit
+leaves the imported project and every source WAV in memory, with the persistent
+storage warning, working exports and **Retry local storage**. Playback stops at
+validation/import; source players and object URLs, melody contexts and arrangement
+nodes/contexts are released. Page exit cancels pending staging. WAV inspection
+reads each entire file into memory, one at a time; very large backups may exceed
+device memory.
+
+`js/audio/integrity.js` exposes `ScuLaIntegrity.sha256(blob,{cancelled,progress})`.
+It implements incremental SHA-256 using FIPS 180-4 integer rounds in plain JavaScript,
+with 64 KiB Blob slice reads and a timer yield after each read. Every byte is hashed,
+including the RIFF header, unknown chunks, chunk padding and data padding. Hashing
+uses bounded working memory, reports per-file percentage and checks cancellation
+before/after reads and after yielding. It requires neither Web Crypto, IndexedDB,
+a worker, network access nor a secure origin; it works from `file://`. The same
+implementation is used on all origins to keep cancellation and memory behavior
+consistent. Inspection still performs its existing full-file read before hashing.
+Metadata export recomputes all source hashes without changing stored metadata or
+musical data; missing/unreadable audio prevents an incomplete manifest export.
+It uses the busy state and the same cancellation control (labelled **Cancel SHA-256
+check** while exporting), and saves only the finished JSON through `ScuLaFolder.save`.
+Pending reads cannot be forcibly aborted; cancellation discards their result.
+Progress and errors repaint when RO/EN changes. Page exit cancels pending hashing.
+Keep one editing Song tab, as with other workspace actions.
 
 ### Phase 2: WAV → performance → editable melody
 
 **Import hummed WAV** accepts mono/stereo PCM 16/24/32-bit or IEEE float 32-bit
 WAV at 8–192 kHz. RIFF/fmt/data dimensions are validated. Import stores the
 original file Blob, including extra chunks, encoding and padding; it never
-re-encodes the master. Capture continues to write PCM24. Project JSON import
-is still a future feature.
+re-encodes the master. Capture continues to write PCM24. Project JSON restoration
+uses the separate backup flow above.
 
 Choose **Extract melody** on a humming take. Analysis accepts up to 180 seconds;
 a longer master is retained in full and analysis is refused rather than silently
@@ -2916,6 +2995,21 @@ the persistent recovery warning; metadata, WAV and MIDI can still be exported,
 and **Retry local storage** commits them. No audio is stored in localStorage.
 
 ### Testing
+
+`/apptest song-backup-import` checks real JSON/WAV export/import round trips,
+PCM24/float32 source bytes with extra RIFF chunks and padding, immutable analysis,
+edited performances and historical arrangement snapshots, multiple recordings,
+sample metadata, older formats, reload and repeated import with ID collisions.
+It rejects malformed/versioned/inconsistent metadata, invalid WAVs and
+missing/ambiguous/renamed files without changing existing storage or selection.
+It also covers staged/in-flight cancellation, atomic storage failure, in-memory
+exports, retry/reload, playback/context/node/URL cleanup, RO/EN, phone layout and
+`file://` without Web Crypto or IndexedDB. Integrity cases cover unchanged-size/header
+payload/chunk/padding tampering, malformed/unsupported metadata, legacy/mixed
+warnings, upper-case hex, phone RO/EN progress and import/export hash cancellation.
+`node tests/song-integrity.js` checks published SHA-256 vectors (including a million
+"a" bytes), padding/chunk boundaries, exact WAV bytes against Node crypto, and
+cancellation that yields before the next read. Run alongside all Song, Voice and melody checks.
 
 `node tests/song-synthesis.js` verifies the pre-extraction Voice sound/harmony
 fixtures. `node tests/song-arrangement-generation.js` checks version/source

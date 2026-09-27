@@ -92,8 +92,8 @@ async function inspectWav(blob){
   if(ab.byteLength<44 || tag(0)!=='RIFF' || tag(8)!=='WAVE' || v.getUint32(4,true)+8!==ab.byteLength)throw new Error('badWav');
   let format=null,dataBytes=null;
   for(let o=12;o<ab.byteLength;){if(o+8>ab.byteLength)throw new Error('badWav');const size=v.getUint32(o+4,true),end=o+8+size;if(end+(size%2)>ab.byteLength)throw new Error('badWav');
-    if(tag(o)==='fmt ' && size>=16)format={encoding:v.getUint16(o+8,true),channelCount:v.getUint16(o+10,true),sampleRate:v.getUint32(o+12,true),byteRate:v.getUint32(o+16,true),alignment:v.getUint16(o+20,true),bitDepth:v.getUint16(o+22,true)};
-    if(tag(o)==='data')dataBytes=size;
+    if(tag(o)==='fmt '){if(format || size<16)throw new Error('badWav');format={encoding:v.getUint16(o+8,true),channelCount:v.getUint16(o+10,true),sampleRate:v.getUint32(o+12,true),byteRate:v.getUint32(o+16,true),alignment:v.getUint16(o+20,true),bitDepth:v.getUint16(o+22,true)};}
+    if(tag(o)==='data'){if(dataBytes!==null)throw new Error('badWav');dataBytes=size;}
     o=end+(size%2);
   }
   if(!format || !dataBytes)throw new Error('badWav');

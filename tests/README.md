@@ -200,3 +200,30 @@ including nested `exports/` options. Run these alongside `song-analysis`,
 `song-performance`, `song`, `voice`, `melody` and `node tests/verify.js` when changing
 shared synthesis or arrangements. Real phone audio and long mixes need manual
 verification beyond Chromium emulation; see HANDOFF.md's testing approach.
+
+Backup restoration adds `/apptest song-backup-import`
+(`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-backup-import.js`).
+It drives the shipped `file://` page through ordinary JSON/WAV inputs and staged
+validate/import/cancel controls. It checks real export/import/reload, byte-identical
+PCM24/float32 sources with extra chunks/padding, unchanged source metadata,
+analysis, edited notes and historical arrangement snapshots, multiple recordings,
+sample metadata, older projects and repeated restores with colliding IDs.
+Malformed JSON, unsupported versions, invalid structures/relationships/WAVs,
+missing/ambiguous/renamed files and staged/in-flight cancellation leave the existing
+workspace/storage intact. Audio-store failure aborts the atomic commit but retains
+the whole imported project for export/retry; successful retry survives reload.
+It also checks source playback, melody/arrangement context/node/URL cleanup,
+RO/EN, phone layout, exports through `ScuLaFolder.save` and unavailable IndexedDB
+and Web Crypto. Integrity coverage checks Node-verified exported digests,
+unchanged-size/header tampering in both recordings (payload, extra chunks and
+padding), malformed/unsupported digest metadata, uppercase hex, legacy/mixed
+warnings, and import/export cancellation during sliced hashing without writes or
+partial saves. Phone progress/cancellation and mismatch/legacy messages use RO/EN.
+
+`node tests/song-integrity.js` adds published SHA-256 vectors, the million-byte
+vector, padding and 64 KiB boundaries, exact WAV/chunk/padding hashes compared
+with Node crypto, and cancellation/responsiveness before the next chunk read.
+Run `song-analysis`, `song-synthesis`, `song-arrangement-generation`, `song`,
+`song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
+alongside it. Real-phone audio and long mixes remain unverified beyond Chromium
+emulation.

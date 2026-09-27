@@ -440,5 +440,15 @@ Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
 browser storage removes them. Desktop folder saves use `Song Creation/<project>/`
 with `recordings/`, `samples/` and derived `exports/`; phones use the existing share/download route
 with ownership in filenames. Metadata export references the WAVs, without
-embedding audio. Importing exported projects is a future feature. See
+embedding audio. To restore, select the JSON and all referenced source WAVs in
+**Restore an exported project**, choose **Validate backup**, then **Import separate
+project**. This works on phones without a folder picker; keep the exported WAV
+names. New JSON exports include SHA-256 digests of the complete source WAVs;
+validation rejects changed bytes before import. Older backups still import with
+an explicit warning that their audio integrity cannot be verified cryptographically.
+Hashing reports progress and can be cancelled, including from `file://` without
+Web Crypto. Validation and cancellation leave existing projects intact. Each restore
+creates independent IDs and preserves source bytes, analysis, edits and arrangement
+snapshots. If local storage fails, export the imported files before reloading or
+use **Retry local storage**. See
 [architecture and testing](docs/FEATURES.md#v-song-creation-songhtml).
