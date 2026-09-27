@@ -95,67 +95,65 @@ nothing keeps it in sync automatically.
 
 ---
 
-## voice.html — 3962 lines · "Caiet vocal" (voice dictation)
+## voice.html — 3625 lines · "Caiet vocal" (voice dictation)
 
-`lang="ro"`. **The only app with a working i18n system** — copy its pattern.
+`lang="ro"`. Uses the shared RO/EN i18n pattern described in `docs/I18N.md`.
 
 | Lines | Contents |
 |---|---|
 | 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the keep-the-sound rows) **137–140**, `.rec-sub` indenting the WAV row under its parent, `.melody-card` and the piano roll **216–232** |
 | 262–1561 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
 | 1563–1798 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
-| 1800–3960 | App script, numbered sections below |
+| 1801–3623 | App script, numbered sections below |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1807 | **1. i18n** — `I18N` at 1807, `t()` at 2044 |
-| 2047 | 2. Providers |
-| 2072 | 3. Settings store — `store` at 2075 with memory fallback; `save`/`load` |
-| 2108 | 4. DOM refs |
-| 2139 | 5. Language / engine chips |
-| 2158 | **6. UI language** — `applyUILang()` **2158** (it also calls `melSyncLabels()`) |
-| 2177 | 7. Settings sheet |
-| 2260 | 7b. Help |
-| 2272 | 8. Secure-context check |
-| 2277 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2300–2430** |
-| 2574 | 10. Transcription queue |
-| 2668 | 11. Browser dictation (Web Speech API) |
-| 2729 | 12. File import |
-| 2743 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| **2798** | **14. Melodie** — the recording turned into music (§ below) |
-| 3956 | 15. Init |
+| 1808 | **1. i18n** — `I18N` at 1808, `t()` at 2045 |
+| 2048 | 2. Providers |
+| 2073 | 3. Settings store — `store` at 2076 with memory fallback; `save`/`load` |
+| 2109 | 4. DOM refs |
+| 2140 | 5. Language / engine chips |
+| 2159 | **6. UI language** — `applyUILang()` **2159** (it also calls `melSyncLabels()`) |
+| 2178 | 7. Settings sheet |
+| 2261 | 7b. Help |
+| 2273 | 8. Secure-context check |
+| 2278 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2301–2431** |
+| 2575 | 10. Transcription queue |
+| 2669 | 11. Browser dictation (Web Speech API) |
+| 2730 | 12. File import |
+| 2744 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| **2799** | **14. Melodie** — the recording turned into music (§ below) |
+| 3619 | 15. Init |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#navLangBtn`.
 - `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), `#langChips`.
 
-### The melody (§ 14, 2798–3940)
+### The melody (§ 14, 2799–3603)
 
 Analysis and synthesis, both hand-rolled, no library and no samples — see
 `docs/FEATURES.md` § P for the why and the shape. Sub-banners inside it:
 
 | Line | Part |
 |---|---|
-| 2823 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
-| 2850 | `SINE` table (16384 entries) + `makeFFT` |
-| 2901 | `decodeMono`/`resample`/`decimate2`/`normalise` — blob → mono Float32Array at 22050 |
-| 2962 | `trackPitch` — YIN, 46 ms window / 23 ms hop at 11025 |
-| 3016 | `segmentNotes` — pitch frames → notes (octave repair, median smoothing, ±0.75-semitone hysteresis) |
-| 3091 | `onsetEnvelope`/`detectTempo`/`beatPhase` — spectral flux, then autocorrelation with a log-normal prior around 110 BPM |
-| 3180 | `detectKey` (**Pearson**, not a dot product — see the comment there), `snapMidi`, `chordsFor` |
-| 3254 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
-| 3338 | the drum one-shots |
-| 3380 | `place` (where the note release lives), `reverbTail`, `finishMix` |
-| 3450 | `wavBlob` · 3496 `midiBlob` (format 1, a track per part) |
-| 3562 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
-| 3597 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
-| 3702 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
-| 3770 | `drawRoll` — the piano roll |
-| 3837 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
+| 2824 | `INSTR` — the fourteen instruments, one object each (partials, ADSR, damping, GM program). `LEAD_ORDER`/`CHORD_ORDER` are what the pickers show |
+| 2851 | `SINE` table (16384 entries) |
+| 2855 | Shared analysis import from `ScuLaAnalysis` — implementation in `js/audio/analysis.js` |
+| `js/audio/analysis.js` | `decodeMono`/`resample`/`normalise`/`decimate2`, YIN `trackPitch`, `segmentNotes`, spectral-flux/tempo/phase, Pearson `detectKey` |
+| 2857 | `snapMidi`, `chordsFor` — Voice arrangement only |
+| 2917 | `renderTone` / `renderString` (Karplus-Strong) — one rendered tone per (instrument, pitch) |
+| 3001 | the drum one-shots |
+| 3043 | `place` (where the note release lives), `reverbTail`, `finishMix` |
+| 3113 | `wavBlob` · 3159 `midiBlob` (format 1, a track per part) |
+| 3225 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
+| 3260 | `renderAudio` — lead / chords / bass / drums into one stereo mix |
+| 3365 | the panel: DOM refs, the generated chips, `melSay`/`melButtons`/`melSyncLabels` |
+| 3433 | `drawRoll` — the piano roll |
+| 3500 | `melMake`, `melPlay`/`melStop`, the two saves, the listeners |
 
-`MEL_MAX` (2811) caps the source at 180 s — memory, not taste: the mix is
+`MEL_MAX` (2812) caps the source at 180 s — memory, not taste: the mix is
 three Float32Arrays of it at 44100.
 
 **Keeping the sound** (`#keepAudio`, off by default, persisted as
@@ -877,20 +875,25 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~1570 lines · Song Creation / Creează melodie
+## song.html — ~1700 lines · Song Creation / Creează melodie
 
-See `docs/FEATURES.md` § V for the authoritative architecture and Phase 2 seam.
+See `docs/FEATURES.md` § V for the authoritative architecture and Phase 2 performance schema.
 
 | Locate | Contents |
 |---|---|
 | `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
-| `<nav id="site-nav">` (9) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
-| `<main>` (~1309) | Project, microphone/recording, sample metadata and take list controls |
+| `<nav id="site-nav">` (10) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
+| `<main>` (~1310) | Project, microphone/recording, WAV import, sample metadata and take list controls |
 | `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
 | `openDB`, `read`, `persist`, `blobFor` | `scula-song` projects/audio stores, atomic commits, in-memory failure recovery |
 | `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references and ScuLaFolder exports |
 | `render`, `clearPlayers` | Recording cards, waveform, playback and object URL cleanup |
-| `constraints`, `listDevices` | Music constraints and permission-dependent microphone selection |
+| `constraints`, `openMicrophone`, `listDevices` | Music constraints, stale-device recovery and permission-dependent microphone selection |
 | `makeTap`, `takeBlock`, `start`, `stop`, `cleanup` | Worklet/fallback PCM capture, flush, meter, teardown |
 | `js/audio/pcm.js` | Shared Voice/Song signed PCM24 interleaving and correct WAV header/padding |
-| `tests/song.js`, `tests/verify.js` | Behavioral checks and `/verify` implementation |
+| `importWav`, `analyzeTake` | Unchanged imported WAV masters and derived, versioned performance extraction |
+| `performanceEditor`, `drawMelody`, `saveEdit`, `undoEdit` | Editable note table/roll, original vs quantized timing, persistence and history |
+| `previewMelody`, `stopPreview`, `exportMidi` | Synthetic preview lifecycle and ScuLaFolder MIDI export |
+| `js/audio/analysis.js` | Versioned decoding/pitch/onset/beat/key helper shared with Voice |
+| `js/audio/performance.js` | `analyzeBuffer`/`analyze`, raw evidence/expression, editable notes, quantization, WAV validation and MIDI |
+| `tests/song.js`, `tests/song-analysis.js`, `tests/song-performance.js`, `tests/verify.js` | Capture regressions, analysis accuracy, editing/exports/immutable masters and `/verify` |

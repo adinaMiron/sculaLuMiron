@@ -41,6 +41,7 @@ budget.
   Preserve diacritics ă â î ș ț.
 - `rem` for chrome in `editor.html` (except inside `(pointer:coarse)` blocks).
 - Voice and Song share `js/audio/pcm.js` (24-bit packer/header); preserve both and run `/apptest voice` and `/apptest melody` after touching it. Song architecture: `docs/FEATURES.md` § V.
+- For Song project/capture changes, run `/apptest song`; preserve master WAV bytes through rename/reload, keep failed-storage audio exportable, and retain music constraints when recovering an unavailable microphone. Export names must fit filesystem byte limits while retaining project/recording IDs.
 - Save via `ScuLaFolder.save(name, blob)` — never a hand-rolled `<a download>`.
 - **Touching the `<nav id="site-nav">` block? Apply the identical change to all
   nine files** — it is byte-identical across them.

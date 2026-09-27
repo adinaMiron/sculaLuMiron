@@ -1,13 +1,14 @@
 # THEME.md — unified colour theme
 
-Goal: one shared visual identity across all seven apps, switchable
+Goal: one shared visual identity across all nine apps, switchable
 light/dark, with no build step.
 
-## Current state — all seven migrated
+## Current state — all nine use the earth palette
 
 | File | Mode | Palette | Accent |
 |---|---|---|---|
 | `song.html` | **dark** | earth palette, semantic tokens | olive `#C1BB45` |
+| `kanban.html` | **dark** | earth palette, semantic tokens | olive `#C1BB45` |
 | `voice.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `editor.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
 | `index.html` | **dark** | ✅ migrated to earth palette, semantic names | olive `#C1BB45` |
@@ -16,7 +17,7 @@ light/dark, with no build step.
 | `transfer.html` | **dark** | ✅ born on the earth palette, semantic names | olive `#C1BB45` |
 | `map.html` | **dark** | ✅ born on the earth palette, semantic names (+ the four `--pin-*` place states) | olive `#C1BB45` |
 
-None of the seven files share one `:root` block yet — each still defines
+None of the nine files share one `:root` block yet — each still defines
 its own token set, and the names aren't fully unified (see below). What's
 unified is the *values*: every file now sits on the same earth palette.
 

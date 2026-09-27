@@ -1,5 +1,5 @@
 // /apptest song — real fake-device capture, PCM bytes, project recovery and save routes.
-const fs=require('fs'),path=require('path'),assert=require('assert');
+const fs=require('fs'),path=require('path');
 const {chromium}=require('playwright');
 const http=require('http');
 let URL;
@@ -68,23 +68,31 @@ function wavCheck(b){
  const manifest=await page.evaluate(()=>{const bytes=Object.entries(window.savedFiles).find(([k])=>k.endsWith('.json'))[1];return JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));});check('project manifest references immutable WAV assets',manifest.recordings.every(r=>r.source.filename.includes(r.id) && r.source.relativePath.endsWith(r.source.filename)));
  let confirmOnce=msg=>{check('delete asks confirmation',/Delete/.test(msg.message()));return msg.dismiss();};page.once('dialog',confirmOnce);await page.locator('.take').first().getByRole('button',{name:'Delete',exact:true}).click();check('cancel delete keeps take',await page.locator('.take').count()===2);
  page.once('dialog',d=>d.accept('Renamed hum'));await page.locator('.take').first().getByRole('button',{name:'Rename',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.take h3').textContent==='Renamed hum');
+ await page.evaluate(async()=>{await ScuLaFolder.forget();await ScuLaFolder.setMode('download');});const renamedDownload=page.waitForEvent('download');await page.locator('.take').first().getByRole('button',{name:'Save WAV',exact:true}).click();
+ check('rename and reload preserve master WAV byte for byte',fs.readFileSync(await (await renamedDownload).path()).equals(b));
  page.once('dialog',d=>d.accept());await page.locator('.take').first().getByRole('button',{name:'Delete',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.take').length===1);
  await page.reload();await page.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');check('delete persists without removing other take',await page.locator('.take').count()===1 && (await records(page))[0].recordings[0].name==='Pluck');
  await page.click('#newProject');await page.waitForFunction(()=>document.querySelectorAll('.take').length===0);check('new project retains previous project', (await records(page)).length===2);
  await page.selectOption('#projects',p.id);await page.waitForSelector('.take');check('project switch restores takes',await page.textContent('.take h3')==='Pluck');
  check('no JS errors',errors.length===0,errors.join(' | '));await ctx.close();
  // Mobile layout, share cancellation/fallback, denied APIs, compatibility capture, failed persistence.
- for(const kind of ['mobile','denied','unsupported','fallback','storage']){
+ for(const kind of ['mobile','denied','unsupported','fallback','storage','unplugged','unicode','no-storage','interrupted']){
   const context=await browser.newContext({viewport:{width:412,height:915},isMobile:kind==='mobile',hasTouch:kind==='mobile',acceptDownloads:true}),q=await context.newPage();const err=[];q.on('pageerror',e=>err.push(e.message));
   if(kind==='denied')await q.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('denied','NotAllowedError');};});
   if(kind==='unsupported')await q.addInitScript(()=>{Object.defineProperty(window,'AudioContext',{value:undefined});Object.defineProperty(window,'webkitAudioContext',{value:undefined});});
   // Real file:// exercises Chromium's Blob-module compatibility fallback.
   if(kind==='storage')await q.addInitScript(()=>{const proto=IDBObjectStore.prototype,put=proto.put;window.songOriginalPut=put;proto.put=function(...args){if(this.name==='audio')throw new DOMException('full','QuotaExceededError');return put.apply(this,args);};});
+  if(kind==='unplugged')await q.addInitScript(()=>{localStorage.setItem('scula:song:mic','missing-device');window.micRequests=[];const get=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async request=>{window.micRequests.push(request.audio);if(request.audio.deviceId){const error=new DOMException('Device removed','OverconstrainedError');Object.defineProperty(error,'constraint',{value:'deviceId'});throw error;}return get(request);};});
+  if(kind==='no-storage')await q.addInitScript(()=>{indexedDB.open=()=>{throw new DOMException('Storage unavailable','SecurityError');};});
+  if(kind==='interrupted')await q.addInitScript(()=>{const Original=window.AudioContext;window.AudioContext=class extends Original{constructor(...args){super(...args);window.activeSongContext=this;}};});
   await init(q,kind==='fallback'?'file://'+path.resolve(__dirname,'../song.html'):URL);
   if(kind==='denied'){await q.click('#recordBtn');await q.waitForFunction(()=>/denied/.test(document.querySelector('#status').textContent));check('permission denial is useful and retryable',!await q.isDisabled('#recordBtn'));
   }else if(kind==='unsupported'){check('missing APIs degrade gracefully',await q.isDisabled('#recordBtn') && /HTTPS/.test(await q.textContent('#status')));
   }else{
-   await record(q,'Test '+kind);
+   if(kind==='unicode'){await q.fill('#projectName','🎻'.repeat(30));await q.click('#renameProject');await q.waitForFunction(()=>document.querySelector('#currentProject').textContent==='🎻'.repeat(30));}
+   if(kind==='interrupted'){
+    await q.click('#recordBtn');await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Recording');await q.waitForTimeout(1350);await q.evaluate(()=>window.activeSongContext.suspend());await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');
+   }else await record(q,kind==='unicode'?'🎵'.repeat(30):'Test '+kind);
    if(kind==='mobile'){
     check('mobile layout fits viewport',await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await q.evaluate(()=>{window.shareCalls=0;navigator.canShare=()=>true;navigator.share=async({files})=>{window.shareCalls++;window.sharedName=files[0].name;};});
@@ -92,7 +100,20 @@ function wavCheck(b){
     await q.evaluate(()=>{navigator.share=async()=>{throw new DOMException('cancel','AbortError');};});let downloads=0;q.on('download',()=>downloads++);await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');check('cancelled mobile share does not download',downloads===0);
     await q.evaluate(()=>{navigator.canShare=()=>false;});const dl=q.waitForEvent('download');await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();await dl;check('unsupported mobile file share falls back to download',true);
    }else if(kind==='fallback'){check('file:// ScriptProcessor fallback produces PCM WAV', (await records(q))[0].recordings[0].source.captureBackend==='ScriptProcessor');const dl=q.waitForEvent('download');await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();const d=await dl;wavCheck(fs.readFileSync(await d.path()));}
-   else {check('failed audio transaction keeps take and warns',await q.locator('.take').count()===1 && await q.isVisible('#recovery') && /storage failed/.test(await q.textContent('#status')));check('failed transaction does not publish missing source', (await records(q))[0].recordings.length===0);const dl=q.waitForEvent('download');await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();const d=await dl;wavCheck(fs.readFileSync(await d.path()));await q.evaluate(()=>{IDBObjectStore.prototype.put=window.songOriginalPut;});await q.click('#retry');await q.waitForFunction(()=>document.querySelector('#recovery').hidden);check('retry commits retained WAV and metadata',(await records(q))[0].recordings.length===1);await q.reload();await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');await q.waitForSelector('.take audio[src]');check('recovered recording survives reload',await q.locator('.take').count()===1);}
+   else if(kind==='unplugged'){
+    check('unplugged remembered microphone retries default without speech processing',await q.evaluate(()=>window.micRequests.length===2 && window.micRequests[0].deviceId.exact==='missing-device' && !window.micRequests[1].deviceId && window.micRequests[1].echoCancellation===false && localStorage.getItem('scula:song:mic')===''));
+   }else if(kind==='unicode'){
+    const dl=q.waitForEvent('download');await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();const d=await dl,filename=d.suggestedFilename(),project=(await records(q))[0];
+    check('Unicode filenames fit 255 bytes and retain ownership',Buffer.byteLength(filename)<=255 && filename.includes(project.id) && filename.includes(project.recordings[0].id) && filename.includes('🎻') && filename.includes('🎵'));
+   }else if(kind==='interrupted'){
+    check('interrupted context retains received audio and warns',(await records(q))[0].recordings[0].source.interrupted && /interrupted/.test(await q.textContent('#status')) && await q.evaluate(()=>window.activeSongContext.state==='closed'));
+   }else {
+    check('failed storage keeps take and warns',await q.locator('.take').count()===1 && await q.isVisible('#recovery') && /storage failed/.test(await q.textContent('#status')));
+    if(kind==='storage')check('failed transaction does not publish missing source', (await records(q))[0].recordings.length===0);
+    const dl=q.waitForEvent('download');await q.locator('.take').getByRole('button',{name:'Save WAV',exact:true}).click();const d=await dl;wavCheck(fs.readFileSync(await d.path()));
+    if(kind==='storage'){await q.evaluate(()=>{IDBObjectStore.prototype.put=window.songOriginalPut;});await q.click('#retry');await q.waitForFunction(()=>document.querySelector('#recovery').hidden);check('retry commits retained WAV and metadata',(await records(q))[0].recordings.length===1);await q.reload();await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');await q.waitForSelector('.take audio[src]');check('recovered recording survives reload',await q.locator('.take').count()===1);}
+    else {const dl=q.waitForEvent('download');await q.click('#exportProject');const d=await dl;check('unavailable IndexedDB still allows metadata backup',JSON.parse(fs.readFileSync(await d.path(),'utf8')).recordings.length===1);}
+   }
   }
   check(kind+' no JS errors',err.length===0,err.join(' | '));await context.close();
  }

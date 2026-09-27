@@ -5,6 +5,7 @@
 <style>
 :root{--bg:#14201A;--surface:#1B2A22;--surface-2:#22342A;--border:#2E4739;--text:#F3EEE1;--text-2:#9FB3A5;--accent:#C1BB45;--on-accent:#1A2117;--danger:#C4643C;--ok:#6E9E8A;--radius:.8rem}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem system-ui,sans-serif}main{max-width:64rem;margin:auto;padding:1.5rem 1rem 4rem}h1{margin:0}h2{font-size:1.2rem}p,small{line-height:1.5}small,.hint{color:var(--text-2)}.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-top:1rem}.row{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}label{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:0}input,select,textarea,button{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:.5rem;min-height:2.8rem;padding:.6rem;max-width:100%}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--accent);color:var(--on-accent);font-weight:700}#recordBtn{min-height:4rem;min-width:11rem;font-size:1.2rem}#recordBtn[aria-pressed=true]{background:var(--danger);color:var(--text)}#timer{font:2rem ui-monospace,monospace;min-width:6rem}meter{width:100%;height:1.5rem;accent-color:var(--accent)}#quality{white-space:pre-line;overflow-wrap:anywhere;font-size:.9rem}#status{min-height:1.5rem}#status.error,#recovery{color:var(--danger)}.take{padding:1rem 0;border-top:1px solid var(--border)}.take h3{margin:.3rem 0;overflow-wrap:anywhere}.take audio{width:100%;margin:.6rem 0}.take canvas{width:100%;height:3rem;display:block}.take .row{align-items:center}.badge{color:var(--accent)}[hidden]{display:none!important}@media(max-width:38rem){.grid{grid-template-columns:1fr}main{padding:1rem .75rem 3rem}.panel{padding:.9rem}.row>label{flex-basis:100%}#recordBtn{flex:1}}
+.performance{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.performance h4{margin:0 0 .5rem}.performance .row{margin:.8rem 0}.take canvas.melody-roll{height:11rem;margin:.8rem 0}.note-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0}.note-table{border-collapse:collapse;width:100%;font-size:.9rem}.note-table th,.note-table td{padding:.4rem;text-align:left;border-bottom:1px solid var(--border)}.note-table input{width:6.5rem}.note-table td:nth-child(7){min-width:16rem;color:var(--text-2)}
 </style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
@@ -1326,6 +1327,8 @@
 <label><span data-i="articulation">Articulație</span><input id="articulation" maxlength="120"></label>
 <label><span data-i="dynamic">Dinamică / intensitate</span><input id="dynamic" maxlength="120"></label>
 <label><span data-i="notes">Observații</span><textarea id="notes" maxlength="2000"></textarea></label></div></fieldset>
+<div class="row" style="margin-top:1rem"><label><span data-i="importWav">Importă WAV fredonat</span><input id="importWav" type="file" accept=".wav,audio/wav,audio/x-wav"></label></div>
+<small data-i="importHint">WAV PCM 16/24/32 biți sau float 32 biți, mono/stereo. Fișierul original este păstrat fără modificări.</small>
 <p id="quality" class="hint"></p>
 <label><span data-i="level">Nivel de intrare</span><meter id="level" min="0" max="1" value="0"></meter></label>
 <div class="row" style="margin-top:1rem"><button id="recordBtn" class="primary" data-i="record" aria-pressed="false" disabled>● Înregistrează</button><button id="stopBtn" data-i="stop" disabled>Oprește</button><output id="timer" aria-label="Durată / Duration">00:00</output><span id="recordState" class="badge"></span></div>
@@ -1335,6 +1338,8 @@
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
+<script src="js/audio/analysis.js"></script>
+<script src="js/audio/performance.js"></script>
 <script>
 (function(){
 'use strict';
@@ -1343,6 +1348,8 @@ const I18N = {
 ro:{title:'Creează melodie',intro:'Proiecte muzicale din voce, fredonat și propriile instrumente. Înregistrarea WAV originală rămâne sursa.',project:'Proiect muzical',openProject:'Deschide proiect',newProject:'Proiect nou',projectName:'Numele proiectului',rename:'Redenumește',exportProject:'Salvează metadatele',storageHint:'WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.',retry:'Reîncearcă păstrarea locală',source:'Înregistrare sursă',microphone:'Microfon',defaultMic:'Microfon implicit',enableMic:'Permite / actualizează microfoanele',takeName:'Numele înregistrării',purpose:'Scop',melody:'Melodie / fredonat',sample:'Mostră de instrument',sampleDetails:'Detalii opționale ale mostrei',instrument:'Instrument',note:'Notă (ex. C4 / Do4)',midiNote:'Notă MIDI (0–127)',articulation:'Articulație',dynamic:'Dinamică / intensitate',notes:'Observații',level:'Nivel de intrare',record:'● Înregistrează',stop:'Oprește',recordings:'Înregistrările proiectului',captureHint:'PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.',idle:'Pregătit',loading:'Se încarcă…',requesting:'Se deschide microfonul…',recording:'Se înregistrează',stopping:'Se finalizează WAV…',saving:'Se păstrează…',empty:'Nicio înregistrare încă.',untitled:'Proiect nou',take:'Înregistrare',save:'Salvează WAV',remove:'Șterge',deleteAsk:n=>`Ștergi „${n}” din browser? Copiile exportate rămân.`,renameAsk:'Numele înregistrării:',unsupported:'Înregistrarea necesită getUserMedia și Web Audio. Folosește un browser compatibil pe HTTPS sau localhost.',denied:'Accesul la microfon a fost refuzat. Permite microfonul în setările browserului și reîncearcă.',micError:'Microfonul nu poate fi deschis. Verifică dispozitivul și permisiunile.',storageError:'Păstrarea locală a eșuat. Datele noi rămân doar în această pagină: salvează WAV și metadatele înainte de reîncărcare sau reîncearcă.',recovered:'Datele sunt păstrate local.',missing:'WAV local lipsește. Folosește copia exportată; metadatele rămân disponibile.',short:'Nu au sosit eșantioane audio. Reîncearcă o înregistrare mai lungă.',unknown:'necunoscut',off:'oprit',on:'activ',processing:'Procesare raportată (ecou / zgomot / câștig)',rate:'Rată microfon',wavRate:'Rată WAV',channels:'Canale WAV',backend:'Captură',clip:'Vârf la limita PCM: redu nivelul microfonului pentru următoarea înregistrare.',interrupted:'Captura a fost întreruptă; partea primită a fost păstrată.',badNote:'Nota MIDI trebuie să fie un număr întreg între 0 și 127.',leave:'Înregistrarea sau datele nepăstrate se vor pierde.',fallback:'Compatibilitate ScriptProcessor; pot apărea întreruperi dacă pagina este ocupată.',noDevices:'Selecția microfonului nu este disponibilă.',failed:'Operația a eșuat.',size:'Dimensiune WAV',unverifiedChannels:'Canalele microfonului nu sunt raportate; sunt afișate canalele capturate de Web Audio (mono în modul de compatibilitate).',duration:'Durată'},
 en:{title:'Song Creation',intro:'Music projects from voice, humming and your own instruments. The original WAV recording remains the source.',project:'Song project',openProject:'Open project',newProject:'New project',projectName:'Project name',rename:'Rename',exportProject:'Save metadata',storageHint:'WAV and metadata stay in this browser. Export backup copies; clearing browser data removes them. On phones, each file is shared/downloaded separately.',retry:'Retry local storage',source:'Source recording',microphone:'Microphone',defaultMic:'Default microphone',enableMic:'Allow / refresh microphones',takeName:'Recording name',purpose:'Purpose',melody:'Melody / humming',sample:'Instrument sample',sampleDetails:'Optional sample details',instrument:'Instrument',note:'Note (e.g. C4)',midiNote:'MIDI note (0–127)',articulation:'Articulation',dynamic:'Velocity / dynamics',notes:'Notes',level:'Input level',record:'● Record',stop:'Stop',recordings:'Project recordings',captureHint:'24-bit PCM WAV; microphone target 48 kHz, effective rate shown. No normalization or effects. Use headphones and keep this page open in the foreground while recording.',idle:'Ready',loading:'Loading…',requesting:'Opening microphone…',recording:'Recording',stopping:'Finalizing WAV…',saving:'Storing…',empty:'No recordings yet.',untitled:'New project',take:'Recording',save:'Save WAV',remove:'Delete',deleteAsk:n=>`Delete “${n}” from this browser? Exported copies remain.`,renameAsk:'Recording name:',unsupported:'Recording needs getUserMedia and Web Audio. Use a compatible browser on HTTPS or localhost.',denied:'Microphone access was denied. Allow the microphone in browser settings and try again.',micError:'Cannot open the microphone. Check the device and permissions.',storageError:'Local storage failed. New data remains only in this page: save WAV and metadata before reloading, or retry.',recovered:'Data stored locally.',missing:'Local WAV is missing. Use the exported copy; metadata is still available.',short:'No audio samples arrived. Try a longer recording.',unknown:'unknown',off:'off',on:'on',processing:'Reported processing (echo / noise / gain)',rate:'Microphone rate',wavRate:'WAV rate',channels:'WAV channels',backend:'Capture',clip:'Peak reached the PCM limit: reduce microphone level for the next recording.',interrupted:'Capture was interrupted; the received portion was retained.',badNote:'MIDI note must be an integer between 0 and 127.',leave:'Recording or unstored data will be lost.',fallback:'ScriptProcessor compatibility mode; a busy page may interrupt capture.',noDevices:'Microphone selection is unavailable.',failed:'Operation failed.',size:'WAV size',unverifiedChannels:'Microphone channels are unreported; captured Web Audio channels are shown (mono in compatibility mode).',duration:'Duration'}
 };
+Object.assign(I18N.ro,{"importWav": "Importă WAV fredonat", "importHint": "WAV PCM 16/24/32 biți sau float 32 biți, mono/stereo. Fișierul original este păstrat fără modificări.", "imported": "WAV importat. Extrage melodia din înregistrare.", "badWav": "WAV invalid sau incompatibil. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.", "analyze": "Extrage melodia", "reanalyze": "Reanalizează", "reanalyzeAsk": "Reanalizarea înlocuiește melodia editată. Continui?", "analyzing": "Se analizează înregistrarea…", "analyzed": "Melodie extrasă. Poți edita notele.", "noPitch": "Nu au fost găsite note clare. Poți adăuga note sau folosi o înregistrare mai clară.", "analysisError": "Analiza nu a reușit. Verifică fișierul WAV și suportul Web Audio.", "tooLong": "Analiza acceptă cel mult 180 de secunde. WAV-ul sursă rămâne complet.", "editableMelody": "Melodie editabilă", "melodyHint": "Barele arată notele editabile; linia arată vocea detectată. Timpii sunt în secunde de la începutul WAV-ului. Previzualizarea folosește un ton sintetic. WAV-ul sursă și analiza inițială rămân intacte. MIDI păstrează nota, timpii și intensitatea; JSON păstrează expresia completă.", "noteCount": "note", "detectedInfo": "Estimări pentru voce monofonică; verifică notele și tempo-ul.", "major": "major", "minor": "minor", "roll": "Note editabile și conturul original al vocii", "tempo": "Tempo (BPM)", "grid": "Diviziuni pe bătaie", "timing": "Timpi folosiți", "original": "Originali / editați", "quantized": "Cuantizați", "preview": "Ascultă melodia", "stopPreview": "Oprește melodia", "saveMidi": "Salvează MIDI", "undo": "Anulează", "redo": "Refă", "resetMelody": "Restaurează notele detectate", "resetAsk": "Înlocuiești notele editate cu cele detectate inițial?", "onset": "Început (s)", "offset": "Sfârșit (s)", "cents": "Abatere (cenți)", "velocity": "Intensitate MIDI", "expression": "Expresie detectată", "confidence": "Încredere", "dynamics": "Dinamică", "vibrato": "Vibrato", "legato": "Legato", "attack": "Atac", "release": "Eliberare", "manualNote": "Notă adăugată manual", "addNote": "Adaugă notă", "invalidEdit": "Valori invalide. Sfârșitul trebuie să fie după început; nota și intensitatea MIDI trebuie să fie întregi."});
+Object.assign(I18N.en,{"importWav": "Import hummed WAV", "importHint": "16/24/32-bit PCM or 32-bit float WAV, mono/stereo. The original file is retained unchanged.", "imported": "WAV imported. Extract the melody from the recording.", "badWav": "Invalid or unsupported WAV. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.", "analyze": "Extract melody", "reanalyze": "Analyze again", "reanalyzeAsk": "Analyzing again replaces the edited melody. Continue?", "analyzing": "Analyzing recording…", "analyzed": "Melody extracted. You can edit the notes.", "noPitch": "No clear notes found. Add notes or use a clearer recording.", "analysisError": "Analysis failed. Check the WAV file and Web Audio support.", "tooLong": "Analysis accepts up to 180 seconds. The source WAV remains complete.", "editableMelody": "Editable melody", "melodyHint": "Bars show editable notes; the line shows the detected voice. Times are seconds from the start of the WAV. Preview uses a synthetic tone. The source WAV and initial analysis remain intact. MIDI saves note pitch, timing and velocity; JSON retains the full expression.", "noteCount": "notes", "detectedInfo": "Estimates for a monophonic voice; check the notes and tempo.", "major": "major", "minor": "minor", "roll": "Editable notes and original voice contour", "tempo": "Tempo (BPM)", "grid": "Divisions per beat", "timing": "Timing used", "original": "Original / edited", "quantized": "Quantized", "preview": "Play melody", "stopPreview": "Stop melody", "saveMidi": "Save MIDI", "undo": "Undo", "redo": "Redo", "resetMelody": "Restore detected notes", "resetAsk": "Replace edited notes with the originally detected notes?", "onset": "Onset (s)", "offset": "Offset (s)", "cents": "Deviation (cents)", "velocity": "MIDI velocity", "expression": "Detected expression", "confidence": "Confidence", "dynamics": "Dynamics", "vibrato": "Vibrato", "legato": "Legato", "attack": "Attack", "release": "Release", "manualNote": "Manually added note", "addNote": "Add note", "invalidEdit": "Invalid values. Offset must follow onset; MIDI note and velocity must be integers."});
 const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
 let UI = prefs.get('scula:ui-lang') === 'en' ? 'en' : 'ro';
 const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
@@ -1358,11 +1365,11 @@ function say(k,error=false){statusKey=k; $('status').textContent=t(k);$('status'
 function paintState(){
   $('recordState').textContent=t(state);
   const idle=state==='idle';
-  ['newProject','renameProject','projects','projectName','exportProject','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry'].forEach(k=>$(k).disabled=!idle);
+  ['newProject','renameProject','projects','projectName','exportProject','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry','importWav'].forEach(k=>$(k).disabled=!idle);
   $('recordBtn').disabled=!idle || !supported() || !project;
   $('recordBtn').setAttribute('aria-pressed',String(state==='recording'));
   $('stopBtn').disabled=state!=='recording';
-  document.querySelectorAll('.take button').forEach(b=>b.disabled=!idle);
+  document.querySelectorAll('.take button,.performance input,.performance select').forEach(b=>b.disabled=!idle || b.dataset.empty==='true');
 }
 function setState(s){state=s;paintState();}
 function quality(q){
@@ -1414,7 +1421,14 @@ async function persist(){
 async function blobFor(r){return pendingBlobs.get(r.id) || await read('audio',r.id);}
 function newProject(){const stamp=now();project={schemaVersion:1,id:id(),name:t('untitled'),createdAt:stamp,updatedAt:stamp,recordings:[],derivedAssets:[]};projects.push(project);prefs.set('scula:song:project',project.id);paintProjects();}
 function touch(){project.updatedAt=now();}
-function safeName(s){return String(s).normalize('NFC').replace(/[\\/\x00-\x1f<>:"|?*]/g,'-').replace(/[. ]+$/g,'').trim().slice(0,60) || 'song';}
+function safeName(s){
+  const clean=String(s).normalize('NFC').replace(/[\\/\x00-\x1f<>:"|?*]/g,'-').trim();
+  // Budget bytes rather than UTF-16 characters: two names plus immutable IDs
+  // must fit the common 255-byte filesystem component limit, including Unicode.
+  let name='',bytes=0;const encoder=new TextEncoder();
+  for(const character of clean){const size=encoder.encode(character).length;if(bytes+size>60)break;name+=character;bytes+=size;}
+  return name.replace(/[. ]+$/g,'') || 'song';
+}
 function projectStem(){return safeName(project.name)+'-'+project.id;}
 function takeFilename(r){return projectStem()+'-'+(r.purpose==='sample'?'sample':'melody')+'-'+safeName(r.name)+'-'+r.id+'.wav';}
 async function exportTake(r){
@@ -1436,20 +1450,119 @@ async function render(){
   for(const r of project.recordings){
     const card=document.createElement('article');card.className='take';card.dataset.id=r.id;
     const title=document.createElement('h3');title.textContent=r.name;
-    const info=document.createElement('small');info.textContent=`${t(r.purpose==='sample'?'sample':'melody')} · ${r.duration.toFixed(2)} s · ${r.sampleRate} Hz · ${r.channelCount} ch · PCM 24 bit · ${(r.source.size/1048576).toFixed(2)} MiB`;
+    const info=document.createElement('small');info.textContent=`${t(r.purpose==='sample'?'sample':'melody')} · ${r.duration.toFixed(2)} s · ${r.sampleRate} Hz · ${r.channelCount} ch · ${r.source.encoding===3?'float':'PCM'} ${r.bitDepth} bit · ${(r.source.size/1048576).toFixed(2)} MiB`;
     card.append(title,info);
     if(r.sample){const meta=document.createElement('p');meta.textContent=Object.entries(r.sample).filter(([,v])=>v!=='' && v!==null).map(([k,v])=>t(k)+': '+v).join(' · ');card.append(meta);}
     const canvas=document.createElement('canvas');canvas.width=600;canvas.height=48;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',r.name);const ctx=canvas.getContext('2d');ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');(r.waveform || []).forEach((v,i,a)=>ctx.fillRect(i*600/a.length,24-v*23,Math.max(1,600/a.length),Math.max(1,v*46)));card.append(canvas);
     const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.setAttribute('aria-label',r.name);card.append(audio);
-    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));card.append(row);host.append(card);
+    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));if(r.purpose==='melody')row.append(button(r.performance?'reanalyze':'analyze',()=>analyzeTake(r)));card.append(row);if(r.performance)card.append(performanceEditor(r));host.append(card);
     const blob=await blobFor(r).catch(()=>null);if(gen!==generation)return;
     if(blob){const url=URL.createObjectURL(blob);urls.add(url);audio.src=url;}else{audio.hidden=true;const warning=document.createElement('p');warning.textContent=t('missing');card.append(warning);}
   }
   paintState();
 }
-async function run(action){if(state!=='idle')return;setState('saving');try{await action();}catch(_){say('failed',true);}finally{setState('idle');}}
+async function run(action){if(state!=='idle')return;stopPreview();setState('saving');try{await action();}catch(_){say('failed',true);}finally{setState('idle');}}
+/* A performance is derived metadata. No edit path replaces its source Blob. */
+const P=window.ScuLaPerformance, histories=new Map();
+let preview=null;
+function stopPreview(){if(!preview)return;const p=preview;preview=null;clearTimeout(p.timer);p.ctx.close().catch(()=>{});}
+function snapshot(p){return P.copy({notes:p.notes,tempoBpm:p.tempoBpm,timingMode:p.timingMode,quantizationDivision:p.quantizationDivision});}
+function history(r){if(!histories.has(r.id))histories.set(r.id,{undo:[],redo:[]});return histories.get(r.id);}
+function remember(r){const h=history(r);h.undo.push(snapshot(r.performance));if(h.undo.length>40)h.undo.shift();h.redo=[];}
+async function saveEdit(r){r.performance.updatedAt=now();touch();await persist();await render();}
+async function undoEdit(r,redo){const h=history(r),from=redo?h.redo:h.undo,to=redo?h.undo:h.redo;if(!from.length)return;to.push(snapshot(r.performance));Object.assign(r.performance,from.pop());await saveEdit(r);}
+async function analyzeTake(r){
+  if(r.performance && !confirm(t('reanalyzeAsk')))return;
+  const blob=await blobFor(r).catch(()=>null);if(!blob){say('missing',true);return;}
+  if(r.duration>P.MAX_SECONDS){say('tooLong',true);return;}
+  stopPreview();setState('analyzing');say('analyzing');
+  try{
+    const performance=await P.analyze(blob,r.source.assetId,f=>{$('status').textContent=t('analyzing')+' '+Math.round(f*100)+'%';});
+    const stamp=now();r.performance={...performance,id:id(),createdAt:stamp,updatedAt:stamp};histories.delete(r.id);touch();
+    if(await persist())say(performance.notes.length?'analyzed':'noPitch');await render();
+  }catch(e){say(e.message==='tooLong'?'tooLong':'analysisError',true);}
+}
+async function importWav(file){
+  try{
+    const meta=await P.inspectWav(file),recId=id();
+    // Imported masters keep their original encoding, header and metadata chunks.
+    const r={id:recId,name:file.name.replace(/\.wav$/i,'').slice(0,120)||t('take'),createdAt:now(),duration:meta.duration,mimeType:'audio/wav',sampleRate:meta.sampleRate,channelCount:meta.channelCount,bitDepth:meta.bitDepth,purpose:'melody',source:{assetId:recId,immutable:true,size:file.size,captureBackend:'WAV import',encoding:meta.encoding,originalFilename:file.name,inputSettings:{}},waveform:[],derivedAssets:[],performance:null};
+    project.recordings.push(r);pendingBlobs.set(recId,file);touch();if(await persist())say('imported');await render();
+  }catch(_){say('badWav',true);}
+}
+function noteName(midi){const names=UI==='ro'?['Do','Do♯','Re','Mi♭','Mi','Fa','Fa♯','Sol','La♭','La','Si♭','Si']:['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];return names[midi%12]+(Math.floor(midi/12)-1);}
+async function previewMelody(r){
+  stopPreview();const p=r.performance;if(!p.notes.length){say('noPitch');return;}
+  if(!AC){say('analysisError',true);return;}
+  const ctx=new AC();preview={ctx,timer:null};
+  try{
+    await ctx.resume();if(ctx.state!=='running')throw new Error('suspended');
+    const base=ctx.currentTime+.06;let end=0;
+    for(const n of p.notes){const timing=P.timing(p,n),start=base+timing.onset,stop=base+timing.offset,osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='triangle';osc.frequency.value=440*2**((n.midi-69+n.cents/100)/12);gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(n.velocity/127*.18,Math.min(stop,start+.015));gain.gain.setValueAtTime(n.velocity/127*.18,Math.max(start,stop-.03));gain.gain.linearRampToValueAtTime(0,stop);osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(stop+.01);end=Math.max(end,timing.offset);}
+    preview.timer=setTimeout(stopPreview,(end+.2)*1000);
+  }catch(e){stopPreview();throw e;}
+}
+async function exportMidi(r){const result=await ScuLaFolder.save(projectStem()+'-melody-'+r.id+'.mid',P.midi(r.performance),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';}
+function drawMelody(canvas,p){
+  const ctx=canvas.getContext('2d'),style=getComputedStyle(document.documentElement),color=k=>style.getPropertyValue(k).trim();
+  const pitches=p.notes.map(n=>n.midi).concat(p.analysis.detectedNotes.map(n=>n.midi));
+  const lo=Math.min(48,...pitches)-2,hi=Math.max(72,...pitches)+2,span=hi-lo+1;
+  const duration=Math.max(.1,p.duration,...p.notes.map(n=>P.timing(p,n).offset));
+  const x=t=>t/duration*canvas.width,y=m=>(hi-m)/span*canvas.height;
+  ctx.fillStyle=color('--surface-2');ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle=color('--border');ctx.lineWidth=1;
+  for(let m=lo;m<=hi;m++){ctx.beginPath();ctx.moveTo(0,y(m));ctx.lineTo(canvas.width,y(m));ctx.stroke();}
+  ctx.fillStyle=color('--accent');
+  for(const n of p.notes){const timing=P.timing(p,n);ctx.fillRect(x(timing.onset),y(n.midi)-canvas.height/span*.4,Math.max(2,x(timing.offset-timing.onset)),canvas.height/span*.8);}
+  ctx.strokeStyle=color('--text-2');ctx.lineWidth=1.5;ctx.beginPath();let pen=false;
+  for(const f of p.analysis.rawPitchFrames){if(f.midi===null || f.confidence<.62){pen=false;continue;}if(pen)ctx.lineTo(x(f.time),y(f.midi));else ctx.moveTo(x(f.time),y(f.midi));pen=true;}ctx.stroke();
+}
+function numericInput(value,min,max,step,label){const input=document.createElement('input');input.type='number';input.value=String(value);input.min=min;input.max=max;input.step=step;input.setAttribute('aria-label',label);return input;}
+function performanceEditor(r){
+  const p=r.performance,section=document.createElement('section');section.className='performance';section.setAttribute('aria-label',t('editableMelody'));
+  const heading=document.createElement('h4');heading.textContent=t('editableMelody');section.append(heading);
+  const hint=document.createElement('small');hint.textContent=t('melodyHint');section.append(hint);
+  const summary=document.createElement('p');summary.textContent=`${p.notes.length} ${t('noteCount')} · ${p.tempoBpm} BPM · ${noteName(p.analysis.key.tonic+60).replace(/-?\d+$/,'')} ${t(p.analysis.key.mode)} · ${t('detectedInfo')}`;section.append(summary);
+  const roll=document.createElement('canvas');roll.className='melody-roll';roll.width=900;roll.height=180;roll.setAttribute('role','img');roll.setAttribute('aria-label',t('roll'));drawMelody(roll,p);section.append(roll);
+  const controls=document.createElement('div');controls.className='row';
+  const label=(key,input)=>{const el=document.createElement('label'),span=document.createElement('span');span.textContent=t(key);el.append(span,input);return el;};
+  const tempo=numericInput(p.tempoBpm,40,220,1,t('tempo')),grid=document.createElement('select'),mode=document.createElement('select');
+  [1,2,4,8].forEach(n=>grid.add(new Option('1/'+n,n)));grid.value=p.quantizationDivision;grid.setAttribute('aria-label',t('grid'));
+  ['original','quantized'].forEach(k=>mode.add(new Option(t(k),k)));mode.value=p.timingMode;mode.setAttribute('aria-label',t('timing'));
+  function settings(){const bpm=Number(tempo.value);if(!tempo.checkValidity() || !Number.isInteger(bpm)){say('invalidEdit',true);render();return;}remember(r);p.tempoBpm=bpm;p.quantizationDivision=Number(grid.value);p.timingMode=mode.value;P.quantize(p);return saveEdit(r);}
+  [tempo,grid,mode].forEach(el=>el.onchange=()=>run(settings));
+  controls.append(label('tempo',tempo),label('grid',grid),label('timing',mode));section.append(controls);
+  const actions=document.createElement('div');actions.className='row';
+  actions.append(button('preview',()=>previewMelody(r)),button('stopPreview',stopPreview),button('saveMidi',()=>exportMidi(r)),button('undo',()=>undoEdit(r,false)),button('redo',()=>undoEdit(r,true)),button('resetMelody',async()=>{if(!confirm(t('resetAsk')))return;remember(r);p.notes=P.editable(p.analysis.detectedNotes);if(p.timingMode==='quantized')P.quantize(p);await saveEdit(r);}));
+  actions.children[3].dataset.empty=String(!history(r).undo.length);actions.children[4].dataset.empty=String(!history(r).redo.length);section.append(actions);
+  const wrap=document.createElement('div');wrap.className='note-scroll';const table=document.createElement('table');table.className='note-table';const head=document.createElement('thead'),headRow=document.createElement('tr');
+  ['note','midiNote','onset','offset','cents','velocity','expression','remove'].forEach(k=>{const th=document.createElement('th');th.scope='col';th.textContent=t(k);headRow.append(th);});head.append(headRow);table.append(head);
+  const body=document.createElement('tbody');
+  for(const n of p.notes){const row=document.createElement('tr');row.dataset.noteId=n.id;const name=document.createElement('td');name.textContent=noteName(n.midi);row.append(name);
+    const specs=[['midi',0,127,1,'midiNote'],['onset',0,P.MAX_SECONDS,.001,'onset'],['offset',0,P.MAX_SECONDS,.001,'offset'],['cents',-100,100,.1,'cents'],['velocity',1,127,1,'velocity']];
+    for(const [key,min,max,step,caption] of specs){const cell=document.createElement('td'),input=numericInput(Number(n[key].toFixed(3)),min,max,step,t(caption)+' '+noteName(n.midi));input.dataset.field=key;input.onchange=()=>{const value=Number(input.value);run(async()=>{if(!input.value || !input.checkValidity() || !Number.isFinite(value) || key==='onset' && value>=n.offset || key==='offset' && value<=n.onset){say('invalidEdit',true);await render();return;}remember(r);n[key]=value;if(p.timingMode==='quantized' || n.quantizedTiming)P.quantize(p);await saveEdit(r);});};cell.append(input);row.append(cell);}
+    const expression=document.createElement('td'),detected=p.analysis.detectedNotes.find(d=>d.id===n.sourceNoteId);
+    expression.textContent=detected?`${t('confidence')}: ${Math.round(detected.confidence*100)}% · ${t('dynamics')}: ${detected.dynamics.rms.toFixed(3)} RMS · ${t('vibrato')}: ${detected.vibrato.rateHz===null?'—':detected.vibrato.rateHz.toFixed(1)+' Hz'} / ${detected.vibrato.depthCents.toFixed(1)} ¢ · ${t('legato')}: ${t(detected.legato?'on':'off')} · ${t('attack')}/${t('release')}: ${detected.attackSeconds.toFixed(3)}/${detected.releaseSeconds.toFixed(3)} s`:t('manualNote');row.append(expression);
+    const remove=document.createElement('td');remove.append(button('remove',async()=>{remember(r);p.notes=p.notes.filter(note=>note.id!==n.id);await saveEdit(r);}));row.append(remove);body.append(row);
+  }
+  table.append(body);wrap.append(table);section.append(wrap);
+  section.append(button('addNote',async()=>{remember(r);const onset=Math.min(P.MAX_SECONDS-.25,Math.max(0,...p.notes.map(n=>n.offset)));p.notes.push({id:id(),sourceNoteId:null,midi:60,onset,offset:onset+.25,cents:0,velocity:90,quantizedTiming:null});if(p.timingMode==='quantized')P.quantize(p);await saveEdit(r);}));
+  return section;
+}
+
 /* Preferred music constraints; getSettings below reports what was granted. */
-function constraints(){const device=$('microphone').value || prefs.get('scula:song:mic') || '';return {audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2},...(device?{deviceId:{exact:device}}:{})}};}
+function constraints(device=$('microphone').value || prefs.get('scula:song:mic') || ''){return {audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2},...(device?{deviceId:{exact:device}}:{})}};}
+async function openMicrophone(){
+  const request=constraints();
+  try{return await navigator.mediaDevices.getUserMedia(request);}
+  catch(e){
+    // Device IDs can expire or refer to an unplugged microphone. Permission
+    // denial and unrelated capture failures must still reach the normal error UI.
+    if(!request.audio.deviceId || !(e.name==='NotFoundError' || (e.name==='OverconstrainedError' && e.constraint==='deviceId')))throw e;
+    const stream=await navigator.mediaDevices.getUserMedia(constraints(''));
+    prefs.set('scula:song:mic','');$('microphone').value='';return stream;
+  }
+}
 async function listDevices(){
   if(!navigator.mediaDevices.enumerateDevices){say('noDevices');return;}
   const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
@@ -1458,7 +1571,7 @@ async function listDevices(){
   if(devices.some(d=>d.deviceId===chosen))$('microphone').value=chosen;
 }
 function micFailure(e){say(e && ['NotAllowedError','SecurityError'].includes(e.name)?'denied':'micError',true);}
-$('enableMic').onclick=()=>run(async()=>{if(!supported()){say('unsupported',true);return;}let stream;try{stream=await navigator.mediaDevices.getUserMedia(constraints());await listDevices();}catch(e){micFailure(e);}finally{if(stream)stream.getTracks().forEach(t=>t.stop());}});
+$('enableMic').onclick=()=>run(async()=>{if(!supported()){say('unsupported',true);return;}let stream;try{stream=await openMicrophone();await listDevices();}catch(e){micFailure(e);}finally{if(stream)stream.getTracks().forEach(t=>t.stop());}});
 $('microphone').onchange=()=>prefs.set('scula:song:mic',$('microphone').value);
 $('purpose').onchange=()=>{$('sampleFields').hidden=$('purpose').value!=='sample';};
 /* Worklet packs and transfers 4096-frame blocks off the UI thread, including
@@ -1519,7 +1632,7 @@ async function start(){
   if(c.purpose==='sample')c.sample=Object.fromEntries(['instrument','note','midiNote','articulation','dynamic','notes'].map(k=>[k,k==='midiNote'?(midi===''?null:+midi):$(k).value.trim()]));
   capture=c;
   try{
-    c.stream=await navigator.mediaDevices.getUserMedia(constraints());
+    c.stream=await openMicrophone();
     const track=c.stream.getAudioTracks()[0];c.settings=track.getSettings?track.getSettings():{};c.label=track.label;
     c.ch=c.settings.channelCount===2?2:1;
     try{c.ctx=new AC(c.settings.sampleRate?{sampleRate:c.settings.sampleRate}:{});}catch(_){c.ctx=new AC();}
@@ -1550,14 +1663,15 @@ async function stop(){
   lastQuality={...lastQuality,size:blob.size,duration};quality(lastQuality);$('timer').textContent=time(duration);
   const ok=await persist();setState('idle');if(ok)say(c.interrupted?'interrupted':c.peak>=1?'clip':'recovered',c.peak>=1);await render();
 }
-$('recordBtn').onclick=start;$('stopBtn').onclick=stop;
+$('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
+$('recordBtn').onclick=()=>{stopPreview();start();};$('stopBtn').onclick=stop;
 $('newProject').onclick=()=>run(async()=>{newProject();await persist();await render();});
 $('projects').onchange=()=>run(async()=>{project=projects.find(p=>p.id===$('projects').value);prefs.set('scula:song:project',project.id);paintProjects();await render();});
 $('renameProject').onclick=()=>run(async()=>{const name=$('projectName').value.trim();if(name){project.name=name.slice(0,120);touch();await persist();}});
 $('exportProject').onclick=()=>run(exportMetadata);
 $('retry').onclick=()=>run(async()=>{if(await persist())say('recovered');});
-window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
-window.addEventListener('pagehide',()=>{clearPlayers();if(capture)cleanup(capture);});
+window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping','analyzing'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
+window.addEventListener('pagehide',()=>{stopPreview();clearPlayers();if(capture)cleanup(capture);});
 async function init(){
   applyUILang();
   try{db=await openDB();projects=await read('projects');}catch(_){dirty=true;}

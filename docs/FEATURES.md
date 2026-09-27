@@ -2708,9 +2708,9 @@ browser under Xvfb. Run scripts with `/apptest <name>`.
 
 ## V. Song Creation (`song.html`)
 
-**Creează melodie / Song Creation** is the ninth standalone page. Phase 1 is a
-song workspace with multiple authoritative source recordings, not transcription
-or a second melody editor. Projects can be created, opened and renamed; takes
+**Creează melodie / Song Creation** is the ninth standalone page. The workspace
+keeps multiple authoritative source recordings; Phase 2 derives an editable
+melody from a recorded or imported hummed WAV. Projects can be created, opened and renamed; takes
 can be played, renamed, deleted with confirmation and exported. Purposes are
 `melody` (humming) and `sample`; sample metadata includes instrument, note,
 optional MIDI note, articulation, dynamics and free notes.
@@ -2721,7 +2721,10 @@ One `getUserMedia` stream requests `sampleRate:{ideal:48000}`, stereo if availab
 and echo cancellation, noise suppression and AGC off. A device ID can be selected
 after permission; its small preference is remembered locally. `getSettings()`
 reports actual values separately from the WAV rate; unknown settings are shown
-as unknown. The worklet retains the actual one/two channels arriving in Web Audio;
+as unknown. An expired/unplugged remembered device retries the default microphone
+with the same music constraints and clears the stale preference; the actual
+microphone is reported. Permission denial is never retried automatically.
+The worklet retains the actual one/two channels arriving in Web Audio;
 ScriptProcessor uses the reported one/two channels, defaulting to mono when
 unreported. Unknown settings are disclosed. Stereo content cannot be
 verified as independent microphones. No stereo is manufactured from mono.
@@ -2737,7 +2740,7 @@ open in the foreground; background/mobile suspension is not reliable. A screen
 wake lock is requested when available. Suspended contexts/ended tracks stop and
 retain received audio, marked interrupted.
 
-Masters are **24-bit signed little-endian integer PCM WAV**, with correct RIFF,
+Captured masters are **24-bit signed little-endian integer PCM WAV**, with correct RIFF,
 fmt/data lengths, channel interleaving, sample rate, block alignment and odd-byte
 padding. This encoding does not assert microphone hardware bit depth. No
 MediaRecorder/compressed intermediate, normalization, denoising, trimming, pitch
@@ -2766,38 +2769,91 @@ All exports call `ScuLaFolder.save`. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
 same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
 `Song Creation/<safe-project-name>-<id>/recordings/` or `samples/`. Project JSON
-is in the project folder; `exports/` is reserved for future rendered assets.
+is in the project folder; `exports/` holds melody MIDI exports and is available for future rendered assets.
 Nothing is overwritten. Mobile share/download cannot enforce nested folders;
 filenames include project and recording IDs and purpose. JSON references each
-WAV filename/path and does not embed it. Save WAVs and JSON separately. Exported
+WAV filename/path and does not embed it. Name components are limited to 60 UTF-8
+bytes, preserving complete Unicode characters, so filenames retain both IDs
+within common filesystem limits. Save WAVs and JSON separately. Exported
 project import/automatic disk mirroring are not implemented in Phase 1.
 
-### Phase 2 seam
+### Phase 2: WAV → performance → editable melody
 
-`SongRecording.source.assetId` resolves the immutable WAV; derived assets and a
-nullable `performance` field are separate. Project/recording IDs, timestamps,
-duration, rate, channels, MIME, purpose and sample metadata survive refresh.
-Phase 2 should introduce a versioned `MusicalPerformance` with raw pitch contour,
-onset/offset/confidence, cents deviation, dynamics, vibrato, legato and attack/
-release, keeping original timing and quantized timing separate. MIDI is an
-export, never canonical. Derived harmony/arrangement/rendered sample instruments
-can reference the performance and master by IDs; no SFZ or sample library is
-bundled now.
+**Import hummed WAV** accepts mono/stereo PCM 16/24/32-bit or IEEE float 32-bit
+WAV at 8–192 kHz. RIFF/fmt/data dimensions are validated. Import stores the
+original file Blob, including extra chunks, encoding and padding; it never
+re-encodes the master. Capture continues to write PCM24. Project JSON import
+is still a future feature.
 
-The precise Voice analysis seam is `melSetSource(blob,kind)` →
-`decodeMono(blob,AN_SR)` → `normalise`/`decimate2` → `trackPitch` → `segmentNotes`,
-plus `onsetEnvelope`/`detectTempo`/`beatPhase` and `detectKey` (§ P). Extract these
-into plain versioned analysis helpers in Phase 2, preserving **raw pitch frames
-and original note timing before** `buildScore` snaps/quantizes. Decoding,
-mono conversion and normalization must operate on a derived analysis buffer,
-never on the Song master. Add accuracy fixtures before sharing the analyzer.
+Choose **Extract melody** on a humming take. Analysis accepts up to 180 seconds;
+a longer master is retained in full and analysis is refused rather than silently
+trimmed. Silence produces an empty performance that still supports manual notes.
+Analysis errors leave the source and any existing performance available.
+**Analyze again** asks before replacing edited notes.
+
+`js/audio/analysis.js` exposes frozen `ScuLaAnalysis` v1 as a plain script,
+shared with Voice. It extracts the existing `decodeMono`, resampling,
+normalization/decimation, YIN `trackPitch`, `segmentNotes`, spectral-flux
+`onsetEnvelope`, tempo/phase and key helpers. Voice's arrangement and rendering
+remain in its page; its analysis behavior stays the same. Accuracy fixtures in
+`tests/song-analysis.js` were added and run before switching Voice to the helper.
+Decoding, mono mixing, resampling and normalization use a derived buffer.
+
+`js/audio/performance.js` exposes `ScuLaPerformance` v1. Each recording's
+`performance` becomes a `MusicalPerformance` with `schemaVersion:1`, its own
+ID/timestamps, `analyzerVersion` and `sourceAssetId` referencing the immutable
+`SongRecording.source.assetId`. Its `analysis` retains:
+
+- Raw pitch frames: time, Hz, fractional MIDI, cents, periodicity confidence,
+  and measured RMS before normalization; unvoiced pitch is `null`.
+- Spectral-flux envelope, onset peaks, window/hop sizes, detected tempo/phase
+  and key. Detected attacks can split repeated pitches when amplitude rises.
+- Detected notes with original onset/offset, MIDI pitch, cents deviation,
+  confidence, relative MIDI velocity, measured dynamics, vibrato rate/depth/
+  confidence, inferred legato and attack/release durations.
+
+These are estimates for a monophonic voice, not polyphonic transcription.
+Vibrato and articulation estimates depend on note length and signal clarity.
+`analysis.detectedNotes` and `analysis.rawPitchFrames` stay unchanged during
+editing. Separate `notes` link back through `sourceNoteId`; manually added notes
+use `null`. Onset/offset remain seconds from the WAV start, including leading
+silence. `quantizedTiming` stores snapped times separately; selecting
+**Original / edited** or **Quantized** determines playback/export timing.
+Tempo and divisions per beat are editable without changing detected evidence.
+
+The roll overlays the raw voice contour on the editable notes. The table edits
+MIDI pitch, onset/offset, cents and velocity, shows detected expression, and
+supports adding/deleting notes. Undo/redo keeps up to 40 in-session edit states;
+**Restore detected notes** asks before replacement and can itself be undone.
+Edits persist with project metadata, using the existing atomic storage/recovery
+path; failed commits keep edits and master exportable and can be retried.
+
+**Play melody** previews a synthetic triangle tone with edited cents and
+velocity; **Stop melody**, recording, another action and page exit release it.
+**Save MIDI** uses `ScuLaFolder.save` beneath the project's `exports/` folder.
+It exports integer pitch, selected timing and velocity as format 0 MIDI;
+continuous pitch, cents and expression remain in the canonical performance JSON,
+not in MIDI. **Save metadata** includes the complete performance and source
+references. No analyzer, edit, preview or MIDI export writes the master WAV.
+Derived assets and future harmony/arrangements can reference both IDs.
 
 ### Testing
+
+`node tests/song-analysis.js` checks known pitch/onset/offset/tempo/key, repeated
+notes, detuning, vibrato, measured dynamics, legato, silence/short input, duration
+limits and immutable evidence. `/apptest song-performance` drives WAV import
+(including extra RIFF chunks), extraction through the real decoder and microphone,
+editing/undo/redo/reset, quantization, preview/MIDI/JSON, reload, RO/EN and phone
+layout, invalid input and storage recovery. It checks master bytes after edits
+and reload and analysis/exports from `file://` without IndexedDB; failed decoding leaves
+an existing performance untouched.
 
 `/apptest song` covers actual fake-device PCM, WAV binary dimensions and Web Audio
 decoding/playback, project persistence, sample details, deletion, permission/error
 paths, fallback capture, desktop folder and mobile share/download behavior,
-storage failures and navigation synchronization. `/apptest voice` and
+storage failures (including unavailable IndexedDB), unplugged microphone recovery,
+Unicode filename limits, interrupted capture, unchanged master bytes after rename
+and reload, and navigation synchronization. `/apptest voice` and
 `/apptest melody` cover existing behavior. `/verify` parses all nine pages and
 shared scripts, diffs navigation and checks diacritics. Real phone/hardware and
 long recording behavior need manual testing beyond Chromium emulation.

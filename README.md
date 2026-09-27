@@ -5,7 +5,7 @@ open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
 |---|---|---|
-| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original 24-bit PCM WAV, local persistence and export. |
+| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original WAV, humming extraction, editable melody, local persistence and export. |
 | **Caiet vocal** | `voice.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `index.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`, and a folder of photos and films read through its own metadata — when each was taken, where, and the name hiding in the file name. |
@@ -413,10 +413,20 @@ record a named **Melody / humming** or **Instrument sample** take. Sample detail
 are optional. Stop to retain the original WAV; play, rename, delete or save each
 take from the project list. Save metadata separately with **Save metadata**.
 
-Source WAVs are genuine 24-bit PCM, at the Web Audio capture rate shown on screen.
+Captured source WAVs are genuine 24-bit PCM, at the Web Audio capture rate shown on screen.
 The page requests 48 kHz and disabled speech processing, then reports actual
 microphone settings. Browser/device quality varies; 24-bit encoding does not
 prove 24-bit microphone precision. Keep the page in the foreground.
+If a remembered microphone is unplugged, capture retries the default microphone
+and displays the device actually used.
+
+Import a hummed WAV or use a microphone take, then choose **Extract melody**.
+Edit notes, timing, cents and velocity in the melody table; add/delete notes,
+undo/redo or restore the detected notes. The roll shows the original pitch
+contour alongside the edited melody. Choose original or quantized timing,
+preview the melody and save MIDI. Metadata keeps the full detected performance
+and your edits; the master WAV stays byte-for-byte unchanged. Analysis accepts
+monophonic humming up to 180 seconds. Imported WAVs retain their original format.
 
 Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
 browser storage removes them. Desktop folder saves use `Song Creation/<project>/`

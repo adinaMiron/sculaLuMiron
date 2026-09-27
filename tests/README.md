@@ -164,6 +164,20 @@ uses a temporary localhost server for the AudioWorklet path and fake Chromium
 microphones. Covers WAV header/payload/decoding, projects, multiple takes, sample
 metadata, reload/delete/rename, actual constraints, desktop nested folder saves,
 mobile layout/share/download/cancellation, denied/missing APIs, PCM fallback and
-atomic storage failure with export recovery. No hardware or service is needed.
+atomic storage failure with export recovery, unavailable IndexedDB, unplugged
+microphone recovery, Unicode filename byte limits, interrupted capture, and
+master WAV bytes unchanged by rename/reload. No hardware or service is needed.
 Run `voice` and `melody` for shared PCM-helper regressions. `node tests/verify.js`
 is the `/verify` equivalent across all nine pages and plain JS helpers.
+
+
+Phase 2 adds `node tests/song-analysis.js` accuracy fixtures (pitch, onset/offset,
+tempo/key, detuning/vibrato, repeated notes, dynamics, legato, silence, short input,
+duration limits and immutable evidence), and `/apptest song-performance`
+(`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-performance.js`).
+The browser test uses a synthesized hummed phrase through the real WAV importer,
+decoder and fake microphone, and checks edits/undo/redo/reset, separate quantized
+timing, preview/MIDI/JSON, reload, RO/EN, phone layout, invalid input, storage
+failure/retry, failed decoding and `file://` without IndexedDB. Master exports are compared byte for
+byte with the imported WAV, including its extra RIFF chunk. Run `song`, `voice`,
+`melody` and `/verify` alongside these after changes to the shared analyzer.
