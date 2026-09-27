@@ -4,7 +4,16 @@
    writes the block back. No library — docs/FEATURES.md § U. */
 
 const DG_NODE_RE = /^\s*([A-Za-z0-9_-]+)\s*:\s*(rect|round|pill|ellipse|diamond|para|text)?\s*(?:(-?\d+)\s*,\s*(-?\d+))?\s*(?:(\d+)\s*x\s*(\d+))?\s*(#[0-9a-fA-F]{6})?\s*(?:\|\s?(.*))?$/;
-const DG_EDGE_RE = /^\s*([A-Za-z0-9_-]+)\s*(<->|-->|->|--)\s*([A-Za-z0-9_-]+)\s*(#[0-9a-fA-F]{6})?\s*(?:\|\s?(.*))?$/;
+const DG_EDGE_RE = /^\s*([A-Za-z0-9_-]+?)(?:\.(nw|ne|sw|se|n|e|s|w))?\s*(<->|-->|->|--)\s*([A-Za-z0-9_-]+?)(?:\.(nw|ne|sw|se|n|e|s|w))?\s*(#[0-9a-fA-F]{6})?\s*(?:\|\s?(.*))?$/;
+const DG_MM_ATTR_RE = /^(.*?)\s+\{((?:\s*(?:-?\d+,-?\d+|#[0-9a-fA-F]{6}|from=(?:nw|ne|sw|se|n|e|s|w)|to=(?:nw|ne|sw|se|n|e|s|w)))+)\s*\}$/;
+const DG_SEQ_PART_RE = /^\s*participant\s+([\p{L}\p{N}_-]+)\s*(?:\|\s?(.*))?$/u;
+const DG_SEQ_NOTE_RE = /^\s*note\s+([\p{L}\p{N}_-]+)\s*\|\s?(.*)$/u;
+const DG_SEQ_MSG_RE = /^\s*([\p{L}\p{N}_-]+?)\s*(-->|->)\s*([\p{L}\p{N}_-]+)\s*(?:\|\s?(.*))?$/u;
+const DG_KINDS = ['flow', 'mindmap', 'sequence'];
+// The 8 connection dots; the second order breaks ties when an end is automatic.
+const DG_PORTS = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+const DG_PORT_ORDER = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
+const DG_DIR = (k => ({ n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0], ne: [k, -k], se: [k, k], sw: [-k, k], nw: [-k, -k] }))(Math.SQRT1_2);
 // Document data (written into the markdown), not chrome: literal hex.
 const DG_COLORS = ['#C1BB45','#6E9E8A','#C4643C','#D9A441','#7A9CC6','#9FB3A5'];
 const DG_DEFAULT = '#C1BB45';
@@ -29,7 +38,11 @@ function dgParseFlow(text) {
   String(text || '').split('\n').forEach(raw => {
     if (!raw.trim()) return;
     let m = raw.match(DG_EDGE_RE);
-    if (m) { edgeLines.push(m); model.edges.push({ from: m[1], op: m[2], to: m[3], color: m[4] || null, label: dgDecode(m[5]) }); return; }
+    if (m) {
+      edgeLines.push(m);
+      model.edges.push({ from: m[1], fromPort: m[2] || null, op: m[3], to: m[4], toPort: m[5] || null, color: m[6] || null, label: dgDecode(m[7]) });
+      return;
+    }
     m = raw.match(DG_NODE_RE);
     if (m) {
       const shape = m[2] || 'rect';
@@ -64,7 +77,7 @@ function dgSerializeFlow(model) {
     out.push(s + ' | ' + dgEncode(n.label));
   });
   model.edges.forEach(e => {
-    let s = `${e.from} ${e.op} ${e.to}`;
+    let s = `${e.from}${e.fromPort ? '.' + e.fromPort : ''} ${e.op} ${e.to}${e.toPort ? '.' + e.toPort : ''}`;
     if (e.color) s += ' ' + e.color.toUpperCase();
     if (e.label) s += ' | ' + dgEncode(e.label);
     out.push(s);
@@ -80,7 +93,7 @@ function dgParseMindmap(text) {
     if (!raw.trim()) return;
     const lead = raw.match(/^[ \t]*/)[0];
     const indent = lead.replace(/\t/g, '  ').length;
-    const node = { label: raw.slice(lead.length).replace(/^[-*+] /, '').trim(), children: [] };
+    const node = dgMmNode(raw.slice(lead.length).replace(/^[-*+] /, '').trim());
     if (!root) { root = node; return; }
     while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
     (stack.length ? stack[stack.length - 1].node : root).children.push(node);
@@ -88,14 +101,72 @@ function dgParseMindmap(text) {
   });
   return { root };
 }
+// A node line may end in `{x,y #RRGGBB from=port to=port}`; anything else in
+// braces stays part of the label.
+function dgMmNode(text) {
+  const node = { label: text, children: [], x: null, y: null, color: null, fromPort: null, toPort: null };
+  const m = text.match(DG_MM_ATTR_RE);
+  if (!m) return node;
+  node.label = m[1];
+  m[2].trim().split(/\s+/).forEach(tok => {
+    let p;
+    if (tok[0] === '#') node.color = tok.toUpperCase();
+    else if ((p = tok.match(/^(from|to)=(\w+)$/))) node[p[1] + 'Port'] = p[2];
+    else { const [x, y] = tok.split(','); node.x = +x; node.y = +y; }
+  });
+  return node;
+}
 
 function dgSerializeMindmap(model) {
   const out = [];
   (function walk(n, depth) {
-    out.push('  '.repeat(depth) + n.label);
+    const tok = [];
+    if (n.x != null && n.y != null) tok.push(Math.round(n.x) + ',' + Math.round(n.y));
+    if (n.color) tok.push(n.color.toUpperCase());
+    if (n.fromPort) tok.push('from=' + n.fromPort);
+    if (n.toPort) tok.push('to=' + n.toPort);
+    out.push('  '.repeat(depth) + n.label + (tok.length ? ' {' + tok.join(' ') + '}' : ''));
     n.children.forEach(c => walk(c, depth + 1));
   })(model.root || { label: '', children: [] }, 0);
   return model.root ? out.join('\n') : '';
+}
+
+// `participant` / `note` are keywords, never ids.
+const dgSeqId = id => id !== 'participant' && id !== 'note';
+function dgParseSequence(text) {
+  const model = { parts: [], events: [], extra: [] };
+  const part = (id, label) => {
+    let p = model.parts.find(q => q.id === id);
+    if (!p) { p = { id, label: id }; model.parts.push(p); }
+    if (label) p.label = label;
+    return p;
+  };
+  String(text || '').split('\n').forEach(raw => {
+    if (!raw.trim()) return;
+    let m = raw.match(DG_SEQ_PART_RE);
+    if (m && dgSeqId(m[1])) { part(m[1], dgDecode(m[2])); return; }
+    m = raw.match(DG_SEQ_NOTE_RE);
+    if (m && dgSeqId(m[1])) { part(m[1]); model.events.push({ type: 'note', who: m[1], label: dgDecode(m[2]) }); return; }
+    m = !/^\s*(participant|note)\s/.test(raw) && raw.match(DG_SEQ_MSG_RE);
+    if (m && dgSeqId(m[1]) && dgSeqId(m[3])) {
+      part(m[1]); part(m[3]);
+      model.events.push({ type: 'msg', from: m[1], to: m[3], op: m[2], label: dgDecode(m[4]) });
+      return;
+    }
+    model.extra.push(raw);
+  });
+  return model;
+}
+function dgSerializeSequence(model) {
+  const out = model.parts.map(p => 'participant ' + p.id + (p.label && p.label !== p.id ? ' | ' + dgEncode(p.label) : ''));
+  model.events.forEach(ev => out.push(ev.type === 'note'
+    ? `note ${ev.who} | ${dgEncode(ev.label)}`
+    : `${ev.from} ${ev.op} ${ev.to}` + (ev.label ? ' | ' + dgEncode(ev.label) : '')));
+  (model.extra || []).forEach(l => out.push(l));
+  return out.join('\n');
+}
+function dgParseKind(kind, text) {
+  return kind === 'mindmap' ? dgParseMindmap(text) : kind === 'sequence' ? dgParseSequence(text) : dgParseFlow(text);
 }
 
 /* ── Measuring and wrapping text (one cached canvas) ── */
