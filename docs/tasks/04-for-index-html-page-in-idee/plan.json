@@ -1,0 +1,8 @@
+{
+  "task_id": "task-04",
+  "difficulty": "medium",
+  "reasoning": "One file (js/markdown/dictation.js) but a real rewrite of its API engine: PCM capture, a pause-based phrase cutter, WAV encoding, a concurrent request pool with in-order release, cancellation and failure markers; the spec fixes every constant and rule, so a standard model at high effort can implement it. Testing needs fake-mic audio fixtures, request-body inspection and out-of-order stubs, which is fiddly but well-trodden in this repo.",
+  "spec_path": "docs/tasks/04-for-index-html-page-in-idee/spec.md",
+  "implementer": {"tier": "standard", "effort": "high"},
+  "tester": {"tier": "standard", "effort": "high"}
+}
