@@ -1232,6 +1232,8 @@
     /* Toolbar wraps to show every button; give up vertical space instead */
     .toolbar { padding: 6px 10px; }
     .tb-btn { padding: 8px 9px; font-size: 13px; }  /* bigger tap targets */
+    #btn-dictate.active { font-size: 0; }  /* recording: icon only, aria-label keeps the meaning */
+    #btn-dictate.active::before { content: "⏹"; font-size: 13px; }
 
     /* Show mobile tabs, stack panes and show only one at a time */
     #view-tabs { display: flex; }

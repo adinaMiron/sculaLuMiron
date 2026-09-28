@@ -1394,6 +1394,14 @@ for how the shared engine's `target` swap works. Closing the modal
 (`closeIdeaModal()`) stops an active dictation so it never keeps recording
 into a hidden box.
 
+While the mic is on, the recording button (`#btn-dictate` or `#btn-idea-dictate`,
+only the one recording) reads "⏹ Oprește înregistrarea" / "⏹ Stop recording"
+(tooltip "Oprește dictarea" / "Stop dictation"); on phones (≤700px) the toolbar
+one shows just ⏹. `setBtn()` in `js/markdown/dictation.js` does this by swapping
+the button's `data-i*` keys (`dictateStopBtn/Tip/Aria`), so a language switch
+mid-recording repaints correctly. It reverts as soon as recording stops, even
+while API segments are still being transcribed.
+
 ---
 
 ## K. Undo / redo (`index.html`)
