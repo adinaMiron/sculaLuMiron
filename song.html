@@ -1341,6 +1341,7 @@
 <label><span data-i="level">Nivel de intrare</span><meter id="level" min="0" max="1" value="0"></meter></label>
 <div class="row" style="margin-top:1rem"><button id="recordBtn" class="primary" data-i="record" aria-pressed="false" disabled>● Înregistrează</button><button id="stopBtn" data-i="stop" disabled>Oprește</button><output id="timer" aria-label="Durată / Duration">00:00</output><span id="recordState" class="badge"></span></div>
 <p id="status" role="status" aria-live="polite"></p>
+<div id="analysisControls" class="row" hidden><progress id="analysisProgress" max="100" value="0" style="max-width:14rem;width:100%"></progress><button id="cancelAnalysis" data-i="cancelAnalysis">Anulează analiza</button></div>
 <small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
 </section>
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
@@ -1362,6 +1363,8 @@ en:{title:'Song Creation',intro:'Music projects from voice, humming and your own
 };
 Object.assign(I18N.ro,{"importWav": "Importă WAV fredonat", "importHint": "WAV PCM 16/24/32 biți sau float 32 biți, mono/stereo. Fișierul original este păstrat fără modificări.", "imported": "WAV importat. Extrage melodia din înregistrare.", "badWav": "WAV invalid sau incompatibil. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.", "analyze": "Extrage melodia", "reanalyze": "Reanalizează", "reanalyzeAsk": "Reanalizarea înlocuiește melodia editată. Continui?", "analyzing": "Se analizează înregistrarea…", "analyzed": "Melodie extrasă. Poți edita notele.", "noPitch": "Nu au fost găsite note clare. Poți adăuga note sau folosi o înregistrare mai clară.", "analysisError": "Analiza nu a reușit. Verifică fișierul WAV și suportul Web Audio.", "tooLong": "Analiza acceptă cel mult 180 de secunde. WAV-ul sursă rămâne complet.", "editableMelody": "Melodie editabilă", "melodyHint": "Barele arată notele editabile; linia arată vocea detectată. Timpii sunt în secunde de la începutul WAV-ului. Previzualizarea folosește un ton sintetic. WAV-ul sursă și analiza inițială rămân intacte. MIDI păstrează nota, timpii și intensitatea; JSON păstrează expresia completă.", "noteCount": "note", "detectedInfo": "Estimări pentru voce monofonică; verifică notele și tempo-ul.", "major": "major", "minor": "minor", "roll": "Note editabile și conturul original al vocii", "tempo": "Tempo (BPM)", "grid": "Diviziuni pe bătaie", "timing": "Timpi folosiți", "original": "Originali / editați", "quantized": "Cuantizați", "preview": "Ascultă melodia", "stopPreview": "Oprește melodia", "saveMidi": "Salvează MIDI", "undo": "Anulează", "redo": "Refă", "resetMelody": "Restaurează notele detectate", "resetAsk": "Înlocuiești notele editate cu cele detectate inițial?", "onset": "Început (s)", "offset": "Sfârșit (s)", "cents": "Abatere (cenți)", "velocity": "Intensitate MIDI", "expression": "Expresie detectată", "confidence": "Încredere", "dynamics": "Dinamică", "vibrato": "Vibrato", "legato": "Legato", "attack": "Atac", "release": "Eliberare", "manualNote": "Notă adăugată manual", "addNote": "Adaugă notă", "invalidEdit": "Valori invalide. Sfârșitul trebuie să fie după început; nota și intensitatea MIDI trebuie să fie întregi."});
 Object.assign(I18N.en,{"importWav": "Import hummed WAV", "importHint": "16/24/32-bit PCM or 32-bit float WAV, mono/stereo. The original file is retained unchanged.", "imported": "WAV imported. Extract the melody from the recording.", "badWav": "Invalid or unsupported WAV. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.", "analyze": "Extract melody", "reanalyze": "Analyze again", "reanalyzeAsk": "Analyzing again replaces the edited melody. Continue?", "analyzing": "Analyzing recording…", "analyzed": "Melody extracted. You can edit the notes.", "noPitch": "No clear notes found. Add notes or use a clearer recording.", "analysisError": "Analysis failed. Check the WAV file and Web Audio support.", "tooLong": "Analysis accepts up to 180 seconds. The source WAV remains complete.", "editableMelody": "Editable melody", "melodyHint": "Bars show editable notes; the line shows the detected voice. Times are seconds from the start of the WAV. Preview uses a synthetic tone. The source WAV and initial analysis remain intact. MIDI saves note pitch, timing and velocity; JSON retains the full expression.", "noteCount": "notes", "detectedInfo": "Estimates for a monophonic voice; check the notes and tempo.", "major": "major", "minor": "minor", "roll": "Editable notes and original voice contour", "tempo": "Tempo (BPM)", "grid": "Divisions per beat", "timing": "Timing used", "original": "Original / edited", "quantized": "Quantized", "preview": "Play melody", "stopPreview": "Stop melody", "saveMidi": "Save MIDI", "undo": "Undo", "redo": "Redo", "resetMelody": "Restore detected notes", "resetAsk": "Replace edited notes with the originally detected notes?", "onset": "Onset (s)", "offset": "Offset (s)", "cents": "Deviation (cents)", "velocity": "MIDI velocity", "expression": "Detected expression", "confidence": "Confidence", "dynamics": "Dynamics", "vibrato": "Vibrato", "legato": "Legato", "attack": "Attack", "release": "Release", "manualNote": "Manually added note", "addNote": "Add note", "invalidEdit": "Invalid values. Offset must follow onset; MIDI note and velocity must be integers."});
+Object.assign(I18N.ro,{cancelAnalysis:'Anulează analiza',analysisCancelled:'Analiză anulată. Melodia existentă și WAV-ul sursă au rămas intacte.',decodingProgress:n=>`Se decodează WAV-ul… ${n}%`,analysisProgress:n=>`Se analizează înregistrarea… ${n}%`,analysisError:'Analiza nu a reușit. Verifică fișierul WAV și încearcă din nou.'});
+Object.assign(I18N.en,{cancelAnalysis:'Cancel analysis',analysisCancelled:'Analysis cancelled. Existing melody and source WAV remain unchanged.',decodingProgress:n=>`Decoding WAV… ${n}%`,analysisProgress:n=>`Analyzing recording… ${n}%`,analysisError:'Analysis failed. Check the WAV file and try again.'});
 Object.assign(I18N.ro,{"arrangement": "Aranjament instrumental", "arrangementHint": "Fiecare versiune păstrează o copie a melodiei editate. Tempo-ul scalează timpii, tonalitatea transpune melodia; modul major/minor schimbă armonia. Modificările nu ating WAV-ul, analiza sau interpretarea. Creează o versiune nouă pentru a folosi editări ulterioare ale melodiei.", "createArrangement": "Creează versiune de aranjament", "arrangementVersion": "Versiune de aranjament", "revision": "revizie", "arrangementTempo": "Tempo aranjament (BPM)", "arrangementKey": "Tonalitate aranjament", "arrangementMode": "Mod aranjament", "arrangementTiming": "Timpi aranjament", "lead": "Melodie principală", "chords": "Acorduri", "bass": "Bas", "drums": "Tobe", "partEnabled": "Activ", "partVolume": "Volum", "standard": "Set standard", "soft": "Set discret", "electronic": "Set electronic", "arrangementRoll": "Pianola aranjamentului: melodie, acorduri, bas și tobe", "playArrangement": "Ascultă aranjamentul", "stopArrangement": "Oprește aranjamentul", "saveArrangementWav": "Salvează WAV stereo", "saveArrangementMidi": "Salvează MIDI multitrack", "renderingArrangement": "Se generează sunetul aranjamentului…", "playingArrangement": "Se redă aranjamentul.", "stoppedArrangement": "Aranjament oprit.", "arrangementError": "Aranjamentul nu poate fi redat sau exportat. Reîncearcă.", "instPiano": "Pian", "instGuitar": "Chitară", "instHarp": "Harpă", "instBox": "Cutie muzicală", "instXylo": "Xilofon", "instViolin": "Vioară", "instCello": "Violoncel", "instStrings": "Corzi", "instFlute": "Flaut", "instClarinet": "Clarinet", "instTrumpet": "Trompetă", "instOrgan": "Orgă", "instSynth": "Sintetizator", "instBass": "Bas electric"});
 Object.assign(I18N.en,{"arrangement": "Instrumental arrangement", "arrangementHint": "Each version keeps a snapshot of the edited melody. Tempo scales timing, key transposes the melody; major/minor changes harmony. Changes leave the WAV, analysis and performance intact. Create a new version to use later melody edits.", "createArrangement": "Create arrangement version", "arrangementVersion": "Arrangement version", "revision": "revision", "arrangementTempo": "Arrangement tempo (BPM)", "arrangementKey": "Arrangement key", "arrangementMode": "Arrangement mode", "arrangementTiming": "Arrangement timing", "lead": "Lead", "chords": "Chords", "bass": "Bass", "drums": "Drums", "partEnabled": "Enabled", "partVolume": "Volume", "standard": "Standard kit", "soft": "Soft kit", "electronic": "Electronic kit", "arrangementRoll": "Arrangement piano roll: lead, chords, bass and drums", "playArrangement": "Play arrangement", "stopArrangement": "Stop arrangement", "saveArrangementWav": "Save stereo WAV", "saveArrangementMidi": "Save multitrack MIDI", "renderingArrangement": "Rendering arrangement audio…", "playingArrangement": "Playing arrangement.", "stoppedArrangement": "Arrangement stopped.", "arrangementError": "Cannot play or export the arrangement. Try again.", "instPiano": "Piano", "instGuitar": "Guitar", "instHarp": "Harp", "instBox": "Music box", "instXylo": "Xylophone", "instViolin": "Violin", "instCello": "Cello", "instStrings": "Strings", "instFlute": "Flute", "instClarinet": "Clarinet", "instTrumpet": "Trumpet", "instOrgan": "Organ", "instSynth": "Synthesizer", "instBass": "Electric bass"});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
@@ -1370,9 +1373,12 @@ const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}
 let UI = prefs.get('scula:ui-lang') === 'en' ? 'en' : 'ro';
 Object.assign(I18N.ro,{hashing:'Se verifică SHA-256…',cancelHash:'Anulează verificarea SHA-256',hashProgress:v=>`SHA-256: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`,backupDigest:p=>`Digest SHA-256 invalid: ${p}. Este necesar un șir de 64 de cifre hexazecimale.`,backupIntegrityFormat:p=>`Format de integritate incompatibil: ${p}. Este acceptat doar SHA-256.`,backupMismatch:name=>`Integritatea SHA-256 nu corespunde pentru „${name}”. WAV-ul a fost modificat sau înlocuit. Alege copia sursă intactă.`,backupVerified:'Integritatea tuturor WAV-urilor a fost verificată prin SHA-256.',backupUnverified:names=>`Atenție: integritatea audio nu poate fi verificată criptografic pentru fișierele fără digest:\n${names.join('\n')}`,hashCancelled:'Verificare SHA-256 anulată. Exportul nu a fost salvat.'});
 Object.assign(I18N.en,{hashing:'Checking SHA-256…',cancelHash:'Cancel SHA-256 check',hashProgress:v=>`SHA-256: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`,backupDigest:p=>`Invalid SHA-256 digest: ${p}. Expected 64 hexadecimal digits.`,backupIntegrityFormat:p=>`Unsupported integrity format: ${p}. Only SHA-256 is supported.`,backupMismatch:name=>`SHA-256 integrity mismatch for “${name}”. The WAV was changed or replaced. Select the intact source copy.`,backupVerified:'All WAV integrity was verified with SHA-256.',backupUnverified:names=>`Warning: audio integrity cannot be verified cryptographically for files without a digest:\n${names.join('\n')}`,hashCancelled:'SHA-256 check cancelled. Export was not saved.'});
+Object.assign(I18N.ro,{inspectProgress:v=>`Se inspectează WAV-ul: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
+Object.assign(I18N.en,{inspectProgress:v=>`Inspecting WAV: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
 const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
 let state='loading', db=null, projects=[], project=null, dirty=false, generation=0;
 let capture=null, lastQuality=null, statusKey=null;
+let analysisJob=null,analysisFraction=0,analysisPhase='decoding';
 const pendingBlobs = new Map(), deleted = new Set(), urls = new Set();
 let backupJob=null, stagedBackup=null, backupMessage=null;
 const AC = window.AudioContext || window.webkitAudioContext;
@@ -1381,6 +1387,11 @@ const id = () => 's' + (window.crypto?.randomUUID ? window.crypto.randomUUID().r
 const now = () => new Date().toISOString();
 const time = seconds => `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 function say(k,error=false){statusKey=k; $('status').textContent=t(k);$('status').classList.toggle('error',error);}
+function paintAnalysisProgress(){
+  if(!analysisJob || analysisJob.cancelled)return;
+  const pct=Math.max(0,Math.min(100,Math.floor(analysisFraction*100)));
+  $('analysisProgress').value=pct;$('status').textContent=t(analysisPhase==='decoding'?'decodingProgress':'analysisProgress',pct);
+}
 function paintState(){
   $('recordState').textContent=t(state);
   const idle=state==='idle';
@@ -1391,6 +1402,7 @@ function paintState(){
   $('recordBtn').disabled=!idle || !supported() || !project;
   $('recordBtn').setAttribute('aria-pressed',String(state==='recording'));
   $('stopBtn').disabled=state!=='recording';
+  $('analysisControls').hidden=state!=='analyzing';$('cancelAnalysis').disabled=!analysisJob || analysisJob.cancelled;
   document.querySelectorAll('.take button,.performance input,.performance select,.arrangement input,.arrangement select').forEach(b=>b.disabled=b.dataset.stopAudio==='true'? !arrangementJob : !idle || b.dataset.empty==='true');
 }
 function setState(s){state=s;paintState();}
@@ -1408,6 +1420,7 @@ function applyUILang(){
   document.documentElement.lang=UI;document.title=t('title')+' — Scula lu Miron';
   document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
   if(statusKey)$('status').textContent=t(statusKey);
+  paintAnalysisProgress();
   paintState();paintProjects();paintBackup();quality(lastQuality);render();
 }
 window.addEventListener('scula-ui-lang',ev=>{UI=ev.detail==='en'?'en':'ro';applyUILang();});
@@ -1501,7 +1514,7 @@ async function validateBackup(){
   try{
     // Include orphan audio keys too; validation itself never writes storage.
     const keys=db?await new Promise((resolve,reject)=>{const tx=db.transaction('audio'),r=tx.objectStore('audio').getAllKeys();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}):[];
-    const staged=await ScuLaSongBackup.stage(await json.text(),files,{used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay('hashProgress',v);}});
+    const staged=await ScuLaSongBackup.stage(await json.text(),files,{used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay(v.phase==='inspection'?'inspectProgress':'hashProgress',v);}});
     if(job.cancelled)return;
     stagedBackup=staged;backupSay('backupReady',{name:staged.project.name,count:staged.project.recordings.length,files:staged.project.recordings.map(r=>r.source.filename||r.source.relativePath.split('/').pop())});
   }catch(e){if(!job.cancelled)backupSay(typeof e.code==='string' && Object.hasOwn(I18N[UI],e.code)?e.code:'backupRead',e.detail,true);}
@@ -1529,7 +1542,7 @@ async function render(){
     if(r.sample){const meta=document.createElement('p');meta.textContent=Object.entries(r.sample).filter(([,v])=>v!=='' && v!==null).map(([k,v])=>t(k)+': '+v).join(' · ');card.append(meta);}
     const canvas=document.createElement('canvas');canvas.width=600;canvas.height=48;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',r.name);const ctx=canvas.getContext('2d');ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');(r.waveform || []).forEach((v,i,a)=>ctx.fillRect(i*600/a.length,24-v*23,Math.max(1,600/a.length),Math.max(1,v*46)));card.append(canvas);
     const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.onplay=()=>{stopArrangement();stopPreview();};audio.setAttribute('aria-label',r.name);card.append(audio);
-    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);project.arrangements=(project.arrangements||[]).filter(a=>a.sourceRecordingId!==r.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));if(r.purpose==='melody')row.append(button(r.performance?'reanalyze':'analyze',()=>analyzeTake(r)));card.append(row);if(r.performance)card.append(performanceEditor(r));if(r.performance || (project.arrangements||[]).some(a=>a.sourceRecordingId===r.id))card.append(arrangementEditor(r));host.append(card);
+    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);project.arrangements=(project.arrangements||[]).filter(a=>a.sourceRecordingId!==r.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));if(r.purpose==='melody'){const analyzeButton=button(r.performance?'reanalyze':'analyze',()=>analyzeTake(r));analyzeButton.onclick=()=>analyzeTake(r);row.append(analyzeButton);}card.append(row);if(r.performance)card.append(performanceEditor(r));if(r.performance || (project.arrangements||[]).some(a=>a.sourceRecordingId===r.id))card.append(arrangementEditor(r));host.append(card);
     const blob=await blobFor(r).catch(()=>null);if(gen!==generation)return;
     if(blob){const url=URL.createObjectURL(blob);urls.add(url);audio.src=url;}else{audio.hidden=true;const warning=document.createElement('p');warning.textContent=t('missing');card.append(warning);}
   }
@@ -1546,15 +1559,25 @@ function remember(r){const h=history(r);h.undo.push(snapshot(r.performance));if(
 async function saveEdit(r){r.performance.updatedAt=now();touch();await persist();await render();}
 async function undoEdit(r,redo){const h=history(r),from=redo?h.redo:h.undo,to=redo?h.undo:h.redo;if(!from.length)return;to.push(snapshot(r.performance));Object.assign(r.performance,from.pop());await saveEdit(r);}
 async function analyzeTake(r){
+  if(state!=='idle')return;
   if(r.performance && !confirm(t('reanalyzeAsk')))return;
-  const blob=await blobFor(r).catch(()=>null);if(!blob){say('missing',true);return;}
   if(r.duration>P.MAX_SECONDS){say('tooLong',true);return;}
-  stopPreview();setState('analyzing');say('analyzing');
+  stopPreview();const job={cancelled:false};analysisJob=job;analysisFraction=0;analysisPhase='decoding';setState('analyzing');say('analyzing');paintAnalysisProgress();
   try{
-    const performance=await P.analyze(blob,r.source.assetId,f=>{$('status').textContent=t('analyzing')+' '+Math.round(f*100)+'%';});
-    const stamp=now();r.performance={...performance,id:id(),createdAt:stamp,updatedAt:stamp};histories.delete(r.id);touch();
-    if(await persist())say(performance.notes.length?'analyzed':'noPitch');await render();
-  }catch(e){say(e.message==='tooLong'?'tooLong':'analysisError',true);}
+    const blob=await blobFor(r);if(!blob)throw new Error('missing');
+    const performance=await P.analyze(blob,r.source.assetId,(f,phase)=>{analysisFraction=f;analysisPhase=phase;paintAnalysisProgress();},{cancelled:()=>job.cancelled});
+    if(job.cancelled)throw new Error('analysisCancelled');
+    // Publication starts only after decoding and analysis have finished. From
+    // here the cancel control is hidden while the atomic transaction commits.
+    analysisJob=null;setState('saving');say('saving');
+    const previous=r.performance,updatedAt=project.updatedAt,stamp=now();
+    r.performance={...performance,id:id(),createdAt:stamp,updatedAt:stamp};touch();
+    const saved=await persist();
+    if(!saved && previous){r.performance=previous;project.updatedAt=updatedAt;say('analysisError',true);}
+    else if(saved){histories.delete(r.id);say(performance.notes.length?'analyzed':'noPitch');}
+    await render();
+  }catch(e){say(job.cancelled || e.message==='analysisCancelled'?'analysisCancelled':e.message==='tooLong'?'tooLong':e.message==='missing'?'missing':'analysisError',true);}
+  finally{if(analysisJob===job)analysisJob=null;setState('idle');}
 }
 async function importWav(file){
   try{
@@ -1836,6 +1859,7 @@ async function stop(){
 $('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
 $('backupJson').onchange=backupSelection;$('backupWavs').onchange=backupSelection;
 $('validateBackup').onclick=validateBackup;$('restoreBackup').onclick=()=>run(restoreBackup);$('cancelBackup').onclick=()=>cancelBackup();
+$('cancelAnalysis').onclick=()=>{if(analysisJob){analysisJob.cancelled=true;$('cancelAnalysis').disabled=true;say('analysisCancelled');}};
 $('recordBtn').onclick=()=>{stopPreview();stopArrangement();start();};$('stopBtn').onclick=stop;
 $('newProject').onclick=()=>run(async()=>{newProject();await persist();await render();});
 $('projects').onchange=()=>run(async()=>{project=projects.find(p=>p.id===$('projects').value);prefs.set('scula:song:project',project.id);paintProjects();await render();});
@@ -1844,7 +1868,7 @@ $('exportProject').onclick=()=>run(exportMetadata);
 $('retry').onclick=()=>run(async()=>{if(await persist())say('recovered');});
 window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping','analyzing','importing','hashing'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopArrangement();});
-window.addEventListener('pagehide',()=>{if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
+window.addEventListener('pagehide',()=>{if(analysisJob)analysisJob.cancelled=true;if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
 async function init(){
   applyUILang();
   try{db=await openDB();projects=await read('projects');}catch(_){dirty=true;}

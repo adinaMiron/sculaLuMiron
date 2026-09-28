@@ -62,6 +62,28 @@ async function begin(browser,{failStorage=false,phone=false}={}){
   console.log('PASS  Phase 2-only and empty backups; allocator skips existing entity IDs and orphan audio keys and remaps all references');
   await p.selectOption('#projects',legacy.id);await ready(p);
   const baseline=await stored(p),active=await p.locator('#projects').inputValue();
+  // The shipped staging path must use bounded slices for inspection and hash
+  // every original byte afterward. No selected WAV may be read as one buffer.
+  await p.evaluate(()=>{window.wavReads=[];window.readSlice=Blob.prototype.arrayBuffer;Blob.prototype.arrayBuffer=function(){wavReads.push(this.size);return readSlice.call(this);};});
+  await select(p,exported,files);await validate(p);
+  const reads=await p.evaluate(()=>wavReads);
+  assert.ok(reads.includes(12)&&reads.includes(8)&&reads.includes(16));
+  assert.ok(reads.every(n=>n<=65536),`oversized Blob read: ${Math.max(...reads)}`);
+  assert.ok(reads.includes(65536),'digest still hashes complete WAV slices');
+  await p.click('#cancelBackup');await p.evaluate(()=>Blob.prototype.arrayBuffer=readSlice);
+  assert.deepEqual(await stored(p),baseline);
+  // Many tiny chunks yield to the cancel button before inspection finishes.
+  const tinyChunks=Buffer.concat(Array.from({length:320},()=>Buffer.from([74,85,78,75,1,0,0,0,9,6])));
+  const tinyWav=Buffer.concat([master.subarray(0,46),tinyChunks,master.subarray(46)]);tinyWav.writeUInt32LE(tinyWav.length-8,4);
+  const tinyManifest=structuredClone(exported);tinyManifest.recordings[0].source.size=tinyWav.length;delete tinyManifest.recordings[0].source.integrity;
+  const tinyFiles=[audioFile(files[0].name,tinyWav),files[1]];
+  await p.evaluate(()=>{window.inspectBase=Blob.prototype.arrayBuffer;Blob.prototype.arrayBuffer=async function(){if(this.size<=16)await new Promise(r=>setTimeout(r,2));return inspectBase.call(this);};});
+  await select(p,tinyManifest,tinyFiles);await p.click('#validateBackup');
+  await p.waitForFunction(()=>/Inspecting WAV:.*[1-9][0-9]?%/.test(document.querySelector('#backupSummary').textContent));
+  assert.equal(await p.isEnabled('#newProject'),false);await p.click('#cancelBackup');await ready(p);
+  assert.match(await p.textContent('#backupSummary'),/cancelled/);assert.equal(await p.isEnabled('#restoreBackup'),false);
+  assert.deepEqual(await stored(p),baseline);await p.evaluate(()=>Blob.prototype.arrayBuffer=inspectBase);
+  console.log('PASS  shipped staging reads bounded WAV headers, still hashes whole bytes, and cancels during tiny-chunk inspection without writes');
   async function reject(v,f=files,pattern=/Inconsistent|Unsupported|Invalid|Missing|Ambiguous/){await select(p,v,f);await validate(p);assert.equal(await p.isEnabled('#restoreBackup'),false);assert.match(await p.textContent('#backupSummary'),pattern);assert.deepEqual(await stored(p),baseline);assert.equal(await p.locator('#projects').inputValue(),active);}
   await reject('{oops',files,/Invalid JSON/);await reject(null);await reject({...exported,schemaVersion:2},files,/Unsupported version/);
   for(const change of [v=>v.recordings[0].performance.analyzerVersion=2,v=>v.arrangements[0].generatorVersion=2,v=>v.recordings[0].id=v.recordings[1].id,v=>v.recordings[0].performance.sourceAssetId='missing',v=>v.recordings[0].performance.notes[0].sourceNoteId='missing',v=>v.arrangements[0].sourceRecordingId='missing',v=>v.arrangements[0].sourceAssetId='missing',v=>v.arrangements[0].sourcePerformanceId=v.recordings[1].id,v=>v.arrangements[1].version=1,v=>v.arrangements[0].performanceSnapshot.notes[0].offset=-1,v=>v.arrangements[0].parts.lead.notes[0].midi=128,v=>v.recordings[0].source.relativePath='../'+v.recordings[0].source.filename,v=>v.recordings[0].source.filename='other.wav',v=>v.recordings[0].source.size++,v=>v.recordings[0].sample={midiNote:128},v=>v.recordings[0].performance.analysis.rawPitchFrames[0].rms=null]){const bad=structuredClone(exported);change(bad);await reject(bad);}
@@ -76,7 +98,7 @@ async function begin(browser,{failStorage=false,phone=false}={}){
   const mixed=structuredClone(exported);delete mixed.recordings[1].source.integrity;
   await select(p,mixed,files);await validate(p);assert.match(await p.textContent('#backupSummary'),/cannot be verified cryptographically/);assert.ok((await p.textContent('#backupSummary')).endsWith(files[1].name));await p.click('#cancelBackup');
   const upper=structuredClone(exported);upper.recordings.forEach(r=>r.source.integrity.digest=r.source.integrity.digest.toUpperCase());await select(p,upper,files);await validate(p);assert.match(await p.textContent('#backupSummary'),/verified with SHA-256/);await p.click('#cancelBackup');
-  // Pause sliced reads only: the WAV inspector has completed when cancellation occurs.
+  // Pause digest slices after bounded WAV inspection has completed.
   await p.evaluate(()=>{window.hashBuffer=Blob.prototype.arrayBuffer;Blob.prototype.arrayBuffer=async function(){if(this.size===65536){window.hashReading=true;await new Promise(r=>setTimeout(r,150));}return hashBuffer.call(this);};});
   await select(p,exported,files);await p.click('#validateBackup');await p.waitForFunction(()=>window.hashReading);assert.match(await p.textContent('#backupSummary'),/SHA-256/);assert.equal(await p.isEnabled('#newProject'),false);await p.click('#cancelBackup');await ready(p);assert.match(await p.textContent('#backupSummary'),/cancelled/);assert.deepEqual(await stored(p),baseline);assert.equal(await p.isEnabled('#restoreBackup'),false);
   await p.evaluate(()=>Blob.prototype.arrayBuffer=hashBuffer);
@@ -113,6 +135,13 @@ async function begin(browser,{failStorage=false,phone=false}={}){
   // Phone progress remains visible and re-translates; cancellation stops sliced hashing.
   await q.evaluate(()=>{window.phoneBuffer=Blob.prototype.arrayBuffer;Blob.prototype.arrayBuffer=async function(){if(this.size===65536){window.phoneHashReading=true;await new Promise(r=>setTimeout(r,200));}return phoneBuffer.call(this);};});
   await q.click('#validateBackup');await q.waitForFunction(()=>window.phoneHashReading);assert.match(await q.textContent('#backupSummary'),/SHA-256/);assert.ok(await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await q.click('#navLangBtn');assert.match(await q.textContent('#recordState'),/Se verifică copia/);await q.click('#cancelBackup');await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Pregătit');assert.match(await q.textContent('#backupSummary'),/Import anulat/);assert.equal(await q.locator('.take').count(),0);await q.evaluate(()=>Blob.prototype.arrayBuffer=phoneBuffer);await q.click('#navLangBtn');
+  await q.evaluate(()=>{window.phoneInspectBase=Blob.prototype.arrayBuffer;Blob.prototype.arrayBuffer=async function(){if(this.size<=16)await new Promise(r=>setTimeout(r,2));return phoneInspectBase.call(this);};});
+  await select(q,tinyManifest,tinyFiles);await q.click('#validateBackup');
+  await q.waitForFunction(()=>/Inspecting WAV:.*[1-9][0-9]?%/.test(document.querySelector('#backupSummary').textContent));
+  assert.ok(await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await q.click('#navLangBtn');
+  assert.match(await q.textContent('#backupSummary'),/Se inspectează WAV-ul/);await q.click('#cancelBackup');await q.waitForFunction(()=>document.querySelector('#recordState').textContent==='Pregătit');
+  assert.match(await q.textContent('#backupSummary'),/Import anulat/);assert.equal(await q.isEnabled('#restoreBackup'),false);
+  await q.evaluate(()=>Blob.prototype.arrayBuffer=phoneInspectBase);await q.click('#navLangBtn');
   const changed=files.map(f=>({...f,buffer:Buffer.from(f.buffer)}));changed[1].buffer[54]^=1;await select(q,exported,changed);await validate(q);assert.match(await q.textContent('#backupSummary'),/SHA-256 integrity mismatch/);await q.click('#navLangBtn');assert.match(await q.textContent('#backupSummary'),/Integritatea SHA-256 nu corespunde/);assert.ok((await q.textContent('#backupSummary')).includes(files[1].name));assert.ok(await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await q.click('#navLangBtn');await select(q,old,files);await validate(q);await q.click('#navLangBtn');assert.match(await q.textContent('#backupSummary'),/nu poate fi verificată criptografic/);await q.click('#navLangBtn');
   await select(q,exported,files);await validate(q);await restore(q);assert.equal(await q.isVisible('#recovery'),true);assert.deepEqual(musical(await manifest(q)),musical(exported));assert.deepEqual((await download(q,()=>q.locator('.take').first().getByRole('button',{name:'Save WAV',exact:true}).click())).bytes,master);

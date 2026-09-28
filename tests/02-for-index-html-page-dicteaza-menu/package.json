@@ -1,0 +1,5 @@
+{
+  "name": "task-02-dictate-stop-label-tests",
+  "private": true,
+  "scripts": { "test": "node stop-label.js" }
+}

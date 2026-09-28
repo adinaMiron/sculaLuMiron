@@ -14,12 +14,15 @@ Thumbs.db
 # form restoration, and deletes it again
 tests/.restored.html
 
-# tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
-tests/node_modules/
-tests/package-lock.json
+# root Playwright suite
 node_modules/
 test-results/
 playwright-report/
+package-lock.json
+
+# tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
+tests/node_modules/
+tests/package-lock.json
 
 # A local OCR engine for recipes.html, if you keep one (docs/RECIPES.md § A).
 # ~45 MB of wasm and language data: it is fetched, never committed.

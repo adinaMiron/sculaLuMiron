@@ -113,7 +113,7 @@ function normalise(x){
    samples, which is cheaper than an FFT per frame and far easier to
    read. `clarity` is 1 - the cumulative-mean-normalised difference at
    the winning lag, i.e. how periodic the frame actually was. */
-async function trackPitch(x, rate, onStep){
+async function trackPitch(x, rate, onStep, cancelled=()=>false){
   const W = 512;
   const tauMin = Math.max(2, Math.floor(rate/1050));
   const tauMax = Math.min(W - 1, Math.floor(rate/62));
@@ -122,7 +122,7 @@ async function trackPitch(x, rate, onStep){
   const f0 = new Float32Array(frames), clar = new Float32Array(frames), rms = new Float32Array(frames);
   const d = new Float32Array(tauMax + 2), cm = new Float32Array(tauMax + 2);
   for(let f = 0; f < frames; f++){
-    if((f & 127) === 127){ if(onStep) onStep(f / frames); await yieldUI(); }
+    if((f & 127) === 127){ if(cancelled()) throw new Error('analysisCancelled'); if(onStep) onStep(f / frames); await yieldUI(); if(cancelled()) throw new Error('analysisCancelled'); }
     const o = f * HOP;
     let e = 0;
     for(let i = 0; i < W; i++){ const v = x[o+i]; e += v*v; }
@@ -277,6 +277,30 @@ function onsetEnvelope(x){
   if(mx > 0) for(let i = 0; i < frames; i++) out[i] /= mx;
   return out;
 }
+/* Same onset kernel for Song, with cooperative checkpoints. Voice keeps the
+   synchronous entry point above and its existing timing. */
+async function onsetEnvelopeCooperative(x,check=()=>{},progress=()=>{}){
+  const N=512,fft=makeFFT(N),win=new Float32Array(N);
+  for(let i=0;i<N;i++)win[i]=.5-.5*Math.cos(TAU2*i/N);
+  const frames=Math.max(1,Math.floor((x.length-N)/HOP)+1),env=new Float32Array(frames);
+  const re=new Float32Array(N),im=new Float32Array(N);
+  let prev=new Float32Array((N>>1)+1),cur=new Float32Array((N>>1)+1);
+  for(let f=0;f<frames;f++){
+    if((f&63)===0){check();progress(f/frames);await yieldUI();check();}
+    const o=f*HOP;for(let i=0;i<N;i++){re[i]=(x[o+i]||0)*win[i];im[i]=0;}
+    fft(re,im);let flux=0;
+    for(let k=1;k<=(N>>1);k++){const m=Math.sqrt(re[k]*re[k]+im[k]*im[k]);cur[k]=m;const dd=m-prev[k];if(dd>0)flux+=dd;}
+    env[f]=flux;const sw=prev;prev=cur;cur=sw;
+  }
+  const out=new Float32Array(frames),w=10;
+  for(let i=0;i<frames;i++){
+    let s=0,c=0;for(let j=Math.max(0,i-w);j<=Math.min(frames-1,i+w);j++){s+=env[j];c++;}
+    out[i]=Math.max(0,env[i]-s/c);
+  }
+  let mx=0;for(let i=0;i<frames;i++)if(out[i]>mx)mx=out[i];
+  if(mx>0)for(let i=0;i<frames;i++)out[i]/=mx;
+  check();progress(1);return out;
+}
 function detectTempo(env, fps){
   const minLag = Math.max(2, Math.round(fps * 60 / 200));
   const maxLag = Math.min(env.length - 2, Math.round(fps * 60 / 55));
@@ -346,5 +370,5 @@ function detectKey(notes){
   return best;
 }
 
-root.ScuLaAnalysis=Object.freeze({version:1,AN_SR,HOP,decodeMono,resample,normalise,decimate2,trackPitch,segmentNotes,onsetEnvelope,detectTempo,beatPhase,detectKey,median});
+root.ScuLaAnalysis=Object.freeze({version:1,AN_SR,HOP,decodeMono,resample,normalise,decimate2,trackPitch,segmentNotes,onsetEnvelope,onsetEnvelopeCooperative,detectTempo,beatPhase,detectKey,median});
 })(typeof window==='undefined'?globalThis:window);

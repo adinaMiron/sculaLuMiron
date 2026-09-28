@@ -107,7 +107,8 @@ async function stage(text,files,{used=new Set(),newId,cancelled=()=>false,progre
   if(missing.length || ambiguous.length)fail('backupFiles',{missing,ambiguous});
   const unverified=[];
   for(const r of p.recordings){cancel();const name=filenames.get(r.id),file=byName.get(name)[0];let meta;
-    try{meta=await root.ScuLaPerformance.inspectWav(file);}catch(_){fail('backupWav',name);}cancel();
+    try{meta=await root.ScuLaPerformance.inspectWav(file,{cancelled,progress:(done,total)=>progress({name,done,total,phase:'inspection'})});}
+    catch(e){if(e.code==='backupCancelled')throw e;fail('backupWav',name);}cancel();
     check(file.size===r.source.size && Math.abs(meta.duration-r.duration)<1e-6 && meta.sampleRate===r.sampleRate && meta.channelCount===r.channelCount && meta.bitDepth===r.bitDepth && meta.encoding===(r.source.encoding===undefined?1:r.source.encoding),'WAV / '+name);
     if(r.source.integrity){
       const digest=await root.ScuLaIntegrity.sha256(file,{cancelled,progress:(done,total)=>progress({name,done,total})});cancel();

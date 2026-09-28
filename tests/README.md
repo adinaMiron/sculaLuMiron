@@ -173,13 +173,20 @@ is the `/verify` equivalent across all nine pages and plain JS helpers.
 
 Phase 2 adds `node tests/song-analysis.js` accuracy fixtures (pitch, onset/offset,
 tempo/key, detuning/vibrato, repeated notes, dynamics, legato, silence, short input,
-duration limits and immutable evidence), and `/apptest song-performance`
+duration limits and immutable evidence), `node tests/song-bounded-analysis.js`
+(instrumented 64 KiB source reads, skipped chunks, PCM/float mono/stereo and rate
+extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch cancellation),
+and `/apptest song-performance`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-performance.js`).
 The browser test uses a synthesized hummed phrase through the real WAV importer,
-decoder and fake microphone, and checks edits/undo/redo/reset, separate quantized
+decoder and fake microphone. It compares the known phrase with the unchanged Web
+Audio result (same pitches/key, tempo within 2 BPM, note times within 35 ms), and
+checks edits/undo/redo/reset, separate quantized
 timing, preview/MIDI/JSON, reload, RO/EN, phone layout, invalid input, storage
-failure/retry, failed decoding and `file://` without IndexedDB. Master exports are compared byte for
-byte with the imported WAV, including its extra RIFF chunk. Run `song`, `voice`,
+failure/retry, canceled decoding and CPU analysis, failed source reads, a retained
+181-second WAV, visible translated progress and `file://` without IndexedDB.
+Master exports are compared byte for byte with the imported WAV, including its
+extra RIFF chunk. Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
 
 
@@ -223,6 +230,11 @@ partial saves. Phone progress/cancellation and mismatch/legacy messages use RO/E
 `node tests/song-integrity.js` adds published SHA-256 vectors, the million-byte
 vector, padding and 64 KiB boundaries, exact WAV/chunk/padding hashes compared
 with Node crypto, and cancellation/responsiveness before the next chunk read.
+`node tests/song-incremental-inspection.js` checks PCM/float RIFF traversal,
+nonstandard chunk order, odd padding, malformed/duplicate chunks, dimensions,
+five tiny reads from a sparse 128 MiB WAV and cancellation during a pending
+read or hundreds of tiny chunks. The backup browser check asserts bounded
+inspection plus full-byte hashing and cancellation through the shipped controls.
 Run `song-analysis`, `song-synthesis`, `song-arrangement-generation`, `song`,
 `song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium

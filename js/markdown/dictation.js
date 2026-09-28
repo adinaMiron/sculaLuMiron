@@ -99,7 +99,16 @@
   function setBtn(targetEl, on){
     const id = targetEl === editor ? "btn-dictate" : "btn-idea-dictate";
     const b = document.getElementById(id);
-    if(b) b.classList.toggle("active", on);
+    if(!b) return;
+    b.classList.toggle("active", on);
+    /* Keep the label, title and accessible name in sync with recording state. */
+    b.setAttribute("data-i", on ? "dictateStopBtn" : "dictateBtn");
+    b.setAttribute("data-i-title", on ? "dictateStopTip" : "dictateTip");
+    if(on) b.setAttribute("data-i-aria", "dictateStopAria");
+    else { b.removeAttribute("data-i-aria"); b.removeAttribute("aria-label"); }
+    b.textContent = t(b.getAttribute("data-i"));
+    b.title = t(b.getAttribute("data-i-title"));
+    if(on) b.setAttribute("aria-label", t("dictateStopAria"));
   }
   function toast(msg){ try{ if(window.ScuLaFolder) window.ScuLaFolder.toast(msg); }catch(e){} }
   function fail(msg, targetEl){
@@ -246,7 +255,8 @@
     else if(!live.active) hidePill();
   }
 
-  async function startApi(target){
+  async function startApi(target, startup){
+    if(startup.cancelled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if(!AC){ fail(t("dictateNoRecorder"), target); return; }
     if(S.provider === "custom" ? !S.endpoint : !S.key){ fail(t("dictateNoSetup"), target); return; }
@@ -255,7 +265,11 @@
       stream = await navigator.mediaDevices.getUserMedia({
         audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
       });
-    }catch(e){ fail(t("dictateNoMic"), target); return; }
+    }catch(e){ if(!startup.cancelled) fail(t("dictateNoMic"), target); return; }
+    if(startup.cancelled || opening !== startup){
+      stream.getTracks().forEach(tr => tr.stop());
+      return;
+    }
     const session = newSession(target);
     sessions.push(session);
     const ctx = new AC();
@@ -301,10 +315,11 @@
     session.ctrls.add(ctrl);
     try{
       const blob = await encodeWav16k(slot.samples, slot.rate);
+      if(ctrl.signal.aborted) throw new Error("aborted");
       let text = await transcribe(blob, ctrl.signal);
       if(text && S.tidy && !session.cancelled){
         showPill(t("dictateTidying"), "");
-        text = await tidyUp(text);
+        text = await tidyUp(text, ctrl.signal);
       }
       if(slot.state === "pending"){ slot.text = text; slot.state = "done"; }
     }catch(e){
@@ -332,7 +347,14 @@
       if(!s.recording && !chain.some(sl => sl.session === s)) sessions.splice(k, 1);
     }
   }
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  function sleep(ms, signal){
+    return new Promise((resolve, reject) => {
+      if(signal.aborted){ reject(new Error("aborted")); return; }
+      const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, ms);
+      function abort(){ clearTimeout(timer); reject(new Error("aborted")); }
+      signal.addEventListener("abort", abort, { once:true });
+    });
+  }
 
   async function transcribe(blob, signal){
     const p = PROVIDERS[S.provider] || PROVIDERS.groq;
@@ -353,7 +375,7 @@
       catch(e){ throw new Error(t("dictateNetwork")); }
       if(res.status === 429 && attempt === 0){
         const ra = Number(res.headers.get("Retry-After"));
-        await sleep(Math.min(10, res.headers.get("Retry-After") && isFinite(ra) ? ra : 2) * 1000);
+        await sleep(Math.min(10, res.headers.get("Retry-After") && isFinite(ra) ? ra : 2) * 1000, signal);
         continue;
       }
       break;
@@ -366,7 +388,7 @@
     const data = await res.json();
     return String(data.text || "").trim();
   }
-  async function tidyUp(text){
+  async function tidyUp(text, signal){
     const p = PROVIDERS[S.provider] || PROVIDERS.groq;
     const url = S.provider === "custom" ? "" : p.chatUrl;
     if(!url || !S.tidyModel) return text;
@@ -377,6 +399,7 @@
       const res = await fetch(url, {
         method:"POST",
         headers:{ "Content-Type":"application/json", Authorization:"Bearer " + S.key },
+        signal,
         body: JSON.stringify({
           model:S.tidyModel, temperature:0,
           messages:[{ role:"system", content:sys }, { role:"user", content:text }]
@@ -386,7 +409,7 @@
       const j = await res.json();
       const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
       return out ? String(out).trim() : text;
-    }catch(e){ return text; }
+    }catch(e){ if(signal && signal.aborted) throw e; return text; }
   }
 
   /* ── Live engine: Web Speech API ── */
@@ -431,7 +454,7 @@
   /* ── the one entry point, wired to the toolbar button and the 💡 idea
      modal alike — an optional target textarea points dictated text at
      something other than the main editor. ── */
-  let opening = false;
+  let opening = null;  // cancellable startup, created before settings and permission awaits
   window.toggleDictation = async function(targetEl){
     if(rec.session || live.active){
       if(rec.session) stopApi();
@@ -441,12 +464,13 @@
     if(opening) return;
     if(!window.isSecureContext){ fail(t("dictateInsecure"), targetEl); return; }
     const target = targetEl || editor;
-    opening = true;
+    const startup = opening = { target, cancelled:false };
     try{
       await loadSettings();
+      if(startup.cancelled || opening !== startup) return;
       if(S.engine === "live") startLive(target);
-      else await startApi(target);
-    } finally { opening = false; }
+      else await startApi(target, startup);
+    } finally { if(opening === startup) opening = null; }
   };
   window.toggleIdeaDictation = function(){
     window.toggleDictation(document.getElementById("idea-text"));
@@ -454,6 +478,10 @@
   /* stop dictating into one box; with { discard:true } also throw away what
      is still being transcribed for it (the 💡 modal closing) */
   window.stopDictation = function(targetEl, opts){
+    if(opts && opts.discard && opening && opening.target === targetEl){
+      opening.cancelled = true;
+      opening = null;
+    }
     if(rec.session && rec.session.target === targetEl) stopApi();
     if(opts && opts.discard){
       sessions.forEach(s => {
@@ -472,4 +500,3 @@
 updatePreview();
 updateStatus();
 updateNav();
-

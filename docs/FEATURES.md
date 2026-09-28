@@ -1310,6 +1310,36 @@ the same two writes `Ctrl+S` makes.
 
 `docs/MAP.md` § "Quick idea capture" has the line anchors.
 
+### The chapter picker
+
+Above the textarea, `#idea-chapter` is a search over chapter **titles only**
+(case and diacritics ignored; not workbook names, file names or contents).
+The box opens pre-filled with the open chapter (`wbCurrentId`; empty when a
+loose file is open) and never remembers a previous pick. **×**
+(`ideaChapterClear()`) empties and focuses the input. No match shows a
+"No chapter found" row — there is no "create chapter" option. Typing in the
+input drops any pre-fill or pick, so what remains is a search.
+
+`ideaResolve()` is the single routing decision; `ideaPaintHint()` and
+`saveIdea()` both call it, so the hint cannot disagree with the save.
+Highest first:
+
+1. **Picked** (clicked, or Enter on the list — `ideaChapterPick()`): always
+   wins; the text goes in verbatim, a leading `Name:` is not stripped.
+2. **Search words, no click**: if exactly one chapter title equals them, or
+   only one title contains them, that chapter wins like a pick. None or
+   several matches → the words are ignored (the hint says so) and routing
+   continues.
+3. **Open chapter (pre-filled, untouched)**: a `Name:` prefix that resolves
+   to a chapter wins and is stripped; otherwise the idea goes to the open
+   chapter with the text whole, including an unmatched `Foo:`.
+4. **Nothing picked**: the original routing — a resolving `Name:` prefix, else
+   `Idei` / today's chapter.
+
+The append itself is unchanged (`ideaAppendTo()`: trailing whitespace trimmed,
+one `\n`, the idea, a final `\n`). Keys on the input (`events.js`): ↑/↓ move
+the highlight, Enter picks, Ctrl+Enter files, Esc closes.
+
 ### What the first line means
 
 `ideaSplit()` looks at the **first line only**, and at its **first `:`**.
@@ -1386,33 +1416,39 @@ Run: `/apptest idea`.
 ### Dictating into it
 
 `#btn-idea-dictate` (🎤, next to Cancel/Save idea) reuses the main editor's
-voice dictation engine — same Caiet vocal settings, same `PROVIDERS`/queue/
-Web Speech code, same status pill — through `window.toggleIdeaDictation()`,
+voice dictation engine — same Caiet vocal settings, same status pill — through `window.toggleIdeaDictation()`,
 which calls `window.toggleDictation(targetEl)` with `#idea-text` as the
-target instead of the default editor. Both 🎤 buttons behave the same way:
+target instead of the default editor. Both 🎤 buttons use the same phrase
+mode when the API engine is selected:
 
-- **Phrase mode (API engine).** The recording is captured as PCM (Web Audio
-  `ScriptProcessor`) and cut at natural pauses (~0.7 s of silence, 300 ms
-  pre-roll, 200 ms tail; `makePhraser`). Each phrase goes out on its own as a
-  16 kHz / 16-bit mono WAV and its text is inserted the moment it returns, in
-  spoken order (one global chain, at most 2 requests in flight, one retry on
-  HTTP 429). Voiced spans under 0.5 s are never sent; phrases are capped at 30 s.
-- **Language.** No `language` field and no `prompt` field are ever sent, so
-  Whisper detects the language per phrase — Romanian stays Romanian (with
-  diacritics), English stays English, mixed speech works, nothing is
-  translated. The Caiet vocal `lang`, `hint` and `segMin` are ignored here;
-  on Groq the model is always `whisper-large-v3` (`modelFor()`). Text in any
-  other language is inserted as transcribed. `tidy` uses a language-safe prompt.
-- **Failure.** A failed phrase leaves the marker `[🎤 ?]` in its place and a
-  toast names it; the other phrases carry on.
-- **Live engine** (Web Speech API) is unchanged and still uses `lang`.
-- **Discard on close.** Closing the modal (`closeIdeaModal()`) calls
-  `stopDictation(#idea-text, { discard:true })`: recording stops and phrases
-  still being transcribed are dropped, so a late phrase never lands in a hidden
-  box or the next idea. The main-editor session is not affected.
+- Web Audio captures PCM and cuts it at natural pauses (~0.7 s of silence,
+  300 ms pre-roll and 200 ms tail). Each phrase is sent as a 16 kHz / 16-bit
+  mono WAV and inserted as soon as it returns, in spoken order. At most two
+  requests run at once; HTTP 429 is retried once. Voiced spans under 0.5 s
+  are dropped and phrases are capped at 30 s.
+- The API request sends neither `language` nor `prompt`. Whisper detects
+  each phrase's language: Romanian keeps its diacritics, English stays
+  English, and mixed dictation is never translated. Other languages are
+  inserted as transcribed. The Caiet vocal `lang`, `hint` and `segMin` are
+  ignored here; Groq always uses `whisper-large-v3`. Optional tidy editing
+  preserves every word's language.
+- A failed phrase leaves `[🎤 ?]` in its place and a toast names it. Later
+  phrases continue. The browser live engine still uses the chosen language.
+- Closing the idea modal calls `stopDictation(#idea-text, { discard:true })`.
+  It cancels pending microphone permission and transcriptions for that
+  target, so late results cannot enter the hidden box or a reopened idea.
+  Editor dictation continues independently.
 
-Each 🎤 press is a session with its own target and lazily-chosen insertion
-point. See `docs/MAP.md` § "Voice dictation".
+Each press has its own target and insertion point, chosen before its first
+text arrives. See `docs/MAP.md` § "Voice dictation".
+
+While the mic is on, the recording button (`#btn-dictate` or `#btn-idea-dictate`,
+only the one recording) reads "⏹ Oprește înregistrarea" / "⏹ Stop recording"
+(tooltip "Oprește dictarea" / "Stop dictation"); on phones (≤700px) the toolbar
+one shows just ⏹. `setBtn()` in `js/markdown/dictation.js` does this by swapping
+the button's `data-i*` keys (`dictateStopBtn/Tip/Aria`), so a language switch
+mid-recording repaints correctly. It reverts as soon as recording stops, even
+while API phrases are still being transcribed.
 
 ---
 
@@ -2624,7 +2660,7 @@ both languages. Run: `/apptest media`.
 
 ---
 
-## U. Diagrams — flowcharts and mind maps (`index.html`)
+## U. Diagrams — flowcharts, mind maps, sequence diagrams and sketches (`index.html`)
 
 Two fenced-block kinds, ` ```flow ` and ` ```mindmap `, are drawn as inline
 SVG in the preview and in the HTML export, and edited in a full-screen modal
@@ -2690,13 +2726,104 @@ layout is automatic: the first half of the root's children go right, the
 rest left, each branch takes one palette colour, and connectors are cubic
 curves.
 
+A node line may end in an **attribute block** `{…}` of space-separated
+tokens: `x,y` (the node's top-left, world px), `#RRGGBB` (its own colour),
+`from=<port>` / `to=<port>` (pins of the connector *into* it; ignored on the
+root). Regex `DG_MM_ATTR_RE`; a `{…}` that does not match stays in the label
+(`Mulțimea {a, b}`). Canonical order `x,y #RRGGBB from= to=`; a map with no
+attributes serializes exactly as before.
+
+### Ports and pins (flowcharts and mind maps)
+
+Every shape and mind-map node has 8 dots — `n ne e se s sw w nw` —
+`dgPorts(box)`, all on the drawn outline (diamond: the vertices and the edge
+midpoints; ellipse: 45° on the ellipse; rounded shapes: 45° on the corner arc;
+parallelogram: the polygon's vertices and side midpoints). A flow edge end is
+**pinned** when written `id.port` (`ask.e -> end.nw`, regex `DG_EDGE_RE`) and
+**automatic** otherwise: `dgAutoPort(box, towards)` takes the nearest dot
+(ties `n e s w ne se sw nw`), from-end towards the target's centre, then the
+to-end towards the from-dot. Edges stay straight; a self-edge is drawn only
+between two different pinned dots, as a curve. Mind-map connectors are
+automatic by side (child right of parent → `e`→`w`, left → `w`→`e`, else
+`s`/`n`) unless pinned; curve handles leave each dot along its outward
+direction.
+
+In the modal a selected box shows its 8 `.dg-port` dots; dragging from one
+starts a pinned connector, the connector tool from the body an automatic one.
+While dragging, the node under the pointer shows `.dg-port-target` dots and
+the one within 12 screen px is `.dg-port-hot`. Drop: a dot within 12 px →
+pinned; the body → automatic; elsewhere → nothing. A selected edge (or the
+connector into a selected mind-map node) shows two `.dg-edge-end` handles
+that re-attach that end by the same rules — one undo step; `Esc` cancels.
+
+### Free mind maps
+
+Dragging a node (≥ 3 px) moves its whole branch on the 10 px grid; every
+node in the branch receives explicit `x,y`. A node without `x,y` keeps its
+automatic offset from its parent, which is why a new `Tab`/`Enter` node lands
+beside its parent. The colour swatches set the selected node's **own** colour
+(not its children's); `↺ Branch colour` clears it. `↺ Auto layout` clears
+every position and pin (colours stay) — one undo step. Arrow keys still move
+by the automatic layout's sides.
+
+### The ` ```sequence ` grammar
+
+One statement per line, ids `[\p{L}\p{N}_-]+` (`Ștefan` works):
+`participant <id>[ | label]`, `note <id> | text`, `<a> -> <b>[ | label]`
+(message), `<a> --> <b>` (dashed reply), `<a> -> <a>` (self-message). Other
+lines are kept in `extra` and warned about. Participants are ordered by first
+appearance; the canonical text declares them all first, then the events. No
+frames or activation bars. Drawing: boxes along the top, dashed lifelines,
+messages numbered 1, 2, 3… in accent circles, amber notes right of the
+lifeline. In the modal the source text opens with it; drag a participant
+sideways to reorder, click a message or note to rewrite its label.
+
+### Download — SVG and PNG
+
+`dgExportSvg(kind, text)` is a standalone SVG — a white `<rect>` first, then
+an embedded `<style>` with literal dark text and lines, box colours as drawn.
+`dgExportPng` rasterises it at 2×. Names come from `dgFileName`:
+`<Chapter>-flowchart|mindmap|sequence-<n>.<ext>`, `n` counting blocks of the
+same kind. Buttons: `⤓ SVG` / `⤓ PNG` in the modal bar and on hover over each
+preview diagram (`.dg-dl`, not in the HTML export). Saved through
+`ScuLaFolder.save`; a PNG that will not rasterise or a save that throws shows
+the toast `dgDlFailed` (a cancelled save is not an error — `save` reports it).
+
+### Sketches — `js/markdown/sketch.js`
+
+`✏ Sketch` opens `#sketch-modal` on a white 1600×1000 page; the ✎ that
+appears over any preview picture (`#img-draw-btn`) opens that picture
+(long side ≤ 2400) instead. Pen, highlighter (0.4 alpha, multiply, ×3),
+eraser (`destination-out` on the ink canvas only — the picture underneath is
+never touched), Mâzgilește's first six colours, widths 3/6/12 px scaled by
+the long side / 1600, one undo step per stroke, `P`/`H`/`E`, `Esc`. Apply
+composites both canvases through `imageBlobToDataUrl` and writes
+`![Schiță n](data:…)` at the caret, or replaces the clicked picture's token
+(`skImageTokens`, matched by `src` and ordinal) — one markdown undo step. A
+picture the canvas may not read (a `file://` path, another site) is refused
+with a toast. Sketches are pictures, not searchable text.
+
 ### The modal's keys
 
 | Where | Keys |
 |---|---|
 | Flowchart | `V` select · `A` connector · `R` rectangle · `D` decision · `E` ellipse · `T` text · `F2`/`Enter` or double-click label · `Del`/`Backspace` delete (a node takes its edges with it) · drag the dots of a selected box to connect, its corner handle to resize |
-| Mind map | `Tab` child · `Enter` sibling · `F2` rename · arrows move the selection · `Del` deletes the branch · `Tab` then `Esc` leaves nothing behind |
+| Mind map | `Tab` child · `Enter` sibling · `F2` rename · arrows move the selection · `Del` deletes the branch · `Tab` then `Esc` leaves nothing behind · drag a node to move its branch |
+| Sequence | typed in the source panel · drag a participant sideways · click a message/note to edit its label (`Enter` commits, `Shift+Enter` newline, `Esc` cancels) |
+| Sketch | `P` pen · `H` highlighter · `E` eraser · `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` · `Esc` cancels (asks if drawn) |
 | Both | `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` modal undo/redo · wheel or two fingers zoom · drag the empty stage to pan · `Esc` cancels a connector, then the selection, then the modal (asks if changed) · in the label box `Esc` only cancels the label |
+
+Only one of the two modals is ever open: `openDiagram()` does nothing while
+the sketch modal is open (`skIsOpen()`), and `openSketch()` does nothing
+while the diagram modal is — nor opens if the diagram opened while its
+picture was loading. `Tab` / `Shift+Tab` stay inside the open modal
+(`dgTrapTab`, shared by both): past the last control back to the first, and
+from the page behind back in. A mind map's stage keeps `Tab` for "add a
+child". Every other key pressed while focus is outside the open modal (a
+click on the bar's empty space leaves it on `<body>`) is handed to the
+modal's own handler (`dgKeyDown` / `skKeyDown`) by a capture-phase listener
+on `document`, which also puts the focus back on the stage — so `Esc` and
+`Ctrl+Z` still work.
 
 **Insert into note** writes the block at the caret, **Update note** replaces
 the block it was opened from — each one markdown undo step (§ K). If the
@@ -2846,6 +2973,10 @@ mixed backups verify the declared digests and warn for the remaining files.
 SHA-256 detects changes relative to the manifest; it is not a signature and cannot
 authenticate a manifest and WAV that were both maliciously replaced.
 Malformed or duplicate fmt/data chunks are rejected by the shared WAV inspector.
+Inspection walks validated RIFF/chunk offsets with at most 16-byte Blob reads:
+it reads the RIFF and chunk headers plus the required `fmt ` fields, and skips
+audio and unknown chunk payloads. Odd-byte padding must fit inside RIFF. Even
+files with many tiny chunks report inspection progress and yield for cancellation.
 
 Every import receives new project, recording, source asset, performance and
 arrangement IDs, including historical performance provenance IDs. References are
@@ -2861,8 +2992,13 @@ leaves the imported project and every source WAV in memory, with the persistent
 storage warning, working exports and **Retry local storage**. Playback stops at
 validation/import; source players and object URLs, melody contexts and arrangement
 nodes/contexts are released. Page exit cancels pending staging. WAV inspection
-reads each entire file into memory, one at a time; very large backups may exceed
-device memory.
+uses bounded header reads even for very large source files.
+This bound applies to backup inspection and SHA-256 hashing. Song melody analysis
+also reads source audio in at most 64 KiB overlapping slices, decodes channels
+directly into a capped 22.05 kHz mono buffer, and skips non-audio chunks. Its
+normalization, onset and pitch work uses additional derived buffers proportional
+to that capped result. Arrangement playback/export may still render a full stereo
+mix in memory.
 
 `js/audio/integrity.js` exposes `ScuLaIntegrity.sha256(blob,{cancelled,progress})`.
 It implements incremental SHA-256 using FIPS 180-4 integer rounds in plain JavaScript,
@@ -2872,7 +3008,8 @@ uses bounded working memory, reports per-file percentage and checks cancellation
 before/after reads and after yielding. It requires neither Web Crypto, IndexedDB,
 a worker, network access nor a secure origin; it works from `file://`. The same
 implementation is used on all origins to keep cancellation and memory behavior
-consistent. Inspection still performs its existing full-file read before hashing.
+consistent. Structural inspection reads only headers; SHA-256 still reads every
+original byte, including skipped audio, unknown chunks and padding.
 Metadata export recomputes all source hashes without changing stored metadata or
 musical data; missing/unreadable audio prevents an incomplete manifest export.
 It uses the busy state and the same cancellation control (labelled **Cancel SHA-256
@@ -2901,7 +3038,16 @@ normalization/decimation, YIN `trackPitch`, `segmentNotes`, spectral-flux
 `onsetEnvelope`, tempo/phase and key helpers. Voice's score and rendering orchestration
 remain in its page; its analysis behavior stays the same. Accuracy fixtures in
 `tests/song-analysis.js` were added and run before switching Voice to the helper.
-Decoding, mono mixing, resampling and normalization use a derived buffer.
+Song uses `ScuLaPerformance.decodeWavMono` instead of Voice's whole-file
+`decodeMono`. It reuses the strict header inspector, accepts PCM16/24/32 and
+float32 mono/stereo at 8–192 kHz, and handles data before fmt, unknown chunks and
+odd padding. A windowed-sinc low-pass resampler downmixes directly from each
+bounded source slice to the derived mono buffer. The source Blob is unchanged.
+The analysis cap is checked from the validated WAV length before allocating that
+buffer. Decoding and onset/pitch CPU work yield and check cancellation; progress
+and **Cancel analysis** appear in RO/EN. A canceled or failed reanalysis publishes
+no replacement performance and writes no metadata. Voice keeps its original
+browser decoder and synchronous onset path.
 
 `js/audio/performance.js` exposes `ScuLaPerformance` v1. Each recording's
 `performance` becomes a `MusicalPerformance` with `schemaVersion:1`, its own
@@ -3027,6 +3173,20 @@ exports, retry/reload, playback/context/node/URL cleanup, RO/EN, phone layout an
 `file://` without Web Crypto or IndexedDB. Integrity cases cover unchanged-size/header
 payload/chunk/padding tampering, malformed/unsupported metadata, legacy/mixed
 warnings, upper-case hex, phone RO/EN progress and import/export hash cancellation.
+`node tests/song-incremental-inspection.js` checks nonstandard chunk order,
+malformed RIFF lengths, dimensions and padding boundaries, duplicate chunks,
+sparse large-file bounded reads and cancellation during pending reads and many
+tiny chunks. The browser backup check covers inspection progress, busy controls,
+cancellation, RO/EN, phone layout and `file://` staging.
+`node tests/song-bounded-analysis.js` checks all supported encodings and both
+channel counts at 8, 22.05 and 192 kHz, skipped unknown payloads, 64 KiB maximum
+source reads, a sparse 180-second 192 kHz stereo source, malformed/truncated files,
+the 180-second cap and cancellation in
+decoding, onset FFT and pitch tracking. Its known sine samples stay within 0.006
+of the expected source amplitude. The Song performance browser check compares a
+known phrase against the unchanged browser decoder: same notes/key, tempo within
+2 BPM and note onsets/offsets within 35 ms. It also checks visible RO/EN progress,
+phone layout, cancellation without replacing edits, source bytes and `file://`.
 `node tests/song-integrity.js` checks published SHA-256 vectors (including a million
 "a" bytes), padding/chunk boundaries, exact WAV bytes against Node crypto, and
 cancellation that yields before the next read. Run alongside all Song, Voice and melody checks.

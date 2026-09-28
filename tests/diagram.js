@@ -83,7 +83,8 @@ async function openBlock(page, md) {
   check('duplicate id: later wins, first slot', JSON.stringify(p.dupOrder) === '["a:pill:three","b:rect:two"]', p.dupOrder);
   check('implicit nodes from edge', JSON.stringify(p.imp) === '["x/x/rect","y/y/rect"]', p.imp);
   check('a-->b without spaces is a dashed edge a→b (ambiguity)', JSON.stringify(p.nosp) === '["a-->b"]', p.nosp);
-  check('mindmap normalised (tabs, bullets, stray indent)', p.mm === 'Root\n  A\n  B\n  C\n  D', p.mm);
+  // A tab counts as two spaces (FEATURES § U), so `\t* A` sits at 2 and `    B` at 4: B is A's child.
+  check('mindmap normalised (tabs, bullets, stray indent)', p.mm === 'Root\n  A\n    B\n  C\n  D', p.mm);
   check('empty flow parses to an empty model', p.empty[0] === '{"nodes":[],"edges":[],"extra":[]}', p.empty[0]);
   check('empty mindmap serializes to ""', p.empty[1] === '', p.empty[1]);
 
