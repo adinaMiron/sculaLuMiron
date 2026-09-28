@@ -129,6 +129,26 @@ test('failed first phrase leaves marker and precise error toast; later phrase st
   await page.locator('#btn-dictate').click();
 });
 
+test('English UI reports the second phrase number and server error while later speech continues', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('scula:ui-lang', 'en'));
+  let count = 0;
+  await page.route('**/audio/transcriptions', route => {
+    const n = ++count;
+    return textReply(route, n === 1 ? 'First phrase.' : n === 2 ? 'service unavailable' : 'Third phrase.', n === 2 ? 503 : 200);
+  });
+  await open(page);
+  await start(page);
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('First phrase.');
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('First phrase. [🎤 ?]');
+  await expect(page.locator('#scula-toast')).toContainText('Phrase 2 could not be transcribed: service unavailable');
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('First phrase. [🎤 ?] Third phrase.');
+  expect(count).toBe(3);
+  await page.locator('#btn-dictate').click();
+});
+
 test('idea modal receives text unchanged and discards pending text when closed', async ({ page }) => {
   let count = 0, releaseSecond;
   await page.route('**/audio/transcriptions', async route => {
