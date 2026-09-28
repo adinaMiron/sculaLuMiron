@@ -864,7 +864,7 @@ const I18N = {
   }
 };
 let UI = "ro";
-function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+function t(k,...args){ const v = I18N[UI][k]; return typeof v === "function" ? v(...args) : v; }
 const LANG_KEY = "scula:ui-lang";
 const store = (function(){
   const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
