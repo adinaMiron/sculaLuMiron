@@ -305,7 +305,17 @@ function ideaPaintHint() {
   hint.textContent = t(exists ? 'ideaHintTo' : 'ideaHintNew', ideiTarget);
 }
 
+// True while a save is awaiting its writes: a second Ctrl+Enter or a
+// double-click on Save would otherwise append the same idea twice.
+let ideaSaving = false;
+
 async function saveIdea() {
+  if (ideaSaving) return;
+  ideaSaving = true;
+  try { await ideaSaveNow(); } finally { ideaSaving = false; }
+}
+
+async function ideaSaveNow() {
   const el = document.getElementById('idea-text');
   const r = ideaResolve();
   if (!r.body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }

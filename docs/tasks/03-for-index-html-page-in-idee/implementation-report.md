@@ -70,3 +70,17 @@ JS parses; all nine nav blocks synchronized; diacritics OK
 - `ideaResolve()` calls `ideaSetPick(null)` if the picked chapter has been
   deleted. That is a small side effect inside a function the hint also
   calls, and it is harmless because it only clears the input.
+
+## Round addendum — bug-1 (double save appends twice)
+
+**Changed:** `js/markdown/idea.js` only. `saveIdea()` is now a thin wrapper
+guarded by a module-level `ideaSaving` flag. A call while a save is in flight
+returns immediately. The flag is cleared in `finally`, so a failed save
+(`ideaFailed`) or an exception leaves the box usable. The original body moved
+unchanged into `ideaSaveNow()`.
+
+**Not done:** no tests written or run (tester's job). Only
+`node tests/verify.js` was run after the edit, and it passed. Every entry point
+(Ctrl+Enter in either field, the Save button) calls `saveIdea()`, so the guard
+covers all of them. A second press during the in-flight save is silently
+ignored (no toast).
