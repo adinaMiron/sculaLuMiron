@@ -258,6 +258,16 @@
     else if(!live.active) hidePill();
   }
 
+  async function cleanupApiStart(stream, ctx, src, node){
+    if(node){
+      try{ node.onaudioprocess = null; }catch(e){}
+      try{ node.disconnect(); }catch(e){}
+    }
+    if(src){ try{ src.disconnect(); }catch(e){} }
+    try{ stream.getTracks().forEach(tr => { try{ tr.stop(); }catch(e){} }); }catch(e){}
+    if(ctx){ try{ await ctx.close(); }catch(e){} }
+  }
+
   async function startApi(target, startup){
     if(startup.cancelled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -274,18 +284,29 @@
       return;
     }
     const session = newSession(target);
+    let ctx = null, src = null, node = null, phraser;
+    try{
+      ctx = new AC();
+      src = ctx.createMediaStreamSource(stream);
+      node = ctx.createScriptProcessor(2048, 1, 1);
+      src.connect(node); node.connect(ctx.destination);
+      if(ctx.state === "suspended") await ctx.resume();
+      if(startup.cancelled || opening !== startup){
+        await cleanupApiStart(stream, ctx, src, node);
+        return;
+      }
+      phraser = makePhraser({ sampleRate: ctx.sampleRate, onPhrase: (samples, info) => {
+        const slot = { session, idx:info.index, state:"pending", text:"", err:"", samples, rate:ctx.sampleRate, started:false };
+        session.slots.push(slot); chain.push(slot);
+        pumpPool(); refreshPill();
+      }});
+      node.onaudioprocess = ev => phraser.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+    }catch(e){
+      await cleanupApiStart(stream, ctx, src, node);
+      if(!startup.cancelled && opening === startup) fail(t("dictateNoRecorder"), target);
+      return;
+    }
     sessions.push(session);
-    const ctx = new AC();
-    const src = ctx.createMediaStreamSource(stream);
-    const node = ctx.createScriptProcessor(2048, 1, 1);
-    const phraser = makePhraser({ sampleRate: ctx.sampleRate, onPhrase: (samples, info) => {
-      const slot = { session, idx:info.index, state:"pending", text:"", err:"", samples, rate:ctx.sampleRate, started:false };
-      session.slots.push(slot); chain.push(slot);
-      pumpPool(); refreshPill();
-    }});
-    node.onaudioprocess = ev => phraser.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
-    src.connect(node); node.connect(ctx.destination);
-    if(ctx.state === "suspended") ctx.resume();
     Object.assign(rec, { session, stream, ctx, src, node, phraser, t0:Date.now() });
     setBtn(target, true);
     refreshPill(); rec.timer = setInterval(refreshPill, 1000);
