@@ -72,6 +72,8 @@
     const at = (ins.mode === "cursor" && document.activeElement === target)
       ? target.selectionEnd
       : Math.min(ins.pos, val.length);
+    const advanceCaret = target === editor && document.activeElement !== editor &&
+      ins.mode === "cursor" && lastCaret && lastCaret.end === at;
     const before = val.slice(0, at);
     let prefix = "";
     if(ins.mode === "append" && !ins.emitted && before && !/\n\n$/.test(before)){
@@ -82,6 +84,7 @@
     const chunk = prefix + text;
     target.setRangeText(chunk, at, at, "end");
     ins.pos = at + chunk.length;
+    if(advanceCaret) lastCaret = { start:ins.pos, end:ins.pos };
     ins.emitted = true;
     target.selectionStart = target.selectionEnd = ins.pos;
     target.scrollTop = target.scrollHeight;
