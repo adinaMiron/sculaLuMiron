@@ -5,7 +5,8 @@
 > ` ```mindmap ` blocks, the ◇ Diagram modal, ✎ Edit / double-click — is
 > **kept**. The canonical description of what already exists is
 > `docs/FEATURES.md` § U and `js/markdown/diagram.js`; read both before
-> starting. This spec only states what changes or is added.
+> starting. This spec only states what changes or is added. **Read § 12
+> (starting state) first**: part of the parsing work is already committed.
 
 ## 0. Product decisions (binding — agreed with the product owner)
 
@@ -586,3 +587,27 @@ Open `index.html` from disk (`file://`), open a chapter titled `Capitol`.
    node with a finger; two fingers pinch the diagram stage.
 10. Switch UI language with each modal open: all new labels change. Export
     → HTML: sequence diagram present, dark on light, no action buttons.
+
+## 12. Starting state of this round (lead's check, 2026-09-28)
+
+- Commit `60384a7` ("save remaining work") already holds a **partial** start
+  in `js/markdown/diagram.js` only: `DG_EDGE_RE` with ports (§ 3.3),
+  `DG_MM_ATTR_RE` + `dgMmNode` and the attribute serialization in
+  `dgSerializeMindmap` (§ 4.1), `DG_SEQ_PART_RE` / `DG_SEQ_NOTE_RE` /
+  `DG_SEQ_MSG_RE`, `dgParseSequence` / `dgSerializeSequence` (§ 5.1),
+  `DG_KINDS`, `DG_PORTS` / `DG_PORT_ORDER` / `DG_DIR` (§ 3.1–3.2),
+  `dgParseKind`. The file parses (`node --check` OK). **Keep it and continue
+  from it; do not rewrite it.** Check it against §§ 3.3, 4.1 and 5.1, and
+  make the tests you add lock those regexes and round-trips in.
+- Nothing else exists yet: no `dgPorts` / `dgAutoPort`, no rendering or
+  modal work for the new features, no `sequence` in `markdown.js` /
+  `files.js` / `index.html`, no `sketch.js`, no download, no new i18n keys.
+  `dgClipT` (`diagram.js` ~L208) still computes the edge endpoints.
+- The lead could not run `/apptest diagram` this round (this session was not
+  allowed to start a browser). So § 2 step 1 is the implementer's first
+  action, and the implementation report must include its output.
+- The anchors this spec names were checked on `HEAD`: `index.html:4261`
+  (`diagram.js` script tag), `#btn-diagram` at `index.html:3631`,
+  `events.js:31`, `markdown.js:1099` `mdDiagramLine`, `editor.js:482`
+  `imageBlobToDataUrl`, `workbooks.js:358/364` `wbChapter` / `wbSlug`,
+  `editor.html:2448/3582/4085` `PALETTE` / `smoothPathTo` / `drawHighlight`.

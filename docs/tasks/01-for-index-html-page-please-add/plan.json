@@ -1,7 +1,7 @@
 {
   "task_id": "task-01",
   "difficulty": "high",
-  "reasoning": "Five features land on a 900-line hand-rolled SVG editor: port geometry and pinning, a new text format, free-form mind-map layout, a new sequence-diagram kind, and a new canvas sketch module. Each one also has to round-trip through text, undo and i18n without breaking the existing diagrams, so the implementer needs the strongest tier at high effort. The tester's work is demanding but fully specified (real pointer drags, pixel reads, PNG readback), so the standard tier at high effort is enough.",
+  "reasoning": "Five features land on a hand-rolled 1000-line SVG editor: 8-port pinning, free-form mind maps with per-node colour, a new sequence-diagram kind with modal editing, a new canvas sketch module that edits pictures in place, and SVG/PNG export. Each must round-trip through text, undo and i18n without breaking existing diagrams, so the implementer needs the flagship tier at high effort. The tester's work is demanding but fully specified (real pointer drags, pixel reads, PNG readback), so the standard tier at high effort is enough.",
   "spec_path": "docs/tasks/01-for-index-html-page-please-add/spec.md",
   "implementer": {"tier": "flagship", "effort": "high"},
   "tester": {"tier": "standard", "effort": "high"}
