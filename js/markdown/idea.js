@@ -11,6 +11,8 @@
    No chapter of that name anywhere? The text is kept whole and
    filed in the "Idei" workbook, under a chapter named for today —
    both created on the spot if they are not there yet.
+   A chapter picker above the textarea (title search, pre-filled with the
+   open chapter) overrides that routing — see ideaResolve().
    Full description: docs/FEATURES.md § J.
    ============================================================ */
 const IDEA_BOOK = 'Idei';
@@ -128,8 +130,143 @@ async function ideaAppendTo(ch, line) {
   return { book, chapter: ch, path };
 }
 
+/* ── The chapter picker ──
+   { id, how } — how is 'open' (pre-filled soft default) or 'picked'
+   (clicked / Enter). null = the input holds a search, or nothing. */
+let ideaPick = null;
+let ideaSel = 0;
+
+// Titles only, case and diacritics ignored: exact title first, then titles
+// that start with the words, then the rest — each group in workbook order,
+// then chapter order.
+function ideaChapterMatches(q) {
+  const want = ideaFold(q).trim();
+  if (!want) return [];
+  const exact = [], starts = [], rest = [];
+  wbBooks.forEach(b => wbChaptersOf(b.id).forEach(c => {
+    const title = ideaFold(c.title);
+    if (!title.includes(want)) return;
+    (title === want ? exact : title.startsWith(want) ? starts : rest).push(c);
+  }));
+  return exact.concat(starts, rest);
+}
+// The one chapter the words point at, or { chapter:null, n } when they point
+// at none or at several.
+function ideaSearchResolve(q) {
+  const list = ideaChapterMatches(q);
+  const want = ideaFold(q).trim();
+  const exact = list.filter(c => ideaFold(c.title) === want);
+  if (exact.length === 1) return { chapter: exact[0], n: list.length };
+  if (list.length === 1) return { chapter: list[0], n: 1 };
+  return { chapter: null, n: list.length };
+}
+
+function ideaChapterEl() { return document.getElementById('idea-chapter'); }
+function ideaSetPick(pick, title) {
+  ideaPick = pick;
+  const inp = ideaChapterEl();
+  inp.value = pick ? title : '';
+  inp.classList.toggle('picked', !!pick);
+}
+function ideaRenderChapterList() {
+  const list = document.getElementById('idea-chapter-list');
+  const q = ideaChapterEl().value.trim();
+  list.textContent = '';
+  if (ideaPick || !q) { list.classList.remove('open'); return; }
+  const found = ideaChapterMatches(q);
+  if (!found.length) {
+    const none = document.createElement('div');
+    none.className = 'ws-empty';
+    none.textContent = t('ideaNoChapter');
+    list.appendChild(none);
+  }
+  found.slice(0, 50).forEach((c, i) => {
+    const book = wbBook(c.workbookId);
+    const row = document.createElement('div');
+    row.className = 'ws-item' + (i === ideaSel ? ' sel' : '');
+    row.setAttribute('role', 'option');
+    row.dataset.id = c.id;
+    const name = document.createElement('span');
+    name.className = 'ws-name';
+    name.textContent = c.title;
+    const where = document.createElement('span');
+    where.className = 'ws-where';
+    where.textContent = book ? book.name : '';
+    row.append(name, where);
+    row.addEventListener('mousedown', e => { e.preventDefault(); ideaChapterPick(c.id); });
+    list.appendChild(row);
+  });
+  list.classList.add('open');
+}
+function ideaChapterPick(id) {
+  const ch = wbChapter(id);
+  if (!ch) return;
+  ideaSetPick({ id, how: 'picked' }, ch.title);
+  ideaRenderChapterList();
+  document.getElementById('idea-text').focus();
+  ideaPaintHint();
+}
+function ideaChapterInput() {
+  ideaPick = null;
+  ideaChapterEl().classList.remove('picked');
+  ideaSel = 0;
+  ideaRenderChapterList();
+  ideaPaintHint();
+}
+function ideaChapterClear() {
+  ideaSetPick(null);
+  ideaSel = 0;
+  ideaRenderChapterList();
+  ideaChapterEl().focus();
+  ideaPaintHint();
+}
+// ArrowUp/ArrowDown from the input: move .sel, clamped, no wrap.
+function ideaChapterMove(step) {
+  const rows = document.querySelectorAll('#idea-chapter-list .ws-item');
+  if (!rows.length) return;
+  ideaSel = Math.max(0, Math.min(rows.length - 1, ideaSel + step));
+  rows.forEach((r, i) => r.classList.toggle('sel', i === ideaSel));
+  rows[ideaSel].scrollIntoView({ block: 'nearest' });
+}
+// Enter from the input: pick the highlighted row; false when there is none.
+function ideaChapterEnter() {
+  const row = document.querySelector('#idea-chapter-list .ws-item.sel');
+  if (!row) return false;
+  ideaChapterPick(row.dataset.id);
+  return true;
+}
+
+/* Where the idea goes — one function, so the hint can never disagree with
+   the save. Order: a picked chapter, then search words that point at exactly
+   one, then a "Name:" prefix that resolves, then the open chapter, then the
+   original Idei routing. Docs: docs/FEATURES.md § J. */
+function ideaResolve() {
+  const { name, body, text } = ideaSplit(document.getElementById('idea-text').value);
+  const out = { chapter: null, line: text, via: 'fallback', name, q: '', n: 0, body };
+  const pick = ideaPick && wbChapter(ideaPick.id) ? ideaPick : null;
+  if (ideaPick && !pick) ideaSetPick(null);   // the chapter is gone
+  if (pick && pick.how === 'picked') {
+    out.chapter = wbChapter(pick.id); out.via = 'picked';
+    return out;
+  }
+  const q = ideaChapterEl().value.trim();
+  if (!pick && q) {
+    const found = ideaSearchResolve(q);
+    if (found.chapter) { out.chapter = found.chapter; out.via = 'search'; return out; }
+    out.q = q; out.n = found.n;
+  }
+  const named = ideaFindChapter(name);
+  if (named) { out.chapter = named; out.line = body; out.via = 'prefix'; return out; }
+  if (pick && pick.how === 'open') { out.chapter = wbChapter(pick.id); out.via = 'open'; }
+  return out;
+}
+
 /* ── The modal ── */
 function openIdeaModal() {
+  const open = wbCurrentId ? wbChapter(wbCurrentId) : null;
+  ideaSetPick(open ? { id: open.id, how: 'open' } : null, open ? open.title : '');
+  ideaSel = 0;
+  ideaRenderChapterList();
   document.getElementById('idea-modal').classList.add('open');
   ideaPaintHint();
   setTimeout(() => {
@@ -148,37 +285,50 @@ function closeIdeaModal() {
 function ideaPaintHint() {
   const hint = document.getElementById('idea-hint');
   if (!hint) return;
-  const { name, body } = ideaSplit(document.getElementById('idea-text').value);
-  if (!body) { hint.textContent = t('ideaHintIdle'); return; }
-  const ch = ideaFindChapter(name);
-  if (ch) {
-    const book = wbBook(ch.workbookId);
-    hint.textContent = t('ideaHintTo', { book: book ? book.name : IDEA_BOOK, chapter: ch.title });
+  const r = ideaResolve();
+  const today = ideaToday();
+  const ideiTarget = { book: IDEA_BOOK, chapter: today };
+  // Search words that were ignored (none or several matches) say so.
+  const searchHint = target => t(r.n ? 'ideaHintSearchMany' : 'ideaHintSearchNone',
+    { q: r.q, n: r.n, book: target.book, chapter: target.chapter });
+  if (r.chapter) {
+    const book = wbBook(r.chapter.workbookId);
+    const target = { book: book ? book.name : IDEA_BOOK, chapter: r.chapter.title };
+    hint.textContent = r.body && r.q ? searchHint(target) : t('ideaHintTo', target);
     return;
   }
-  const title = ideaToday();
+  if (r.q) { hint.textContent = searchHint(ideiTarget); return; }
+  if (!r.body) { hint.textContent = t('ideaHintIdle'); return; }
+  if (r.name) { hint.textContent = t('ideaHintFallback', { name: r.name, ...ideiTarget }); return; }
   const book = ideaFallbackBook();
-  const to = { book: IDEA_BOOK, chapter: title };
-  if (name) { hint.textContent = t('ideaHintFallback', { name, book: to.book, chapter: to.chapter }); return; }
-  const exists = book && wbChaptersOf(book.id).some(c => ideaFold(c.title) === ideaFold(title));
-  hint.textContent = t(exists ? 'ideaHintTo' : 'ideaHintNew', to);
+  const exists = book && wbChaptersOf(book.id).some(c => ideaFold(c.title) === ideaFold(today));
+  hint.textContent = t(exists ? 'ideaHintTo' : 'ideaHintNew', ideiTarget);
 }
 
+// True while a save is awaiting its writes: a second Ctrl+Enter or a
+// double-click on Save would otherwise append the same idea twice.
+let ideaSaving = false;
+
 async function saveIdea() {
+  if (ideaSaving) return;
+  ideaSaving = true;
+  try { await ideaSaveNow(); } finally { ideaSaving = false; }
+}
+
+async function ideaSaveNow() {
   const el = document.getElementById('idea-text');
-  const { name, body, text } = ideaSplit(el.value);
-  if (!body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
-  let target = ideaFindChapter(name);
-  // The "Chapter:" prefix is stripped only when it actually found a chapter.
-  // Otherwise it was part of the thought, and Idei keeps the text whole.
-  const line = target ? body : text;
+  const r = ideaResolve();
+  if (!r.body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
+  let target = r.chapter;
   if (!target) {
     const book = await ideaEnsureBook();
     target = book && await ideaEnsureChapter(book, ideaToday());
   }
-  const done = target && await ideaAppendTo(target, line);
+  const done = target && await ideaAppendTo(target, r.line);
   if (!done) { wbSay(t('ideaFailed'), true); return; }
   el.value = '';
+  ideaSetPick(null);
+  ideaRenderChapterList();
   closeIdeaModal();
   const info = { book: done.book.name, chapter: done.chapter.title, path: done.path };
   wbSay(done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);

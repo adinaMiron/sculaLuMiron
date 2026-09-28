@@ -349,7 +349,7 @@ function within a feature file.
 | Flowcharts, mind maps and sequence diagrams (` ```flow ` / ` ```mindmap ` / ` ```sequence `), the diagram modal, SVG/PNG download | `js/markdown/diagram.js` | `openDiagram`, `renderDiagramBlock`, `dgParseFlow`, `dgParseMindmap`, `dgParseSequence`, `dgPorts`, `dgAutoPort`, `dgLayoutMindmap`, `dgSeqSvg`, `dgExportSvg`, `dgExportPng`, `dgFileName`, `dgTrapTab` (Tab focus trap, used by both modals), `dgKeyDown` (the modal's keys) |
 | Freehand sketches and drawing on a chapter picture | `js/markdown/sketch.js` | `openSketch`, `closeSketch`, `skApply`, `skIsOpen`, `skImageTokens`, `skKeyDown` (the modal's keys) |
 | Workbooks, chapters, autosave, folder mirror | `js/markdown/workbooks.js` | `loadWorkbooks`, `wbSelectChapter`, `saveToWorkbook` |
-| Quick idea capture | `js/markdown/idea.js` | `openIdeaModal`, `saveIdea` |
+| Quick idea capture | `js/markdown/idea.js` | `openIdeaModal`, `saveIdea`, chapter picker: `ideaResolve`, `ideaChapterMatches`, `ideaSearchResolve`, `ideaChapterPick`, `ideaChapterClear` (keys in `events.js`) |
 | Knowledge graph and causality | `js/markdown/graph.js` | `openGraph`, `gvRefresh`, `parseCausalLine` |
 | Search and filter | `js/markdown/search.js` | `fdCompute`, `fdRun`, `fdGoto` |
 | Garden toolbox | `js/markdown/garden.js` | `openGarden`, `gdRender` |

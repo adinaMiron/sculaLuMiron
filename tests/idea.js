@@ -128,6 +128,7 @@ const contentOf = (page, id) => page.evaluate(i => wbChapter(i).content, id);
 
   // ── nothing matched → Idei / today, both created, text kept whole ──
   await page.click('#btn-idea');
+  await page.click('#idea-chapter-clear');   // the box opens on the open chapter (Fizică)
   await type('Grădinărit: - [ ] de plantat busuioc');
   const fallbackHint = await hint();
   check('the hint warns it falls back to Idei', /Idei/.test(fallbackHint), fallbackHint);
@@ -149,6 +150,7 @@ const contentOf = (page, id) => page.evaluate(i => wbChapter(i).content, id);
 
   // ── a second unmatched idea reuses the same day's chapter ──
   await page.click('#btn-idea');
+  await page.click('#idea-chapter-clear');
   await type('inca o idee, fara nume de capitol');
   await page.click('#idea-text');
   await page.keyboard.press('Control+Enter');
@@ -165,6 +167,7 @@ const contentOf = (page, id) => page.evaluate(i => wbChapter(i).content, id);
   // ── an empty box files nothing ──
   const before = await page.evaluate(() => wbChapters.map(c => c.content).join('|'));
   await page.click('#btn-idea');
+  await page.click('#idea-chapter-clear');
   await type('   ');
   await page.click('#idea-text');
   await page.keyboard.press('Control+Enter');
@@ -177,6 +180,7 @@ const contentOf = (page, id) => page.evaluate(i => wbChapter(i).content, id);
   // ── the editor's own chords do not leak through the idea box ──
   await page.evaluate(() => { document.getElementById('idea-text').value = ''; });
   await page.click('#btn-idea');
+  await page.click('#idea-chapter-clear');
   await type('Editor: nu italiciza nimic');
   const edBefore = await page.inputValue('#editor');
   await page.click('#idea-text');

@@ -1,0 +1,6 @@
+{
+  "task_id": "task-03",
+  "status": "pass",
+  "summary": "Re-ran the full regression suite for the Quick idea chapter picker in Chromium (system Chrome). tests/03-for-index-html-page-in-idee/picker.js (81 checks) passes: pre-fill and empty open, title-only case/diacritic-insensitive search, ordering, 50-row cap, no create option, click and ArrowDown+Enter picking, × clearing, routing precedence A-D (picked verbatim, unique search verbatim, ambiguous/none words ignored, soft-default prefix, fallback to Idei/today), hint text for every case, append format, wbDirty/editor update, deleted-pick fallback, markup-in-title safety, Ctrl+S/Ctrl+I/Escape/Ctrl+Enter handling, CRLF, and both languages. double-save.js (13 checks) passes: the saveIdea guard appends once under double Ctrl+Enter and double-click and is released after success, failed and thrown writes. tests/idea.js has one failure, 'idea button is right of New', which is known issue #3 in CLAUDE.md and out of scope. node tests/verify.js passes (parse, nav sync, diacritics). No new bugs found; no additional test files were needed beyond the existing suite, which was already committed. Decision: Bash refused compound commands, so each suite was run as a plain node command.",
+  "bugs": []
+}
