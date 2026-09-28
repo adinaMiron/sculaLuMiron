@@ -2719,7 +2719,8 @@ an embedded `<style>` with literal dark text and lines, box colours as drawn.
 `<Chapter>-flowchart|mindmap|sequence-<n>.<ext>`, `n` counting blocks of the
 same kind. Buttons: `⤓ SVG` / `⤓ PNG` in the modal bar and on hover over each
 preview diagram (`.dg-dl`, not in the HTML export). Saved through
-`ScuLaFolder.save`.
+`ScuLaFolder.save`; a PNG that will not rasterise or a save that throws shows
+the toast `dgDlFailed` (a cancelled save is not an error — `save` reports it).
 
 ### Sketches — `js/markdown/sketch.js`
 
@@ -2751,7 +2752,11 @@ while the diagram modal is — nor opens if the diagram opened while its
 picture was loading. `Tab` / `Shift+Tab` stay inside the open modal
 (`dgTrapTab`, shared by both): past the last control back to the first, and
 from the page behind back in. A mind map's stage keeps `Tab` for "add a
-child".
+child". Every other key pressed while focus is outside the open modal (a
+click on the bar's empty space leaves it on `<body>`) is handed to the
+modal's own handler (`dgKeyDown` / `skKeyDown`) by a capture-phase listener
+on `document`, which also puts the focus back on the stage — so `Esc` and
+`Ctrl+Z` still work.
 
 **Insert into note** writes the block at the caret, **Update note** replaces
 the block it was opened from — each one markdown undo step (§ K). If the

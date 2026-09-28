@@ -1,5 +1,122 @@
 # task-01 — implementation report
 
+## Round 5 — lead review round 1 findings
+
+Commit `868eded` (code, tests, scratch file removed), then a docs + report commit.
+
+### Status at a glance
+
+| Finding | Status |
+|---|---|
+| `tests/diagram.js` "mindmap normalised" fails | **Fixed (stale check).** Not verified by running, see below |
+| Escape ignored when focus is outside the modal | **Fixed** in both modals, and a test case was added. Not verified by running |
+| Sync with `main`, then `/verify` | **Blocked.** `git merge main` was refused |
+| `debug.tmp.js` scratch file | **Done** (`git rm`) |
+| `dgDownload` swallows failures | **Fixed** with a toast and a new i18n key |
+| Re-run suites, update `test-report.json` | **Blocked.** Every test run was refused |
+
+### What changed, file by file
+
+- **`tests/diagram.js`** (the "mindmap normalised" check at ~L86)
+  - `git diff main... -- js/markdown/diagram.js` shows that `dgParseMindmap`'s tab rule was not
+    changed on this branch. `lead.replace(/\t/g, '  ')` appears only as context lines, not `+`
+    lines. It matches FEATURES § U ("a tab counts as two spaces").
+  - So `\t* A` sits at indent 2 and `    B` at indent 4, which makes B a child of A. The check
+    was stale.
+  - I changed only the expected string to `'Root\n  A\n    B\n  C\n  D'`, as the lead offered,
+    and added a one-line comment explaining why. Product code is unchanged.
+- **`js/markdown/diagram.js`**
+  - **Keys:** the capture-phase `document` keydown listener in `dgInit` used to handle only Tab
+    when the target was outside the open modal. Now:
+    - Tab still goes to `dgTrapTab`.
+    - Every other key runs `stage.focus(); dgKeyDown(e)`, exactly as the lead specified.
+    - Result: Escape (cancel drag / tool / selection / close) and Ctrl+Z / Ctrl+Y now work after
+      focus has been left on `<body>` or on the page behind.
+  - **Download:** on catch, `dgDownload` still logs with `console.error`, and now also shows
+    `ScuLaFolder.toast(t('dgDlFailed'))`, guarded with `window.ScuLaFolder` like the
+    `dgMovedInserted` toast.
+    - A cancelled save does not trigger it: `ScuLaFolder.save` returns `{cancelled:true}` on
+      `AbortError` rather than throwing (`index.html` ~L2831).
+- **`js/markdown/sketch.js`**
+  - The inline modal `keydown` handler is now a named `skKeyDown(e)`, with the same body.
+  - The modal listens with `skKeyDown`.
+  - The capture listener now does `stage.focus(); skKeyDown(e)` for non-Tab keys when the target
+    is outside the modal, and `dgTrapTab` for Tab.
+- **`js/markdown/i18n.js`**
+  - New key `dgDlFailed` in `ro` ("Nu am putut descărca diagrama") and `en` ("Could not download
+    the diagram"), placed next to the other `dgDl*` keys.
+- **`tests/01-for-index-html-page-please-add/exclusive.spec.js`**
+  - New case "a click on the empty toolbar area leaves focus on the page, and Escape still closes
+    the modal". For each modal in turn, it:
+    1. opens the modal;
+    2. clicks its bar's `.dg-spacer` (the empty toolbar area);
+    3. asserts that focus is **not** inside the modal, so the case cannot pass vacuously;
+    4. presses Escape;
+    5. asserts that both modals are closed.
+  - The existing test at L49 should now pass unchanged. Escape after Enter on `#btn-sketch` now
+    reaches `dgKeyDown` through the capture listener.
+- **`tests/01-for-index-html-page-please-add/debug.tmp.js`**: removed with `git rm`.
+- **`docs/FEATURES.md` § U**
+  - The Download sub-section mentions the `dgDlFailed` toast.
+  - The "only one modal" paragraph now says that non-Tab keys are passed to
+    `dgKeyDown` / `skKeyDown` when focus is outside the modal.
+- **`docs/MAP.md`**: `dgKeyDown` added to the `diagram.js` row, `skKeyDown` to the `sketch.js` row.
+
+### Blocked: what I could not do this round, and why
+
+In this session's permission mode, these were refused:
+
+- `git merge main` (and the read-only `git merge-tree` preview);
+- running `node tests/diagram.js` with `PW_CHROME_PATH`;
+- the `/verify` loop (`awk` extraction + `node --check` over the pages).
+
+Following the rules I did not retry them or work around them. As a result:
+
+- **`/apptest diagram` output: not available.** I cannot paste an "all good" line. I did not run
+  the test, so the stale-check fix and the Escape fix are unverified by me. Only `node --check`
+  passed, on `diagram.js`, `sketch.js` and `i18n.js`.
+- **`npm test`, codecopy, timeline, mdundo, cause: not run.** For that reason I left
+  `test-report.json` untouched. It is the tester's file, and I will not write results I did not
+  observe.
+- **Sync with `main`: not done.** I could still read both sides' diffs, and they suggest the merge
+  will be clean:
+  - **`index.html`:**
+    - `main` changes L2233–2860, which is the nav block (anchors: `<nav id="site-nav"` at L2244,
+      end marker at L3530).
+    - This branch changes only L1485–1545 (CSS) and L3648+ (modal markup, script tag).
+    - This branch **never touches the nav**, so after the merge the nav should be `main`'s,
+      byte-identical in all pages.
+  - **`CLAUDE.md`:** `main` touches L10 and this branch touches L12. One unchanged line
+    separates them, which is close enough that git *might* still call it a conflict. The other
+    hunks are far apart.
+  - **`docs/FEATURES.md`:** this branch changes L2596 and L2661–2669. `main` inserts at L2701,
+    after them.
+  - **`docs/MAP.md`:** `main` changes L12–185 and L878, and this branch changes L355.
+  - Whoever can merge should run `git merge main`, check `CLAUDE.md` L10–13, and then run
+    `/verify`. `main` also changed `.claude/commands/verify.md` and added `tests/verify.js`, so
+    use `main`'s version of `/verify` after the merge.
+
+### Decisions
+
+- **Tool keys after focus loss.** Tool keys (`V`/`A`/`R`… in a flowchart, `Tab`/`Enter`/arrows in
+  a mind map) are not applied on the *first* key press made while focus is outside the modal.
+  `dgKeyDown` checks `e.target === stage`, and the event's target is still the outside element.
+  - That press still moves the focus to the stage, so the next key press works.
+  - I kept the lead's exact `stage.focus(); dgKeyDown(e)` rather than faking the target. The
+    concrete bug (Esc, Ctrl+Z/Y) is fully covered.
+  - Sketch tool keys (`P`/`H`/`E`) do not check the target, so they work on the first press.
+- **Keys typed while focus sits in the editor textarea behind a modal.** `stage.focus()` in the
+  capture phase moves the focus before the key's default action runs, so a printable key no
+  longer lands in the hidden editor. I believe Chromium behaves this way, but I did not observe it.
+
+### Concerns for the tester
+
+- The new spec case assumes that a click on `.dg-spacer` leaves focus outside the modal. If some
+  handler on the bar focuses the stage on `pointerdown`, step 3 of that case fails. That would
+  mean the click never lost focus in the first place, and the assertion is the thing to revisit.
+- Please run: `npm test` (repo root), `/apptest diagram`, `codecopy`, `timeline`, `mdundo`,
+  `cause`, and `/verify` after the merge.
+
 ## Round 4 — bug-1: the ◇ Diagram and ✏ Sketch modals could be stacked
 
 Commit `08fa279` (code + FEATURES § U), then the MAP row + this report.
