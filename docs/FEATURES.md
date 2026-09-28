@@ -2945,9 +2945,12 @@ storage warning, working exports and **Retry local storage**. Playback stops at
 validation/import; source players and object URLs, melody contexts and arrangement
 nodes/contexts are released. Page exit cancels pending staging. WAV inspection
 uses bounded header reads even for very large source files.
-This bound applies to backup inspection and SHA-256 hashing. Melody analysis
-still decodes a full derived audio buffer, and arrangement playback/export may
-render a full mix in memory.
+This bound applies to backup inspection and SHA-256 hashing. Song melody analysis
+also reads source audio in at most 64 KiB overlapping slices, decodes channels
+directly into a capped 22.05 kHz mono buffer, and skips non-audio chunks. Its
+normalization, onset and pitch work uses additional derived buffers proportional
+to that capped result. Arrangement playback/export may still render a full stereo
+mix in memory.
 
 `js/audio/integrity.js` exposes `ScuLaIntegrity.sha256(blob,{cancelled,progress})`.
 It implements incremental SHA-256 using FIPS 180-4 integer rounds in plain JavaScript,
@@ -2987,7 +2990,16 @@ normalization/decimation, YIN `trackPitch`, `segmentNotes`, spectral-flux
 `onsetEnvelope`, tempo/phase and key helpers. Voice's score and rendering orchestration
 remain in its page; its analysis behavior stays the same. Accuracy fixtures in
 `tests/song-analysis.js` were added and run before switching Voice to the helper.
-Decoding, mono mixing, resampling and normalization use a derived buffer.
+Song uses `ScuLaPerformance.decodeWavMono` instead of Voice's whole-file
+`decodeMono`. It reuses the strict header inspector, accepts PCM16/24/32 and
+float32 mono/stereo at 8–192 kHz, and handles data before fmt, unknown chunks and
+odd padding. A windowed-sinc low-pass resampler downmixes directly from each
+bounded source slice to the derived mono buffer. The source Blob is unchanged.
+The analysis cap is checked from the validated WAV length before allocating that
+buffer. Decoding and onset/pitch CPU work yield and check cancellation; progress
+and **Cancel analysis** appear in RO/EN. A canceled or failed reanalysis publishes
+no replacement performance and writes no metadata. Voice keeps its original
+browser decoder and synchronous onset path.
 
 `js/audio/performance.js` exposes `ScuLaPerformance` v1. Each recording's
 `performance` becomes a `MusicalPerformance` with `schemaVersion:1`, its own
@@ -3118,6 +3130,15 @@ malformed RIFF lengths, dimensions and padding boundaries, duplicate chunks,
 sparse large-file bounded reads and cancellation during pending reads and many
 tiny chunks. The browser backup check covers inspection progress, busy controls,
 cancellation, RO/EN, phone layout and `file://` staging.
+`node tests/song-bounded-analysis.js` checks all supported encodings and both
+channel counts at 8, 22.05 and 192 kHz, skipped unknown payloads, 64 KiB maximum
+source reads, a sparse 180-second 192 kHz stereo source, malformed/truncated files,
+the 180-second cap and cancellation in
+decoding, onset FFT and pitch tracking. Its known sine samples stay within 0.006
+of the expected source amplitude. The Song performance browser check compares a
+known phrase against the unchanged browser decoder: same notes/key, tempo within
+2 BPM and note onsets/offsets within 35 ms. It also checks visible RO/EN progress,
+phone layout, cancellation without replacing edits, source bytes and `file://`.
 `node tests/song-integrity.js` checks published SHA-256 vectors (including a million
 "a" bytes), padding/chunk boundaries, exact WAV bytes against Node crypto, and
 cancellation that yields before the next read. Run alongside all Song, Voice and melody checks.

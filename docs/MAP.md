@@ -893,16 +893,16 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `makeTap`, `takeBlock`, `start`, `stop`, `cleanup` | Worklet/fallback PCM capture, flush, meter, teardown |
 | `js/audio/pcm.js` | Shared Voice/Song signed PCM24 interleaving and correct WAV header/padding |
 | `js/audio/performance.js:90` | `inspectWav(blob,{cancelled,progress})`: 12/8/16-byte RIFF, chunk and `fmt ` reads; validated offset skips, dimensions and tiny-chunk timer yields; optional controls keep old callers compatible |
-| `importWav`, `analyzeTake` | Unchanged imported WAV masters and derived, versioned performance extraction |
+| `importWav`, `analyzeTake`, `#analysisControls` | Unchanged imported WAV masters, bounded-source derived performance extraction, RO/EN progress and cancellation |
 | `performanceEditor`, `drawMelody`, `saveEdit`, `undoEdit` | Editable note table/roll, original vs quantized timing, persistence and history |
 | `previewMelody`, `stopPreview`, `exportMidi` | Synthetic preview lifecycle and ScuLaFolder MIDI export |
-| `js/audio/analysis.js` | Versioned decoding/pitch/onset/beat/key helper shared with Voice |
-| `js/audio/performance.js` | `analyzeBuffer`/`analyze`, raw evidence/expression, editable notes, quantization, WAV validation and MIDI |
+| `js/audio/analysis.js` | Versioned Voice decoder and shared pitch/onset/beat/key kernels; cooperative onset and pitch checkpoints for Song |
+| `js/audio/performance.js:140` | `decodeWavMono`: strict inspected data offset, 64 KiB source windows, PCM/float downmix and band-limited 22.05 kHz output; `analyzeBuffer`/`analyze`, cancellation, raw evidence/expression, editable notes, quantization and MIDI |
 | `createArrangement`, `changeArrangement`, `arrangementEditor`, `drawArrangement` | Project-level versions/snapshots, independent parts and instrument/mix/tempo/key/timing controls, piano roll |
 | `arrangementAudio`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
 | `js/audio/synthesis.js` | Versioned Voice/Song instrument, harmony, rendering and export kernels |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, MIDI CC7/part tracks, fixed-headroom stereo mix |
-| `tests/song.js`, `tests/song-analysis.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, editing/exports/immutable masters |
+| `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json` | Pre-extraction Voice accuracy reference; synthesis/harmony/WAV/MIDI regression fixtures |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |

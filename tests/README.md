@@ -173,13 +173,20 @@ is the `/verify` equivalent across all nine pages and plain JS helpers.
 
 Phase 2 adds `node tests/song-analysis.js` accuracy fixtures (pitch, onset/offset,
 tempo/key, detuning/vibrato, repeated notes, dynamics, legato, silence, short input,
-duration limits and immutable evidence), and `/apptest song-performance`
+duration limits and immutable evidence), `node tests/song-bounded-analysis.js`
+(instrumented 64 KiB source reads, skipped chunks, PCM/float mono/stereo and rate
+extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch cancellation),
+and `/apptest song-performance`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-performance.js`).
 The browser test uses a synthesized hummed phrase through the real WAV importer,
-decoder and fake microphone, and checks edits/undo/redo/reset, separate quantized
+decoder and fake microphone. It compares the known phrase with the unchanged Web
+Audio result (same pitches/key, tempo within 2 BPM, note times within 35 ms), and
+checks edits/undo/redo/reset, separate quantized
 timing, preview/MIDI/JSON, reload, RO/EN, phone layout, invalid input, storage
-failure/retry, failed decoding and `file://` without IndexedDB. Master exports are compared byte for
-byte with the imported WAV, including its extra RIFF chunk. Run `song`, `voice`,
+failure/retry, canceled decoding and CPU analysis, failed source reads, a retained
+181-second WAV, visible translated progress and `file://` without IndexedDB.
+Master exports are compared byte for byte with the imported WAV, including its
+extra RIFF chunk. Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
 
 
