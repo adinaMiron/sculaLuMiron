@@ -1,15 +1,6 @@
 {
   "task_id": "task-03",
-  "status": "fail",
-  "summary": "Ran tests/03-for-index-html-page-in-idee/picker.js (about 95 checks, plain Node + the playwright package from tests/node_modules, system Chrome) against the chapter picker in the Quick idea box. Pre-fill, title-only diacritic/case-insensitive search, ordering, the 50-row render cap, click and keyboard picking, x-clear, routing precedence A-D including verbatim Name: under a pick or a unique search, the ignored-words hints, the append format, open-chapter editor/wbDirty sync, deleted-pick fallback, XSS-safe rendering, Ctrl+S/Ctrl+I/Escape/Ctrl+Enter inside the picker, and en/ro strings all behave per the spec. One real defect was found: pressing Ctrl+Enter twice in quick succession saves the idea twice, because saveIdea() has no re-entrancy guard. The suite fails on that check only. I did not run tests/idea.js or tests/verify.js. Decisions: the suite uses the plain-node style of the existing tests/ scripts (no @playwright/test or new package.json), because the repo forbids new tooling at the root and playwright is already installed in tests/. The UI language is forced to en at the start of the run because the app defaults to ro. Note: Bash became unavailable partway through the session, so my final edits to the test file and the commit may have been blocked; see the last run result in this summary: the last successful run showed exactly one failing check (double Ctrl+Enter).",
-  "bugs": [
-    {
-      "bug_id": "bug-1",
-      "description": "saveIdea() (js/markdown/idea.js) is not guarded against a second invocation while the first is still awaiting its persistence writes. The textarea is only cleared and the modal closed after ideaAppendTo() resolves, so a second Ctrl+Enter (or a double-click on Save) issued in that window appends the same idea a second time to the target chapter.",
-      "severity": "low",
-      "repro_steps": "1. Open index.html with a chapter open (e.g. Fizică). 2. Press Ctrl+Alt+I. 3. Type 'dup' in the idea textarea. 4. Press Ctrl+Enter twice in immediate succession (in the test: two keyboard.press('Control+Enter') calls back to back). 5. Read the chapter content.",
-      "expected": "The idea appears exactly once ('...text\\ndup\\n').",
-      "actual": "The idea 'dup' appears twice in the chapter (test counted 2 occurrences). Predates the picker but is reachable from the new #idea-chapter Ctrl+Enter handler as well."
-    }
-  ]
+  "status": "pass",
+  "summary": "bug-1 is fixed. saveIdea() now sets an ideaSaving flag around ideaSaveNow() and releases it in a finally block. New regression suite tests/03-for-index-html-page-in-idee/double-save.js slows ideaAppendTo() by 600 ms and then checks: a double Ctrl+Enter, three Ctrl+Enter presses spaced inside the window, and a double-click on the Save button each append the idea exactly once and call ideaAppendTo once. The guard is released afterwards in every case: after a success, after a failed write (null result), after a thrown write, and after empty-idea attempts, and a later idea still saves. All 13 checks pass. The existing picker suite (tests/03-for-index-html-page-in-idee/picker.js, 81 checks, including double Ctrl+Enter) passes fully. tests/idea.js has one failure, 'idea button is right of New', which is known issue #3 in CLAUDE.md and is out of scope. I did not run tests/verify.js. Decision: Bash was refused for compound and env-prefixed commands in this session, so each test was run as a plain node command with the default browser resolution, which worked.",
+  "bugs": []
 }
