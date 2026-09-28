@@ -1,0 +1,15 @@
+{
+  "task_id": "task-04",
+  "status": "fail",
+  "summary": "Chromium regression suite: 11 passed, 1 failed. Phrase segmentation, WAV encoding and resampling, Groq payloads, mixed-language insertion, ordering, modal discard, retry, live mode, and keyboard activation passed. The failed test found that a phrase failure toast shows 'undefined' instead of the server error. Existing verify.js and dictate.js passed; idea.js has its documented button-position failure. The required git commit could not be made because .git/index.lock could not be created on the read-only filesystem; the tests and setup remain uncommitted.",
+  "bugs": [
+    {
+      "bug_id": "bug-1",
+      "description": "When a transcription request fails, the failure toast omits the actual error and prints 'undefined'. The shared translation function t(k,a) passes only one argument to the dictatePhraseFailed formatter, while dictation calls t('dictatePhraseFailed', phraseIndex, errorMessage). The failure marker and later phrase insertion still work.",
+      "severity": "medium",
+      "repro_steps": "1. Open index.html in Chromium with Groq API dictation configured. 2. Start toolbar dictation and speak a phrase. 3. Make its /audio/transcriptions response HTTP 500 with JSON {\"error\":{\"message\":\"backend unavailable\"}}. 4. Speak a second phrase and let it succeed. 5. Read the toast and editor text.",
+      "expected": "The editor contains '[🎤 ?]' followed by the second phrase, and the toast says 'Fraza 1 nu a putut fi transcrisă: backend unavailable'.",
+      "actual": "The editor contains the marker and the second phrase, but the toast says 'Fraza 1 nu a putut fi transcrisă: undefined'."
+    }
+  ]
+}
