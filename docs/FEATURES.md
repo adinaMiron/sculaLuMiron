@@ -2745,6 +2745,14 @@ with a toast. Sketches are pictures, not searchable text.
 | Sketch | `P` pen · `H` highlighter · `E` eraser · `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` · `Esc` cancels (asks if drawn) |
 | Both | `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` modal undo/redo · wheel or two fingers zoom · drag the empty stage to pan · `Esc` cancels a connector, then the selection, then the modal (asks if changed) · in the label box `Esc` only cancels the label |
 
+Only one of the two modals is ever open: `openDiagram()` does nothing while
+the sketch modal is open (`skIsOpen()`), and `openSketch()` does nothing
+while the diagram modal is — nor opens if the diagram opened while its
+picture was loading. `Tab` / `Shift+Tab` stay inside the open modal
+(`dgTrapTab`, shared by both): past the last control back to the first, and
+from the page behind back in. A mind map's stage keeps `Tab` for "add a
+child".
+
 **Insert into note** writes the block at the caret, **Update note** replaces
 the block it was opened from — each one markdown undo step (§ K). If the
 block moved or changed in the editor meanwhile, it is searched for by its

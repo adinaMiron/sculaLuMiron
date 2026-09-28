@@ -7,7 +7,7 @@ const SK_COLORS = ['#1e1d1c', '#3f6b52', '#b5493a', '#c79a3d', '#2f5d8a', '#7a4f
 const SK_WIDTHS = { 1: 3, 2: 6, 3: 12 };
 const skEl = id => document.getElementById(id);
 const sk = {
-  open: false, img: null, caret: [0, 0], w: 0, h: 0, f: 1,
+  open: false, loading: false, img: null, caret: [0, 0], w: 0, h: 0, f: 1,
   tool: 'pen', color: SK_COLORS[0], size: 2,
   strokes: [], redo: [], cur: null, pointers: new Set()
 };
@@ -63,7 +63,8 @@ function skLoadImage(src) {
   });
 }
 async function openSketch(opts) {
-  if (sk.open) return;
+  const dgOpen = () => typeof dgIsOpen === 'function' && dgIsOpen();
+  if (sk.open || sk.loading || dgOpen()) return;   // one full-screen modal at a time
   sk.caret = [editor.selectionStart, editor.selectionEnd];
   sk.img = null; sk.target = null;
   let pic = null;
@@ -71,8 +72,11 @@ async function openSketch(opts) {
     const el = opts.img, src = el.getAttribute('src') || '';
     const same = [...document.querySelectorAll('#preview img')].filter(i => !i.closest('.md-diagram') && i.getAttribute('src') === src);
     sk.target = { src, k: Math.max(0, same.indexOf(el)) };
+    sk.loading = true;
     try { pic = await skLoadImage(el.currentSrc || el.src); }
     catch (e) { if (window.ScuLaFolder) ScuLaFolder.toast(t('skImgBlocked')); return; }
+    finally { sk.loading = false; }
+    if (dgOpen()) return;   // the diagram opened while the picture was loading
     const long = Math.max(pic.naturalWidth, pic.naturalHeight) || 1, s = Math.min(1, 2400 / long);
     sk.w = Math.max(1, Math.round(pic.naturalWidth * s)); sk.h = Math.max(1, Math.round(pic.naturalHeight * s));
     sk.img = pic;
@@ -239,12 +243,15 @@ function skInit() {
   stage.addEventListener('pointerup', skUp);
   stage.addEventListener('pointercancel', skUp);
   modal.addEventListener('keydown', e => {
+    if (dgTrapTab(modal, e)) return;   // Tab walks the modal only (diagram.js)
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && !e.altKey && k === 'z') { e.preventDefault(); if (e.shiftKey) skRedoStep(); else skUndo(); }
     else if (mod && !e.altKey && k === 'y') { e.preventDefault(); skRedoStep(); }
     else if (e.key === 'Escape') { e.preventDefault(); closeSketch(false); }
     else if (!mod && !e.altKey && { p: 'pen', h: 'hl', e: 'eraser' }[k]) { e.preventDefault(); sk.tool = { p: 'pen', h: 'hl', e: 'eraser' }[k]; skChrome(); }
   });
+  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in.
+  document.addEventListener('keydown', e => { if (sk.open && !modal.contains(e.target)) dgTrapTab(modal, e); }, true);
   window.addEventListener('resize', () => { if (sk.open) skFit(); });
   window.addEventListener('scula-ui-lang', () => { if (sk.open) skChrome(); });
   if (!pv || !btn) return;

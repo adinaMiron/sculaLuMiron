@@ -660,8 +660,23 @@ function dgBlockAt(text, line, mustOpenAt) {
   return null;
 }
 
+// Tab stays inside an open modal (aria-modal): past its last control to its first, and back.
+// Focus outside it (the page behind) is brought back in. True when the key was handled.
+function dgTrapTab(modal, e) {
+  if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const all = [...modal.querySelectorAll('button, input, select, textarea, [tabindex]')]
+    .filter(el => el.tabIndex >= 0 && !el.disabled && el.getClientRects().length);
+  if (!all.length) return false;
+  const first = all[0], last = all[all.length - 1], at = document.activeElement;
+  if (all.includes(at) && at !== (e.shiftKey ? first : last)) return false;
+  e.preventDefault();
+  (e.shiftKey ? last : first).focus();
+  return true;
+}
+
 function openDiagram(opts) {
   if (dg.open) return;
+  if (typeof skIsOpen === 'function' && skIsOpen()) return;   // one full-screen modal at a time
   dg.caret = [editor.selectionStart, editor.selectionEnd];
   let blk = null;
   if (opts && Number.isInteger(opts.line)) blk = dgBlockAt(editor.value, opts.line, true);
@@ -1311,6 +1326,8 @@ function dgDblClick(e) {
 
 /* ── Keys: everything the modal handles, on the modal ── */
 function dgKeyDown(e) {
+  // A mind map's stage keeps Tab for "add a child"; everywhere else Tab walks the modal only.
+  if (!(dg.kind === 'mindmap' && e.target === dgEl('dg-stage')) && dgTrapTab(dgEl('diagram-modal'), e)) return;
   const inp = dgEl('dg-label-input');
   if (e.target === inp) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); dgLabelEnd(false); }
@@ -1351,6 +1368,8 @@ function dgInit() {
   const stage = dgEl('dg-stage');
   const back = fn => (...a) => { fn(...a); if (!dg.label) stage.focus(); };
   modal.addEventListener('keydown', dgKeyDown);
+  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in.
+  document.addEventListener('keydown', e => { if (dg.open && !modal.contains(e.target)) dgTrapTab(modal, e); }, true);
   document.querySelectorAll('#dg-kind [data-kind]').forEach(b => b.addEventListener('click', () => dgSetKind(b.dataset.kind)));
   document.querySelectorAll('#dg-tools [data-tool]').forEach(b => b.addEventListener('click', back(() => dgSetTool(b.dataset.tool))));
   document.querySelectorAll('#dg-colors [data-color]').forEach(b => b.addEventListener('click', back(() => dgSetColor(b.dataset.color))));
