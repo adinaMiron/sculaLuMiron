@@ -62,9 +62,11 @@ test.describe('bug-1: one full-screen modal at a time', () => {
   });
 
   test('a click on the empty toolbar area leaves focus on the page, and Escape still closes the modal', async ({ page }) => {
-    for (const [btn, modal] of [['#btn-diagram', 'diagram-modal'], ['#btn-sketch', 'sketch-modal']]) {
+    // The title is a non-focusable part of the bar that always has size; the
+    // .dg-spacer collapses to zero width when the bar is full at 1280 px.
+    for (const [btn, modal, title] of [['#btn-diagram', 'diagram-modal', '#dg-title'], ['#btn-sketch', 'sketch-modal', '#sk-title']]) {
       await page.click(btn);
-      await page.click(`#${modal} .dg-spacer`);
+      await page.click(title);
       expect(await inside(page, modal), modal + ': the click left focus outside the modal').toBe(false);
       await page.keyboard.press('Escape');
       expect(await state(page), modal).toEqual({ dg: false, sk: false });
