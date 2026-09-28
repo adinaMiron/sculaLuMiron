@@ -56,16 +56,38 @@ one more input to the routing decision.
 "Verbatim" means the `text` field `ideaSplit()` already returns: CRLF → LF,
 outer whitespace trimmed, nothing else touched.
 
+### State of the branch at planning time (re-plan, 2026-09-28)
+
+HEAD (`61cf6fc`, "index: chapter picker in the Quick idea box") already
+contains a first implementation of this spec, described in
+`implementation-report.md` beside this file. The lead read that diff: it
+follows §§ 2–6 closely (`ideaPick`, `ideaChapterMatches`,
+`ideaSearchResolve`, `ideaResolve`, the `#idea-chapter` key handler, the six
+i18n keys). **The implementer's job is therefore to verify, not rewrite**:
+
+1. Walk every "Done means" item (§ 8) and every manual step (§ 9) against the
+   code in HEAD, in a real browser (`/apptest idea` plus a hand-driven pass).
+2. Fix any deviation from this spec in place with narrow edits. Do not
+   restructure working code for taste.
+3. Run `node tests/idea.js` (the first implementer never ran it) and
+   `node tests/verify.js`; put both outputs in the implementation report.
+4. Overwrite `implementation-report.md` with what was checked, what was
+   fixed, and the test output.
+
+Out of scope (decided): switching the UI language while the box is open does
+not repaint an already-open result list or the hint until the next keystroke.
+The hint already behaved this way before this task; leave it.
+
 ---
 
 ## 1. Files
 
 | File | Change |
 |---|---|
-| `index.html` | Markup inside `#idea-modal` (~L3877) and CSS next to `#idea-text` (~L648). Update the comment above `#idea-modal`. |
+| `index.html` | Markup inside `#idea-modal` (~L3895) and CSS next to `#idea-text` (~L649). Update the comment above `#idea-modal`. |
 | `js/markdown/idea.js` | Picker state, search, rendering, the single routing resolver, hint and save rewired to it, `openIdeaModal()` pre-fill. |
-| `js/markdown/events.js` | Keydown handler for `#idea-chapter` (next to the `#idea-text` one, ~L23). |
-| `js/markdown/i18n.js` | New keys in `ro` (~L310–320) and `en` (~L735–745); update both help paragraphs ("Idee rapidă" ~L382, "Quick idea capture" ~L808). |
+| `js/markdown/events.js` | Keydown handler for `#idea-chapter` (next to the `#idea-text` one, ~L30). |
+| `js/markdown/i18n.js` | New keys in `ro` and `en`; update both help paragraphs ("Idee rapidă", "Quick idea capture"). |
 | `tests/idea.js` | Existing suite: adapt the cases broken by the new soft default (see § 7). |
 | `docs/FEATURES.md` § J, `docs/MAP.md` (Quick idea capture row) | Document the picker and the routing order; list the new functions. |
 
@@ -99,7 +121,7 @@ Insert a new `.field` **between** `.modal-title` and the existing
 Keep everything else in the modal as it is (textarea, `#idea-hint`, the three
 buttons). Update the HTML comment above `#idea-modal` to mention the picker.
 
-## 3. CSS (`index.html`, directly after the `#idea-text` rule ~L649)
+## 3. CSS (`index.html`, directly after the `#idea-text` rule)
 
 Theme tokens only, no new hex:
 
@@ -113,7 +135,7 @@ Theme tokens only, no new hex:
   with `max-height:180px; margin-top:6px; display:none;` and
   `#idea-chapter-list.open { display:block; }`.
 - Rows reuse the existing `.ws-item` / `.ws-name` / `.ws-where` / `.ws-empty`
-  classes (defined ~L1623–1637). Do not add new row classes.
+  classes. Do not add new row classes.
 - Inside the existing `(pointer:coarse)` / small-screen rules nothing is
   required; the `.btn` touch rules already apply to the × button.
 
@@ -262,10 +284,10 @@ The existing `#idea-text` handler is unchanged.
 | `ideaHintSearchMany` | ``o=>`“${o.q}” matches ${o.n} chapters — pick one; otherwise the idea goes to ${o.book} / ${o.chapter}` `` | ``o=>`„${o.q}” se potrivește cu ${o.n} capitole — alege unul; altfel ideea ajunge în ${o.book} / ${o.chapter}` `` |
 
 Keep the existing `idea*` keys. Update the two help paragraphs:
-- en (~L808): add a sentence — "The Chapter field starts on the chapter you are
+- en: add a sentence — "The Chapter field starts on the chapter you are
   editing; type to search chapter titles and pick one, or press × to clear it.
   A chapter you pick always wins and the text goes in as written."
-- ro (~L382): "Câmpul Capitol pornește cu capitolul deschis; scrie ca să cauți
+- ro: "Câmpul Capitol pornește cu capitolul deschis; scrie ca să cauți
   după titlu și alege unul, sau apasă × ca să-l golești. Capitolul ales are
   întotdeauna prioritate, iar textul intră exact cum l-ai scris."
 
