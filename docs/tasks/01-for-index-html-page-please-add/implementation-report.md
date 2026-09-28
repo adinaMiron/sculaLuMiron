@@ -1,258 +1,465 @@
-# task-01 — implementation report (A2)
+# task-01 — implementation report
 
-## Round 2 — review fixes (read this first)
+## Round 6 — red suite, sync with main, housekeeping, reports
 
-Commits: `a6a5c93` (the two bugs + housekeeping), `68e6c75` (tests, a small
-follow-up in `diagram.js`, docs), plus this report. The round-1 report below
-is unchanged.
+Commit `2262555` (test fix + `package.json` removal), then a reports commit.
+
+### Status at a glance
+
+| Item | Status |
+|---|---|
+| RED SUITE: `exclusive.spec.js:67` clicked the zero-width `.dg-spacer` | **Fixed in the test only.** `npm test`: **152 passed** |
+| SYNC WITH MAIN (`git merge main`) | **Blocked again.** `git merge main` was refused by the permission layer (tried as `git merge main --no-edit` and `git merge main`). The read-only `git merge-tree` preview was refused too. I did not work around it |
+| HOUSEKEEPING: stray `docs/tasks/01-…/package.json` | **Done** (`git rm`) |
+| REPORTS: `test-report.json` | **Done.** `status: "pass"` with the real counts, on the **unmerged** tree |
 
 ### What changed, file by file
 
+- **`tests/01-for-index-html-page-please-add/exclusive.spec.js`**, in the case "a click on the
+  empty toolbar area leaves focus on the page, and Escape still closes the modal":
+  - The loop now takes a third element, the title to click: `#dg-title` for the diagram modal
+    and `#sk-title` for the sketch modal. Both are non-focusable `<span class="dg-title">`s that
+    always have size.
+  - `page.click(title)` replaces `page.click('#<modal> .dg-spacer')`. A two-line comment says why:
+    the spacer collapses to zero width when the bar is full at 1280 px.
+  - The assertion that focus left the modal is kept unchanged, and so are the Escape step and the
+    state check. Product code is unchanged.
+- **`docs/tasks/01-for-index-html-page-please-add/package.json`**: removed with `git rm`. It was
+  the default `npm init` file.
+- **`docs/tasks/01-for-index-html-page-please-add/test-report.json`**: rewritten with the counts
+  below and `status: "pass"`, as the lead asked. It says the counts come from the unmerged tree.
+
+### Test output (this round, unmerged tree at `2262555`)
+
+- **`npm test` at the repo root:** `Running 152 tests using 1 worker` … `152 passed (1.5m)`.
+
+  | Spec file | Passed |
+  |---|---|
+  | `exclusive.spec.js` | 9/9 |
+  | `extra.spec.js` | 20/20 |
+  | `modal.spec.js` | 47/47 |
+  | `model.spec.js` | 46/46 |
+  | `sketch.spec.js` | 30/30 |
+
+  The previously red case (#7, `exclusive.spec.js:64`) passed in 513 ms.
+- **`node tests/diagram.js`** (`/apptest diagram`): 79 PASS lines, 0 FAIL, and it ends with
+  `all passed`. The formerly stale "mindmap normalised (tabs, bullets, stray indent)" check
+  passes, and so does `no page errors`.
+- **Neighbour suites**, each ending in `all good`:
+
+  | Suite | Passed |
+  |---|---|
+  | `codecopy` | 11/11 |
+  | `mdundo` | 24/24 |
+  | `timeline` | 26/26 |
+  | `cause` | 42/42 |
+
+- **`/verify`:** the shell loop from `.claude/commands/verify.md` (awk extraction over the pages
+  plus `node --check`) was **refused** as a compound command, and so was a single
+  `awk … index.html > /tmp/…` extraction. What I could check instead:
+  - `node --check` is OK on `diagram.js`, `sketch.js`, `markdown.js`, `files.js`, `events.js`
+    and `i18n.js`. The inline scripts in `index.html` load without error in every Playwright run
+    above (`no page errors`).
+  - **Nav:** `git diff --quiet 1c0af6f HEAD -- voice.html editor.html recipes.html calendar.html
+    transfer.html map.html kanban.html` exits 0, so the branch never touched the other seven
+    pages.
+    - In `index.html`, the branch's hunks are at L1485–1545 (CSS) and L3648 onward (modal markup,
+      script tag).
+    - The nav block runs L2244–3530 (`<nav id="site-nav"` to `end toolbar nav`).
+    - No hunk falls inside it, so nav byte-identity is whatever it was at the merge base.
+  - **Diacritics:** the only cedilla `ş`/`ţ` hit in `*.html` + `js/markdown/*.js` is the known
+    comment at `js/markdown/search.js:45`. There is none in any page.
+
+### Not done, and what the lead or orchestrator needs to do
+
+- **The merge with `main` is still not done.** The merge base is still `1c0af6f`.
+  - `git diff --stat 1c0af6f main` shows main touches 38 files, and all eight pages via the nav
+    edit. It also adds `song.html`, `js/audio/*`, `tests/verify.js` and the `tests/song*.js`
+    suites.
+  - The overlap with this branch is `index.html`, `CLAUDE.md`, `docs/FEATURES.md` and
+    `docs/MAP.md`, as the lead said.
+  - On `index.html`, main's change is the nav block (25 lines). This branch has no hunk inside the
+    nav, so I expect that file to merge without conflict. That is an expectation, not something I
+    observed.
+  - The three docs are likely to need hand resolution:
+    - the `CLAUDE.md` index.html table row and the § U routing row;
+    - FEATURES § U versus main's new sections;
+    - MAP rows.
+  - **Resolution rule for whoever runs it:** keep main's nav block and main's new rows and
+    sections as they are, and keep this branch's § U / `diagram.js` / `sketch.js` text.
+  - I did not rebuild the merge by hand with Read/Write. It would not be a merge commit, and it
+    would amount to working around the refusal.
+- **Everything above ran on the unmerged tree.** After the merge, re-run `npm test`,
+  `node tests/diagram.js`, `/verify` (main's version covers the ninth page, `song.html`, and adds
+  `tests/verify.js`) and the four neighbour suites.
+- **Instruction conflict:** the task wrapper says "Do not run or write tests yourself", but the
+  lead's round-specific context explicitly asked me to fix the test, re-run the suites and fill
+  in `test-report.json`. I followed the lead's round context, because it is more specific, and I
+  am noting that here.
+
+## Round 5 — lead review round 1 findings
+
+Commit `868eded` (code, tests, scratch file removed), then a docs + report commit.
+
+### Status at a glance
+
+| Finding | Status |
+|---|---|
+| `tests/diagram.js` "mindmap normalised" fails | **Fixed (stale check).** Not verified by running, see below |
+| Escape ignored when focus is outside the modal | **Fixed** in both modals, and a test case was added. Not verified by running |
+| Sync with `main`, then `/verify` | **Blocked.** `git merge main` was refused |
+| `debug.tmp.js` scratch file | **Done** (`git rm`) |
+| `dgDownload` swallows failures | **Fixed** with a toast and a new i18n key |
+| Re-run suites, update `test-report.json` | **Blocked.** Every test run was refused |
+
+### What changed, file by file
+
+- **`tests/diagram.js`** (the "mindmap normalised" check at ~L86)
+  - `git diff main... -- js/markdown/diagram.js` shows that `dgParseMindmap`'s tab rule was not
+    changed on this branch. `lead.replace(/\t/g, '  ')` appears only as context lines, not `+`
+    lines. It matches FEATURES § U ("a tab counts as two spaces").
+  - So `\t* A` sits at indent 2 and `    B` at indent 4, which makes B a child of A. The check
+    was stale.
+  - I changed only the expected string to `'Root\n  A\n    B\n  C\n  D'`, as the lead offered,
+    and added a one-line comment explaining why. Product code is unchanged.
 - **`js/markdown/diagram.js`**
-  - *Edge double-click.* `dgPointerDown`'s edge branch re-renders only when
-    the selection actually changes (the code the review gave, same shape as
-    the node branch), with a comment on why. The second click of a
-    double-click now hits a live element and `dblclick` reaches `#dg-stage`.
-  - *Source text applied too soon.* The 150 ms timer body is now a named
-    `dgSourceParse()` (it also zeroes `dg.srcTimer`). The new
-    `dgSourceFlush()` runs it at once if a parse is pending. It is called
-    first in `dgApply()`, first in `dgRestore()` (both the undo/redo buttons
-    and Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y go through it), and in `dgToggleSource()`
-    when the panel is being hidden. `closeDiagram` still discards a pending
-    parse, which is right for Cancel. It also zeroes the id so a later flush
-    can't run a parse the close had discarded.
-  - Two small follow-ups that the flush needs to work from the **buttons**.
-    The review didn't name them, so they are called out here:
-    1. `dgSourceInput` calls `dgState()` right after it pushes an undo step.
-       Before, `#dg-undo` stayed `disabled` until the 150 ms re-render, and a
-       quick click on it went nowhere. `dgState` skips rewriting `#dg-source`
-       while that box has focus, so this does not fight the typing.
-    2. `openDiagram` resets `dg.srcLast = 0`. Before, the 700 ms burst
-       timestamp carried over from the previous session. Typing within
-       700 ms of reopening then pushed no undo step at all.
-- **`tests/diagram.js`** — moved here from
-  `tests/01-for-index-html-page-please-add/diagram.js` with `git mv`. The URL
-  is now `path.join(__dirname, '..', 'index.html')`, so `/apptest diagram`
-  finds it. The empty directory is gone.
-  - Checks that could not fail were replaced: the exact `p.empty` values
-    (`'{"nodes":[],"edges":[],"extra":[]}'` and `''`), the exact mind-map
-    string, `full` must be a non-empty string carrying the `.md-diagram {`
-    CSS rule, a `<figure … md-diagram>` and no `dg-edit`, and the toolbar
-    button must equal `t('diagramBtn')`. The rect tool check now asserts the
-    exact line `n1: rect X,Y 160x60 #C4643C | Text`. X,Y come from the click
-    point through the spec's `clientToWorld` formula, computed in the test
-    from `dg.panX/zoom` and the stage rect, then snapped. There is a
-    precondition check that the click spot is empty stage. (`#C4643C`: the
-    terracotta swatch picked earlier in the run is still the session colour,
-    § 6.4.) The `buildGraph` probe became spec § 10 step 14. A prose
-    `ploaie -> noroi` is a control that must appear in ⇄ Causality, and
-    `alfa -> beta` inside a ` ```flow ` block must not. The final
-    Esc/dialog section now asserts that Esc first deselects, that a dirty
-    Esc raises `t('dgDiscardAsk')` and "no" keeps the modal open, and that
-    Cancel + "yes" closes it.
-  - Other loose checks tightened while I was there. The preview asserts
-    exactly 2 figures, 6 nodes and 4 edges, the warning text equals
-    `t('dgIgnored', 1)`, and the `js` fence is a `<pre><code>` holding
-    `a -> b`. The empty-blocks check asserts 3 figures, 2 of them
-    `.dg-empty`. A mind-map canonical round-trip was added.
-  - New coverage, as the review lists it:
-    (a) the `.dg-edge-hit` endpoints against the **drawn** target shape
-    (attributes of `<rect>`, `<ellipse>`, diamond `<polygon>`). The distance
-    to the outline is measured along the ray from the centre, which is
-    stricter than perpendicular distance, and must be ≤ 1 px. The source end
-    is checked on the rect source.
-    (b) With 5 root children, paths `0,1,2` are right of the root's right
-    edge + 55, `3,4` are left, and a right grandchild sits 56 px past its
-    parent.
-    (c) A real `page.mouse` drag of node `a` changes x and y in `dgCanon()`
-    and changes the edge's `.dg-edge-line` `d`. It is exactly +1 on `dgUndo`,
-    and one Ctrl+Z restores the canon.
-    (d) The `A` key, then a mouse drag c→b, creates `c->b` and selects it.
-    (e) Double-click a node, type, Esc: the input is hidden, the modal is
-    open, and the canon is unchanged.
-    (f) Dispatching `scula-ui-lang` `ro` then `en` with the modal open
-    checks `#dg-title`, `#dg-apply` and the rect tool's `title` in each. The
-    starting language is restored afterwards.
-    (g) Insert at the caret gives exactly
-    `before\n```flow…```\nafter`. One Ctrl+Z gives back `before\n\nafter`,
-    and Ctrl+Shift+Z gives back the inserted text.
-    (h) Edge kind → terracotta swatch → label `ok` (by **double-clicking the
-    edge**, so it also covers the bug fix). Three Ctrl+Z return s2, s1, s0
-    and three Ctrl+Shift+Z return s1, s2, s3.
-    The bug tests are an unselected edge double-clicked at its midpoint (the
-    label input must show, then Enter writes `a -> b | go`). Source text
-    typed and `dgApply()` called in the same `evaluate`, so there is no time
-    for the debounce. The same for the `#dg-undo` / `#dg-redo` buttons and
-    for hiding the panel.
-    I also added Tab / Enter / Tab / Delete / Delete in a mind map (spec
-    § 11 lists it, and the old suite only did Tab+Esc).
-- **`CLAUDE.md`** — `diagram.js` added to the paragraph listing the
-  `index.html` tests. **`tests/README.md`** — a `diagram.js` row before
-  `timeline.js`.
-- **`.gitignore` / `orchestrator_state.json`** — `git rm --cached` and a
-  `/orchestrator_state.json` ignore line. The file stays on disk for the
-  orchestrator, but it is no longer on the branch, so it won't land on `main`
-  (it isn't there today). If the orchestrator deliberately tracks it, revert
-  that one hunk.
+  - **Keys:** the capture-phase `document` keydown listener in `dgInit` used to handle only Tab
+    when the target was outside the open modal. Now:
+    - Tab still goes to `dgTrapTab`.
+    - Every other key runs `stage.focus(); dgKeyDown(e)`, exactly as the lead specified.
+    - Result: Escape (cancel drag / tool / selection / close) and Ctrl+Z / Ctrl+Y now work after
+      focus has been left on `<body>` or on the page behind.
+  - **Download:** on catch, `dgDownload` still logs with `console.error`, and now also shows
+    `ScuLaFolder.toast(t('dgDlFailed'))`, guarded with `window.ScuLaFolder` like the
+    `dgMovedInserted` toast.
+    - A cancelled save does not trigger it: `ScuLaFolder.save` returns `{cancelled:true}` on
+      `AbortError` rather than throwing (`index.html` ~L2831).
+- **`js/markdown/sketch.js`**
+  - The inline modal `keydown` handler is now a named `skKeyDown(e)`, with the same body.
+  - The modal listens with `skKeyDown`.
+  - The capture listener now does `stage.focus(); skKeyDown(e)` for non-Tab keys when the target
+    is outside the modal, and `dgTrapTab` for Tab.
+- **`js/markdown/i18n.js`**
+  - New key `dgDlFailed` in `ro` ("Nu am putut descărca diagrama") and `en` ("Could not download
+    the diagram"), placed next to the other `dgDl*` keys.
+- **`tests/01-for-index-html-page-please-add/exclusive.spec.js`**
+  - New case "a click on the empty toolbar area leaves focus on the page, and Escape still closes
+    the modal". For each modal in turn, it:
+    1. opens the modal;
+    2. clicks its bar's `.dg-spacer` (the empty toolbar area);
+    3. asserts that focus is **not** inside the modal, so the case cannot pass vacuously;
+    4. presses Escape;
+    5. asserts that both modals are closed.
+  - The existing test at L49 should now pass unchanged. Escape after Enter on `#btn-sketch` now
+    reaches `dgKeyDown` through the capture listener.
+- **`tests/01-for-index-html-page-please-add/debug.tmp.js`**: removed with `git rm`.
+- **`docs/FEATURES.md` § U**
+  - The Download sub-section mentions the `dgDlFailed` toast.
+  - The "only one modal" paragraph now says that non-Tab keys are passed to
+    `dgKeyDown` / `skKeyDown` when focus is outside the modal.
+- **`docs/MAP.md`**: `dgKeyDown` added to the `diagram.js` row, `skKeyDown` to the `sketch.js` row.
 
-### Deliberately not done / concerns
+### Blocked: what I could not do this round, and why
 
-- **I did not run the test file.** The task instructions say not to run tests
-  ("that is the tester's job"). They also say not to write them, but this
-  round's review explicitly asked for them, so I wrote them. I only ran
-  `node --check` on it and on `diagram.js`. I read every code path each
-  check goes through, but selectors and timings have not been executed, so
-  the first run may turn up a test-side slip rather than an app bug. Order
-  dependency to know about: the rect-tool check expects `#C4643C` because
-  the step-5 section picks that swatch earlier. If sections are reordered,
-  that expectation changes.
-- `dgSelValid` has an unreachable tail (`if (dg.open) { dgRender(); … }` after
-  the returns). It looks like a leftover from an edit. It is harmless, and I
-  left it alone as out of scope.
-- `dgSetKind` (new-mode kind switch) doesn't reset `dg.srcLast`, and doesn't
-  flush a pending source parse. That is fine because the switch discards the
-  model anyway, but it's noted in case the tester probes it.
-- After an undo while `#dg-source` itself has focus (only possible from
-  script, since Ctrl+Z there is the textarea's own undo), the box keeps
-  showing the typed text until focus leaves. `dgState` does that on purpose
-  so it doesn't clobber typing.
-- `/verify` was not run as a slash command. The nav block and the app HTML
-  files are untouched this round; only `js/markdown/diagram.js` changed and
-  it passes `node --check`.
+In this session's permission mode, these were refused:
+
+- `git merge main` (and the read-only `git merge-tree` preview);
+- running `node tests/diagram.js` with `PW_CHROME_PATH`;
+- the `/verify` loop (`awk` extraction + `node --check` over the pages).
+
+Following the rules I did not retry them or work around them. As a result:
+
+- **`/apptest diagram` output: not available.** I cannot paste an "all good" line. I did not run
+  the test, so the stale-check fix and the Escape fix are unverified by me. Only `node --check`
+  passed, on `diagram.js`, `sketch.js` and `i18n.js`.
+- **`npm test`, codecopy, timeline, mdundo, cause: not run.** For that reason I left
+  `test-report.json` untouched. It is the tester's file, and I will not write results I did not
+  observe.
+- **Sync with `main`: not done.** I could still read both sides' diffs, and they suggest the merge
+  will be clean:
+  - **`index.html`:**
+    - `main` changes L2233–2860, which is the nav block (anchors: `<nav id="site-nav"` at L2244,
+      end marker at L3530).
+    - This branch changes only L1485–1545 (CSS) and L3648+ (modal markup, script tag).
+    - This branch **never touches the nav**, so after the merge the nav should be `main`'s,
+      byte-identical in all pages.
+  - **`CLAUDE.md`:** `main` touches L10 and this branch touches L12. One unchanged line
+    separates them, which is close enough that git *might* still call it a conflict. The other
+    hunks are far apart.
+  - **`docs/FEATURES.md`:** this branch changes L2596 and L2661–2669. `main` inserts at L2701,
+    after them.
+  - **`docs/MAP.md`:** `main` changes L12–185 and L878, and this branch changes L355.
+  - Whoever can merge should run `git merge main`, check `CLAUDE.md` L10–13, and then run
+    `/verify`. `main` also changed `.claude/commands/verify.md` and added `tests/verify.js`, so
+    use `main`'s version of `/verify` after the merge.
+
+### Decisions
+
+- **Tool keys after focus loss.** Tool keys (`V`/`A`/`R`… in a flowchart, `Tab`/`Enter`/arrows in
+  a mind map) are not applied on the *first* key press made while focus is outside the modal.
+  `dgKeyDown` checks `e.target === stage`, and the event's target is still the outside element.
+  - That press still moves the focus to the stage, so the next key press works.
+  - I kept the lead's exact `stage.focus(); dgKeyDown(e)` rather than faking the target. The
+    concrete bug (Esc, Ctrl+Z/Y) is fully covered.
+  - Sketch tool keys (`P`/`H`/`E`) do not check the target, so they work on the first press.
+- **Keys typed while focus sits in the editor textarea behind a modal.** `stage.focus()` in the
+  capture phase moves the focus before the key's default action runs, so a printable key no
+  longer lands in the hidden editor. I believe Chromium behaves this way, but I did not observe it.
+
+### Concerns for the tester
+
+- The new spec case assumes that a click on `.dg-spacer` leaves focus outside the modal. If some
+  handler on the bar focuses the stage on `pointerdown`, step 3 of that case fails. That would
+  mean the click never lost focus in the first place, and the assertion is the thing to revisit.
+- Please run: `npm test` (repo root), `/apptest diagram`, `codecopy`, `timeline`, `mdundo`,
+  `cause`, and `/verify` after the merge.
+
+## Round 4 — bug-1: the ◇ Diagram and ✏ Sketch modals could be stacked
+
+Commit `08fa279` (code + FEATURES § U), then the MAP row + this report.
+
+**The bug.** Neither modal trapped focus, so Tab walked out onto the page toolbar behind it.
+`openDiagram()` only checked `dg.open` and `openSketch()` only checked `sk.open`. As a result,
+Enter on the other toolbar button opened a second full-screen modal on top of the first.
+
+### What changed
+
+- **`js/markdown/diagram.js`**
+  - `openDiagram()` now also returns while `skIsOpen()` is true. The call is guarded with
+    `typeof`, the same way `events.js` already guards it.
+  - New `dgTrapTab(modal, e)` handles Tab / Shift+Tab without Ctrl, Meta or Alt:
+    - It collects the modal's tabbable controls: `tabIndex >= 0`, not disabled, and rendered
+      (`getClientRects().length`), so anything `hidden` is skipped.
+    - Tab on the last control goes to the first. Shift+Tab on the first goes to the last.
+    - If focus is on something outside that list, it moves to the first control (or the last on
+      Shift+Tab).
+    - It returns `true` when it handled the key.
+  - `dgKeyDown` calls `dgTrapTab` first. The exception is Tab on the stage of a mind map: there
+    Tab still means "add a child", as in rounds 1–3.
+  - `dgInit` adds a capturing `keydown` listener on `document`. When the diagram is open and the
+    key's target is outside the modal, it runs the trap. This covers focus left on `<body>`, for
+    example after a click on empty bar space.
+- **`js/markdown/sketch.js`**
+  - `openSketch()` returns while `dgIsOpen()` is true, and also while a picture is still loading
+    (new `sk.loading` flag, reset in a `finally`).
+  - After the picture has loaded, it checks `dgIsOpen()` again and gives up if the diagram opened
+    during the load. Otherwise that async gap could still stack the two modals.
+  - The modal's `keydown` calls `dgTrapTab(modal, e)` first. It gets the same capturing
+    `document` listener for focus left outside it.
+  - `sketch.js` already loads after `diagram.js`, so `dgTrapTab` is always defined when it runs.
+- **`docs/FEATURES.md` § U**: after the key table, one paragraph on "only one modal at a time"
+  and the Tab trap.
+- **`docs/MAP.md`**: `dgTrapTab` added to the `diagram.js` row.
+
+### Decisions
+
+- **No feedback when an open is refused.** It happens silently. With the trap in place, the other
+  toolbar button can no longer be reached from inside a modal, so a toast would never be seen in
+  practice.
+- **Only Tab is trapped.** A `focusin` pull-back would also catch other ways of leaving the modal.
+  I didn't add one because it could fight with UI that `ScuLaFolder.save` may show during a
+  download. Clicks can't reach the page anyway, since the modals cover the viewport.
+- **Mind-map stage.** From the mind-map stage, Tab cannot walk out to the bar buttons, because Tab
+  there adds a node. That was already true before this change. Shift+Tab also adds a node there
+  (existing behaviour, unchanged).
+
+### Not done / concerns
+
+- Following the orchestrator's instruction, I did not run or write tests or open a browser. The
+  only check was `node --check` on both files, and both parse.
+- If focus is left on `<body>` inside an open modal, keys other than Tab (Esc, Ctrl+Z) still don't
+  reach the modal's handler, and `events.js` swallows them. That was already so before this
+  change and is outside bug-1.
+- Suggested checks for the tester:
+  - Diagram open, Tab repeatedly: focus never lands on `#btn-sketch`.
+  - Call `openSketch()` directly while the diagram is open: `#sketch-modal` stays hidden. Do the
+    same the other way round.
+  - Shift+Tab from the first bar control lands on the last visible control.
 
 ---
 
-# Round 1
+# Round 3
 
-Commits: `1b4d23d` (code), `3dbe2ed` (docs), plus this report.
+Spec: `docs/tasks/01-for-index-html-page-please-add/spec.md` (round 3).
+Commits: `8a036d0` (diagram.js), `764876c` (sketch.js + page wiring),
+the docs commit after it, and this report.
+
+## Up front: what I did not do
+
+- **I did not run `/apptest diagram`, and I did not extend `tests/diagram.js` or add `tests/sketch.js`.**
+  The spec's § 2 step 1 and the "implementer's own tests" item in § 10 ask for both. The task
+  instruction from the orchestrator says: *"Do not run or write tests yourself — that is the tester's
+  job."* The orchestrator's instruction is the more direct and more recent one, so I followed it.
+  That leaves these items open for the tester:
+  - § 2 step 1: the report was supposed to include the `/apptest diagram` output. It does not.
+  - § 2.3: `/verify` and the codecopy / timeline / mdundo / cause / paste suites were not run.
+  - § 10: none of the listed `tests/diagram.js` extensions or `tests/sketch.js` checks exist yet.
+- The only checks I ran were `node --check` on each changed script. All of them parse.
+- I did not open the page in a browser. Everything below was checked by reading the code, not by
+  watching it run. Expect first-run defects in the pointer interactions.
 
 ## What changed, file by file
 
-- **`js/markdown/diagram.js`** (new, ~720 lines). All `dg`-prefixed except the
-  public entry points.
-  - `DG_NODE_RE` / `DG_EDGE_RE` copied verbatim from spec § 2.1; `DG_COLORS`,
-    shape defaults, `\n`/`\\` label escaping.
-  - `dgParseFlow` / `dgSerializeFlow` / `dgParseMindmap` / `dgSerializeMindmap`
-    per § 2 (tolerance rules, `extra`, implicit nodes, canonical form).
-  - `dgMeasure` (one cached canvas), `dgWrap`, flow renderer `dgFlowSvg`
-    (all 7 shapes, boundary clipping per shape, `drawArrow` head geometry, no
-    `<marker>`, hit path + visible path, dashed `-->`, edge label with bg
-    rect, bounds + 20 padding), mind-map layout `dgLayoutMindmap` +
-    `dgMindmapSvg` (right/left split, subtree extents, 56 px gap, branch
-    colours, cubic connectors, `data-path`).
-  - `renderDiagramBlock(lines, kind, lineIdx, opts)`: un-escapes, parses,
-    returns the `<figure class="md-diagram …">`. In the preview it adds
-    `data-line`, the `.dg-edit` button and `.dg-warn`. In the export it adds
-    none of them. The button carries `data-i`/`data-i-title`, so
-    `applyUILang` repaints it.
-  - The modal controller: `openDiagram`, `closeDiagram`, `dgApply`,
-    `dgIsOpen`. It covers modal undo/redo (`dgUndo`/`dgRedo`, limit 100),
-    zoom/pan/fit/wheel/pinch, flow tools, connecting, resizing, labels,
-    colours, edge kind, mind-map keys, and a source text box that re-parses
-    after 150 ms (one undo step per burst, 700 ms).
-- **`js/markdown/markdown.js`**
-  - `codeStart` is recorded when a fence opens.
-  - Both the closing-fence and the unclosed-at-EOF branches call a new
-    `mdFenceHtml()`. It sends `flow`/`mindmap` to `renderDiagramBlock` and
-    everything else to the unchanged `renderCodeBlock`.
-  - `.dg-edit` branch in the preview `click` listener (after the checkbox
-    branch, before wikilinks). New preview `dblclick` listener.
-  - Both map `data-line` through `wbPreviewLineMap` (`mdDiagramLine`), the
-    same way the checkbox branch does.
-- **`js/markdown/files.js`**: the export CSS from § 5 as literal hex, placed
-  before `.code-block`.
-- **`js/markdown/events.js`**: the first statement of the global `keydown`
-  handler is now `if (typeof dgIsOpen === 'function' && dgIsOpen()) return;`.
-- **`js/markdown/i18n.js`**: every § 7 key in `ro` and `en`, plus a
-  "Diagrame" / "Diagrams" help section before "Anulare / Refă" / "Undo /
-  redo". The literal backticks inside the `helpBody` template are escaped.
-- **`index.html`**
-  - `<script src="js/markdown/diagram.js">` directly after `markdown.js`.
-  - `#btn-diagram` directly after the ⏳ Timeline button.
-  - The modal markup after the gantt modal (§ 6.2 ids, tool glyphs, six
-    swatches, the edge-kind `<select>`, the dot-grid `<pattern>`).
-  - Preview and modal CSS (tokens only) right before the timeline CSS, and a
-    `(hover:none) and (pointer:coarse)` 44 px rule.
-  - The nav block is not touched.
-- **Docs**
-  - `docs/FEATURES.md`: new § U with the decision, both grammars (the
-    canonical copy) and the key table.
-  - `docs/MAP.md`: a row for `diagram.js`.
-  - `js/markdown/README.md`: a row for `diagram.js` and its load order.
-  - `CLAUDE.md`: the `index.html` description gains "flowcharts and mind
-    maps", and a routing row points to § U.
+### `js/markdown/diagram.js`
+
+I kept the § 12 starting state (`DG_EDGE_RE`, `DG_MM_ATTR_RE`, `dgMmNode`, the sequence
+parser/serializer, `DG_PORTS`/`DG_PORT_ORDER`/`DG_DIR`, `dgParseKind`) exactly as it was, and
+built on top of it.
+
+- **Ports (§ 3.1–3.2).** `dgPorts(box)` follows the table for every shape. An optional `box.r`
+  sets the corner radius: mind-map nodes use 8, the root uses h/2. The radius is clamped to half the
+  box, the same way SVG clamps `rx`. `dgAutoPort(box, towards)` returns the nearest port; ties go by
+  `DG_PORT_ORDER` (a 1e-6 epsilon, so the earlier port wins an exact tie).
+- **Flow edges.** `dgEdgeGeom` now works port to port, with pinned or automatic ends as § 3.2 says.
+  `dgClipT` is deleted; nothing else used it. A self-edge is drawn only when both ends are pinned to
+  different ports. It is a cubic that leaves each port 40 px along the port's outward direction.
+  Arrowheads on that curve take their angle from the control points. The label sits at the curve's
+  t = 0.5 point. `dgPathD` builds the straight or cubic `d`.
+- **Flow modal (§ 3.4).**
+  - A selected node shows 8 `circle.dg-port[data-port]` (r 5).
+  - Dragging from a port starts a connector pinned at that end. Dragging from the node body with
+    the connect tool starts an automatic one (`dgRubberStart(id, e, port)`).
+  - While dragging, `dgTargets` draws `dg-port dg-port-target` circles (r 6, `pointer-events:none`)
+    on the node that would receive the drop. The port within 12 screen px gets `dg-port-hot`.
+  - Drop resolution is `dgDrop(clientX, clientY, candidates)`: the nearest port within `12/zoom`,
+    else the `dgHit` body, else cancel.
+  - A selected edge shows `circle.dg-edge-end[data-end]` handles. Dragging one (`dgEndStart` →
+    `dgEndDrop`) re-attaches that end and keeps op, colour and label; it is one undo step.
+  - `Esc` now cancels any non-pan drag.
+- **Mind maps (§ 3.5, § 4).**
+  - `dgLayoutMindmap` runs the unchanged automatic layout. It keeps the automatic box as `L.ax/L.ay`,
+    then walks pre-order: a node with its own x,y uses it, and a node without keeps its automatic
+    offset from its parent. `L.eff` is the effective colour.
+  - `dgMmEdgeGeom` applies the automatic side rule, any pins, and the § 3.5 curve distances. With
+    e/w ends this reproduces the round-1 curve exactly, because the automatic gap is 56, so
+    |dx|/2 = 28 ≥ 20.
+  - A selected non-root node shows its 8 dots and two end handles. The `to` handle may only drop on
+    that node; the `from` handle only on its parent.
+  - Node drag (`mmmove`): 3 px threshold. On start, every node in the dragged subtree gets its current
+    position as its own x,y. The dragged node snaps to the 10 px grid and its descendants move by the
+    same delta. The drag is one undo step. A drag whose snapped delta is zero is cancelled, so it
+    writes no positions.
+  - Colours: the swatch sets the selected node's own colour (`dgSetColor`). `#dg-color-auto` clears
+    it (`dgMmColorAuto`). The active swatch and the disabled state are kept in `dgState`.
+  - `#dg-mm-auto` runs `dgMmAutoLayout`: it clears x/y/pins, keeps colours, is one undo step, and
+    fits the view.
+  - New nodes are created by `dgMmBlank`, with no x/y.
+- **Sequence (§ 5).**
+  - `dgSeqSvg` lays the diagram out per § 5.2: box widths, lifeline gaps including the label-width
+    rule for adjacent pairs, row heights 44/60/note, numbered circles, the self-loop, and notes
+    wrapped at 180.
+  - It uses the groups `dg-seq-part`, `dg-seq-msg`, `dg-seq-note-g` and reuses the `dg-edge-*`
+    classes. It returns `lay = {parts, labels}` for the modal.
+  - `dgSeed('sequence')` produces the seed text through i18n keys.
+  - In the modal, the source panel opens automatically for sequence (`dgSourceShow`). Tools, colours,
+    the colour-auto button, mind-map tools and Delete are hidden.
+  - A participant is dragged sideways (`seqmove`; it gets a `translate` while dragging) and dropped
+    by `dgSeqReorder`. Clicking a message or note (`seqclick`, < 3 px) opens `#dg-label-input` over
+    its label.
+  - `dgBlockAt`, `dgApply`'s fence regex and `dgLoad`/`dgCanon` all accept all three kinds.
+- **Download (§ 7).**
+  - `dgExportSvg`: its first child is a white rect, then an embedded `<style>` with literal colours.
+  - `dgExportPng` renders at 2×.
+  - `dgFileName`: `wbSlug(chapter.title, 'diagrama')-word-n.ext`.
+  - `dgBlocks` counts n. `dgDownload` saves through `ScuLaFolder.save`. `dgDownloadAt(line, fmt)`
+    serves the preview buttons and `dgDownloadModal(fmt)` the modal buttons (new block = count + 1).
+- `renderDiagramBlock` is now generic over the three kinds (`dgSvgFor`). It wraps `✎ Edit`,
+  `⤓ SVG` and `⤓ PNG` in `.dg-actions`, and it warns about unparsed lines for flow **and** sequence.
+
+### `js/markdown/sketch.js` (new, loaded right after `diagram.js`)
+
+- Public entry points: `openSketch(opts)`, `closeSketch(force)`, `skApply()`, `skIsOpen()` and
+  `skImageTokens(text)`. Everything else uses the `sk` prefix.
+- **Canvases.** A new sketch is a 1600×1000 white base. An existing picture is drawn at its natural
+  size, with the long side capped at 2400. There are two stacked canvases, fitted with the aspect
+  ratio kept.
+- **Tools.** Pen, highlighter (alpha 0.4, `multiply`, ×3 width, one path per stroke) and eraser
+  (`destination-out` on `#sk-ink` only, ×3). The six palette colours, sizes 3/6/12 × f, and undo/redo
+  per stroke.
+- **Keys.** `P`/`H`/`E`, `Ctrl+Z`/`Ctrl+Shift+Z`/`Ctrl+Y`, and `Esc` to cancel (with a confirm if
+  anything was drawn).
+- **Pointer.** Pointer capture, mouse button 0 only, and `getCoalescedEvents` when available. A
+  second pointer removes the stroke in progress.
+- **Apply.** It composites the two canvases, runs the result through `imageBlobToDataUrl`, and makes
+  one `setRangeText`. A new sketch becomes `![Schiță n](…)` at the caret, with the § 6.5 newline
+  padding. A picture edit replaces the matched token; embeds get alt = file name without extension.
+- **Unreadable pictures.** `crossOrigin` is set for http(s) sources and a 1×1 `getImageData` probe
+  runs. If the probe fails, the modal does not open and the `skImgBlocked` toast shows instead.
+- **✎ button.** `#img-draw-btn` is `position:fixed`. It appears on `mouseover` of a non-diagram
+  preview `img`, or on a tap on `(hover:none)` devices. It hides when the pointer leaves the preview,
+  on any scroll (a capturing listener on `window`), and when the preview is rebuilt (a
+  `MutationObserver` on `#preview`, so `markdown.js`'s `updatePreview` did not need a change).
+
+### `index.html`
+
+- **CSS.**
+  - The § 2 fix: `.dg-edge-line:not([stroke])` and `.dg-edge-head:not([fill])`.
+  - New rules: `.dg-seq-life`, `.dg-seq-num text`, `.dg-actions`, `.dg-dl` (same visibility rules
+    as `.dg-edit`), `.dg-port-target`/`.dg-port-hot`, `.dg-edge-end`, sequence cursors,
+    `.sk-stage`, `.img-draw-btn`, and `.dg-btn[hidden]`.
+  - `.dg-edit` lost its own absolute positioning; `.dg-actions` now positions all three buttons.
+- **Markup.**
+  - The `#btn-sketch` toolbar button after `#btn-diagram`.
+  - A `sequence` kind button, and `#dg-mm-auto` in `#dg-mm-tools`.
+  - `#dg-color-auto` right after `#dg-colors`, and `#dg-dl-svg`/`#dg-dl-png` before the spacer.
+  - `#sketch-modal` per § 6.3; its swatches are generated by `sketch.js`. I added `tabindex="0"` to
+    `#sk-stage` so it can take focus for the keys.
+  - `#img-draw-btn`, and the `sketch.js` script tag.
+- The shared nav block was not touched: all edits are outside `<nav id="site-nav">` … end marker.
+
+### Other files
+
+- `js/markdown/markdown.js`: `sequence` is added to the fence dispatch. There is a delegated click on
+  `.dg-dl` → `dgDownloadAt`, and a double-click on a `.dg-dl` no longer opens the modal.
+- `js/markdown/files.js`: the export CSS gets the `:not([stroke])`/`:not([fill])` fix plus
+  `.dg-seq-life {stroke:#888}` and `.dg-seq-num text {fill:#222}`.
+- `js/markdown/events.js`: the global keydown handler returns while `skIsOpen()`.
+- `js/markdown/i18n.js`: every § 8 key in both languages, with comma-below ș/ț. The `helpBody`
+  "Diagrame"/"Diagrams" section gains items for pins, free mind maps, sequence, download and
+  sketches.
+- **Docs.**
+  - `docs/FEATURES.md` § U: retitled; the mindmap attribute grammar; new sub-sections "Ports and
+    pins", "Free mind maps", "The ```sequence grammar", "Download", "Sketches"; key-table rows.
+  - `docs/MAP.md`: the diagram.js row extended, plus a sketch.js row.
+  - `js/markdown/README.md`: a sketch.js row with its load position.
+  - `CLAUDE.md`: the index.html table text and the § U routing row.
+  - I did not add to CLAUDE.md's tests paragraph, because I wrote no tests.
 
 ## Ambiguities and how I resolved them
 
-1. **When an id is defined twice**, the later line replaces the whole node
-   record, and the node keeps its first slot in the order. If the later line
-   has no position, the node is auto-placed. I did not merge with the
-   earlier line.
-2. **Auto-place counter `k`** runs over the final node order. That is the
-   explicit nodes in first-appearance order, then the implicit nodes in edge
-   order. The spec says "source order"; implicit nodes are therefore counted
-   after all explicit positionless ones, not at their edge's line.
-3. **Edge labels** containing `\n` are drawn on one line: the newline is
-   replaced by a space. The text still round-trips unchanged.
-4. **Esc in a flow** checks in this order: rubber band in progress → cancel
-   it; else a non-`select` tool is active → back to `select`; else a
-   selection → deselect; else cancel the modal. The middle step is my
-   addition, so that Esc after picking a shape tool doesn't close the modal.
-5. **Esc in a mind map** does not deselect (the root is always selected). It
-   goes straight to cancel-the-modal, which asks first if something changed.
-6. **Shape tool on an existing node**: the spec says "pointerdown on empty
-   stage" places a shape. On a node, the tool behaves like select instead.
-7. **The connect tool, or a mind-map drag not on a node**, on empty stage
-   pans.
-8. **Handles**: the resize handle (10×10) and the port dots (r=5) are sized
-   in world units, as the spec gives them. So they shrink when zoomed out.
-9. **Undo for new items**
-   - A new shape or mind-map node plus its first label commit is **one** undo
-     step: the label commit on a just-created item does not push again.
-   - "Tab, Esc" (or an empty commit on a new mind-map node) pops the creation
-     step, so nothing is left behind, not even an undo entry.
-10. **`↑`/`↓` among the root's children** step through all of them in
-    order, regardless of side, as "previous/next sibling" literally says.
-11. **An `openDiagram({line})` whose line is not a diagram fence** opens in
-    new mode (seeded) rather than failing silently.
-12. **The modal re-renders its strings** with a local `dgPaint()` (data-i /
-    data-i-title / data-i-aria inside the modal only) instead of calling the
-    global `applyUILang()`, because that also re-renders the workbook tree.
-    `scula-ui-lang` is handled both by `applyUILang` (global) and by
-    `dgChrome()`.
+1. **Tests vs. the orchestrator instruction.** Covered in the first section above.
+2. **Target dots on the source node.** § 3.4 shows target dots only on "a node other than the
+   source", but the drop rules allow pinning a self-edge between two dots of the source. I show the
+   source's target dots only while one of its dots is hot, which means a pinned self-edge is
+   possible.
+3. **Dropping an end so that `from === to`.** For moving an existing end, I applied the same rule as
+   for new connectors: it is kept only when both ends are pinned to different ports; otherwise it is
+   cancelled.
+4. **Mind-map dots.** § 3.5 shows dots on a selected node, but never says what pressing on one does.
+   Pressing on a dot starts a node drag, the same as pressing on the body.
+5. **Esc during drags.** `Esc` now cancels any non-pan drag. That covers node, mind-map and
+   participant drags as well as connector and end drags; the spec only names connector and end drags.
+6. **An empty diagram download** gets a blank 200×60 white SVG/PNG.
+7. **Sequence labels with `\n`.** They are drawn on one line, with the newline shown as a space, the
+   same way flow edge labels already work. The text still round-trips.
 
-## Checks I ran (not tests)
+## Concerns / edge cases I could not verify
 
-- `node --check` passes on the five touched scripts and on the inline
-  `<script>` blocks of `index.html`.
-- A one-off `node` eval (not saved) confirmed:
-  - the flow round-trip on canonical text, including a coloured node, an
-    empty-label `text` node, an edge label with an escaped backslash-n, and a
-    `%%` extra line;
-  - the implicit nodes created for `a -> b | da`;
-  - the mind-map round-trip, and that tab-indented bulleted input comes out
-    canonical.
-- I did **not** run `/verify` or any Playwright test. My quick awk nav-diff
-  used the wrong anchor and compared nothing, so it proves nothing. I did not
-  edit the nav region; the tester should confirm with `/verify`.
-
-## Concerns / edge cases not fully addressed
-
-- **Nothing was exercised in a real browser.** Pointer capture, dblclick
-  detection and pinch are all unverified. Dblclick uses `elementFromPoint`
-  because the world is re-rendered between the two clicks and the stage
-  holds pointer capture.
-- **Every drag frame re-renders the whole `#dg-world`.** That is fine for
-  normal diagrams, but it could be slow for very large ones.
-- **The label box does not follow a moving node.** It is repositioned on
-  zoom/pan, but a pointerdown elsewhere commits it first anyway.
-- **Resize limits**: the width/height minimum is applied after snapping, so
-  a height can end up 24, which is off the 10 px grid. This matches "min
-  40×24".
-- **Line-number mapping**: in edit mode the block is found by line number
-  and body text, then by searching for the whole block. If the preview is
-  filtered (task filters), fenced lines are dropped from it, so diagrams
-  don't appear in the preview at all. That is existing behaviour of
-  `wbPreviewFilteredText`.
-- **`orchestrator_state.json`** was already modified before I started. I
-  left it out of my commits on purpose, since it is outside my scope.
+- **Nothing was run in a browser.** Pointer flows (drop resolution through `elementFromPoint`,
+  target dots, end handles, mind-map branch drag, participant reorder, the sequence label click
+  leaving focus in `#dg-label-input`) are the most likely places for first-run defects.
+- **Old test expectations.** Any `tests/diagram.js` assertion about the old centre-ray endpoint
+  coordinates will now fail. § 3.2 expects that; the tester should update those assertions to
+  "on the outline ±1 px".
+- **Mind-map labels that end in `{…}`.** A label typed so that it ends in a valid attribute block
+  (e.g. `Set {1,2}`) will be read back as a position on the next parse. The format has no escape
+  for this; the spec does not ask for one.
+- **The highlighter's `multiply`.** It blends against the transparent ink canvas, not the picture,
+  so over a coloured picture it looks like 40% alpha rather than a true multiply. The saved
+  composite matches what is on screen.
+- **Matching an embed to its preview image.** For `![[name.png]]`, the preview's `src` is matched by
+  "ends with the name". A standard `![]()` matches its raw `src` or `resolveImageSrc(src)`. If
+  neither matches, the drawing is inserted at the caret with the `skImgMoved` toast.
+- **A pinned port on an edge from the preview text.** Something like `a.x -> b` (an invalid port) is
+  not a valid edge line, so it goes to `extra` and triggers the warning.
+- `#img-draw-btn` uses `z-index: 60`. I did not check it against every panel's stacking order.

@@ -2604,7 +2604,7 @@ both languages. Run: `/apptest media`.
 
 ---
 
-## U. Diagrams — flowcharts and mind maps (`index.html`)
+## U. Diagrams — flowcharts, mind maps, sequence diagrams and sketches (`index.html`)
 
 Two fenced-block kinds, ` ```flow ` and ` ```mindmap `, are drawn as inline
 SVG in the preview and in the HTML export, and edited in a full-screen modal
@@ -2670,13 +2670,104 @@ layout is automatic: the first half of the root's children go right, the
 rest left, each branch takes one palette colour, and connectors are cubic
 curves.
 
+A node line may end in an **attribute block** `{…}` of space-separated
+tokens: `x,y` (the node's top-left, world px), `#RRGGBB` (its own colour),
+`from=<port>` / `to=<port>` (pins of the connector *into* it; ignored on the
+root). Regex `DG_MM_ATTR_RE`; a `{…}` that does not match stays in the label
+(`Mulțimea {a, b}`). Canonical order `x,y #RRGGBB from= to=`; a map with no
+attributes serializes exactly as before.
+
+### Ports and pins (flowcharts and mind maps)
+
+Every shape and mind-map node has 8 dots — `n ne e se s sw w nw` —
+`dgPorts(box)`, all on the drawn outline (diamond: the vertices and the edge
+midpoints; ellipse: 45° on the ellipse; rounded shapes: 45° on the corner arc;
+parallelogram: the polygon's vertices and side midpoints). A flow edge end is
+**pinned** when written `id.port` (`ask.e -> end.nw`, regex `DG_EDGE_RE`) and
+**automatic** otherwise: `dgAutoPort(box, towards)` takes the nearest dot
+(ties `n e s w ne se sw nw`), from-end towards the target's centre, then the
+to-end towards the from-dot. Edges stay straight; a self-edge is drawn only
+between two different pinned dots, as a curve. Mind-map connectors are
+automatic by side (child right of parent → `e`→`w`, left → `w`→`e`, else
+`s`/`n`) unless pinned; curve handles leave each dot along its outward
+direction.
+
+In the modal a selected box shows its 8 `.dg-port` dots; dragging from one
+starts a pinned connector, the connector tool from the body an automatic one.
+While dragging, the node under the pointer shows `.dg-port-target` dots and
+the one within 12 screen px is `.dg-port-hot`. Drop: a dot within 12 px →
+pinned; the body → automatic; elsewhere → nothing. A selected edge (or the
+connector into a selected mind-map node) shows two `.dg-edge-end` handles
+that re-attach that end by the same rules — one undo step; `Esc` cancels.
+
+### Free mind maps
+
+Dragging a node (≥ 3 px) moves its whole branch on the 10 px grid; every
+node in the branch receives explicit `x,y`. A node without `x,y` keeps its
+automatic offset from its parent, which is why a new `Tab`/`Enter` node lands
+beside its parent. The colour swatches set the selected node's **own** colour
+(not its children's); `↺ Branch colour` clears it. `↺ Auto layout` clears
+every position and pin (colours stay) — one undo step. Arrow keys still move
+by the automatic layout's sides.
+
+### The ` ```sequence ` grammar
+
+One statement per line, ids `[\p{L}\p{N}_-]+` (`Ștefan` works):
+`participant <id>[ | label]`, `note <id> | text`, `<a> -> <b>[ | label]`
+(message), `<a> --> <b>` (dashed reply), `<a> -> <a>` (self-message). Other
+lines are kept in `extra` and warned about. Participants are ordered by first
+appearance; the canonical text declares them all first, then the events. No
+frames or activation bars. Drawing: boxes along the top, dashed lifelines,
+messages numbered 1, 2, 3… in accent circles, amber notes right of the
+lifeline. In the modal the source text opens with it; drag a participant
+sideways to reorder, click a message or note to rewrite its label.
+
+### Download — SVG and PNG
+
+`dgExportSvg(kind, text)` is a standalone SVG — a white `<rect>` first, then
+an embedded `<style>` with literal dark text and lines, box colours as drawn.
+`dgExportPng` rasterises it at 2×. Names come from `dgFileName`:
+`<Chapter>-flowchart|mindmap|sequence-<n>.<ext>`, `n` counting blocks of the
+same kind. Buttons: `⤓ SVG` / `⤓ PNG` in the modal bar and on hover over each
+preview diagram (`.dg-dl`, not in the HTML export). Saved through
+`ScuLaFolder.save`; a PNG that will not rasterise or a save that throws shows
+the toast `dgDlFailed` (a cancelled save is not an error — `save` reports it).
+
+### Sketches — `js/markdown/sketch.js`
+
+`✏ Sketch` opens `#sketch-modal` on a white 1600×1000 page; the ✎ that
+appears over any preview picture (`#img-draw-btn`) opens that picture
+(long side ≤ 2400) instead. Pen, highlighter (0.4 alpha, multiply, ×3),
+eraser (`destination-out` on the ink canvas only — the picture underneath is
+never touched), Mâzgilește's first six colours, widths 3/6/12 px scaled by
+the long side / 1600, one undo step per stroke, `P`/`H`/`E`, `Esc`. Apply
+composites both canvases through `imageBlobToDataUrl` and writes
+`![Schiță n](data:…)` at the caret, or replaces the clicked picture's token
+(`skImageTokens`, matched by `src` and ordinal) — one markdown undo step. A
+picture the canvas may not read (a `file://` path, another site) is refused
+with a toast. Sketches are pictures, not searchable text.
+
 ### The modal's keys
 
 | Where | Keys |
 |---|---|
 | Flowchart | `V` select · `A` connector · `R` rectangle · `D` decision · `E` ellipse · `T` text · `F2`/`Enter` or double-click label · `Del`/`Backspace` delete (a node takes its edges with it) · drag the dots of a selected box to connect, its corner handle to resize |
-| Mind map | `Tab` child · `Enter` sibling · `F2` rename · arrows move the selection · `Del` deletes the branch · `Tab` then `Esc` leaves nothing behind |
+| Mind map | `Tab` child · `Enter` sibling · `F2` rename · arrows move the selection · `Del` deletes the branch · `Tab` then `Esc` leaves nothing behind · drag a node to move its branch |
+| Sequence | typed in the source panel · drag a participant sideways · click a message/note to edit its label (`Enter` commits, `Shift+Enter` newline, `Esc` cancels) |
+| Sketch | `P` pen · `H` highlighter · `E` eraser · `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` · `Esc` cancels (asks if drawn) |
 | Both | `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` modal undo/redo · wheel or two fingers zoom · drag the empty stage to pan · `Esc` cancels a connector, then the selection, then the modal (asks if changed) · in the label box `Esc` only cancels the label |
+
+Only one of the two modals is ever open: `openDiagram()` does nothing while
+the sketch modal is open (`skIsOpen()`), and `openSketch()` does nothing
+while the diagram modal is — nor opens if the diagram opened while its
+picture was loading. `Tab` / `Shift+Tab` stay inside the open modal
+(`dgTrapTab`, shared by both): past the last control back to the first, and
+from the page behind back in. A mind map's stage keeps `Tab` for "add a
+child". Every other key pressed while focus is outside the open modal (a
+click on the bar's empty space leaves it on `<body>`) is handed to the
+modal's own handler (`dgKeyDown` / `skKeyDown`) by a capture-phase listener
+on `document`, which also puts the focus back on the stage — so `Esc` and
+`Ctrl+Z` still work.
 
 **Insert into note** writes the block at the caret, **Update note** replaces
 the block it was opened from — each one markdown undo step (§ K). If the

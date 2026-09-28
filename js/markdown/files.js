@@ -246,8 +246,10 @@ function exportHtml() {
     .md-diagram { margin: 14px 0; padding: 12px; border: 1px solid #e2e2e2; border-radius: 8px; background: #fafafa; overflow: auto; }
     .dg-svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
     .dg-label, .dg-edge-label { fill: #222; font-family: 'Trebuchet MS', sans-serif; }
-    .dg-edge-line { stroke: #666; }
-    .dg-edge-head { fill: #666; }
+    .dg-edge-line:not([stroke]) { stroke: #666; }
+    .dg-edge-head:not([fill]) { fill: #666; }
+    .dg-seq-life { stroke: #888; }
+    .dg-seq-num text { fill: #222; }
     .dg-edge-label-bg { fill: #fafafa; }
     .code-block { position: relative; }
     .code-block pre { margin: 0 0 1em; }

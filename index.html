@@ -1482,18 +1482,21 @@
   }
   .dg-svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
   .dg-label, .dg-edge-label { fill: var(--text); }
-  .dg-edge-line { stroke: var(--text-2); }
-  .dg-edge-head { fill: var(--text-2); }
+  .dg-edge-line:not([stroke]) { stroke: var(--text-2); }
+  .dg-edge-head:not([fill]) { fill: var(--text-2); }
   .dg-edge-label-bg { fill: var(--surface); }
-  .dg-edit {
-    position: absolute; top: 8px; right: 8px;
+  .dg-seq-life { stroke: var(--text-3); }
+  .dg-seq-num text { fill: var(--on-accent); }
+  .dg-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+  .dg-edit, .dg-dl {
     font-family: var(--font-ui); font-size: 12px;
     padding: 3px 10px; border-radius: 4px; cursor: pointer;
     color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
     opacity: 0; transition: opacity 0.15s;
   }
-  .md-diagram:hover .dg-edit, .md-diagram:focus-within .dg-edit { opacity: 1; }
-  @media (hover: none) { .dg-edit { opacity: 1; } }
+  .md-diagram:hover .dg-edit, .md-diagram:focus-within .dg-edit,
+  .md-diagram:hover .dg-dl, .md-diagram:focus-within .dg-dl { opacity: 1; }
+  @media (hover: none) { .dg-edit, .dg-dl { opacity: 1; } }
   .dg-warn, .dg-empty { color: var(--text-3); font-size: 12px; margin: 6px 0 0; }
 
   /* The diagram modal — full screen, above .image-modal */
@@ -1505,7 +1508,7 @@
   }
   .dg-title { font-weight: 700; color: var(--accent-2); margin-right: 6px; }
   .dg-seg { display: flex; gap: 2px; }
-  .dg-seg[hidden], .dg-colors[hidden], #dg-edge-kind[hidden] { display: none; }
+  .dg-seg[hidden], .dg-colors[hidden], #dg-edge-kind[hidden], .dg-btn[hidden] { display: none; }
   .dg-seg button, .dg-btn, #dg-edge-kind {
     font-family: var(--font-ui); font-size: 12px; min-width: 28px; padding: 4px 8px;
     color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
@@ -1526,6 +1529,19 @@
   .dg-node, .dg-mm-node, .dg-edge { cursor: pointer; }
   .dg-outline { fill: none; stroke: var(--accent-2); stroke-dasharray: 4 3; stroke-width: 1.5; pointer-events: none; }
   .dg-port { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; cursor: crosshair; }
+  .dg-port-target { pointer-events: none; fill: var(--surface-2); stroke: var(--accent); }
+  .dg-port-target.dg-port-hot { fill: var(--accent-2); }
+  .dg-edge-end { fill: var(--bg); stroke: var(--accent-2); stroke-width: 2; cursor: move; }
+  .dg-seq-part { cursor: ew-resize; }
+  .dg-seq-msg, .dg-seq-note-g { cursor: text; }
+  /* The sketch modal (js/markdown/sketch.js) reuses the diagram bar */
+  .sk-stage { flex: 1; position: relative; min-height: 0; background: var(--surface); touch-action: none; outline: none;
+    display: flex; align-items: center; justify-content: center; }
+  .sk-stage canvas { position: absolute; display: block; }
+  #sk-ink { cursor: crosshair; }
+  .img-draw-btn { position: fixed; z-index: 60; font-size: 14px; line-height: 1; padding: 5px 8px; border-radius: 4px; cursor: pointer;
+    color: var(--text); background: var(--surface-2); border: 1px solid var(--border); }
+  .img-draw-btn[hidden] { display: none; }
   .dg-resize { fill: var(--accent-2); stroke: var(--bg); stroke-width: 1; cursor: nwse-resize; }
   .dg-rubber { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
   #dg-label-input {
@@ -3642,6 +3658,7 @@
   <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
   <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
   <button class="tb-btn" id="btn-diagram" onclick="openDiagram()" data-i="diagramBtn" data-i-title="diagramTip" title="Draw a flowchart or a mind map">◇ Diagram</button>
+  <button class="tb-btn" id="btn-sketch" onclick="openSketch()" data-i="sketchBtn" data-i-title="sketchTip" title="Draw a freehand sketch into the chapter">✏ Sketch</button>
   <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
   <div class="toolbar-sep"></div>
@@ -3930,6 +3947,7 @@ Use the toolbar above to insert formatting.
     <div class="dg-seg" id="dg-kind">
       <button type="button" data-kind="flow" data-i="dgKindFlow">Flowchart</button>
       <button type="button" data-kind="mindmap" data-i="dgKindMindmap">Mind map</button>
+      <button type="button" data-kind="sequence" data-i="dgKindSequence">Sequence</button>
     </div>
     <div class="dg-seg" id="dg-tools">
       <button type="button" data-tool="select" data-i-title="dgToolSelect" data-i-aria="dgToolSelect">▢</button>
@@ -3946,6 +3964,7 @@ Use the toolbar above to insert formatting.
       <button type="button" id="dg-mm-child" data-i="dgAddChild">+ Child (Tab)</button>
       <button type="button" id="dg-mm-sibling" data-i="dgAddSibling">+ Sibling (Enter)</button>
       <button type="button" id="dg-mm-rename" data-i="dgRename">Rename (F2)</button>
+      <button type="button" id="dg-mm-auto" data-i="dgAutoLayout">↺ Auto layout</button>
     </div>
     <div class="dg-colors" id="dg-colors">
       <button type="button" class="dg-swatch" data-color="#C1BB45" style="background:#C1BB45" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
@@ -3955,6 +3974,7 @@ Use the toolbar above to insert formatting.
       <button type="button" class="dg-swatch" data-color="#7A9CC6" style="background:#7A9CC6" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
       <button type="button" class="dg-swatch" data-color="#9FB3A5" style="background:#9FB3A5" data-i-title="dgColorTip" data-i-aria="dgColorTip"></button>
     </div>
+    <button type="button" class="dg-btn" id="dg-color-auto" data-i="dgColorAuto" hidden>↺ Branch colour</button>
     <select id="dg-edge-kind" hidden>
       <option value="->" data-i="dgEdgeArrow">→ Arrow</option>
       <option value="-->" data-i="dgEdgeDashed">⇢ Dashed</option>
@@ -3968,6 +3988,8 @@ Use the toolbar above to insert formatting.
     <button type="button" class="dg-btn" id="dg-zoom-in" data-i-title="dgZoomInTip" data-i-aria="dgZoomInTip">+</button>
     <button type="button" class="dg-btn" id="dg-fit" data-i="dgFit">⤢ Fit</button>
     <button type="button" class="dg-btn" id="dg-source-btn" aria-pressed="false" data-i="dgSourceBtn">Source text</button>
+    <button type="button" class="dg-btn" id="dg-dl-svg" data-i="dgDlSvg" data-i-title="dgDlSvgTip">⤓ SVG</button>
+    <button type="button" class="dg-btn" id="dg-dl-png" data-i="dgDlPng" data-i-title="dgDlPngTip">⤓ PNG</button>
     <span class="dg-spacer"></span>
     <button type="button" class="btn" id="dg-cancel" data-i="dgCancel">Cancel</button>
     <button type="button" class="btn btn-primary" id="dg-apply" data-i="dgInsert">Insert into note</button>
@@ -3980,6 +4002,31 @@ Use the toolbar above to insert formatting.
     <textarea id="dg-source" spellcheck="false" hidden></textarea>
   </div>
 </div>
+
+<!-- Sketch modal — freehand drawing into the chapter, js/markdown/sketch.js, docs/FEATURES.md § U -->
+<div id="sketch-modal" class="dg-modal sk-modal" role="dialog" aria-modal="true" aria-labelledby="sk-title" hidden>
+  <div class="dg-bar">
+    <span class="dg-title" id="sk-title"></span>
+    <div class="dg-seg" id="sk-tools">
+      <button type="button" data-sktool="pen"  data-i-title="skPen"  data-i-aria="skPen">✎</button>
+      <button type="button" data-sktool="hl"   data-i-title="skHl"   data-i-aria="skHl">▮</button>
+      <button type="button" data-sktool="eraser" data-i-title="skEraser" data-i-aria="skEraser">⌫</button>
+    </div>
+    <div class="dg-colors" id="sk-colors"></div>
+    <div class="dg-seg" id="sk-sizes">
+      <button type="button" data-sksize="1" data-i-title="skThin">·</button>
+      <button type="button" data-sksize="2" data-i-title="skMedium">•</button>
+      <button type="button" data-sksize="3" data-i-title="skThick">●</button>
+    </div>
+    <button type="button" class="dg-btn" id="sk-undo" data-i-title="dgUndoTip" data-i-aria="dgUndoTip">↶</button>
+    <button type="button" class="dg-btn" id="sk-redo" data-i-title="dgRedoTip" data-i-aria="dgRedoTip">↷</button>
+    <span class="dg-spacer"></span>
+    <button type="button" class="btn" id="sk-cancel" data-i="dgCancel">Cancel</button>
+    <button type="button" class="btn btn-primary" id="sk-apply" data-i="dgInsert">Insert into note</button>
+  </div>
+  <div class="sk-stage" id="sk-stage" tabindex="0"><canvas id="sk-base"></canvas><canvas id="sk-ink"></canvas></div>
+</div>
+<button type="button" id="img-draw-btn" class="img-draw-btn" data-i-title="skDrawOnTip" hidden>✎</button>
 
 <!-- Link modal -->
 <div class="image-modal" id="link-modal">
@@ -4272,6 +4319,7 @@ Use the toolbar above to insert formatting.
 <script src="js/markdown/editor.js"></script>
 <script src="js/markdown/markdown.js"></script>
 <script src="js/markdown/diagram.js"></script>
+<script src="js/markdown/sketch.js"></script>
 <script src="js/markdown/gantt.js"></script>
 <script src="js/markdown/workbooks.js"></script>
 <script src="js/markdown/idea.js"></script>

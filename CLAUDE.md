@@ -12,7 +12,7 @@ The other apps keep their JavaScript inline. There is no build step.
 | `song.html` | ~1860 | ~24k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, instrumental arrangements and backup restoration | dark (earth) |
 | `voice.html` | ~3262 | ~30k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
-| `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts and mind maps + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
+| `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts, mind maps, sequence diagrams and sketches + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |
 | `calendar.html` | 2785 | 26k | "Calendar" — events on days and hours, month/week/day/agenda, → Google Calendar | dark (earth) |
 | `kanban.html` | ~1620 | ~12k | Kanban view of workbook checklist tasks, with scope, search, filters, and state updates | dark (earth) |
@@ -75,7 +75,7 @@ it instead of exploring. It is far cheaper than one file scan.
 | **Moving files to another device** — the Wi-Fi (WebRTC) link and its codes, the Bluetooth (NUS) one, folder trees, the received-file routes, the device book and forgetting a device | `docs/FEATURES.md` § Q |
 | **The `^@` place marker and the map** — `window.ScuLaGeo`, the layered list, the tiles, the geocoder, the 🗺 button that appears only when a chapter has a place | `docs/FEATURES.md` § S |
 | **Photos and films from a folder** — the hand-rolled EXIF and `moov` readers, where each container keeps its metadata, the date and the GPS a camera wrote, the name pulled out of a file name, what gets written into the chapter | `docs/FEATURES.md` § T |
-| **Flowcharts and mind maps** — the ` ```flow ` / ` ```mindmap ` blocks, their grammar, the SVG drawing, the ◇ Diagram modal | `docs/FEATURES.md` § U |
+| **Flowcharts, mind maps, sequence diagrams and sketches** — the ` ```flow ` / ` ```mindmap ` / ` ```sequence ` blocks, their grammar, ports and pins, the SVG drawing, the ◇ Diagram modal, SVG/PNG download, the ✏ Sketch modal (`sketch.js`) | `docs/FEATURES.md` § U |
 
 Do not read a doc the task doesn't touch.
 

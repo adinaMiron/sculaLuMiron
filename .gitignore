@@ -14,6 +14,12 @@ Thumbs.db
 # form restoration, and deletes it again
 tests/.restored.html
 
+# root Playwright suite
+node_modules/
+test-results/
+playwright-report/
+package-lock.json
+
 # tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
 tests/node_modules/
 tests/package-lock.json
