@@ -37,6 +37,14 @@ const I18N = {
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
     codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
     timelineTip:"Inserează o cronologie (#dată - !ce s-a întâmplat)", timelineBtn:"⏳ Cronologie",
+    dgKindSequence:"Secvență", dgColorAuto:"↺ Culoarea ramurii", dgAutoLayout:"↺ Aranjare automată",
+    dgDlSvg:"⤓ SVG", dgDlPng:"⤓ PNG", dgDlSvgTip:"Descarcă diagrama ca SVG", dgDlPngTip:"Descarcă diagrama ca PNG",
+    dgSeqSend:"trimite factura", dgSeqReply:"confirmă primirea", dgSeqCheck:"verifică plata", dgSeqNote:"în 3 zile",
+    sketchBtn:"✏ Schiță", sketchTip:"Desenează de mână o schiță în capitol", skTitleNew:"Schiță nouă", skTitleEdit:"Desenează pe imagine",
+    skPen:"Stilou (P)", skHl:"Marker (H)", skEraser:"Radieră (E)", skThin:"Subțire", skMedium:"Mediu", skThick:"Gros",
+    skAlt:"Schiță", skDrawOnTip:"Desenează pe această imagine",
+    skImgBlocked:"Imaginea nu poate fi citită aici (fișier local sau alt site) — lipește-o în capitol și încearcă din nou.",
+    skImgMoved:"Imaginea se mutase — desenul a fost inserat la cursor.",
     diagramBtn:"◇ Diagramă", diagramTip:"Desenează o schemă logică sau o hartă mentală",
     dgTitleNew:"Diagramă nouă", dgTitleEdit:"Editează diagrama", dgKindFlow:"Schemă logică", dgKindMindmap:"Hartă mentală",
     dgToolSelect:"Selectează (V)", dgToolConnect:"Conector (A)", dgToolRect:"Dreptunghi (R)", dgToolRound:"Colțuri rotunjite",
@@ -409,6 +417,11 @@ const I18N = {
         <li>Hartă mentală: <code>\`\`\`mindmap</code>, apoi o listă indentată — <code>Idee</code>, <code>&nbsp;&nbsp;Ramura 1</code>, <code>&nbsp;&nbsp;&nbsp;&nbsp;Detaliu</code>. Așezarea e automată.</li>
         <li>În schemă: <kbd>V</kbd> selectează, <kbd>A</kbd> conector, <kbd>R</kbd> dreptunghi, <kbd>D</kbd> decizie, <kbd>E</kbd> elipsă, <kbd>T</kbd> text; <kbd>F2</kbd>/<kbd>Enter</kbd> sau dublu-clic scrie eticheta; <kbd>Del</kbd> șterge.</li>
         <li>În harta mentală: <kbd>Tab</kbd> copil, <kbd>Enter</kbd> frate, <kbd>F2</kbd> redenumește, săgețile mută selecția, <kbd>Del</kbd> șterge ramura.</li>
+        <li>Punctele de conectare: selectează o formă sau un nod și trage din unul din cele 8 puncte; lăsat pe un punct, capătul rămâne prins acolo (<code>ask.e -> end.nw</code>), lăsat pe corp e automat. Capetele unei săgeți selectate se pot muta.</li>
+        <li>Harta mentală e liberă: trage un nod și ramura lui vine cu el (<code>{140,-80 #C4643C}</code> în text); o culoare aleasă e doar a nodului; <code>↺ Aranjare automată</code> le readuce pe toate.</li>
+        <li>Diagramă de secvență: <code>\`\`\`sequence</code>, apoi <code>participant Ana</code>, <code>Ana -> Bogdan | trimite</code>, <code>Bogdan --> Ana | răspunde</code> (punctată), <code>note Bogdan | text</code>. Pașii se numerotează singuri; trage un participant ca să-i schimbi locul, clic pe un mesaj ca să-l rescrii.</li>
+        <li><code>⤓ SVG</code> / <code>⤓ PNG</code> descarcă diagrama pe fond alb, din editor sau de pe desenul din previzualizare.</li>
+        <li>Butonul ✏ Schiță deschide o foaie albă: stilou (<kbd>P</kbd>), marker (<kbd>H</kbd>), radieră (<kbd>E</kbd>), 6 culori, 3 grosimi, <kbd>Ctrl+Z</kbd>. Schița intră în capitol ca imagine. Pe orice imagine din previzualizare apare ✎: desenezi peste ea și „Actualizează nota” o înlocuiește.</li>
         <li>În ambele: <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> anulare și refacere în diagramă, rotița mărește, două degete fac zoom, <kbd>Esc</kbd> renunță.</li>
       </ul>
       <h3>Anulare / Refă</h3>
@@ -462,6 +475,14 @@ const I18N = {
     tableTip:"Insert table", tableBtn:"⊞ Table",
     codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
     timelineTip:"Insert a timeline (#date - !what happened)", timelineBtn:"⏳ Timeline",
+    dgKindSequence:"Sequence", dgColorAuto:"↺ Branch colour", dgAutoLayout:"↺ Auto layout",
+    dgDlSvg:"⤓ SVG", dgDlPng:"⤓ PNG", dgDlSvgTip:"Download the diagram as SVG", dgDlPngTip:"Download the diagram as PNG",
+    dgSeqSend:"sends the invoice", dgSeqReply:"confirms receipt", dgSeqCheck:"checks the payment", dgSeqNote:"within 3 days",
+    sketchBtn:"✏ Sketch", sketchTip:"Draw a freehand sketch into the chapter", skTitleNew:"New sketch", skTitleEdit:"Draw on picture",
+    skPen:"Pen (P)", skHl:"Highlighter (H)", skEraser:"Eraser (E)", skThin:"Thin", skMedium:"Medium", skThick:"Thick",
+    skAlt:"Sketch", skDrawOnTip:"Draw on this picture",
+    skImgBlocked:"This picture can't be read here (a local file or another site) — paste it into the chapter and try again.",
+    skImgMoved:"The picture had moved — the drawing was inserted at the cursor.",
     diagramBtn:"◇ Diagram", diagramTip:"Draw a flowchart or a mind map",
     dgTitleNew:"New diagram", dgTitleEdit:"Edit diagram", dgKindFlow:"Flowchart", dgKindMindmap:"Mind map",
     dgToolSelect:"Select (V)", dgToolConnect:"Connector (A)", dgToolRect:"Rectangle (R)", dgToolRound:"Rounded box",
@@ -834,6 +855,11 @@ const I18N = {
         <li>Mind map: <code>\`\`\`mindmap</code>, then an indented outline — <code>Idea</code>, <code>&nbsp;&nbsp;Branch 1</code>, <code>&nbsp;&nbsp;&nbsp;&nbsp;Detail</code>. The layout is automatic.</li>
         <li>In a flowchart: <kbd>V</kbd> select, <kbd>A</kbd> connector, <kbd>R</kbd> rectangle, <kbd>D</kbd> decision, <kbd>E</kbd> ellipse, <kbd>T</kbd> text; <kbd>F2</kbd>/<kbd>Enter</kbd> or a double-click writes the label; <kbd>Del</kbd> deletes.</li>
         <li>In a mind map: <kbd>Tab</kbd> child, <kbd>Enter</kbd> sibling, <kbd>F2</kbd> rename, the arrow keys move the selection, <kbd>Del</kbd> deletes the branch.</li>
+        <li>Connection dots: select a shape or a node and drag from one of its 8 dots; dropped on a dot, the end stays pinned there (<code>ask.e -> end.nw</code>), dropped on the body it is automatic. The ends of a selected arrow can be moved.</li>
+        <li>Mind maps are free: drag a node and its branch comes with it (<code>{140,-80 #C4643C}</code> in the text); a colour you pick belongs to that node only; <code>↺ Auto layout</code> puts everything back.</li>
+        <li>Sequence diagram: <code>\`\`\`sequence</code>, then <code>participant Ana</code>, <code>Ana -> Bogdan | sends</code>, <code>Bogdan --> Ana | replies</code> (dashed), <code>note Bogdan | text</code>. Steps are numbered for you; drag a participant to move it, click a message to rewrite it.</li>
+        <li><code>⤓ SVG</code> / <code>⤓ PNG</code> download the diagram on a white background, from the editor or from the drawing in the preview.</li>
+        <li>The ✏ Sketch button opens a blank sheet: pen (<kbd>P</kbd>), highlighter (<kbd>H</kbd>), eraser (<kbd>E</kbd>), 6 colours, 3 thicknesses, <kbd>Ctrl+Z</kbd>. The sketch goes into the chapter as a picture. Every picture in the preview shows a ✎: draw over it and "Update note" replaces it.</li>
         <li>In both: <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> undo and redo inside the diagram, the wheel zooms, two fingers pinch-zoom, <kbd>Esc</kbd> cancels.</li>
       </ul>
       <h3>Undo / redo</h3>

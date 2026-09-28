@@ -867,11 +867,11 @@ function renderCodeBlock(codeLines, codeLang, forExport) {
   return `<div class="code-block"><button type="button" class="code-copy" aria-label="Copiază codul">Copiază</button>${inner}</div>`;
 }
 
-/* A ```flow / ```mindmap fence is a diagram (js/markdown/diagram.js,
+/* A ```flow / ```mindmap / ```sequence fence is a diagram (js/markdown/diagram.js,
    docs/FEATURES.md § U); every other fence stays a code block. */
 function mdFenceHtml(codeLines, codeLang, codeStart, opts) {
   const kind = codeLang.trim().toLowerCase();
-  if ((kind === 'flow' || kind === 'mindmap') && typeof renderDiagramBlock === 'function')
+  if ((kind === 'flow' || kind === 'mindmap' || kind === 'sequence') && typeof renderDiagramBlock === 'function')
     return renderDiagramBlock(codeLines, kind, codeStart, opts);
   return renderCodeBlock(codeLines, codeLang, !!(opts && opts.forExport));
 }
@@ -1077,6 +1077,12 @@ preview.addEventListener('click', e => {
     updatePreview(); updateStatus(); scheduleAutosave();
     return;
   }
+  const dgDl = e.target.closest('.dg-dl');
+  if (dgDl) {
+    const line = mdDiagramLine(dgDl.closest('.md-diagram'));
+    if (line !== null) { e.preventDefault(); dgDownloadAt(line, dgDl.dataset.fmt); }
+    return;
+  }
   const dgEdit = e.target.closest('.dg-edit');
   if (dgEdit) {
     const line = mdDiagramLine(dgEdit.closest('.md-diagram'));
@@ -1104,7 +1110,7 @@ function mdDiagramLine(fig) {
 }
 preview.addEventListener('dblclick', e => {
   const fig = e.target.closest('.md-diagram');
-  if (!fig) return;
+  if (!fig || e.target.closest('.dg-dl')) return;
   const line = mdDiagramLine(fig);
   if (line !== null) { e.preventDefault(); openDiagram({ line }); }
 });
