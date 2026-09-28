@@ -27,6 +27,24 @@ document.getElementById('idea-text').addEventListener('keydown', function(e) {
   }
   if (e.ctrlKey || e.metaKey || e.altKey) e.stopPropagation();
 });
+/* The chapter picker's input: arrows move through the list, Enter picks. */
+document.getElementById('idea-chapter').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { e.stopPropagation(); closeIdeaModal(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault(); e.stopPropagation(); saveIdea(); return;
+  }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (document.querySelector('#idea-chapter-list .ws-item')) {
+        e.preventDefault(); ideaChapterMove(e.key === 'ArrowDown' ? 1 : -1);
+      }
+      return;
+    }
+    if (e.key === 'Enter') { e.preventDefault(); ideaChapterEnter(); return; }
+    return;
+  }
+  e.stopPropagation();
+});
 document.addEventListener('keydown', e => {
   if (typeof dgIsOpen === 'function' && dgIsOpen()) return;   // the diagram modal owns every key
   if (e.key === 'Escape') {

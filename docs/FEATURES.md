@@ -1310,6 +1310,36 @@ the same two writes `Ctrl+S` makes.
 
 `docs/MAP.md` § "Quick idea capture" has the line anchors.
 
+### The chapter picker
+
+Above the textarea, `#idea-chapter` is a search over chapter **titles only**
+(case and diacritics ignored; not workbook names, file names or contents).
+The box opens pre-filled with the open chapter (`wbCurrentId`; empty when a
+loose file is open) and never remembers a previous pick. **×**
+(`ideaChapterClear()`) empties and focuses the input. No match shows a
+"No chapter found" row — there is no "create chapter" option. Typing in the
+input drops any pre-fill or pick, so what remains is a search.
+
+`ideaResolve()` is the single routing decision; `ideaPaintHint()` and
+`saveIdea()` both call it, so the hint cannot disagree with the save.
+Highest first:
+
+1. **Picked** (clicked, or Enter on the list — `ideaChapterPick()`): always
+   wins; the text goes in verbatim, a leading `Name:` is not stripped.
+2. **Search words, no click**: if exactly one chapter title equals them, or
+   only one title contains them, that chapter wins like a pick. None or
+   several matches → the words are ignored (the hint says so) and routing
+   continues.
+3. **Open chapter (pre-filled, untouched)**: a `Name:` prefix that resolves
+   to a chapter wins and is stripped; otherwise the idea goes to the open
+   chapter with the text whole, including an unmatched `Foo:`.
+4. **Nothing picked**: the original routing — a resolving `Name:` prefix, else
+   `Idei` / today's chapter.
+
+The append itself is unchanged (`ideaAppendTo()`: trailing whitespace trimmed,
+one `\n`, the idea, a final `\n`). Keys on the input (`events.js`): ↑/↓ move
+the highlight, Enter picks, Ctrl+Enter files, Esc closes.
+
 ### What the first line means
 
 `ideaSplit()` looks at the **first line only**, and at its **first `:`**.

@@ -318,6 +318,11 @@ const I18N = {
     ideaSaved:o=>`Idee trimisă în ${o.book} / ${o.chapter}`,
     ideaSavedTo:o=>`Idee trimisă în ${o.book} / ${o.chapter} → ${o.path}`,
     ideaFailed:"Nu am putut salva ideea.",
+    lblIdeaChapter:"Capitol", ideaChapterPlaceholder:"Caută un capitol…",
+    ideaChapterClearTip:"Golește capitolul și caută din nou",
+    ideaNoChapter:"Niciun capitol găsit",
+    ideaHintSearchNone:o=>`Niciun capitol nu se potrivește cu „${o.q}” — ideea ajunge în ${o.book} / ${o.chapter}`,
+    ideaHintSearchMany:o=>`„${o.q}” se potrivește cu ${o.n} capitole — alege unul; altfel ideea ajunge în ${o.book} / ${o.chapter}`,
 
     /* Help modal */
     helpBtn:"Ajutor", helpTip:"Ajutor", modalTitleHelp:"Ajutor — Editor Markdown", closeBtn:"Închide",
@@ -380,7 +385,7 @@ const I18N = {
       <p>🔍 Find, <kbd>Ctrl+4</kbd> sau <kbd>Ctrl+Shift+F</kbd> deschide căutarea: capitol / caiet / tot ce ai scris, cu comutatoarele Aa (majuscule), ⌈ab⌉ (cuvinte întregi), .* (expresie regulată) și ăâ (ignoră diacriticele, activ implicit), plus filtre pe tipul liniei și pe etichete.</p>
       <p>Filtrele din bara de instrumente pot limita caietele și previzualizarea la un responsabil sau la sarcini cu importanța aleasă. „▣ Doar sarcini” păstrează numai liniile de sarcini nebifate.</p>
       <h3>Idee rapidă</h3>
-      <p>Butonul 💡 sau <kbd>Ctrl+Alt+I</kbd> deschide o casetă: scrii „Nume capitol: idee” și textul ajunge acolo — sau, fără nume, în caietul „Idei”, la capitolul de azi. <kbd>Ctrl+Enter</kbd> trimite, <kbd>Esc</kbd> închide.</p>
+      <p>Butonul 💡 sau <kbd>Ctrl+Alt+I</kbd> deschide o casetă: scrii „Nume capitol: idee” și textul ajunge acolo — sau, fără nume, în caietul „Idei”, la capitolul de azi. Câmpul Capitol pornește cu capitolul deschis; scrie ca să cauți după titlu și alege unul, sau apasă × ca să-l golești. Capitolul ales are întotdeauna prioritate, iar textul intră exact cum l-ai scris. <kbd>Ctrl+Enter</kbd> trimite, <kbd>Esc</kbd> închide.</p>
       <h3>Marcaje de importanță</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — din selectul din bară sau <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> șterge). Click pe pastilă caută tot ce mai are același marcaj.</p>
       <h3>Starea sarcinilor</h3>
@@ -743,6 +748,11 @@ const I18N = {
     ideaSaved:o=>`Idea filed in ${o.book} / ${o.chapter}`,
     ideaSavedTo:o=>`Idea filed in ${o.book} / ${o.chapter} → ${o.path}`,
     ideaFailed:"Could not save the idea.",
+    lblIdeaChapter:"Chapter", ideaChapterPlaceholder:"Search chapters…",
+    ideaChapterClearTip:"Clear the chapter and search again",
+    ideaNoChapter:"No chapter found",
+    ideaHintSearchNone:o=>`No chapter matches “${o.q}” — the idea goes to ${o.book} / ${o.chapter}`,
+    ideaHintSearchMany:o=>`“${o.q}” matches ${o.n} chapters — pick one; otherwise the idea goes to ${o.book} / ${o.chapter}`,
 
     /* Help modal */
     helpBtn:"Help", helpTip:"Help", modalTitleHelp:"Help — Markdown editor", closeBtn:"Close",
@@ -805,7 +815,7 @@ const I18N = {
       <p>🔍 Find, <kbd>Ctrl+4</kbd> or <kbd>Ctrl+Shift+F</kbd> opens search: chapter / workbook / everything, with Aa (match case), ⌈ab⌉ (whole words), .* (regular expression) and ăâ (ignore diacritics, on by default) toggles, plus filters by line kind and by tag.</p>
       <p>The toolbar filters can narrow the workbooks and preview to one assignee or tasks with the selected importance. "▣ Tasks only" keeps just unchecked task lines.</p>
       <h3>Quick idea capture</h3>
-      <p>The 💡 button or <kbd>Ctrl+Alt+I</kbd> opens one box: write "Chapter name: idea" and the text lands there — or, with no name, in the "Idei" workbook, under today's chapter. <kbd>Ctrl+Enter</kbd> files it, <kbd>Esc</kbd> closes the box.</p>
+      <p>The 💡 button or <kbd>Ctrl+Alt+I</kbd> opens one box: write "Chapter name: idea" and the text lands there — or, with no name, in the "Idei" workbook, under today's chapter. The Chapter field starts on the chapter you are editing; type to search chapter titles and pick one, or press × to clear it. A chapter you pick always wins and the text goes in as written. <kbd>Ctrl+Enter</kbd> files it, <kbd>Esc</kbd> closes the box.</p>
       <h3>Importance markers</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — from the toolbar select or <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> clears). Clicking a pill searches for everything else carrying the same marker.</p>
       <h3>Task status</h3>

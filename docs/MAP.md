@@ -348,7 +348,7 @@ function within a feature file.
 | Markdown syntax, timeline, preview, navigation | `js/markdown/markdown.js` | `parseMarkdown`, `updatePreview`, `updateNav`, `renderImportance` |
 | Flowcharts and mind maps (` ```flow ` / ` ```mindmap `), the diagram modal | `js/markdown/diagram.js` | `openDiagram`, `renderDiagramBlock`, `dgParseFlow`, `dgParseMindmap` |
 | Workbooks, chapters, autosave, folder mirror | `js/markdown/workbooks.js` | `loadWorkbooks`, `wbSelectChapter`, `saveToWorkbook` |
-| Quick idea capture | `js/markdown/idea.js` | `openIdeaModal`, `saveIdea` |
+| Quick idea capture | `js/markdown/idea.js` | `openIdeaModal`, `saveIdea`, chapter picker: `ideaResolve`, `ideaChapterMatches`, `ideaSearchResolve`, `ideaChapterPick`, `ideaChapterClear` (keys in `events.js`) |
 | Knowledge graph and causality | `js/markdown/graph.js` | `openGraph`, `gvRefresh`, `parseCausalLine` |
 | Search and filter | `js/markdown/search.js` | `fdCompute`, `fdRun`, `fdGoto` |
 | Garden toolbox | `js/markdown/garden.js` | `openGarden`, `gdRender` |

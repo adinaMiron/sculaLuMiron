@@ -647,6 +647,21 @@
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
   /* Quick idea capture — one textarea, deliberately the whole modal */
   #idea-text { min-height: 108px; resize: vertical; line-height: 1.55; }
+  .idea-chapter-row { display: flex; gap: 6px; align-items: stretch; }
+  .idea-chapter-row input { flex: 1; min-width: 0; }
+  #idea-chapter-clear { flex-shrink: 0; padding: 0 10px; font-size: 15px; line-height: 1; }
+  #idea-chapter.picked { border-color: var(--accent); }
+  #idea-chapter-list {
+    display: none;
+    max-height: 180px;
+    margin-top: 6px;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  #idea-chapter-list.open { display: block; }
   .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .help-modal-box { width: 640px; max-width: 92vw; max-height: 82vh; overflow: auto; }
@@ -3873,10 +3888,23 @@ Use the toolbar above to insert formatting.
 <!-- Quick idea capture — docs/FEATURES.md § J.
      One textarea. The first line's "Chapter: " prefix says where the rest
      goes; anything unmatched lands in the "Idei" workbook under today's
-     date. Ctrl+Alt+I opens it, Ctrl+Enter files it. -->
+     date. A chapter picker above it (title search, pre-filled with the open
+     chapter, × clears) overrides that routing. Ctrl+Alt+I opens it,
+     Ctrl+Enter files it. -->
 <div class="image-modal" id="idea-modal">
   <div class="modal-box">
     <div class="modal-title" data-i="modalTitleIdea">Quick idea</div>
+    <div class="field">
+      <label for="idea-chapter" data-i="lblIdeaChapter">Chapter</label>
+      <div class="idea-chapter-row">
+        <input type="text" id="idea-chapter" autocomplete="off" spellcheck="false"
+               oninput="ideaChapterInput()"
+               data-i-placeholder="ideaChapterPlaceholder" placeholder="Search chapters…">
+        <button type="button" class="btn" id="idea-chapter-clear" onclick="ideaChapterClear()"
+                data-i-title="ideaChapterClearTip" title="Clear the chapter and search again">×</button>
+      </div>
+      <div id="idea-chapter-list" role="listbox"></div>
+    </div>
     <div class="field">
       <label data-i="lblIdea">Idea</label>
       <textarea id="idea-text" rows="5" oninput="ideaPaintHint()" data-i-placeholder="ideaPlaceholder" placeholder="Editor: - [ ] write code to …"></textarea>
