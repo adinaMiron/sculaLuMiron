@@ -1,6 +1,15 @@
 {
   "task_id": "task-04",
   "status": "fail",
-  "summary": "Bug-1 is fixed in Chromium: Romanian and English failure toasts include the phrase number and actual server error, the marker is inserted, and later phrases continue. All 13 Playwright tests passed; node tests/verify.js and node tests/dictate.js passed. node tests/idea.js had only its documented toolbar-position failure, which the spec excepts. The required test commit could not be made: git add -A && git commit failed because .git/index.lock is on a read-only filesystem. No product bugs were found in this round; status is fail solely because the required commit was blocked.",
-  "bugs": []
+  "summary": "Playwright/Chromium ran 18 task-specific tests: 17 passed and 1 failed. The failing test exposes a microphone-permission race that starts recording into a closed Quick Idea modal. The required git add and commit were attempted once but could not complete because .git/index.lock is on a read-only filesystem; the new regression test remains uncommitted. No push was attempted, as instructed.",
+  "bugs": [
+    {
+      "bug_id": "bug-1",
+      "description": "Closing Quick Idea during a pending microphone permission request does not cancel the dictation startup. After permission resolves, the app creates a ScriptProcessor and activates the idea microphone even though the modal is closed; subsequent audio can be transcribed into the hidden idea field and appear in a later idea.",
+      "severity": "high",
+      "repro_steps": "1. Open index.html with API dictation configured. 2. Open Quick Idea and press its microphone button while getUserMedia is still pending (for example, before responding to the browser permission prompt). 3. Press Escape to close Quick Idea. 4. Grant microphone permission. 5. Observe the idea microphone button and recording state; speak a qualifying phrase and reopen Quick Idea.",
+      "expected": "Closing Quick Idea cancels its pending microphone startup. No recording or upload begins after permission resolves; the microphone track is stopped and no late text appears in the idea field.",
+      "actual": "After the modal closes, resolving getUserMedia creates an audio processor and starts recording for the hidden idea field. The new Playwright test observed one processor where zero were expected; the microphone track was not stopped. The test fails at adversarial.spec.js:147."
+    }
+  ]
 }
