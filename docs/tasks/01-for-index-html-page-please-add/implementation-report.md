@@ -1,4 +1,70 @@
-# task-01 (round 3) — implementation report
+# task-01 — implementation report
+
+## Round 4 — bug-1: the ◇ Diagram and ✏ Sketch modals could be stacked
+
+Commit `08fa279` (code + FEATURES § U), then the MAP row + this report.
+
+**The bug.** Neither modal trapped focus, so Tab walked out onto the page toolbar behind it.
+`openDiagram()` only checked `dg.open` and `openSketch()` only checked `sk.open`. As a result,
+Enter on the other toolbar button opened a second full-screen modal on top of the first.
+
+### What changed
+
+- **`js/markdown/diagram.js`**
+  - `openDiagram()` now also returns while `skIsOpen()` is true. The call is guarded with
+    `typeof`, the same way `events.js` already guards it.
+  - New `dgTrapTab(modal, e)` handles Tab / Shift+Tab without Ctrl, Meta or Alt:
+    - It collects the modal's tabbable controls: `tabIndex >= 0`, not disabled, and rendered
+      (`getClientRects().length`), so anything `hidden` is skipped.
+    - Tab on the last control goes to the first. Shift+Tab on the first goes to the last.
+    - If focus is on something outside that list, it moves to the first control (or the last on
+      Shift+Tab).
+    - It returns `true` when it handled the key.
+  - `dgKeyDown` calls `dgTrapTab` first. The exception is Tab on the stage of a mind map: there
+    Tab still means "add a child", as in rounds 1–3.
+  - `dgInit` adds a capturing `keydown` listener on `document`. When the diagram is open and the
+    key's target is outside the modal, it runs the trap. This covers focus left on `<body>`, for
+    example after a click on empty bar space.
+- **`js/markdown/sketch.js`**
+  - `openSketch()` returns while `dgIsOpen()` is true, and also while a picture is still loading
+    (new `sk.loading` flag, reset in a `finally`).
+  - After the picture has loaded, it checks `dgIsOpen()` again and gives up if the diagram opened
+    during the load. Otherwise that async gap could still stack the two modals.
+  - The modal's `keydown` calls `dgTrapTab(modal, e)` first. It gets the same capturing
+    `document` listener for focus left outside it.
+  - `sketch.js` already loads after `diagram.js`, so `dgTrapTab` is always defined when it runs.
+- **`docs/FEATURES.md` § U**: after the key table, one paragraph on "only one modal at a time"
+  and the Tab trap.
+- **`docs/MAP.md`**: `dgTrapTab` added to the `diagram.js` row.
+
+### Decisions
+
+- **No feedback when an open is refused.** It happens silently. With the trap in place, the other
+  toolbar button can no longer be reached from inside a modal, so a toast would never be seen in
+  practice.
+- **Only Tab is trapped.** A `focusin` pull-back would also catch other ways of leaving the modal.
+  I didn't add one because it could fight with UI that `ScuLaFolder.save` may show during a
+  download. Clicks can't reach the page anyway, since the modals cover the viewport.
+- **Mind-map stage.** From the mind-map stage, Tab cannot walk out to the bar buttons, because Tab
+  there adds a node. That was already true before this change. Shift+Tab also adds a node there
+  (existing behaviour, unchanged).
+
+### Not done / concerns
+
+- Following the orchestrator's instruction, I did not run or write tests or open a browser. The
+  only check was `node --check` on both files, and both parse.
+- If focus is left on `<body>` inside an open modal, keys other than Tab (Esc, Ctrl+Z) still don't
+  reach the modal's handler, and `events.js` swallows them. That was already so before this
+  change and is outside bug-1.
+- Suggested checks for the tester:
+  - Diagram open, Tab repeatedly: focus never lands on `#btn-sketch`.
+  - Call `openSketch()` directly while the diagram is open: `#sketch-modal` stays hidden. Do the
+    same the other way round.
+  - Shift+Tab from the first bar control lands on the last visible control.
+
+---
+
+# Round 3
 
 Spec: `docs/tasks/01-for-index-html-page-please-add/spec.md` (round 3).
 Commits: `8a036d0` (diagram.js), `764876c` (sketch.js + page wiring),

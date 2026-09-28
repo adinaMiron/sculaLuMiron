@@ -352,7 +352,7 @@ function within a feature file.
 | UI language and storage | `js/markdown/i18n.js` | `I18N`, `t`, `applyUILang`, `store` |
 | Editor actions, undo, panels, image explorer | `js/markdown/editor.js` | `undoMark`, `insertAtCursor`, `setView`, `togglePanelById` |
 | Markdown syntax, timeline, preview, navigation | `js/markdown/markdown.js` | `parseMarkdown`, `updatePreview`, `updateNav`, `renderImportance` |
-| Flowcharts, mind maps and sequence diagrams (` ```flow ` / ` ```mindmap ` / ` ```sequence `), the diagram modal, SVG/PNG download | `js/markdown/diagram.js` | `openDiagram`, `renderDiagramBlock`, `dgParseFlow`, `dgParseMindmap`, `dgParseSequence`, `dgPorts`, `dgAutoPort`, `dgLayoutMindmap`, `dgSeqSvg`, `dgExportSvg`, `dgExportPng`, `dgFileName` |
+| Flowcharts, mind maps and sequence diagrams (` ```flow ` / ` ```mindmap ` / ` ```sequence `), the diagram modal, SVG/PNG download | `js/markdown/diagram.js` | `openDiagram`, `renderDiagramBlock`, `dgParseFlow`, `dgParseMindmap`, `dgParseSequence`, `dgPorts`, `dgAutoPort`, `dgLayoutMindmap`, `dgSeqSvg`, `dgExportSvg`, `dgExportPng`, `dgFileName`, `dgTrapTab` (Tab focus trap, used by both modals) |
 | Freehand sketches and drawing on a chapter picture | `js/markdown/sketch.js` | `openSketch`, `closeSketch`, `skApply`, `skIsOpen`, `skImageTokens` |
 | Workbooks, chapters, autosave, folder mirror | `js/markdown/workbooks.js` | `loadWorkbooks`, `wbSelectChapter`, `saveToWorkbook` |
 | Quick idea capture | `js/markdown/idea.js` | `openIdeaModal`, `saveIdea` |
