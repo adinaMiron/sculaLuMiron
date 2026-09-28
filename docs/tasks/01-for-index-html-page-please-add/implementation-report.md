@@ -1,5 +1,102 @@
 # task-01 — implementation report
 
+## Round 6 — red suite, sync with main, housekeeping, reports
+
+Commit `2262555` (test fix + `package.json` removal), then a reports commit.
+
+### Status at a glance
+
+| Item | Status |
+|---|---|
+| RED SUITE: `exclusive.spec.js:67` clicked the zero-width `.dg-spacer` | **Fixed in the test only.** `npm test`: **152 passed** |
+| SYNC WITH MAIN (`git merge main`) | **Blocked again.** `git merge main` was refused by the permission layer (tried as `git merge main --no-edit` and `git merge main`). The read-only `git merge-tree` preview was refused too. I did not work around it |
+| HOUSEKEEPING: stray `docs/tasks/01-…/package.json` | **Done** (`git rm`) |
+| REPORTS: `test-report.json` | **Done.** `status: "pass"` with the real counts, on the **unmerged** tree |
+
+### What changed, file by file
+
+- **`tests/01-for-index-html-page-please-add/exclusive.spec.js`**, in the case "a click on the
+  empty toolbar area leaves focus on the page, and Escape still closes the modal":
+  - The loop now takes a third element, the title to click: `#dg-title` for the diagram modal
+    and `#sk-title` for the sketch modal. Both are non-focusable `<span class="dg-title">`s that
+    always have size.
+  - `page.click(title)` replaces `page.click('#<modal> .dg-spacer')`. A two-line comment says why:
+    the spacer collapses to zero width when the bar is full at 1280 px.
+  - The assertion that focus left the modal is kept unchanged, and so are the Escape step and the
+    state check. Product code is unchanged.
+- **`docs/tasks/01-for-index-html-page-please-add/package.json`**: removed with `git rm`. It was
+  the default `npm init` file.
+- **`docs/tasks/01-for-index-html-page-please-add/test-report.json`**: rewritten with the counts
+  below and `status: "pass"`, as the lead asked. It says the counts come from the unmerged tree.
+
+### Test output (this round, unmerged tree at `2262555`)
+
+- **`npm test` at the repo root:** `Running 152 tests using 1 worker` … `152 passed (1.5m)`.
+
+  | Spec file | Passed |
+  |---|---|
+  | `exclusive.spec.js` | 9/9 |
+  | `extra.spec.js` | 20/20 |
+  | `modal.spec.js` | 47/47 |
+  | `model.spec.js` | 46/46 |
+  | `sketch.spec.js` | 30/30 |
+
+  The previously red case (#7, `exclusive.spec.js:64`) passed in 513 ms.
+- **`node tests/diagram.js`** (`/apptest diagram`): 79 PASS lines, 0 FAIL, and it ends with
+  `all passed`. The formerly stale "mindmap normalised (tabs, bullets, stray indent)" check
+  passes, and so does `no page errors`.
+- **Neighbour suites**, each ending in `all good`:
+
+  | Suite | Passed |
+  |---|---|
+  | `codecopy` | 11/11 |
+  | `mdundo` | 24/24 |
+  | `timeline` | 26/26 |
+  | `cause` | 42/42 |
+
+- **`/verify`:** the shell loop from `.claude/commands/verify.md` (awk extraction over the pages
+  plus `node --check`) was **refused** as a compound command, and so was a single
+  `awk … index.html > /tmp/…` extraction. What I could check instead:
+  - `node --check` is OK on `diagram.js`, `sketch.js`, `markdown.js`, `files.js`, `events.js`
+    and `i18n.js`. The inline scripts in `index.html` load without error in every Playwright run
+    above (`no page errors`).
+  - **Nav:** `git diff --quiet 1c0af6f HEAD -- voice.html editor.html recipes.html calendar.html
+    transfer.html map.html kanban.html` exits 0, so the branch never touched the other seven
+    pages.
+    - In `index.html`, the branch's hunks are at L1485–1545 (CSS) and L3648 onward (modal markup,
+      script tag).
+    - The nav block runs L2244–3530 (`<nav id="site-nav"` to `end toolbar nav`).
+    - No hunk falls inside it, so nav byte-identity is whatever it was at the merge base.
+  - **Diacritics:** the only cedilla `ş`/`ţ` hit in `*.html` + `js/markdown/*.js` is the known
+    comment at `js/markdown/search.js:45`. There is none in any page.
+
+### Not done, and what the lead or orchestrator needs to do
+
+- **The merge with `main` is still not done.** The merge base is still `1c0af6f`.
+  - `git diff --stat 1c0af6f main` shows main touches 38 files, and all eight pages via the nav
+    edit. It also adds `song.html`, `js/audio/*`, `tests/verify.js` and the `tests/song*.js`
+    suites.
+  - The overlap with this branch is `index.html`, `CLAUDE.md`, `docs/FEATURES.md` and
+    `docs/MAP.md`, as the lead said.
+  - On `index.html`, main's change is the nav block (25 lines). This branch has no hunk inside the
+    nav, so I expect that file to merge without conflict. That is an expectation, not something I
+    observed.
+  - The three docs are likely to need hand resolution:
+    - the `CLAUDE.md` index.html table row and the § U routing row;
+    - FEATURES § U versus main's new sections;
+    - MAP rows.
+  - **Resolution rule for whoever runs it:** keep main's nav block and main's new rows and
+    sections as they are, and keep this branch's § U / `diagram.js` / `sketch.js` text.
+  - I did not rebuild the merge by hand with Read/Write. It would not be a merge commit, and it
+    would amount to working around the refusal.
+- **Everything above ran on the unmerged tree.** After the merge, re-run `npm test`,
+  `node tests/diagram.js`, `/verify` (main's version covers the ninth page, `song.html`, and adds
+  `tests/verify.js`) and the four neighbour suites.
+- **Instruction conflict:** the task wrapper says "Do not run or write tests yourself", but the
+  lead's round-specific context explicitly asked me to fix the test, re-run the suites and fill
+  in `test-report.json`. I followed the lead's round context, because it is more specific, and I
+  am noting that here.
+
 ## Round 5 — lead review round 1 findings
 
 Commit `868eded` (code, tests, scratch file removed), then a docs + report commit.
