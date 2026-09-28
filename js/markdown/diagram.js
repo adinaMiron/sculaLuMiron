@@ -599,7 +599,11 @@ async function dgDownload(kind, text, fmt, n) {
   try {
     const blob = fmt === 'png' ? await dgExportPng(kind, text) : new Blob([dgExportSvg(kind, text)], { type: 'image/svg+xml' });
     await ScuLaFolder.save(dgFileName(kind, n, fmt), blob);
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    // A PNG that would not rasterise, or a save that failed (a cancel is not an error: save reports it).
+    console.error(e);
+    if (window.ScuLaFolder) ScuLaFolder.toast(t('dgDlFailed'));
+  }
 }
 // The preview's ⤓ buttons: the block whose fence opens on editor line `line`.
 function dgDownloadAt(line, fmt) {
@@ -1368,8 +1372,14 @@ function dgInit() {
   const stage = dgEl('dg-stage');
   const back = fn => (...a) => { fn(...a); if (!dg.label) stage.focus(); };
   modal.addEventListener('keydown', dgKeyDown);
-  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in.
-  document.addEventListener('keydown', e => { if (dg.open && !modal.contains(e.target)) dgTrapTab(modal, e); }, true);
+  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in,
+  // and every other key (Esc, Ctrl+Z/Y) still reaches the modal, which takes the focus back.
+  document.addEventListener('keydown', e => {
+    if (!dg.open || modal.contains(e.target)) return;
+    if (e.key === 'Tab') { dgTrapTab(modal, e); return; }
+    stage.focus();
+    dgKeyDown(e);
+  }, true);
   document.querySelectorAll('#dg-kind [data-kind]').forEach(b => b.addEventListener('click', () => dgSetKind(b.dataset.kind)));
   document.querySelectorAll('#dg-tools [data-tool]').forEach(b => b.addEventListener('click', back(() => dgSetTool(b.dataset.tool))));
   document.querySelectorAll('#dg-colors [data-color]').forEach(b => b.addEventListener('click', back(() => dgSetColor(b.dataset.color))));

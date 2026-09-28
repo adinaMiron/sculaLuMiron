@@ -225,6 +225,16 @@ function skDrawBtnShow(img) {
 }
 function skPicture(el) { const img = el && el.closest && el.closest('#preview img'); return img && !img.closest('.md-diagram') ? img : null; }
 
+/* ── Keys: everything the modal handles, on the modal ── */
+function skKeyDown(e) {
+  if (dgTrapTab(skEl('sketch-modal'), e)) return;   // Tab walks the modal only (diagram.js)
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && !e.altKey && k === 'z') { e.preventDefault(); if (e.shiftKey) skRedoStep(); else skUndo(); }
+  else if (mod && !e.altKey && k === 'y') { e.preventDefault(); skRedoStep(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeSketch(false); }
+  else if (!mod && !e.altKey && { p: 'pen', h: 'hl', e: 'eraser' }[k]) { e.preventDefault(); sk.tool = { p: 'pen', h: 'hl', e: 'eraser' }[k]; skChrome(); }
+}
+
 function skInit() {
   const modal = skEl('sketch-modal'), pv = skEl('preview'), btn = skEl('img-draw-btn');
   if (!modal) return;
@@ -242,16 +252,15 @@ function skInit() {
   stage.addEventListener('pointermove', skMove);
   stage.addEventListener('pointerup', skUp);
   stage.addEventListener('pointercancel', skUp);
-  modal.addEventListener('keydown', e => {
-    if (dgTrapTab(modal, e)) return;   // Tab walks the modal only (diagram.js)
-    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-    if (mod && !e.altKey && k === 'z') { e.preventDefault(); if (e.shiftKey) skRedoStep(); else skUndo(); }
-    else if (mod && !e.altKey && k === 'y') { e.preventDefault(); skRedoStep(); }
-    else if (e.key === 'Escape') { e.preventDefault(); closeSketch(false); }
-    else if (!mod && !e.altKey && { p: 'pen', h: 'hl', e: 'eraser' }[k]) { e.preventDefault(); sk.tool = { p: 'pen', h: 'hl', e: 'eraser' }[k]; skChrome(); }
-  });
-  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in.
-  document.addEventListener('keydown', e => { if (sk.open && !modal.contains(e.target)) dgTrapTab(modal, e); }, true);
+  modal.addEventListener('keydown', skKeyDown);
+  // Focus left on the page (a click on the bar's empty space leaves it on <body>): Tab comes back in,
+  // and every other key (Esc, Ctrl+Z/Y, P/H/E) still reaches the modal, which takes the focus back.
+  document.addEventListener('keydown', e => {
+    if (!sk.open || modal.contains(e.target)) return;
+    if (e.key === 'Tab') { dgTrapTab(modal, e); return; }
+    stage.focus();
+    skKeyDown(e);
+  }, true);
   window.addEventListener('resize', () => { if (sk.open) skFit(); });
   window.addEventListener('scula-ui-lang', () => { if (sk.open) skChrome(); });
   if (!pv || !btn) return;

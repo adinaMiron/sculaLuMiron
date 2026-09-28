@@ -61,6 +61,16 @@ test.describe('bug-1: one full-screen modal at a time', () => {
     expect(await state(page)).toEqual({ dg: false, sk: true });
   });
 
+  test('a click on the empty toolbar area leaves focus on the page, and Escape still closes the modal', async ({ page }) => {
+    for (const [btn, modal] of [['#btn-diagram', 'diagram-modal'], ['#btn-sketch', 'sketch-modal']]) {
+      await page.click(btn);
+      await page.click(`#${modal} .dg-spacer`);
+      expect(await inside(page, modal), modal + ': the click left focus outside the modal').toBe(false);
+      await page.keyboard.press('Escape');
+      expect(await state(page), modal).toEqual({ dg: false, sk: false });
+    }
+  });
+
   test('after closing one modal the other opens normally, both ways', async ({ page }) => {
     await page.click('#btn-diagram');
     await page.keyboard.press('Escape');
