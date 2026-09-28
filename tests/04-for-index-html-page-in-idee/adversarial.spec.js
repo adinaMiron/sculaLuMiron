@@ -149,3 +149,152 @@ test('closing idea modal while microphone permission is pending cannot start a h
   await expect(page.locator('#dictate-pill')).toBeHidden();
   expect(await page.evaluate(() => window.__mic.stopped)).toBe(1);
 });
+
+test('closing and reopening Quick Idea during permission prompt keeps the new recording and rejects the old one', async ({ page }) => {
+  await page.route('**/audio/transcriptions', route => reply(route, 'New idea only.'));
+  await open(page);
+  await page.evaluate(() => {
+    window.__grants = [];
+    navigator.mediaDevices.getUserMedia = () => new Promise(resolve => {
+      window.__grants.push(() => resolve({ getTracks: () => [{ stop: () => window.__mic.stopped++ }] }));
+    });
+    openIdeaModal();
+  });
+  await page.locator('#btn-idea-dictate').click();
+  await page.waitForFunction(() => window.__grants.length === 1);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => openIdeaModal());
+  await page.locator('#btn-idea-dictate').click();
+  await page.waitForFunction(() => window.__grants.length === 2);
+  await page.evaluate(() => window.__grants[0]());
+  await expect.poll(() => page.evaluate(() => window.__mic.stopped)).toBe(1);
+  expect(await page.evaluate(() => window.__mic.nodes.length)).toBe(0);
+  await page.evaluate(() => window.__grants[1]());
+  await expect(page.locator('#btn-idea-dictate')).toHaveClass(/active/);
+  await phrase(page);
+  await expect(page.locator('#idea-text')).toHaveValue('New idea only.');
+  expect(await page.evaluate(() => window.__mic.nodes.length)).toBe(1);
+  await page.keyboard.press('Escape');
+});
+
+test('closing Quick Idea aborts two pending tidy requests and frees both upload slots for the editor', async ({ page }) => {
+  let transcriptCount = 0;
+  await page.route('**/audio/transcriptions', route => reply(route, `Phrase ${++transcriptCount}.`));
+  await open(page, { tidy: true });
+  await page.evaluate(() => {
+    window.__tidy = { started: 0, aborted: 0 };
+    const realFetch = window.fetch.bind(window);
+    window.fetch = (input, opts) => {
+      if (!String(input).includes('/chat/completions')) return realFetch(input, opts);
+      const n = ++window.__tidy.started;
+      if (n > 2) return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: 'Editor phrase.' } }] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      return new Promise((resolve, reject) => {
+        const abort = () => { window.__tidy.aborted++; reject(new DOMException('Aborted', 'AbortError')); };
+        opts.signal.addEventListener('abort', abort, { once: true });
+      });
+    };
+    openIdeaModal();
+  });
+  await page.locator('#btn-idea-dictate').click();
+  await expect(page.locator('#btn-idea-dictate')).toHaveClass(/active/);
+  await phrase(page); await phrase(page);
+  await page.waitForFunction(() => window.__tidy.started === 2);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__tidy.aborted)).toBe(2);
+  await expect(page.locator('#dictate-pill')).toBeHidden();
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('Editor phrase.');
+  expect(await page.inputValue('#idea-text')).toBe('');
+  expect(transcriptCount).toBe(3);
+  await page.locator('#btn-dictate').click();
+});
+
+test('stopping mid phrase uploads qualifying speech but drops a short burst', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/audio/transcriptions', route => { requests++; return reply(route, 'Flushed words.'); });
+  await open(page);
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await page.evaluate(() => window.__feed(.4, .1));
+  await page.locator('#btn-dictate').click();
+  expect(requests).toBe(0);
+  await expect(page.locator('#dictate-pill')).toBeHidden();
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await page.evaluate(() => window.__feed(.6, .1));
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#editor')).toHaveValue('Flushed words.');
+  expect(requests).toBe(1);
+  await expect(page.locator('#dictate-pill')).toBeHidden();
+});
+
+test('malformed transcription JSON marks its position and does not stop later speech', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/audio/transcriptions', route => ++requests === 1
+    ? route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' },
+      contentType: 'application/json', body: '{invalid' })
+    : reply(route, 'Later words.'));
+  await open(page);
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await phrase(page); await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('[🎤 ?] Later words.');
+  await expect(page.locator('#scula-toast')).toContainText('Fraza 1 nu a putut fi transcrisă:');
+  expect(requests).toBe(2);
+  await page.locator('#btn-dictate').click();
+});
+
+test('network failure gets one marker without retry and later speech still transcribes', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/audio/transcriptions', route => ++requests === 1
+    ? route.abort('failed') : reply(route, 'Recovered English.'));
+  await open(page);
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('[🎤 ?]');
+  await expect(page.locator('#scula-toast')).toContainText('Fraza 1 nu a putut fi transcrisă: Conexiune eșuată');
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('[🎤 ?] Recovered English.');
+  expect(requests).toBe(2);
+  await page.locator('#btn-dictate').click();
+});
+
+test('missing Web Audio refuses startup without asking for microphone permission', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => {
+    window.AudioContext = undefined;
+    window.webkitAudioContext = undefined;
+    navigator.mediaDevices.getUserMedia = () => { throw Error('must not request microphone'); };
+  });
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).not.toHaveClass(/active/);
+  await expect(page.locator('#dictate-pill')).toBeHidden();
+  await expect(page.locator('#scula-toast')).toContainText('Reportofonul nu este disponibil');
+  expect(await page.evaluate(() => window.__mic.nodes.length)).toBe(0);
+});
+
+test('denied microphone permission leaves no active recorder and a later attempt can succeed', async ({ page }) => {
+  await page.route('**/audio/transcriptions', route => reply(route, 'After permission.'));
+  await open(page);
+  await page.evaluate(() => {
+    const grant = navigator.mediaDevices.getUserMedia;
+    let first = true;
+    navigator.mediaDevices.getUserMedia = (...args) => {
+      if (first) { first = false; return Promise.reject(new DOMException('Denied', 'NotAllowedError')); }
+      return grant(...args);
+    };
+  });
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).not.toHaveClass(/active/);
+  await expect(page.locator('#scula-toast')).toContainText('Nu am acces la microfon');
+  expect(await page.evaluate(() => window.__mic.nodes.length)).toBe(0);
+  await page.locator('#btn-dictate').click();
+  await expect(page.locator('#btn-dictate')).toHaveClass(/active/);
+  await phrase(page);
+  await expect(page.locator('#editor')).toHaveValue('After permission.');
+  await page.locator('#btn-dictate').click();
+});
