@@ -1,6 +1,6 @@
 {
   "task_id": "task-04",
   "status": "fail",
-  "summary": "All 28 task-04 Playwright tests passed in Chromium, including three new regressions for successive sessions at a blurred caret, overlapping responses, and deliberate caret relocation. The existing node tests/verify.js and node tests/dictate.js checks passed. node tests/idea.js failed only its documented, pre-existing toolbar-order check; its other checks passed. No task-04 product bug was reproduced. The required git add -A && git commit attempt failed because Git could not create .git/index.lock on the read-only filesystem; the command was not retried, and the new regression file and this report remain uncommitted. API responses were stubbed, so actual Groq language recognition was not verified.",
+  "summary": "All 31 task-04 Playwright tests passed in Chromium, including three new regressions for exact phrase boundaries, language-safe tidying with failure fallback, and unchanged third-language text in Quick Idea. No product bug was reproduced. The required git add -A && git commit attempt failed because the filesystem is read-only at .git/index.lock; it was not retried, so the new test file and this report remain uncommitted. Transcription responses were stubbed, so real Groq speech recognition was not verified.",
   "bugs": []
 }
