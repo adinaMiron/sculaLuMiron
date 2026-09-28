@@ -106,7 +106,16 @@
   function setBtn(on){
     const id = target === editor ? "btn-dictate" : "btn-idea-dictate";
     const b = document.getElementById(id);
-    if(b) b.classList.toggle("active", on);
+    if(!b) return;
+    b.classList.toggle("active", on);
+    /* swap the data-i* keys so applyUILang() repaints the right label on a language switch */
+    b.setAttribute("data-i", on ? "dictateStopBtn" : "dictateBtn");
+    b.setAttribute("data-i-title", on ? "dictateStopTip" : "dictateTip");
+    if(on) b.setAttribute("data-i-aria", "dictateStopAria");
+    else { b.removeAttribute("data-i-aria"); b.removeAttribute("aria-label"); }
+    b.textContent = t(b.getAttribute("data-i"));
+    b.title = t(b.getAttribute("data-i-title"));
+    if(on) b.setAttribute("aria-label", t("dictateStopAria"));
   }
   function toast(msg){ try{ if(window.ScuLaFolder) window.ScuLaFolder.toast(msg); }catch(e){} }
   function fail(msg){ hidePill(); setBtn(false); toast(msg); }

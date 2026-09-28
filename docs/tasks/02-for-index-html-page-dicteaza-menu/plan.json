@@ -1,0 +1,8 @@
+{
+  "task_id": "task-02",
+  "difficulty": "low",
+  "reasoning": "A small, fully specified change: three i18n keys, a rewritten setBtn() that swaps data-i attributes so applyUILang keeps working, and two CSS rules. The only trap (applyUILang clobbering textContent) is called out in the spec. The tester has more to do (stubbing both engines, a delayed transcription route, a language switch mid-recording, and a narrow viewport), which justifies a standard tier at medium effort.",
+  "spec_path": "docs/tasks/02-for-index-html-page-dicteaza-menu/spec.md",
+  "implementer": {"tier": "standard", "effort": "low"},
+  "tester": {"tier": "standard", "effort": "medium"}
+}
