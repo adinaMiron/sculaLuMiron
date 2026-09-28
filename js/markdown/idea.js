@@ -140,7 +140,7 @@ function openIdeaModal() {
 }
 function closeIdeaModal() {
   document.getElementById('idea-modal').classList.remove('open');
-  if (document.getElementById('btn-idea-dictate').classList.contains('active')) toggleIdeaDictation();
+  stopDictation(document.getElementById('idea-text'), { discard: true });
 }
 
 // Says where the idea will land, updated on every keystroke — the whole

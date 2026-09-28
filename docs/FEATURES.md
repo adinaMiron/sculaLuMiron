@@ -1389,10 +1389,30 @@ Run: `/apptest idea`.
 voice dictation engine — same Caiet vocal settings, same `PROVIDERS`/queue/
 Web Speech code, same status pill — through `window.toggleIdeaDictation()`,
 which calls `window.toggleDictation(targetEl)` with `#idea-text` as the
-target instead of the default editor. See `docs/MAP.md` § "Voice dictation"
-for how the shared engine's `target` swap works. Closing the modal
-(`closeIdeaModal()`) stops an active dictation so it never keeps recording
-into a hidden box.
+target instead of the default editor. Both 🎤 buttons behave the same way:
+
+- **Phrase mode (API engine).** The recording is captured as PCM (Web Audio
+  `ScriptProcessor`) and cut at natural pauses (~0.7 s of silence, 300 ms
+  pre-roll, 200 ms tail; `makePhraser`). Each phrase goes out on its own as a
+  16 kHz / 16-bit mono WAV and its text is inserted the moment it returns, in
+  spoken order (one global chain, at most 2 requests in flight, one retry on
+  HTTP 429). Voiced spans under 0.5 s are never sent; phrases are capped at 30 s.
+- **Language.** No `language` field and no `prompt` field are ever sent, so
+  Whisper detects the language per phrase — Romanian stays Romanian (with
+  diacritics), English stays English, mixed speech works, nothing is
+  translated. The Caiet vocal `lang`, `hint` and `segMin` are ignored here;
+  on Groq the model is always `whisper-large-v3` (`modelFor()`). Text in any
+  other language is inserted as transcribed. `tidy` uses a language-safe prompt.
+- **Failure.** A failed phrase leaves the marker `[🎤 ?]` in its place and a
+  toast names it; the other phrases carry on.
+- **Live engine** (Web Speech API) is unchanged and still uses `lang`.
+- **Discard on close.** Closing the modal (`closeIdeaModal()`) calls
+  `stopDictation(#idea-text, { discard:true })`: recording stops and phrases
+  still being transcribed are dropped, so a late phrase never lands in a hidden
+  box or the next idea. The main-editor session is not affected.
+
+Each 🎤 press is a session with its own target and lazily-chosen insertion
+point. See `docs/MAP.md` § "Voice dictation".
 
 ---
 

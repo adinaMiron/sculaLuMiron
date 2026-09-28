@@ -7,8 +7,15 @@
 // (that endpoint is not what is under test) so the only thing asserted is
 // where the returned text lands in the textarea.
 //
+// Phrase mode: the API engine cuts the recording at pauses and sends each
+// phrase alone. The fake microphone plays a WAV written here (0.5 s silence,
+// 1.2 s speech-like tone, 2 s silence) via --use-file-for-fake-audio-capture
+// (the melody.js route), which yields exactly one phrase per session.
+//
 //   node dictate.js            # from tests/  (PW_CHROME_PATH=/path/to/chrome)
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
@@ -21,9 +28,33 @@ function check(name, ok, extra) {
   if (!ok) failed++;
 }
 
+// 16 kHz mono 16-bit WAV: silence, a modulated 150-250 Hz harmonic tone at
+// about -12 dBFS (a pure sine can be eaten by noise suppression), silence.
+function speechWav() {
+  const sr = 16000, n = Math.round(sr * 3.7), pcm = Buffer.alloc(44 + n * 2);
+  pcm.write('RIFF', 0); pcm.writeUInt32LE(36 + n * 2, 4); pcm.write('WAVEfmt ', 8);
+  pcm.writeUInt32LE(16, 16); pcm.writeUInt16LE(1, 20); pcm.writeUInt16LE(1, 22);
+  pcm.writeUInt32LE(sr, 24); pcm.writeUInt32LE(sr * 2, 28); pcm.writeUInt16LE(2, 32);
+  pcm.writeUInt16LE(16, 34); pcm.write('data', 36); pcm.writeUInt32LE(n * 2, 40);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    let v = 0;
+    if (t >= 0.5 && t < 1.7) {
+      const f0 = 200 + 50 * Math.sin(2 * Math.PI * 3 * t);
+      ph += 2 * Math.PI * f0 / sr;
+      const env = 0.6 + 0.4 * Math.sin(2 * Math.PI * 4 * t);
+      v = 0.25 * env * (Math.sin(ph) + 0.5 * Math.sin(2 * ph) + 0.3 * Math.sin(3 * ph));
+    }
+    pcm.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), 44 + i * 2);
+  }
+  return pcm;
+}
+const WAV_FILE = path.join(os.tmpdir(), 'dictate-test-speech.wav');
+fs.writeFileSync(WAV_FILE, speechWav());
+
 // The settings the Caiet vocal page would have saved. `custom` provider +
-// endpoint needs no API key, so no secret goes near the test; segMin 0
-// disables segment rotation, so one start/stop is exactly one transcription.
+// endpoint needs no API key, so no secret goes near the test.
 const SETTINGS = {
   engine: 'api', provider: 'custom',
   endpoint: 'https://stt.test/audio/transcriptions',
@@ -57,27 +88,30 @@ async function newPage(browser, settings) {
   return { ctx, page, errors };
 }
 
-// Start dictation, let the fake mic run, stop, wait for the stubbed text to land.
-async function dictateOnce(page, ms) {
+// Start dictation, wait for the stubbed text (it now arrives while recording,
+// once the phrase's trailing pause has been heard), then stop.
+async function dictateOnce(page) {
+  const before = (await page.inputValue('#editor')).split('salut lume').length - 1;
   await page.click('#btn-dictate');
   await page.waitForFunction(() => document.getElementById('btn-dictate').classList.contains('active'));
-  await sleep(ms);
+  await page.waitForFunction(([n]) => document.getElementById('editor').value.split('salut lume').length - 1 > n,
+    [before], { timeout: 12000 });
   await page.click('#btn-dictate');
-  await page.waitForFunction(() => document.getElementById('editor').value.includes('salut lume'), null, { timeout: 8000 });
-  await sleep(100);
+  await sleep(300);
 }
 
 (async () => {
   const browser = await chromium.launch({
     executablePath: CHROME,
-    args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']
+    args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
+           '--use-file-for-fake-audio-capture=' + WAV_FILE + '%noloop']
   });
 
   // 1. No caret in the editor -> appended on a fresh line under the last one.
   {
     const { ctx, page, errors } = await newPage(browser, SETTINGS);
     await page.evaluate(() => { const e = document.getElementById('editor'); e.value = 'Linia unu.'; updatePreview(); updateStatus(); });
-    await dictateOnce(page, 1300);
+    await dictateOnce(page);
     const val = await page.inputValue('#editor');
     check('no caret: text appended on a new paragraph after the last line',
       val === 'Linia unu.\n\nsalut lume', val);
@@ -96,7 +130,7 @@ async function dictateOnce(page, ms) {
       e.value = 'unu doi'; updatePreview(); updateStatus();
       e.focus(); e.setSelectionRange(3, 3);   // right after "unu"
     });
-    await dictateOnce(page, 1300);
+    await dictateOnce(page);
     const val = await page.inputValue('#editor');
     check('caret respected: text inserted at the caret, not appended',
       val === 'unu salut lume doi', val);
@@ -109,8 +143,8 @@ async function dictateOnce(page, ms) {
   {
     const { ctx, page, errors } = await newPage(browser, SETTINGS);
     await page.evaluate(() => { const e = document.getElementById('editor'); e.value = ''; updatePreview(); });
-    await dictateOnce(page, 1200);
-    await dictateOnce(page, 1200);
+    await dictateOnce(page);
+    await dictateOnce(page);
     const val = await page.inputValue('#editor');
     check('a second run appends below the first, never back at the start',
       val === 'salut lume\n\nsalut lume', val);

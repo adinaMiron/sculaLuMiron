@@ -21,7 +21,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `wikilinks.js` | Wiki link dialog and `[[` suggestions |
 | `files.js` | New/open/import/export, table, timeline, code and link dialogs |
 | `events.js` | Editor and keyboard event handlers |
-| `dictation.js` | Speech transcription into notes or the idea dialog |
+| `dictation.js` | Speech transcription into notes or the idea dialog — cut at pauses, one request per phrase, language auto-detected |
 | `drive.js` | Google Drive authentication, merge and sync |
 | `startup.js` | Initial rendering, layout and workbook boot (after Drive is defined) |
 

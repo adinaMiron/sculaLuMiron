@@ -62,6 +62,8 @@ const I18N = {
     dictateNetwork:"Conexiune eșuată către serviciul de transcriere.",
     dictateTooBig:"Segmentul audio este prea mare.",
     dictateError:"Eroare la dictare:",
+    dictatePending:n=>`${n} în transcriere`,
+    dictatePhraseFailed:(n,m)=>`Fraza ${n} nu a putut fi transcrisă: ${m}`,
     explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
     navTip:"Navigare (Ctrl+1)", navBtn:"☰ Nav",
     toolbarToggleTip:"Arată/ascunde bara de unelte",
@@ -416,7 +418,7 @@ const I18N = {
       <h3>Import / Export</h3>
       <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod.</p>
       <h3>Dictare vocală</h3>
-      <p>Iconița 🎙 din bară transcrie vorbirea direct la cursor, folosind setările din pagina „Caiet vocal”.</p>
+      <p>Butonul 🎤 din bară și cel din 💡 Idee rapidă transcriu vorbirea, cu setările (cheia API) din pagina „Caiet vocal”. Înregistrarea se taie la pauze și fiecare frază e transcrisă în limba în care a fost rostită — română sau engleză, niciodată tradusă — și apare imediat, în ordine.</p>
       <h3>Scurtături</h3>
       <p>
         <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> salvează tot ce s-a modificat ·
@@ -487,6 +489,8 @@ const I18N = {
     dictateNetwork:"Could not reach the transcription service.",
     dictateTooBig:"The audio segment is too large.",
     dictateError:"Dictation error:",
+    dictatePending:n=>`${n} transcribing`,
+    dictatePhraseFailed:(n,m)=>`Phrase ${n} could not be transcribed: ${m}`,
     explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
     navTip:"Navigation (Ctrl+1)", navBtn:"☰ Nav",
     toolbarToggleTip:"Show/hide toolbar",
@@ -841,7 +845,7 @@ const I18N = {
       <h3>Import / export</h3>
       <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks.</p>
       <h3>Voice dictation</h3>
-      <p>The 🎙 icon in the toolbar transcribes speech straight at the caret, using the settings saved on the "Caiet vocal" page.</p>
+      <p>The 🎤 button in the toolbar and the one in 💡 Quick idea transcribe speech using the settings (API key) from the "Caiet vocal" page. The recording is cut at pauses and each phrase is written in the language it was spoken — Romanian or English, never translated — and appears right away, in order.</p>
       <h3>Shortcuts</h3>
       <p>
         <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> save all modified ·
