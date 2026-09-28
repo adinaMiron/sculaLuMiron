@@ -1370,6 +1370,8 @@ const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}
 let UI = prefs.get('scula:ui-lang') === 'en' ? 'en' : 'ro';
 Object.assign(I18N.ro,{hashing:'Se verifică SHA-256…',cancelHash:'Anulează verificarea SHA-256',hashProgress:v=>`SHA-256: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`,backupDigest:p=>`Digest SHA-256 invalid: ${p}. Este necesar un șir de 64 de cifre hexazecimale.`,backupIntegrityFormat:p=>`Format de integritate incompatibil: ${p}. Este acceptat doar SHA-256.`,backupMismatch:name=>`Integritatea SHA-256 nu corespunde pentru „${name}”. WAV-ul a fost modificat sau înlocuit. Alege copia sursă intactă.`,backupVerified:'Integritatea tuturor WAV-urilor a fost verificată prin SHA-256.',backupUnverified:names=>`Atenție: integritatea audio nu poate fi verificată criptografic pentru fișierele fără digest:\n${names.join('\n')}`,hashCancelled:'Verificare SHA-256 anulată. Exportul nu a fost salvat.'});
 Object.assign(I18N.en,{hashing:'Checking SHA-256…',cancelHash:'Cancel SHA-256 check',hashProgress:v=>`SHA-256: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`,backupDigest:p=>`Invalid SHA-256 digest: ${p}. Expected 64 hexadecimal digits.`,backupIntegrityFormat:p=>`Unsupported integrity format: ${p}. Only SHA-256 is supported.`,backupMismatch:name=>`SHA-256 integrity mismatch for “${name}”. The WAV was changed or replaced. Select the intact source copy.`,backupVerified:'All WAV integrity was verified with SHA-256.',backupUnverified:names=>`Warning: audio integrity cannot be verified cryptographically for files without a digest:\n${names.join('\n')}`,hashCancelled:'SHA-256 check cancelled. Export was not saved.'});
+Object.assign(I18N.ro,{inspectProgress:v=>`Se inspectează WAV-ul: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
+Object.assign(I18N.en,{inspectProgress:v=>`Inspecting WAV: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
 const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
 let state='loading', db=null, projects=[], project=null, dirty=false, generation=0;
 let capture=null, lastQuality=null, statusKey=null;
@@ -1501,7 +1503,7 @@ async function validateBackup(){
   try{
     // Include orphan audio keys too; validation itself never writes storage.
     const keys=db?await new Promise((resolve,reject)=>{const tx=db.transaction('audio'),r=tx.objectStore('audio').getAllKeys();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}):[];
-    const staged=await ScuLaSongBackup.stage(await json.text(),files,{used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay('hashProgress',v);}});
+    const staged=await ScuLaSongBackup.stage(await json.text(),files,{used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay(v.phase==='inspection'?'inspectProgress':'hashProgress',v);}});
     if(job.cancelled)return;
     stagedBackup=staged;backupSay('backupReady',{name:staged.project.name,count:staged.project.recordings.length,files:staged.project.recordings.map(r=>r.source.filename||r.source.relativePath.split('/').pop())});
   }catch(e){if(!job.cancelled)backupSay(typeof e.code==='string' && Object.hasOwn(I18N[UI],e.code)?e.code:'backupRead',e.detail,true);}

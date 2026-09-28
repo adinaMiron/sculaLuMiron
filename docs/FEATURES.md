@@ -2826,6 +2826,10 @@ mixed backups verify the declared digests and warn for the remaining files.
 SHA-256 detects changes relative to the manifest; it is not a signature and cannot
 authenticate a manifest and WAV that were both maliciously replaced.
 Malformed or duplicate fmt/data chunks are rejected by the shared WAV inspector.
+Inspection walks validated RIFF/chunk offsets with at most 16-byte Blob reads:
+it reads the RIFF and chunk headers plus the required `fmt ` fields, and skips
+audio and unknown chunk payloads. Odd-byte padding must fit inside RIFF. Even
+files with many tiny chunks report inspection progress and yield for cancellation.
 
 Every import receives new project, recording, source asset, performance and
 arrangement IDs, including historical performance provenance IDs. References are
@@ -2841,8 +2845,10 @@ leaves the imported project and every source WAV in memory, with the persistent
 storage warning, working exports and **Retry local storage**. Playback stops at
 validation/import; source players and object URLs, melody contexts and arrangement
 nodes/contexts are released. Page exit cancels pending staging. WAV inspection
-reads each entire file into memory, one at a time; very large backups may exceed
-device memory.
+uses bounded header reads even for very large source files.
+This bound applies to backup inspection and SHA-256 hashing. Melody analysis
+still decodes a full derived audio buffer, and arrangement playback/export may
+render a full mix in memory.
 
 `js/audio/integrity.js` exposes `ScuLaIntegrity.sha256(blob,{cancelled,progress})`.
 It implements incremental SHA-256 using FIPS 180-4 integer rounds in plain JavaScript,
@@ -2852,7 +2858,8 @@ uses bounded working memory, reports per-file percentage and checks cancellation
 before/after reads and after yielding. It requires neither Web Crypto, IndexedDB,
 a worker, network access nor a secure origin; it works from `file://`. The same
 implementation is used on all origins to keep cancellation and memory behavior
-consistent. Inspection still performs its existing full-file read before hashing.
+consistent. Structural inspection reads only headers; SHA-256 still reads every
+original byte, including skipped audio, unknown chunks and padding.
 Metadata export recomputes all source hashes without changing stored metadata or
 musical data; missing/unreadable audio prevents an incomplete manifest export.
 It uses the busy state and the same cancellation control (labelled **Cancel SHA-256
@@ -3007,6 +3014,11 @@ exports, retry/reload, playback/context/node/URL cleanup, RO/EN, phone layout an
 `file://` without Web Crypto or IndexedDB. Integrity cases cover unchanged-size/header
 payload/chunk/padding tampering, malformed/unsupported metadata, legacy/mixed
 warnings, upper-case hex, phone RO/EN progress and import/export hash cancellation.
+`node tests/song-incremental-inspection.js` checks nonstandard chunk order,
+malformed RIFF lengths, dimensions and padding boundaries, duplicate chunks,
+sparse large-file bounded reads and cancellation during pending reads and many
+tiny chunks. The browser backup check covers inspection progress, busy controls,
+cancellation, RO/EN, phone layout and `file://` staging.
 `node tests/song-integrity.js` checks published SHA-256 vectors (including a million
 "a" bytes), padding/chunk boundaries, exact WAV bytes against Node crypto, and
 cancellation that yields before the next read. Run alongside all Song, Voice and melody checks.

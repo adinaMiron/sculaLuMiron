@@ -223,6 +223,11 @@ partial saves. Phone progress/cancellation and mismatch/legacy messages use RO/E
 `node tests/song-integrity.js` adds published SHA-256 vectors, the million-byte
 vector, padding and 64 KiB boundaries, exact WAV/chunk/padding hashes compared
 with Node crypto, and cancellation/responsiveness before the next chunk read.
+`node tests/song-incremental-inspection.js` checks PCM/float RIFF traversal,
+nonstandard chunk order, odd padding, malformed/duplicate chunks, dimensions,
+five tiny reads from a sparse 128 MiB WAV and cancellation during a pending
+read or hundreds of tiny chunks. The backup browser check asserts bounded
+inspection plus full-byte hashing and cancellation through the shipped controls.
 Run `song-analysis`, `song-synthesis`, `song-arrangement-generation`, `song`,
 `song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium

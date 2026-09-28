@@ -87,18 +87,42 @@ function midi(performance){
   const n=data.length,head=[77,84,104,100,0,0,0,6,0,0,0,1,1,224,77,84,114,107,(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255];
   return new Blob([new Uint8Array(head),new Uint8Array(data)],{type:'audio/midi'});
 }
-async function inspectWav(blob){
-  const ab=await blob.arrayBuffer(),v=new DataView(ab),tag=o=>String.fromCharCode(...new Uint8Array(ab,o,4));
-  if(ab.byteLength<44 || tag(0)!=='RIFF' || tag(8)!=='WAVE' || v.getUint32(4,true)+8!==ab.byteLength)throw new Error('badWav');
-  let format=null,dataBytes=null;
-  for(let o=12;o<ab.byteLength;){if(o+8>ab.byteLength)throw new Error('badWav');const size=v.getUint32(o+4,true),end=o+8+size;if(end+(size%2)>ab.byteLength)throw new Error('badWav');
-    if(tag(o)==='fmt '){if(format || size<16)throw new Error('badWav');format={encoding:v.getUint16(o+8,true),channelCount:v.getUint16(o+10,true),sampleRate:v.getUint32(o+12,true),byteRate:v.getUint32(o+16,true),alignment:v.getUint16(o+20,true),bitDepth:v.getUint16(o+22,true)};}
-    if(tag(o)==='data'){if(dataBytes!==null)throw new Error('badWav');dataBytes=size;}
-    o=end+(size%2);
+async function inspectWav(blob,{cancelled=()=>false,progress=()=>{}}={}){
+  const bad=()=>{throw new Error('badWav');};
+  const cancel=()=>{if(cancelled()){const e=new Error('backupCancelled');e.code='backupCancelled';throw e;}};
+  const tag=(bytes,o)=>String.fromCharCode(bytes[o],bytes[o+1],bytes[o+2],bytes[o+3]);
+  async function read(offset,length){
+    cancel();
+    if(offset<0 || length<0 || offset+length>blob.size)bad();
+    const bytes=new Uint8Array(await blob.slice(offset,offset+length).arrayBuffer());
+    cancel();if(bytes.length!==length)bad();return bytes;
   }
-  if(!format || !dataBytes)throw new Error('badWav');
+  cancel();progress(0,blob.size);
+  if(blob.size<44 || blob.size>0xffffffff+8)bad();
+  const header=await read(0,12),riff=new DataView(header.buffer,header.byteOffset,header.byteLength);
+  if(tag(header,0)!=='RIFF' || tag(header,8)!=='WAVE' || riff.getUint32(4,true)+8!==blob.size)bad();
+  let format=null,dataBytes=null,chunks=0;
+  for(let offset=12;offset<blob.size;){
+    if(blob.size-offset<8)bad();
+    const bytes=await read(offset,8),v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    const size=v.getUint32(4,true),end=offset+8+size,next=end+(size&1);
+    if(next>blob.size)bad();
+    const kind=tag(bytes,0);
+    if(kind==='fmt '){
+      if(format || size<16)bad();
+      const fields=await read(offset+8,16),f=new DataView(fields.buffer,fields.byteOffset,fields.byteLength);
+      format={encoding:f.getUint16(0,true),channelCount:f.getUint16(2,true),sampleRate:f.getUint32(4,true),byteRate:f.getUint32(8,true),alignment:f.getUint16(12,true),bitDepth:f.getUint16(14,true)};
+    }
+    if(kind==='data'){if(dataBytes!==null)bad();dataBytes=size;}
+    offset=next;
+    // Large payloads need no reads. A timer yield keeps tiny-chunk files
+    // cancelable even when their Blob reads resolve without yielding to UI.
+    if(++chunks%32===0){progress(offset,blob.size);await new Promise(resolve=>setTimeout(resolve,0));cancel();}
+  }
+  cancel();progress(blob.size,blob.size);
+  if(!format || !dataBytes)bad();
   const f=format;
-  if(![1,2].includes(f.channelCount) || f.sampleRate<8000 || f.sampleRate>192000 || !(f.encoding===1 && [16,24,32].includes(f.bitDepth) || f.encoding===3 && f.bitDepth===32) || f.alignment!==f.channelCount*f.bitDepth/8 || f.byteRate!==f.sampleRate*f.alignment || dataBytes%f.alignment)throw new Error('badWav');
+  if(![1,2].includes(f.channelCount) || f.sampleRate<8000 || f.sampleRate>192000 || !(f.encoding===1 && [16,24,32].includes(f.bitDepth) || f.encoding===3 && f.bitDepth===32) || f.alignment!==f.channelCount*f.bitDepth/8 || f.byteRate!==f.sampleRate*f.alignment || dataBytes%f.alignment)bad();
   return {...f,duration:dataBytes/f.byteRate};
 }
 root.ScuLaPerformance=Object.freeze({version:1,MAX_SECONDS,analyze,analyzeBuffer,editable,copy,quantize,timing,midi,inspectWav});
