@@ -1,0 +1,8 @@
+{
+  "task_id": "task-03",
+  "difficulty": "medium",
+  "reasoning": "Small, well-contained UI addition in one module (idea.js plus markup, keys and events), but the routing precedence (picked / single search match / soft open-chapter default / Name: prefix / Idei fallback) and the hint that must mirror it have many interacting cases and an existing suite to adapt, so a standard tier at high effort fits both roles.",
+  "spec_path": "docs/tasks/03-for-index-html-page-in-idee/spec.md",
+  "implementer": {"tier": "standard", "effort": "high"},
+  "tester": {"tier": "standard", "effort": "high"}
+}
