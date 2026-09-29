@@ -4,6 +4,7 @@
 - In this workspace, `git add -A` failed because `.git/index.lock` is read-only; leave the working-tree changes for an agent with writable Git metadata to commit.
 - The task-02 Chromium suite now launches here through root `npm test`; its 40 cases pass, and stress measurements are emitted as `TASK-02 MEASUREMENT` lines and JSON attachments.
 - Count wrapped flex lines with a tolerance for small top-position differences; distinct pixel tops overstated the 52px header as two lines.
+- The ignored `test-results/report.json` currently records 223 skipped cases, not the tester-reported 66 passes; inspect its stats before retaining it as browser evidence.
 
 ## tester
 
