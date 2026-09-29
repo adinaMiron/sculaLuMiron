@@ -1,28 +1,34 @@
 # Team environment
 
-Read only the role file for your current step; consult `project.md` when
-locating markdown UI code, choosing test commands, or interpreting baselines.
+Read your role file. Read `project.md` when you locate code, pick test
+commands or interpret baseline failures.
 
-- `project.md`: use when working on the header/toolbar or running its suites.
-- `lead.md`: use when planning, retrying or reviewing a task.
-- `implementer.md`: use when applying a header/toolbar specification.
-- `tester.md`: use when testing layout changes and writing the test report.
-- `scripts/run_suites.py`: use when running named Node suites or the header
-  preset with compact output and explicit historical failure labels.
-- `hooks/after-implement.py`: runs verification after implementation and
-  header guards when the diff touches markdown code or tests.
-- `CHANGELOG.md`: use when auditing the evidence and validation for these files.
+- `project.md`: layout pointers, the two `npm test` entry points, the
+  exact baseline failures, and the environment/refusal facts.
+- `lead.md` / `implementer.md` / `tester.md`: lessons per role.
+- `skills/header-layout/SKILL.md`: use it when a task touches
+  `index.html`'s header, `#wb-save-sync-row`, the ☰ toolbar or their
+  `@media` rules (spec checklist, worst-case fixture, geometry gotchas).
+- `scripts/run_suites.py`: use it for every test run instead of
+  hand-built `node`/`npx` commands. It finds the browser, tags known
+  failures, and runs Node suites and `*.spec.js` folders alike.
+- `hooks/after-implement.py`: runs automatically after implementing. It
+  does a browser preflight, verify, and the header guards when
+  `index.html`, `js/markdown/` or `tests/` changed.
+- `CHANGELOG.md`: what changed in these files, and why.
 
-Run from the repository root:
+Run from the repository root (sandbox verified working 2026-09-29):
 ```
-python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py --preset header
-python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py gdsync wbsaveall
-python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py 01-move-salveaza-and-sincronizeaza-buttons-like/row
+python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py ARGS
 ```
-The hook accepts an optional base revision; otherwise BASE_BRANCH or main.
-The runner accepts relative suite names (optional `tests/` and `.js`),
-`--verbose`, `--timeout` and `--budget` (at most 240 seconds).
-Exit 0 means a complete run with only passes or explicitly KNOWN-ONLY failures;
-exit 1 means failure/incomplete, exit 2 means invalid runner arguments.
-The current session's sandbox startup was refused; runtime verification of
-the revised runner/hook is blocked. See CHANGELOG before relying on them.
+ARGS:
+- `--preset header`: verify, 7 header guards and the task-02 specs, ~80 s.
+- `gdsync nav`: runs `tests/<name>.js`.
+- `02-adapt-the-menu-for-small-screens`: a `*.spec.js` folder.
+- `--discovery`: which task folders each `npm test` covers.
+- `--preset browser-check`: prints `BROWSER: OK|BLOCKED`.
+
+The runner also takes `--verbose`, `--timeout` and `--budget` (≤240 s).
+Exit codes: 0 = complete, with only passes or KNOWN-ONLY failures;
+1 = a failure, a timeout, a missing suite or an unfinished run;
+2 = bad arguments; 3 = the browser cannot launch (ENVIRONMENT).

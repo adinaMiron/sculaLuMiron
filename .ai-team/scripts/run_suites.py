@@ -10,17 +10,20 @@ already listed as known (CLAUDE.md "Known issues") as KNOWN.
 Usage (from the project root, through the sandbox):
   run_suites.py nav idea                       # tests/nav.js, tests/idea.js
   run_suites.py 03-move-kanban-and-gantt-buttons-from/buttons
-  run_suites.py --preset header                # verify + seven header guards
+  run_suites.py --preset header                # verify + header guards + specs
   run_suites.py --timeout 240 --verbose nav    # full output of each suite
   run_suites.py --budget 200 --preset header   # report incomplete after 200 s
   run_suites.py 02-adapt-the-menu-for-small-screens   # a *.spec.js folder:
                   # runs `npx playwright test tests/<dir>/ --reporter=line`
                   # from the root (does NOT overwrite test-results/report.json)
+  run_suites.py --discovery                    # which tests/NN-* folders each
+                                               # npm test entry point runs
   run_suites.py --preset browser-check         # launch Chromium once; exit 3
                                                # with BROWSER: BLOCKED if it can't
 
 Timings on this machine (sandbox, 2026-09-29): verify 0s, idea 5s, nav 5s,
-gdsync 25s, gantt 1s, wbsaveall 7s, row 10s, buttons 7s; header preset ~60s.
+gdsync 25s, gantt 1s, wbsaveall 7s, row 10s, buttons 7s, task-02 specs 19s;
+header preset ~80s.
 
 Exit code: 0 for complete runs with no unrecognized failures; 1 for failures,
 timeouts, missing files or incomplete runs; 2 for invalid arguments;
@@ -58,6 +61,48 @@ BROWSER_CHECK = ("const fs = require('fs'); const pw = require('playwright');"
                  ".catch(e => { console.log('BROWSER: BLOCKED (' +"
                  " String(e.message).split('\\n').filter(Boolean).slice(0, 3).join(' | ') + ')');"
                  " process.exit(3); });")
+
+
+def discovery():
+    """Which task folders each `npm test` entry point runs, without --list
+    (which overwrites test-results/report.json with an all-skipped run)."""
+    try:
+        with open("playwright.config.js", encoding="utf-8") as f:
+            cfg = f.read()
+    except OSError:
+        cfg = ""
+    m = re.search(r"testMatch\s*:\s*\[([^\]]*)\]", cfg)
+    matches = re.findall(r"['\"]([^'\"]+)['\"]", m.group(1)) if m else []
+    try:
+        with open(os.path.join(TESTS, "package.json"), encoding="utf-8") as f:
+            pkg = f.read()
+    except OSError:
+        pkg = ""
+    m = re.search(r"for f in ([^;]*);", pkg)
+    loop = m.group(1).split() if m else []
+    print("root npm test (playwright.config.js testMatch): " + (", ".join(matches) or "(none found)"))
+    print(f"tests/ npm test loop: {len(loop)} suites")
+    uncovered = 0
+    for d in sorted(os.listdir(TESTS)):
+        full = os.path.join(TESTS, d)
+        if not re.match(r"\d\d-", d) or not os.path.isdir(full):
+            continue
+        files = sorted(f for f in os.listdir(full) if f.endswith(".js"))
+        specs = [f for f in files if f.endswith(".spec.js")]
+        plain = [f[:-3] for f in files if not f.endswith(".spec.js")]
+        by_root = bool(specs) and any(f"/{d}/" in p for p in matches)
+        in_loop = [p for p in plain if f"{d}/{p}" in loop]
+        where = []
+        if specs:
+            where.append(f"{len(specs)} spec(s) " + ("in root npm test" if by_root else "NOT in root testMatch"))
+        if plain:
+            where.append(f"node files {plain}: " + (f"in loop {in_loop}" if in_loop else "none in tests/ loop"))
+        if (specs and not by_root) or (plain and not in_loop and not specs):
+            uncovered += 1
+        print(f"  {d}: " + "; ".join(where))
+    print(f"DISCOVERY: {uncovered} task folder(s) run by neither npm test "
+          "(node files may be helpers; check before registering)")
+    return True
 
 
 def browser_check():
@@ -198,10 +243,14 @@ def main(argv):
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--preset", choices=PRESETS)
     parser.add_argument("--suites", default="")
+    parser.add_argument("--discovery", action="store_true",
+                        help="report which task folders each npm test entry point runs")
     args = parser.parse_args(argv)
     if args.timeout <= 0 or not 1 <= args.budget <= 240:
         parser.error("timeout must be positive and budget must be 1–240 seconds")
     names = args.names + [n for n in args.suites.split(",") if n]
+    if args.discovery:
+        return 0 if discovery() else 1
     if args.preset == "browser-check":
         return 0 if browser_check() else 3
     if args.preset:

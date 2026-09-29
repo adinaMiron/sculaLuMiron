@@ -1,5 +1,71 @@
 # Changelog
 
+## 2026-09-29 (second improve, after task-02 merged at 5ad2dc2)
+
+The sandbox starts now, so the previous entry's "unvalidated" runner and
+hook were run for real. `--preset header` passed through the sandbox in
+~60 s with only KNOWN failures (idea 1, nav 3) before any edit.
+
+- **run_suites.py**
+  - It now runs `*.spec.js` folders through
+    `npx playwright test tests/<dir>/ --reporter=line`. The `line` reporter
+    leaves `test-results/report.json` alone.
+    - Evidence: the retro § 3.4 says the task-02 specs were guarded by
+      nothing automatic. The digest shows 8× `npx playwright test …` and
+      2× `npm test -- …spec.js` by hand, with failures.
+    - Verified: 70/70 in 19 s.
+  - Added `--preset browser-check`: `BROWSER: OK|BLOCKED`, exit 3 on
+    BLOCKED.
+    - Evidence: the retro § 3.1. Four task-02 review rounds and one
+      escalation came from Chromium launch failures
+      (`sandbox_host_linux.cc:41`, three times in the notes), and the
+      tester made 5 refused browser-path probes.
+  - Added `--discovery`: which `tests/NN-*` folders each `npm test` entry
+    point covers.
+    - Evidence: 10× `npm test -- --list` in the digest, which overwrites
+      report.json (task-02 notes). Two passed reviews missed unregistered
+      suites.
+    - Output matches the retro's list: 4 folders uncovered.
+  - The "OK: N checks passed" summary of `row.js` now counts as passes
+    (it showed pass=0 before).
+- **after-implement.py**
+  - Adds the task-02 spec folder to the markdown guards and runs the
+    browser preflight first, printing an `ENVIRONMENT:` line on BLOCKED.
+  - BUDGET went 240→200 s and the runner timeout 250→215 s, so that the
+    preflight plus the suites stay under 300 s.
+  - Verified in the sandbox against base `5ad2dc2~1`: 79 s total, all
+    guards green apart from KNOWN.
+- **New `skills/header-layout/SKILL.md`**: the current header, save-row
+  and toolbar structure, the media rules, the spec checklist and the
+  geometry gotchas.
+  - Evidence: all five tasks this run touched this region. `index.html`
+    was read 27×, and the gotchas were rediscovered in the task-01/02/03
+    notes.
+  - These facts moved out of project.md and tester.md, which shrank the
+    always-read files.
+- **project.md**
+  - Rewritten for `main` after task-02: nav at ~2317, the spec runner, the
+    discovery flag, and the baseline with pass counts.
+  - The stale "sandbox cannot start" / "task-02 docs absent" lines were
+    replaced with the verified state.
+  - Added the refused-command list from the digest (`perl -i`/`sed -i`,
+    worktree, rm/mv, env prefixes).
+- **lead.md**
+  - New: rerun the checks through the runner before failing on retained
+    evidence. `BROWSER: BLOCKED` becomes `ENVIRONMENT:`, not a finding. A
+    commit/index.lock failure is not a test failure. Use `--discovery` at
+    review.
+  - Evidence: retro § 3.2 and 3.3, and review rounds 1–4 against round 5.
+- **implementer.md / tester.md**
+  - A commit failure is not a test failure (task-02's `test-report.json`
+    said fail with `bugs: []`).
+  - Superseded assertions are edited, not reverted.
+  - No scratch files and no worktrees; use `--discovery`, never
+    `--list`. BLOCKED is reported as ENVIRONMENT.
+- **README**: lists the skill and the new runner modes. The sandbox is no
+  longer "blocked", and there is no `$S` shell-variable trick (assignments
+  risk refusal).
+
 ## 2026-09-29 — improve after the resumed run
 
 The prompt described an absent directory, but this checkout already contained
