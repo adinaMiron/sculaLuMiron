@@ -11,14 +11,15 @@ import os
 import subprocess
 import sys
 
-BUDGET = 240  # seconds of suites; the orchestrator's hard limit is 300
+BUDGET = 200  # seconds of suites; + 60 s preflight cap stays under the 300 s limit
 
 # changed file (prefix) -> suites under tests/ worth running for it
 # index.html header/toolbar regression guards: the four shared suites plus
 # the layouts merged in the 2026-09-29 run (save/sync row, kanban/gantt move)
 MARKDOWN = ["idea", "nav", "gdsync", "gantt", "wbsaveall",
             "01-move-salveaza-and-sincronizeaza-buttons-like/row",
-            "03-move-kanban-and-gantt-buttons-from/buttons"]
+            "03-move-kanban-and-gantt-buttons-from/buttons",
+            "02-adapt-the-menu-for-small-screens"]  # Playwright Test specs, ~20-45 s
 SUITES_FOR = [
     ("index.html", MARKDOWN),
     ("js/markdown/", MARKDOWN),
@@ -55,13 +56,24 @@ def main():
         if any(c == prefix or (prefix.endswith("/") and c.startswith(prefix)) for c in changed):
             suites += names
     names = ",".join(dict.fromkeys(suites))
+    if len(suites) > 1:
+        # task-02 lost four review rounds to a browser that could not launch;
+        # say so up front instead of letting it look like 70 product failures
+        try:
+            pre = subprocess.run(["python3", ".ai-team/scripts/run_suites.py", "--preset", "browser-check"],
+                                 capture_output=True, text=True, timeout=60)
+            print(pre.stdout.strip() or pre.stderr.strip())
+            if pre.returncode == 3:
+                print("ENVIRONMENT: the browser cannot launch here; browser suites below are not evidence either way.")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            print(f"BROWSER: BLOCKED ({e})")
     print(f"Running: run_suites.py --budget {BUDGET} --suites {names}")
     print("New task suites must also be run explicitly by the tester; helper files are not auto-executed.")
     sys.stdout.flush()
     try:
         res = subprocess.run(["python3", ".ai-team/scripts/run_suites.py", "--budget", str(BUDGET),
                               "--suites", names],
-                             capture_output=True, text=True, timeout=250)
+                             capture_output=True, text=True, timeout=215)
     except (OSError, subprocess.TimeoutExpired) as e:
         print(f"ERROR: suite runner did not finish: {e}")
         return 1

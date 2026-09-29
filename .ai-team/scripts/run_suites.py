@@ -13,11 +13,18 @@ Usage (from the project root, through the sandbox):
   run_suites.py --preset header                # verify + seven header guards
   run_suites.py --timeout 240 --verbose nav    # full output of each suite
   run_suites.py --budget 200 --preset header   # report incomplete after 200 s
+  run_suites.py 02-adapt-the-menu-for-small-screens   # a *.spec.js folder:
+                  # runs `npx playwright test tests/<dir>/ --reporter=line`
+                  # from the root (does NOT overwrite test-results/report.json)
+  run_suites.py --preset browser-check         # launch Chromium once; exit 3
+                                               # with BROWSER: BLOCKED if it can't
 
-Timings on this machine: verify 0s, idea 5s, nav 5s, gdsync 25s, gantt 1s.
+Timings on this machine (sandbox, 2026-09-29): verify 0s, idea 5s, nav 5s,
+gdsync 25s, gantt 1s, wbsaveall 7s, row 10s, buttons 7s; header preset ~60s.
 
 Exit code: 0 for complete runs with no unrecognized failures; 1 for failures,
-timeouts, missing files or incomplete runs; 2 for invalid arguments.
+timeouts, missing files or incomplete runs; 2 for invalid arguments;
+3 when the browser cannot launch at all (environment, not a product bug).
 KNOWN-ONLY is historical baseline information, not a passing test result.
 """
 import argparse
@@ -33,10 +40,69 @@ PRESETS = {
     # index.html header / toolbar / @media work (retro 2026-09-29 section 2)
     "header": ["verify", "idea", "nav", "gdsync", "gantt", "wbsaveall",
                "01-move-salveaza-and-sincronizeaza-buttons-like/row",
-               "03-move-kanban-and-gantt-buttons-from/buttons"],
+               "03-move-kanban-and-gantt-buttons-from/buttons",
+               # Playwright Test specs (task-02 desktop wrap, ~45 s)
+               "02-adapt-the-menu-for-small-screens"],
     # the cheap always-run check
     "verify": ["verify"],
+    "browser-check": [],
 }
+
+# Launches Chromium the way the Node suites do and prints one verdict line.
+BROWSER_CHECK = ("const fs = require('fs'); const pw = require('playwright');"
+                 "let p = process.env.PW_CHROME_PATH;"
+                 "if (!p) { try { const q = pw.chromium.executablePath();"
+                 " if (q && fs.existsSync(q)) p = q; } catch (e) {} }"
+                 "pw.chromium.launch(p ? { executablePath: p } : {})"
+                 ".then(async b => { await b.close(); console.log('BROWSER: OK ' + (p || 'default')); })"
+                 ".catch(e => { console.log('BROWSER: BLOCKED (' +"
+                 " String(e.message).split('\\n').filter(Boolean).slice(0, 3).join(' | ') + ')');"
+                 " process.exit(3); });")
+
+
+def browser_check():
+    try:
+        res = subprocess.run(["node", "-e", BROWSER_CHECK], cwd=TESTS, capture_output=True,
+                             text=True, timeout=60)
+        out = ((res.stdout or "") + (res.stderr or "")).strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        out = f"BROWSER: BLOCKED ({e})"
+    line = next((l for l in out.splitlines() if l.startswith("BROWSER:")),
+                "BROWSER: BLOCKED (" + out[-300:] + ")")
+    print(line[:500])
+    return line.startswith("BROWSER: OK")
+
+
+def run_spec_dir(key, timeout, verbose):
+    """A tests/<dir>/ of *.spec.js files: Playwright Test from the root."""
+    started = time.monotonic()
+    try:
+        res = subprocess.run(["npx", "playwright", "test", f"{TESTS}/{key}/", "--reporter=line"],
+                             capture_output=True, text=True, timeout=timeout)
+        out, code = (res.stdout or "") + (res.stderr or ""), res.returncode
+    except subprocess.TimeoutExpired as e:
+        out = e.stdout.decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        code = "timeout"
+    except OSError as e:
+        print(f"== {key}: ERROR ({e})")
+        return False
+    lines = out.splitlines()
+    stats = {k: int(n) for n, k in re.findall(r"^\s*(\d+) (passed|failed|flaky|skipped|did not run)",
+                                               out, re.M)}
+    secs = round(time.monotonic() - started)
+    ok = code == 0 and stats.get("passed", 0) > 0 and not stats.get("failed")
+    print(f"== {key}: {'OK' if ok else 'FAIL'} exit={code} pass={stats.get('passed', 0)} "
+          f"fail={stats.get('failed', 0)} flaky={stats.get('flaky', 0)} "
+          f"skipped={stats.get('skipped', 0)} {secs}s (playwright test)")
+    if not ok:
+        # the line reporter prints each failure as "  1) [chromium] › file:line › title"
+        heads = [l for l in lines if re.match(r"^\s+\d+\) ", l)]
+        for l in (heads[:20] if heads else lines[-15:]):
+            print("  | " + l.strip()[:300])
+    if verbose:
+        for l in lines:
+            print("  > " + l[:300])
+    return ok
 
 # Exact check names reported on main in the 2026-09-29 retrospective.
 # These are historical expectations, not proof that a current failure is harmless.
@@ -75,6 +141,10 @@ def suite_file(name):
 def run_one(name, timeout, verbose):
     key, rel = suite_file(name)
     full = os.path.realpath(os.path.join(TESTS, rel))
+    folder = os.path.realpath(os.path.join(TESTS, key))
+    if (folder.startswith(os.path.realpath(TESTS) + os.sep) and os.path.isdir(folder)
+            and any(f.endswith(".spec.js") for f in os.listdir(folder))):
+        return run_spec_dir(key, timeout, verbose)
     if not full.startswith(os.path.realpath(TESTS) + os.sep) or not os.path.isfile(full):
         print(f"== {key}: MISSING (no {TESTS}/{rel})")
         return False
@@ -92,6 +162,9 @@ def run_one(name, timeout, verbose):
         return False
     lines = out.splitlines()
     passes = [l for l in lines if l.startswith("PASS")]
+    m = re.match(r"OK: (\d+) checks passed", lines[-1] if lines else "")  # row.js summary
+    if m and not passes:
+        passes = [""] * int(m.group(1))
     fails = [l for l in lines if l.startswith("FAIL")]
     known_names = KNOWN.get(key, [])
     new = [f for f in fails if f.removeprefix("FAIL ").split("  -> ", 1)[0] not in known_names]
@@ -129,6 +202,8 @@ def main(argv):
     if args.timeout <= 0 or not 1 <= args.budget <= 240:
         parser.error("timeout must be positive and budget must be 1–240 seconds")
     names = args.names + [n for n in args.suites.split(",") if n]
+    if args.preset == "browser-check":
+        return 0 if browser_check() else 3
     if args.preset:
         names += PRESETS[args.preset]
     if not names:
