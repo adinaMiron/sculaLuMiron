@@ -1,0 +1,6 @@
+{
+  "task_id": "task-03",
+  "status": "pass",
+  "summary": "The implementer's change matches the spec exactly: #btn-kanban and #btn-gantt are removed from .header-actions and reinserted as direct children of #toolbar-groups, immediately after a .toolbar-sep that follows .toolbar-filters, each keeping its tb-btn class, id, onclick, data-i, data-i-title and title attributes. A new Playwright suite (tests/03-move-kanban-and-gantt-buttons-from/buttons.js, 12 check groups) verifies header absence/uniqueness, DOM parentage and sibling order, preserved attributes, EN/RO labels and tooltips (noting the page's default UI language is Romanian, not English, since localStorage is empty on first load), desktop geometry relative to .toolbar-filters, click-driven and keyboard-driven (Tab+Enter) activation of both buttons, the small-screen ☰ collapse hiding and restoring them, #btn-cal-sync remaining in the header, and rapid repeated activation of openGantt() not duplicating modal state or throwing. All 12 groups pass, and the pre-existing tests/gantt.js and node tests/verify.js both still pass. tests/idea.js still fails its one pre-existing, unrelated check (CLAUDE.md known issue 3, about #btn-help's position relative to New) and no new failures were introduced there.",
+  "bugs": []
+}

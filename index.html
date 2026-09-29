@@ -3569,8 +3569,6 @@
     <button class="btn" id="btn-help" onclick="openHelpModal()" data-i="helpBtn" data-i-title="helpTip" title="Help">❓ Help</button>
     <button class="btn" id="btn-idea" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
     <button class="btn" id="btn-cal-sync" onclick="calSyncAll()" data-i="calSyncBtn" data-i-title="calSyncTip" title="Send every &quot;@date&quot; in every workbook to the calendar (Ctrl+Alt+D)">📅 Push dates</button>
-    <button class="btn" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
-    <button class="btn" id="btn-gantt" onclick="openGantt()" data-i="ganttBtn" data-i-title="ganttTip" title="Show this chapter's tasks as a Gantt chart">▤ Gantt</button>
     <!-- Shown only while the open chapter holds a "^@" place — docs/FEATURES.md § S.
          mapRefresh() flips it on every keystroke, so the button appears the
          moment the first marker is typed and leaves when the last one goes. -->
@@ -3711,6 +3709,9 @@
       <option value="vital" data-i="impVitalOpt">🔥 Vital</option>
     </select>
   </div>
+  <div class="toolbar-sep"></div>
+  <button class="tb-btn" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
+  <button class="tb-btn" id="btn-gantt" onclick="openGantt()" data-i="ganttBtn" data-i-title="ganttTip" title="Show this chapter's tasks as a Gantt chart">▤ Gantt</button>
   </div>
 </div>
 
