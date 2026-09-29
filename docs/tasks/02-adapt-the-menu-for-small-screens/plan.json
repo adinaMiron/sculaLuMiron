@@ -1,0 +1,14 @@
+{
+  "task_id": "task-02",
+  "difficulty": "medium",
+  "reasoning": "The fix is localized CSS, but must reconcile merged layout changes, flex intrinsic sizing and long translated labels across both sides of two breakpoints. Standard models with high effort are appropriate for implementation and adversarial Playwright coverage, including stale tests and suite discovery.",
+  "spec_path": "docs/tasks/02-adapt-the-menu-for-small-screens/spec.md",
+  "implementer": {
+    "tier": "standard",
+    "effort": "high"
+  },
+  "tester": {
+    "tier": "standard",
+    "effort": "high"
+  }
+}

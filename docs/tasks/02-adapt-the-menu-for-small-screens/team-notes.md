@@ -10,3 +10,9 @@
   toolbar checks in this kind of spec are likely a no-op unless a specific
   `.tb-select` has a fixed width somewhere — grep for `.tb-select` width
   rules before assuming a fix is needed.
+
+## lead
+
+- Current task-02 branch retains the old spec and two Node test files, but no product patch; save controls are already a body-level row. Old header-descendant checks miss all four save buttons.
+- The task-01 row suite asserts `nowrap` at desktop widths too; revise that expectation for this task while preserving mobile coverage.
+- Root Playwright discovery currently targets only task-01 sketch tests. Add task-02 explicitly; a new test file alone is not run by root `npm test`.

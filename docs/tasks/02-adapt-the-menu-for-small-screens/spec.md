@@ -1,278 +1,254 @@
-# task-02 — Keep the markdown page header on screen at laptop widths
+# task-02 — Keep markdown header controls inside laptop viewports
 
-## 1. Problem
+## Current code and retry decision
 
-On `index.html` (the markdown page) the header row
-(`<header>` › `.header-actions`, markup at `index.html:3562–3601`) is a single
-fixed-height (52px), non-wrapping flex row. Above 1024px nothing lets it wrap,
-so on a laptop (1025–~1600px) its content is wider than the viewport and the
-save/sync group — `.wb-save-sync-row`: **Save to workbook**, **Sync to folder**,
-the Google button `#btn-wb-cloud` (reads **"☁ Sincronizează acum" / "☁ Sync now"**
-when connected), its status text `#wb-cloud-where`, **Save all modified**
-(`#btn-save-all-modified`) — is pushed past the right edge. `body` has
-`overflow: hidden`, so those buttons are simply unreachable.
+This spec supersedes the previous attempt's spec. This is a standalone browser
+app with no build step. Product layout lives in `index.html`; ordered classic
+scripts under `js/markdown/` own behavior and translations.
 
-Rough sizes in Romanian at 12px: the four save/sync buttons alone are ≈ 900px;
-the eleven other header buttons plus the crumb and file name are well over
-1000px. So at 1025px neither group fits on one line, and the fix must let
-**both** the upper buttons and the save/sync group wrap.
+Read `.ai-team/README.md`, `.ai-team/project.md`, `docs/FEATURES.md` sections E
+and O, and the relevant CSS before editing. Current anchors (search selectors,
+not old line numbers): header CSS near line 73, save row near 91, cloud status
+near 305, crumb near 392, filename near 898, media queries near 1159,
+header markup near 3571, save row near 3595, toolbar near 3611.
 
-## 2. Agreed product decisions (binding)
+The owner requested a different approach after the unfinished first attempt.
+Task-01 has since moved `#wb-save-sync-row` OUTSIDE `.header-actions`: it is a
+body child immediately after `header`, before `.toolbar`. Task-03 moved
+`#btn-kanban` and `#btn-gantt` into `#toolbar-groups`, after the filters.
+Keep these merged DOM positions. The owner's requested second save/sync row
+already exists; make that row fit, rather than moving it back into the header.
+This is the lead's resolution of the outdated structural premise in the task.
 
-1. **Scope: `index.html` only**, and only its `<header>` plus a check of the
-   formatting toolbar (`.toolbar`) directly under it. The shared site nav
-   (`<nav id="site-nav">` block, Rule 2 in `CLAUDE.md`) and the other eight
-   pages are **not touched**. If they have the same problem, that is a separate
-   task — mention it in the implementation report, don't fix it.
-2. **Only widths above 1024px change.** The existing `@media (max-width: 1024px)`,
-   `(max-width: 700px)`, `(max-width: 420px)` and landscape-phone rules stay
-   byte-for-byte as they are. `isSmallScreen()` / `isMobile()` in
-   `js/markdown/editor.js:548–549` are not touched.
-3. **Chosen approach (option "d")**: for widths **1025px – 1600px inclusive**,
-   tighten button padding and let the header wrap, with `.wb-save-sync-row`
-   breaking onto **its own row** below the other header buttons — the same idea
-   as the tablet layout.
-4. **Nothing is hidden, moved into a menu, or reduced to an icon.** Every
-   button keeps its full text label in both languages. No `⋯ More` dropdown, no
-   `display:none`, no `font-size: 0`, no label shortening, no new i18n keys.
-5. Buttons that must always be visible with one click (never scrolled, never
-   in a menu): Workbooks, New, Idea, Save to workbook, Sync to folder, the
-   Google button (Sincronizează acum), Save all modified. (Rarely used: Open .md,
-   Import DOCX, Export HTML, Push dates, Gantt, Help — these must *also* stay
-   visible under decision 4; the distinction only matters for order, see § 3.4.)
-6. **Acceptance widths**: 1025, 1280, 1366, 1440, 1536px, 100% zoom, in both
-   Romanian and English. At each, every header button and every toolbar
-   control lies fully inside the viewport and the page has no horizontal
-   scroll. **Also** checked at 1601 and 1920px so the desktop layout above the
-   breakpoint does not regress.
-7. **Worst case is the test case**: Google connected (button reads
-   "☁ Sincronizează acum"/"☁ Sync now") with a status line in
-   `#wb-cloud-where`, the 🗺 Map button (`#btn-map`) visible, a long chapter
-   name in `#current-file`, and the workbook crumb `#wb-crumb` shown. The long
-   file name, the crumb and the status text **truncate with an ellipsis**
-   rather than push buttons out.
+`git diff main --stat` at planning time contains the old task-02 spec, notes,
+`tests/02-adapt-the-menu-for-small-screens/laptop-header.js` and `_scratch.js`,
+but no surviving product patch. The old suite assumes save buttons are header
+descendants and `display:contents` at desktop widths. Those assumptions are
+obsolete. The retrospective reports long-crumb failures at 1601/1920 in the
+old attempt; these are evidence to test, not current measurements or waivers.
 
-## 3. Implementation (CSS + one comment; no JS)
+## Binding product behavior and scope
 
-### 3.1 Where
+- Product changes are limited to markdown-page layout CSS and associated
+  comments in `index.html`. No JS, translations, new product dependencies,
+  script tags, shared `#site-nav` edits, or changes to the other eight pages.
+  Correct the save-row layout description in `docs/FEATURES.md` if needed.
+- Only widths ABOVE 1024px change. Leave all existing base rules and all
+  tablet/phone/short-landscape rules unchanged; add desktop-scoped overrides.
+  At 1024px and below retain today's independently scrollable, nonwrapping
+  save row and today's collapsible toolbar. Do not restore obsolete
+  `order:-1` behavior from the old spec.
+- At 1025–1600px inclusive tighten horizontal button padding and permit
+  wrapping. The save/sync group remains its own full-width row below the
+  complete upper header and above the formatting toolbar. Preserve its
+  current left alignment and DOM order. Extra lines are allowed when needed;
+  do not impose a fixed two-line height that clips controls.
+- No existing button is hidden, moved into a menu, converted to an icon, or
+  given a shortened label. Full RO/EN text, icons, titles, IDs, handlers,
+  accessibility attributes, and existing conditional visibility are retained.
+- Always directly reachable: Workbooks, New, Idea, Save to workbook, Sync to
+  folder, Google Sync now, Save all modified. Rarely used Open .md, Import
+  DOCX, Export HTML, Push dates, Gantt and Help also remain fully visible.
+  Keep Kanban/Gantt in their current toolbar positions.
+- Long chapter filenames, workbook crumbs, and cloud status text truncate
+  with ellipsis. They must not push buttons out, vanish entirely, or require
+  sideways scrolling. The status link remains usable.
+- Acceptance is 100% zoom at 1025, 1280, 1366, 1440, 1536px, in RO and EN.
+  Also check 1600 (inclusive boundary), 1601 and 1920px. Every expected visible
+  header, save-row and toolbar control must fit, without horizontal page or
+  control-row scrolling. No exemption for pre-existing desktop overflow.
+- Above 1600px preserve normal button padding and the existing separate save
+  row. A short-content upper header should retain its 52px single-row look
+  when it fits; with long content it may grow to avoid clipping. The owner
+  requires no overflow, not the old spec's erroneous `display:contents` rule.
+- The formatting toolbar is in scope for verification and only a measured
+  overflow correction. Problems on other pages/nav are separate tasks.
 
-Add **one new media block** in `index.html`'s `<style>`, immediately after the
-existing block
+## Implementation prescription
 
-```css
-  @media (max-width: 1600px) {
-    .toolbar-sep { margin: 0 2px; }
-  }
-```
+Add two media blocks after the existing `@media (max-width: 1600px)` separator
+rule and before the TABLET comment. Do not modify that existing rule.
 
-(`index.html:1138–1140`) and **before** the `/* ═══════════ TABLET (≤ 1024px) ═══════════ */`
-comment. Leave the existing 1600px block as is.
-
-Use exactly this media query so it cannot leak into the tablet range:
-
-```css
-  @media (min-width: 1025px) and (max-width: 1600px) { … }
-```
-
-Start the block with a short comment in the file's style explaining why
-(laptop widths: the header wraps instead of spilling; save/sync group gets its
-own row; nothing hidden; see docs/tasks/02-…/spec.md is **not** needed — refer
-to `docs/FEATURES.md`/`docs/MAP.md` only if you add a line there).
-
-### 3.2 Rules (target values — implement these; deviate only if a measurement in § 5 fails, and record why in the report)
+First, `@media (min-width: 1025px)` provides intrinsic sizing safety at all
+desktop widths, including 1601 and 1920:
 
 ```css
-    header {
-      height: auto;
-      min-height: 52px;          /* one-row look unchanged when it fits */
-      padding: 6px 20px;
-      gap: 12px;
-    }
-    .logo { flex: 0 0 auto; white-space: nowrap; }
-    .header-actions {
-      flex: 1 1 0;
-      min-width: 0;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 6px;
-    }
-    .header-actions .btn { padding: 6px 10px; white-space: nowrap; }
-    .header-actions .file-name,
-    .header-actions .wb-crumb {
-      flex: 0 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .header-actions .file-name { max-width: 260px; }
-    .header-actions .wb-crumb  { max-width: 220px; }
-
-    /* save/sync group: its own row, right-aligned, under the other buttons */
-    .wb-save-sync-row {
-      display: flex;
-      flex: 1 1 100%;
-      justify-content: flex-end;
-      align-items: center;
-      flex-wrap: wrap;           /* last-resort fallback at 1025px in Romanian */
-      gap: 6px;
-      min-width: 0;
-    }
-    .wb-save-sync-row .btn { flex: 0 0 auto; }
-    .wb-save-sync-row #wb-cloud-where { flex: 0 1 auto; min-width: 0; max-width: 260px; }
+header {
+  height: auto;
+  min-height: 52px;
+  padding: 6px 20px;
+  gap: 12px;
+}
+header .logo { flex: 0 0 auto; white-space: nowrap; }
+header .header-actions {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+header .header-actions .btn { flex: 0 0 auto; white-space: nowrap; }
+header #current-file,
+header #wb-crumb {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+header #current-file { max-width: 260px; }
+header #wb-crumb { max-width: 220px; }
+#wb-save-sync-row {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+#wb-save-sync-row #wb-cloud-where {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+}
 ```
 
-Notes that are part of the spec:
+The existing save-button `flex:0 0 auto; white-space:nowrap` remains effective.
+The ID-qualified cloud selector must override the existing
+`.wb-save-sync-row #wb-cloud-where { flex:0 0 auto }`. Status ellipsis already
+exists in its base rule. Preserve `[hidden]` rules for crumb and Map.
 
-- **Scope `.btn` to `.header-actions .btn`.** Do not change the global `.btn`
-  rule in this range — `.btn` is also used in modals, which must not change.
-- Font size of header buttons **stays 12px** (only padding tightens). Do not
-  touch `letter-spacing`.
-- `#wb-cloud-where` already has `overflow:hidden; text-overflow:ellipsis;
-  white-space:nowrap` (`index.html:284–292`); the new `max-width`/`min-width`
-  make that ellipsis actually engage. Its `<a>` child (added by `paintCloud()`
-  in `js/markdown/drive.js:434`) must still be clickable.
-- `.wb-save-sync-row` keeps its **DOM position** (last child of
-  `.header-actions`) — **no `order: -1`** here, unlike the tablet rule. So the
-  order on screen is: row(s) 1…n = crumb, file name, Workbooks … Export HTML
-  (right-aligned, wrapping as needed); last row = the save/sync group,
-  right-aligned, under them. This keeps the group where users already look for
-  it (the right-hand side).
-- The `flex-wrap: wrap` on `.wb-save-sync-row` is a safety net: at 1025px in
-  Romanian the four buttons plus the status text may not fit on one line
-  beside the logo; then the group itself wraps onto a second line (still no
-  horizontal scroll, nothing hidden). At 1280px and up it should be one line —
-  verify, and if it is not at 1280/RO, report the measured widths.
-- The header now grows in height; `body` is a 100vh flex column, so the
-  editor area shrinks accordingly. That is expected. No JS reads the header's
-  height (checked: nothing in `js/markdown/` queries `header`), so nothing else
-  needs adjusting.
+Second, `@media (min-width: 1025px) and (max-width: 1600px)`:
 
-### 3.3 Toolbar check
+```css
+header .header-actions,
+#wb-save-sync-row { gap: 6px; }
+header .header-actions .btn,
+#wb-save-sync-row .btn { padding: 6px 10px; }
+```
 
-`.toolbar` already has `flex-wrap: wrap` and `.toolbar-filters` has
-`max-width: 100%; flex-wrap: wrap`, so it is expected to fit already. Measure
-it at every acceptance width (§ 5). **Only if** a toolbar control's
-bounding box exceeds the viewport, add the minimal fix **inside the same new
-media block** (e.g. a `max-width` on the offending `.tb-select`), and record
-what you changed and why in the implementation report. Do not change toolbar
-rules outside that block.
+Keep the 12px button font and letter spacing. Do not style global `.btn`:
+that would change modals. Both rows may wrap without reordering children.
+The logo stays on the left; action lines remain right aligned. Save controls
+remain left aligned on their separate full-width strip. The flex-column body
+already allows the editor workspace to shrink as the header grows.
 
-### 3.4 Comment to update
+These values are a concrete starting implementation, not measured results.
+If geometry checks require a CSS adjustment, keep it within these desktop
+queries, preserve all behavior above, and record the failing measurement and
+adjustment. No product decision is delegated. Do not use body clipping,
+`overflow-x:hidden`, transforms, reduced font size, fixed row heights, or
+scrollbars to conceal a failure.
 
-The HTML comment above `<div class="wb-save-sync-row">`
-(`index.html:3581–3584`) currently says *"Desktop: display:contents, no layout
-change."* Rewrite it so it is true: above 1600px `display:contents`; 1025–1600px
-its own right-aligned row under the other header buttons; ≤1024px its own
-scrollable row first. Keep it ≤ 5 lines.
+`.toolbar`, `.toolbar-filters` already wrap. Check `.toolbar .tb-btn`, all
+selects, color inputs and their labels, and Kanban/Gantt. If an actual control
+spills, constrain the offending flex item with `min-width:0`/`max-width:100%`
+or allow its group to wrap inside the applicable desktop query. Do not change
+mobile toolbar collapse, filters or the shared nav to solve it.
 
-### 3.5 Must not change
+Update BOTH the CSS and markup comments describing the save row: it remains
+between header and toolbar at all sizes; it wraps on desktop, while at
+<=1024px it retains its existing sideways-scroll behavior. Preserve markup.
 
-- Any rule in the `≤1024px`, `≤700px`, `≤420px`, landscape-phone blocks.
-- The global `header`, `.header-actions`, `.btn`, `.wb-save-sync-row` rules
-  outside the new block (so > 1600px is byte-identical in behaviour).
-- The nav block (Rule 2) — `/verify` must still report the nine copies identical.
-- Any JS, any i18n string, any other page.
-- No new dependency, file, or script tag in product code.
+## Automated verification (Tester A3)
 
-### 3.6 Docs
+Standing team policy: add a Playwright suite under
+`tests/02-adapt-the-menu-for-small-screens/` and all necessary test tooling
+(package.json with test script, playwright.config.*, .gitignore entries).
+Product scope/dependency restrictions do not apply to test tooling.
 
-In `docs/FEATURES.md` or `docs/MAP.md`, no anchor change is required (the
-index section of MAP.md lists JS files, not CSS lines). If you find a doc that
-describes the header as a single row on desktop, correct it in the same change.
+Use a new `laptop-header.spec.js` with the existing root `@playwright/test`.
+Expand root `playwright.config.js` discovery to include this suite AND the
+currently discovered `tests/01-for-index-html-page-please-add/*.spec.js`.
+Keep other existing configuration. `npm test` from root must actually run it;
+verify with `npm test -- --list` and run the task suite. Do not accidentally
+discover the old plain-Node `laptop-header.js` or `_scratch.js`. Retire or
+update stale assertions if retaining that old suite as runnable coverage;
+do not use it unchanged as evidence.
 
-## 4. Tests (standing team policy)
+Fixture, isolated per case, without real OAuth, Drive writes or folder access:
+1. Open `index.html` via file URL, wait for app initialization, dismiss onboarding
+   through test state/UI as needed, and wait for `document.fonts.ready`.
+2. Set language through `scula-ui-lang` with detail `ro` or `en`, wait for its
+   asynchronous `paintCloud` repaint, then apply fixture state.
+3. In page context set `gsFolder={id:'test-folder',name:'ScuLa'}`,
+   `gsLastAt=Date.now()-86400000`, then call `paintCloud()`. This produces the
+   connected button and a real status anchor, even without a live token
+   (the status can truthfully be the expired-session message).
+4. Reveal `#btn-map`, reveal `#wb-crumb`, set crumb to a diacritic-containing
+   workbook name >=100 characters and `#current-file` to a filename >=120
+   characters ending `.md`. Keep these values stable during measurement.
+5. Test the natural connected status and a stress case replacing only the
+   status anchor text with 120 characters. Do not replace its markup or
+   inject CSS. Reapply after any asynchronous label repaint.
 
-The Tester adds a Playwright suite under
-`tests/02-adapt-the-menu-for-small-screens/` plus whatever tooling it needs
-(`tests/package.json` `test` script entry, `playwright.config.*` if used,
-`.gitignore` entries). That is **allowed and expected**; the product-code
-scope limits above do not apply to it. Follow the style of
-`tests/03-for-index-html-page-in-idee/picker.js` (plain `node` script, uses
-`tests/node_modules/playwright`, browser from `PW_CHROME_PATH`, exit 1 on any
-failure), and make sure `cd tests && npm test` runs it.
+Run all eight desktop widths above, viewport height 900, device scale 1,
+in both languages. Assert:
+- Explicit expected button inventory is present and visible, including every
+  `header .btn`, all four `#wb-save-sync-row .btn`, visible Map, and all
+  normally visible toolbar buttons/selects/color inputs. Do not merely filter
+  hidden elements and thereby allow accidentally hidden controls to pass.
+  The intentionally hidden Garden and desktop toolbar toggle are exceptions.
+- Each control has positive dimensions and lies inside the viewport and its
+  containing row, allowing <=1 CSS pixel rounding. Save controls are checked
+  against their own row, not `header`. Check both axes for row clipping and
+  overlap between controls. Wrapped lines must not cover one another.
+- Document/body scrollWidth do not exceed clientWidth; header, actions, save
+  row and toolbar have no horizontal overflow. Body overflow:hidden alone
+  proves nothing. Check bounds before clicking (Playwright can auto-scroll).
+- Every button keeps its localized full label and fits its content without
+  clipping or ellipsis. Assert connected text is `☁ Sincronizează acum` /
+  `☁ Sync now`; Save all is `📚 Salvează tot ce s-a modificat` /
+  `📚 Save all modified`. Compare remaining labels with app translations.
+- Long filename, crumb and stress status have nonzero widths, computed
+  ellipsis/nowrap/hidden overflow and scrollWidth > clientWidth. Status still
+  contains its anchor and retains href, target and accessible link text.
+- The save row starts at/below header bottom and ends at/before toolbar top;
+  DOM ordering and all handler attributes remain intact. At 1025–1600 check
+  compact padding; at 1601/1920 check normal 6px 14px button padding.
+- With ordinary short content at 1920, the upper header fits in one 52px row.
+  With stress content it can grow; never assert `display:contents`.
+- At 1280 in both languages use real locator clicks with harmless handler
+  spies for the four save-row actions. Assert exactly one handler invocation
+  per click, without force or actual sync side effects. Geometry/hit tests
+  cover the remaining header controls. Confirm the status link is hit-testable
+  without navigating to Drive.
 
-### 4.1 Setting up the worst case (from `page.evaluate`)
+Regression widths: 1024, 700, 420, 360 and short landscape 844x390. Compare
+against pre-change mobile behavior: save row remains flex/nowrap/overflow-x
+ auto, original padding/font sizes remain, toolbar toggle still collapses
+only its existing groups, and save buttons remain outside the collapse.
+Mobile sideways scrolling is explicitly allowed. Inspect source diff to
+ensure every <=1024 rule and the nav block remain unchanged.
 
-Top-level `let` bindings from the classic scripts are reachable by name.
+Run `node tests/verify.js`. Run relevant existing suites: gdsync, wbsaveall,
+and the merged task-01 row / task-03 buttons suites. The old task-01 test
+asserts nowrap even at desktop widths: update that superseded expectation
+to match this task above 1024, retaining its mobile assertions and other
+coverage. That intentional contract change is not an unrelated regression.
+Use team scripts only via the sandbox command in `.ai-team/README.md`.
+Record actual commands/results; if an environment refusal blocks browsers,
+do not retry/bypass it and do not claim layout passed. Write the report with
+the exact blocker. Historical failures are not automatic waivers.
 
-- Language: `window.dispatchEvent(new CustomEvent('scula-ui-lang', { detail: 'ro' | 'en' }))`
-  (the nav stores it under `localStorage['scula:ui-lang']`). Re-run the
-  worst-case setup after switching, since `applyUILang()` re-labels buttons.
-- Google connected: `gsFolder = { id: 'test-folder', name: 'ScuLa' }; gsLastAt = Date.now() - 86400000; paintCloud();`
-  → `#btn-wb-cloud` reads "☁ Sincronizează acum" / "☁ Sync now" and
-  `#wb-cloud-where` shows a date + time link. Additionally test once with a
-  long injected status (e.g. set the `<a>`'s text to 120 characters) to prove
-  the ellipsis.
-- Map button: `document.getElementById('btn-map').hidden = false`.
-- Crumb: `const c = document.getElementById('wb-crumb'); c.hidden = false; c.textContent = '<long workbook name, ~60 chars, with diacritics>';`
-- Long chapter name: `document.getElementById('current-file').textContent = '<~90-char file name>.md'`.
+## Manual verification
 
-### 4.2 Assertions, at widths 1025, 1280, 1366, 1440, 1536, 1601, 1920 × `ro`, `en` (viewport height 900)
+Open index.html in Chrome at 100% zoom. Use responsive mode at each desktop
+width in the matrix, switching RO and EN with the nav language toggle. Use
+the same connected/long-name/visible-Map fixture above in DevTools; do not
+connect a real account just for this test. Confirm the top header wraps as
+needed, the separate save strip remains below it, all text labels are readable,
+long metadata ends in ellipsis, and no button/control requires horizontal
+scrolling. Check every toolbar control including filters, Kanban and Gantt.
+At 1601 and 1920 check the same stress state and the ordinary short state.
+At 1024 and a phone width compare the unchanged scrollable save strip and
+collapse interaction. Use test spies for save/sync clicks rather than writing
+real data. Capture screenshots of 1025 RO, 1536 RO and 1601 stress state.
 
-1. Every visible (`offsetParent !== null` or non-zero rect) element matching
-   `header .btn, header .file-name, header .wb-crumb, #wb-cloud-where,
-   .toolbar .tb-btn, .toolbar .tb-select, .toolbar label` has
-   `rect.left >= 0` and `rect.right <= window.innerWidth` (allow 0.5px
-   rounding), and `rect.width > 0`.
-2. `document.documentElement.scrollWidth <= document.documentElement.clientWidth`
-   and the same for `document.body`.
-3. No header button is clipped by an ancestor: for each `header .btn`, its
-   rect is fully inside the `header`'s rect.
-4. Every header button still shows its full label: `btn.scrollWidth <= btn.clientWidth`
-   and its `textContent` equals the language's expected label (e.g.
-   `☁ Sincronizează acum`, `📚 Salvează tot ce s-a modificat`,
-   `☁ Sync now`, `📚 Save all modified`).
-5. Truncation: `#current-file`, `#wb-crumb` and `#wb-cloud-where` have
-   computed `text-overflow: ellipsis` and, with the long strings,
-   `scrollWidth > clientWidth` (i.e. they are truncated, not the buttons) at
-   1025–1600px.
-6. Save/sync row is its own row at 1025–1600px: the top of
-   `.wb-save-sync-row`'s first button is ≥ the bottom of `#btn-workbooks`
-   (it sits below the other buttons), and its buttons are right-aligned
-   (the rightmost save/sync element's right edge is within 1px of
-   `.header-actions`' right edge).
-7. Above the breakpoint (1601, 1920): `.wb-save-sync-row` computes
-   `display: contents` and `header` computes `height: 52px` — unchanged
-   desktop layout. (At 1601 with the full worst case the upper content may
-   not fit on one line; if assertion 1 fails at 1601 **only** because the
-   pre-existing desktop layout overflows, report it as a finding in the test
-   report rather than a regression, with measured widths. At 1920 it must pass.)
-8. Tablet untouched: at 1024px `.wb-save-sync-row` computes `order: -1`,
-   `overflow-x: auto`, `flex-wrap: nowrap` (the existing tablet rule).
-9. Buttons remain functional after the reflow: clicking `#btn-save-all-modified`
-   and `#btn-wb-sync` at 1280px reaches their handlers (stub
-   `saveAllModifiedChapters` / `syncAllToFolder` on `window` before clicking
-   and assert they were called) — proves they are not covered by another element.
+## Done and reporting
 
-Also run `node tests/verify.js` and the existing `tests/idea.js` /
-`tests/nav.js` (their known failures are listed in `CLAUDE.md` › Known issues
-and must not grow).
-
-## 5. Manual verification (human)
-
-1. Open `index.html` in Chrome from `file://`. Open DevTools → device toolbar
-   → Responsive, zoom 100%.
-2. In the console run the § 4.1 worst-case snippet (connected Google, map
-   button, crumb, long name).
-3. Set width to 1025, 1280, 1366, 1440, 1536: every header button, including
-   "☁ Sincronizează acum" and "📚 Salvează tot ce s-a modificat", is fully
-   visible; the save/sync group sits on its own row under the other buttons,
-   right-aligned; the long name, crumb and status end in "…"; there is no
-   horizontal scrollbar; the formatting toolbar's last control (the filter
-   dropdowns) is on screen.
-4. Switch the language (EN/RO toggle in the nav) and repeat step 3.
-5. At 1920 the header looks exactly as before (one 52px row). At 1024 and
-   below it looks exactly as before (tablet layout, save/sync row first and
-   horizontally scrollable).
-
-## 6. Done means
-
-- The new media block and the updated HTML comment are the only product
-  changes (plus any toolbar fix from § 3.3, recorded in the report).
-- `node tests/verify.js` passes (parse, nav sync ×9, diacritics).
-- The Tester's suite passes all assertions in § 4.2 at all listed widths and
-  both languages.
-- Implementation report lists the measured header height at 1025/1280/1536
-  in RO and EN, and whether the save/sync group needed its fallback wrap at
-  any width.
+All desktop matrix cases pass with no clipped, hidden or covered controls,
+including at 1601/1920; mobile behavior and shared nav remain unchanged.
+The root npm test discovers the new suite. Required verification is reported
+accurately. Implementation report names files, CSS decisions, measured header
+and save-row heights at 1025/1280/1536/1601/1920 in RO/EN, any wrapping and
+any toolbar correction. Test report distinguishes failures from environmental
+blocks. Complete required reports before optional broad exploration; the prior
+attempt exhausted its turn budget without completing the workflow.
