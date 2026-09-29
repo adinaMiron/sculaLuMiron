@@ -7,3 +7,8 @@
 - Root `npm test` now discovers the new task-02 Playwright file as well as the task-01 Playwright files; all 196 tests passed in Chromium.
 - The natural expired Drive status can fit without ellipsis, so the 120-plus-character anchor-text fixture is the reliable truncation check.
 - The old task-02 plain Node suite and scratch script asserted superseded layout rules and were removed; use `laptop-header.spec.js` for current coverage.
+
+## lead
+
+- Review-time Chromium launch failed before page execution at `sandbox_host_linux.cc:41` with `shutdown: Operation not permitted`; the 39 runner failures are environment failures, not measured layout defects.
+- Geometry heights returned only inside a successful assertion message are not retained as measurement evidence; persist or report them explicitly.
