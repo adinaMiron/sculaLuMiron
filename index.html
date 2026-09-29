@@ -84,10 +84,9 @@
   .logo span { color: var(--text-3); font-weight: 400; }
   .header-actions { display: flex; gap: 8px; align-items: center; }
 
-  /* Save/sync row: its own line between the header and the formatting
-     toolbar, on every screen size, outside #toolbar-groups so the ☰
-     collapse never hides it. nowrap + overflow-x:auto (same pattern as
-     #site-nav): one line that scrolls sideways, never wraps. */
+  /* Save/sync row: between the header and formatting toolbar at every width,
+     outside #toolbar-groups so the ☰ collapse never hides it. It wraps on
+     desktop; at 1024px and below it stays on one sideways-scrollable line. */
   .wb-save-sync-row {
     display: flex;
     align-items: center;
@@ -1158,6 +1157,54 @@
      than after — a wrapped bar costs every laptop a row of height. */
   @media (max-width: 1600px) {
     .toolbar-sep { margin: 0 2px; }
+  }
+
+  /* Desktop: let the complete header and separate save strip grow with their
+     controls while long metadata yields space and ends in an ellipsis. */
+  @media (min-width: 1025px) {
+    header {
+      height: auto;
+      min-height: 52px;
+      padding: 6px 20px;
+      gap: 12px;
+    }
+    header .logo { flex: 0 0 auto; white-space: nowrap; }
+    header .header-actions {
+      flex: 1 1 0;
+      min-width: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    header .header-actions .btn { flex: 0 0 auto; white-space: nowrap; }
+    header #current-file,
+    header #wb-crumb {
+      flex: 0 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    header #current-file { max-width: 260px; }
+    header #wb-crumb { max-width: 220px; }
+    #wb-save-sync-row {
+      min-width: 0;
+      max-width: 100%;
+      flex-wrap: wrap;
+      overflow: visible;
+    }
+    #wb-save-sync-row #wb-cloud-where {
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 260px;
+    }
+  }
+
+  /* Laptop widths: leave labels intact while using less button padding. */
+  @media (min-width: 1025px) and (max-width: 1600px) {
+    header .header-actions,
+    #wb-save-sync-row { gap: 6px; }
+    header .header-actions .btn,
+    #wb-save-sync-row .btn { padding: 6px 10px; }
   }
 
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
@@ -3588,10 +3635,9 @@
   </div>
 </header>
 
-<!-- Save/sync row: its own line between the header and the formatting
-     toolbar, on every screen size, outside #toolbar-groups so the ☰
-     collapse never hides it. One line, scrolling sideways if it doesn't
-     fit — never wrapping. -->
+<!-- Save/sync row: between the header and formatting toolbar at every width,
+     outside #toolbar-groups so the ☰ collapse never hides it. It wraps on
+     desktop; at 1024px and below it stays on one sideways-scrollable line. -->
 <div class="wb-save-sync-row" id="wb-save-sync-row">
   <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
   <!-- Beside ☁ rather than inside the Caiete panel: the two are one
