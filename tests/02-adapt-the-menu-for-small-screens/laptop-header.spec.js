@@ -354,3 +354,76 @@ test('rapid mouse and keyboard toolbar toggles leave the mobile save strip reach
   await expect(page.locator('#btn-gantt')).toBeVisible();
   await expect(page.locator('#wb-save-sync-row')).toBeVisible();
 });
+
+// A single unbroken token has a different intrinsic width from prose with
+// spaces. It must be clipped as metadata without making any action scroll away.
+for (const width of [1025, 1601, 1920]) for (const lang of ['ro', 'en']) {
+  test(`unbroken metadata cannot displace desktop controls at ${width}px ${lang}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, lang, true);
+    await page.evaluate(() => {
+      document.getElementById('wb-crumb').textContent = 'C'.repeat(320);
+      document.getElementById('current-file').textContent = 'F'.repeat(320) + '.md';
+      document.querySelector('#wb-cloud-where a').textContent = 'S'.repeat(320);
+    });
+    const result = await page.evaluate(inspectDesktop, true);
+    expect(result.problems, JSON.stringify({ width, lang, result }, null, 2)).toEqual([]);
+  });
+}
+
+// The default, disconnected page has no status link or workbook crumb. Check
+// that the layout works before a user connects Drive or opens a workbook.
+for (const width of [1025, 1600, 1601]) {
+  test(`empty workbook and disconnected cloud at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(URL);
+    await page.waitForFunction(() => typeof paintCloud === 'function' && document.documentElement.lang === 'ro');
+    await page.evaluate(() => document.fonts.ready);
+    const state = await page.evaluate(() => {
+      const row = document.getElementById('wb-save-sync-row');
+      const header = document.querySelector('header');
+      const toolbar = document.querySelector('.toolbar');
+      const bounds = e => e.getBoundingClientRect();
+      const controls = [...header.querySelectorAll('button'), ...row.querySelectorAll('button')]
+        .filter(e => !e.hidden);
+      return {
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        rowOverflow: row.scrollWidth - row.clientWidth,
+        headerOverflow: header.scrollWidth - header.clientWidth,
+        crumbHidden: document.getElementById('wb-crumb').hidden,
+        mapHidden: document.getElementById('btn-map').hidden,
+        order: bounds(header).bottom <= bounds(row).top + 1 && bounds(row).bottom <= bounds(toolbar).top + 1,
+        escaped: controls.filter(e => {
+          const r = bounds(e), p = bounds(e.closest('header, #wb-save-sync-row'));
+          return r.width <= 0 || r.height <= 0 || r.left < p.left - 1 || r.right > p.right + 1 ||
+            r.top < p.top - 1 || r.bottom > p.bottom + 1;
+        }).map(e => e.id || e.getAttribute('data-i')),
+      };
+    });
+    expect(state).toMatchObject({ pageOverflow: 0, rowOverflow: 0, headerOverflow: 0,
+      crumbHidden: true, mapHidden: true, order: true, escaped: [] });
+  });
+}
+
+for (const lang of ['ro', 'en']) {
+  test(`keyboard Tab reaches every desktop header and save action in DOM order ${lang}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1025, height: 900 });
+    await fixture(page, lang, true);
+    const focusOrder = [
+      '#btn-workbooks', '[data-i="newFileBtn"]', '#btn-help', '#btn-idea', '#btn-cal-sync',
+      '#btn-map', '[data-i="openFileBtn"]', '[data-i="importDocxBtn"]', '[data-i="exportHtmlBtn"]',
+      '[data-i="saveToWorkbookBtn"]', '#btn-wb-sync', '#btn-wb-cloud', '#wb-cloud-where a',
+      '#btn-save-all-modified',
+    ];
+    await page.locator(focusOrder[0]).focus();
+    for (const selector of focusOrder) {
+      await expect(page.locator(selector), `focus should reach ${selector}`).toBeFocused();
+      const reachable = await page.locator(selector).evaluate(e => {
+        const r = e.matches('a') ? e.parentElement.getBoundingClientRect() : e.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= innerWidth + 1;
+      });
+      expect(reachable, `${selector} has no visible keyboard target`).toBe(true);
+      await page.keyboard.press('Tab');
+    }
+  });
+}
