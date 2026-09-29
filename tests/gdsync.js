@@ -286,11 +286,11 @@ if (require.main !== module) return;
     await page.evaluate(() => { if (document.getElementById('wb-panel').classList.contains('collapsed')) toggleWorkbooks(); });
 
     check('no page errors on load', errors.length === 0, errors);
-    // It used to sit inside the Caiete panel; it now lives in the header,
-    // beside the save buttons (commit "Move cloud sync button out of Caiete").
-    check('the button lives in the header, beside the save buttons',
+    // It used to sit inside the Caiete panel, then the header; it now lives
+    // in the save/sync row, beside the save buttons.
+    check('the button lives in the save/sync row, beside the save buttons',
       await page.evaluate(() => {
-        const b = document.querySelector('header .header-actions #btn-wb-cloud');
+        const b = document.querySelector('#wb-save-sync-row #btn-wb-cloud');
         return !!b && !!b.parentElement.querySelector('#btn-save-all-modified');
       }));
     const st = await btnState(page);

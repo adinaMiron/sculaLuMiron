@@ -800,8 +800,10 @@ folder is a folder, and a person who drops a directory of notes into
 `<root>/markdown`, or a `.md` next to the ones a workbook already owns,
 means those to be a workbook and a chapter. So the button
 (`#btn-wb-sync`, `syncAllToFolder()`) now **looks before it writes**. It
-sits in the header right beside `#btn-wb-cloud` (it used to live inside the
-Caiete panel): on a new device the two are one gesture, folder and account.
+sits in the save/sync row (`#wb-save-sync-row`, the line between the header
+and the formatting toolbar) right beside `#btn-wb-cloud` (it used to live
+inside the Caiete panel): on a new device the two are one gesture, folder
+and account.
 
 1. `wbAdoptFromFolder()` walks `<root>/markdown`. A directory whose name
    matches no `book.folder` becomes a workbook — the folder name is both
@@ -1893,8 +1895,9 @@ it is browser-internal, and a page cannot read or write it. The
 account-shaped store a page *can* write to is **Google Drive**, so that is
 what this is: the same account, the same files, one sign-in.
 
-The button is `#btn-wb-cloud`, in the header next to the Save buttons (not
-inside the Caiete/Workbooks panel, so it's reachable without opening it).
+The button is `#btn-wb-cloud`, in the save/sync row under the header, next
+to the Save buttons (not inside the Caiete/Workbooks panel, so it's
+reachable without opening it).
 Left-click connects, then syncs; right-click forgets the connection, the
 same gesture the folder button and `editor.html`'s Drive button use. The
 line under it (`#wb-cloud-where`) always says where the chapters are —
