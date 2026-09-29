@@ -1435,6 +1435,25 @@ the button's `data-i*` keys (`dictateStopBtn/Tip/Aria`), so a language switch
 mid-recording repaints correctly. It reverts as soon as recording stops, even
 while API segments are still being transcribed.
 
+### The API engine never picks a language for you
+
+`transcribe()` sends no `language` and no `prompt` field, so the service
+keeps whichever language was actually spoken instead of being pushed towards
+the Caiet vocal default — a mixed Romanian/English recording comes back the
+way it was spoken. Detection happens once per request, which means once per
+recording, or once per `segMin` segment if the recording is rotated: a
+segment that itself mixes languages is transcribed as the service hears it,
+with no language forced. An English-only saved model (matching `/(^|[-.])en$/i`
+or `/^distil-whisper/i`) is replaced by the provider's multilingual default
+(`pickModel()` in `js/markdown/dictation.js`) before the request goes out,
+since it cannot write Romanian at all. When `tidy` is on, `tidyUp()`'s output
+is discarded — the raw transcript is kept instead — unless `keepsWords()`
+finds that it kept at least 80% of the raw transcript's words and stayed
+within 0.8×–1.25× of its word count, which a punctuation/diacritics fix
+passes and a translation does not. The **live** engine (`S.engine === "live"`,
+Web Speech) is unchanged: it cannot auto-detect, so it still uses the Caiet
+vocal `S.lang` setting.
+
 ---
 
 ## K. Undo / redo (`index.html`)

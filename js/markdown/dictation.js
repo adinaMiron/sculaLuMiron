@@ -87,15 +87,6 @@
     if(target === editor){ updatePreview(); updateStatus(); scheduleAutosave(); }
     else { target.dispatchEvent(new Event("input", { bubbles:true })); }
   }
-  function tailPrompt(){
-    const upto = ins.pos || target.value.length;
-    const tail = target.value.slice(Math.max(0, upto - 400), upto).trim();
-    const bits = [];
-    if(S.hint) bits.push(S.hint);
-    if(tail) bits.push(tail);
-    return bits.join(" ").slice(-800);
-  }
-
   /* ── status pill + button state ── */
   function showPill(state, interim){
     document.getElementById("dictate-pill-state").textContent = state || "";
@@ -186,7 +177,7 @@
     showPill(t("dictateTranscribing"));
     try{
       if(item.blob.size > 25 * 1024 * 1024) throw new Error(t("dictateTooBig"));
-      let text = await transcribe(item.blob, item.ext, tailPrompt());
+      let text = await transcribe(item.blob, item.ext);
       if(text && S.tidy){ showPill(t("dictateTidying")); text = await tidyUp(text); }
       emit(text);
     }catch(e){
@@ -198,17 +189,27 @@
     else hidePill();
   }
 
-  async function transcribe(blob, ext, promptText){
+  /* Whisper auto-detects language once per request when it isn't told one.
+     An English-only saved model cannot write Romanian, so swap it for the
+     provider's multilingual default rather than let it silently mistranscribe. */
+  function pickModel(){
+    const m = S.model || "whisper-large-v3";
+    if(/(^|[-.])en$/i.test(m) || /^distil-whisper/i.test(m)){
+      return S.provider === "openai" ? "whisper-1" : "whisper-large-v3";
+    }
+    return m;
+  }
+  /* Never send language or prompt: either one biases Whisper towards one
+     language and turns the other language's speech into a translation. */
+  async function transcribe(blob, ext){
     const p = PROVIDERS[S.provider] || PROVIDERS.groq;
     const url = S.provider === "custom" ? S.endpoint : p.url;
     if(!url) throw new Error(t("dictateNoSetup"));
     const fd = new FormData();
     fd.append("file", blob, "dictation." + (ext || "webm"));
-    fd.append("model", S.model || "whisper-large-v3");
+    fd.append("model", pickModel());
     fd.append("response_format", "json");
     fd.append("temperature", "0");
-    if(S.lang && S.lang !== "auto") fd.append("language", S.lang);
-    if(promptText) fd.append("prompt", promptText);
     const headers = {};
     if(S.key) headers.Authorization = "Bearer " + S.key;
     let res;
@@ -222,12 +223,37 @@
     const data = await res.json();
     return String(data.text || "").trim();
   }
+  /* Folds a string into comparable word tokens: casefold, strip diacritics,
+     split on anything that isn't a letter or digit. */
+  function foldWords(s){
+    return String(s).toLowerCase().normalize("NFD").replace(/\p{M}/gu, "")
+      .split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  }
+  /* True when out plausibly keeps raw's words rather than translating them:
+     at least 80% of raw's word tokens (with repeats) show up in out, and
+     out's token count stays within 0.8x-1.25x of raw's. A diacritics or
+     punctuation fix passes this; a translation does not. */
+  function keepsWords(raw, out){
+    const rawWords = foldWords(raw);
+    if(!rawWords.length) return true;
+    const outWords = foldWords(out);
+    const outSet = new Set(outWords);
+    const kept = rawWords.filter(w => outSet.has(w)).length;
+    if(kept / rawWords.length < 0.8) return false;
+    const ratio = outWords.length / rawWords.length;
+    return ratio >= 0.8 && ratio <= 1.25;
+  }
+  /* The text may be Romanian, English or both mixed: never translate it,
+     only fix punctuation/capitalisation/diacritics, and discard the model's
+     output (keeping the raw transcript) if it doesn't keep the words. */
   async function tidyUp(text){
     const p = PROVIDERS[S.provider] || PROVIDERS.groq;
     const url = S.provider === "custom" ? "" : p.chatUrl;
     if(!url || !S.tidyModel) return text;
-    const sys = "You edit raw speech-to-text output. Fix punctuation, capitalisation and missing Romanian diacritics. " +
-                "Never translate, never rephrase, never add or remove words. Reply with the corrected text only.";
+    const sys = "You edit raw speech-to-text output. It may be Romanian, English, or both mixed. " +
+                "Keep every word in the language it was spoken in. Never translate, never rephrase, " +
+                "never add or remove words. Fix only punctuation and capitalisation, and add diacritics " +
+                "only to Romanian words. Reply with the corrected text only.";
     try{
       const res = await fetch(url, {
         method:"POST",
@@ -240,7 +266,8 @@
       if(!res.ok) return text;
       const j = await res.json();
       const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-      return out ? String(out).trim() : text;
+      const trimmed = out ? String(out).trim() : "";
+      return trimmed && keepsWords(text, trimmed) ? trimmed : text;
     }catch(e){ return text; }
   }
 
