@@ -1,0 +1,1989 @@
+{
+  "config": {
+    "argv": [
+      "/usr/bin/node",
+      "/adina/programming/ai_generated/sculaLuMiron/node_modules/.bin/playwright",
+      "test",
+      "tests/02-adapt-the-menu-for-small-screens/laptop-header.spec.js"
+    ],
+    "configFile": "/adina/programming/ai_generated/sculaLuMiron/playwright.config.js",
+    "rootDir": "/adina/programming/ai_generated/sculaLuMiron/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/adina/programming/ai_generated/sculaLuMiron/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/adina/programming/ai_generated/sculaLuMiron/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/01-for-index-html-page-please-add/*.spec.js",
+          "**/02-adapt-the-menu-for-small-screens/*.spec.js"
+        ],
+        "timeout": 25000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+      "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "desktop 1025px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 478,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:46.431Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-818ba00e036bd8cb6ac5",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1025px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 489,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1025,\"lang\":\"ro\",\"status\":\"stress\",\"headerHeight\":82,\"saveHeight\":75,\"headerActionLines\":2,\"saveLines\":2}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:46.981Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDEwMjUsCiAgImxhbmciOiAicm8iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODIsCiAgInNhdmVIZWlnaHQiOiA3NSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAyCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-75ab17c25fc4cc5e1085",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1025px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 474,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:47.477Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-10e020afebfd498f7da7",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1025px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 489,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1025,\"lang\":\"en\",\"status\":\"stress\",\"headerHeight\":82,\"saveHeight\":41,\"headerActionLines\":2,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:47.962Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDEwMjUsCiAgImxhbmciOiAiZW4iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-5a4960089c46f370b08f",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 405,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:48.465Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-8d1ddb2dbf22b50d1487",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 419,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1280,\"lang\":\"ro\",\"status\":\"stress\",\"headerHeight\":82,\"saveHeight\":41,\"headerActionLines\":2,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:48.882Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDEyODAsCiAgImxhbmciOiAicm8iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-91dd7c4ceeccfce0b420",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 472,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:49.309Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-e8214de67f08bddef17c",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 466,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1280,\"lang\":\"en\",\"status\":\"stress\",\"headerHeight\":82,\"saveHeight\":41,\"headerActionLines\":2,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:49.789Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDEyODAsCiAgImxhbmciOiAiZW4iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-876dba3471b05529eaf9",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1366px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 401,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:50.262Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-ee4f7ba1d8fccc666d5a",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1366px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 432,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:50.672Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-b03c353a40d15746cc99",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1366px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 503,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:51.113Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-5fa22fe691e9ffead1a3",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1366px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 459,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:51.623Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-71186d5bc9439f05d0b0",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1440px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 413,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:52.089Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-0a30892c090629042c26",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1440px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 422,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:52.513Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-5e02daa23a260fb4452d",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1440px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 484,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:52.943Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-0b53f0a61bd0622a4ef5",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1440px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 487,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:53.433Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-9610d6185f7fffdcbb8f",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1536px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 420,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:53.927Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-68357876e20db6e16af7",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1536px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 505,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1536,\"lang\":\"ro\",\"status\":\"stress\",\"headerHeight\":82,\"saveHeight\":41,\"headerActionLines\":2,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:54.353Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE1MzYsCiAgImxhbmciOiAicm8iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-6f8efbc93d20e129b9f6",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1536px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 463,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:54.865Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-f998207fbc5f706e0eb7",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1536px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 482,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1536,\"lang\":\"en\",\"status\":\"stress\",\"headerHeight\":52,\"saveHeight\":41,\"headerActionLines\":1,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:55.335Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE1MzYsCiAgImxhbmciOiAiZW4iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogNTIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAxLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-8fac01630962aaec50f9",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 405,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:55.823Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-8cdc9dea3adda881fb3f",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 431,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:56.234Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-ff436c9178c38f6b7817",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 454,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:56.672Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-00383f9db7458741912e",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 482,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:57.134Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-b57511161434a016e065",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 394,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:57.623Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-6491118ee16feb876357",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 516,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1601,\"lang\":\"ro\",\"status\":\"stress\",\"headerHeight\":84,\"saveHeight\":41,\"headerActionLines\":2,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:58.025Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE2MDEsCiAgImxhbmciOiAicm8iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogODQsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAyLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-c0a401b6f90bd6fe7e05",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 480,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:58.547Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-198956919e091a5cef5a",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 447,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1601,\"lang\":\"en\",\"status\":\"stress\",\"headerHeight\":52,\"saveHeight\":41,\"headerActionLines\":1,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:59.033Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE2MDEsCiAgImxhbmciOiAiZW4iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogNTIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAxLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-da85da7d15d7636d7aff",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px ro natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 390,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:59.486Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-70fefcc92642302f77e2",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px ro stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 435,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1920,\"lang\":\"ro\",\"status\":\"stress\",\"headerHeight\":52,\"saveHeight\":41,\"headerActionLines\":1,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:41:59.883Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE5MjAsCiAgImxhbmciOiAicm8iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogNTIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAxLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-f2b39fc83fd4880c1fbe",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px en natural status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 504,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:00.325Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-d8202fe8ecd74ba246d6",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px en stress status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 496,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "TASK-02 MEASUREMENT {\"width\":1920,\"lang\":\"en\",\"status\":\"stress\",\"headerHeight\":52,\"saveHeight\":41,\"headerActionLines\":1,\"saveLines\":1}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:00.836Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "desktop-geometry",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE5MjAsCiAgImxhbmciOiAiZW4iLAogICJzdGF0dXMiOiAic3RyZXNzIiwKICAiaGVhZGVySGVpZ2h0IjogNTIsCiAgInNhdmVIZWlnaHQiOiA0MSwKICAiaGVhZGVyQWN0aW9uTGluZXMiOiAxLAogICJzYXZlTGluZXMiOiAxCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-d1c4a271564656b2ea1f",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 175,
+          "column": 3
+        },
+        {
+          "title": "ordinary 1920px header remains a single 52px row",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 382,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:01.339Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-fd158d7fa125ea6e9662",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 191,
+          "column": 1
+        },
+        {
+          "title": "save actions work with mouse and keyboard at 1280px ro",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 705,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:01.728Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-7b9f6ed7b656d3ac6166",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 199,
+          "column": 34
+        },
+        {
+          "title": "save actions work with mouse and keyboard at 1280px en",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 760,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:02.440Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-651f046bf46b10fcc8d1",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 199,
+          "column": 34
+        },
+        {
+          "title": "mobile save strip and toolbar at 1024x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 713,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:03.206Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-4b6a62f279aabd59f3a9",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 222,
+          "column": 3
+        },
+        {
+          "title": "mobile save strip and toolbar at 700x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 714,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:03.928Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-89ad16ef342d7d9c9fab",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 222,
+          "column": 3
+        },
+        {
+          "title": "mobile save strip and toolbar at 420x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 643,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:04.652Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-0e8d503e701a93286b7b",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 222,
+          "column": 3
+        },
+        {
+          "title": "mobile save strip and toolbar at 360x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 644,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:05.301Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-16cf1fdf78d96815674a",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 222,
+          "column": 3
+        },
+        {
+          "title": "mobile save strip and toolbar at 844x390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 627,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:05.951Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-dfd648de6b0a77a262ba",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 222,
+          "column": 3
+        },
+        {
+          "title": "desktop 1025px ro save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 417,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:06.585Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-054cb6b50079d8f5672f",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1025px en save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 470,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:07.009Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-ac018abbdcef04df3f0b",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px ro save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 427,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:07.487Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-48965e4afcd7792d8df0",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1280px en save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 477,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:07.920Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-810060e31ab419f02785",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px ro save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 466,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:08.404Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-7e47d913c1cdfaa70973",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1600px en save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 453,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:08.876Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-d6577231f089b3069509",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px ro save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 429,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:09.337Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-683cb49693259bd40fdb",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1601px en save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 458,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:09.771Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-2ff091cffa89df64ae69",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px ro save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 419,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:10.236Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-5d56de299786d3089203",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "desktop 1920px en save and formatting controls accept pointer hits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 499,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:10.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-b916409b77b2934d63c7",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 263,
+          "column": 3
+        },
+        {
+          "title": "a scrolled tablet strip recovers when resized across both desktop breakpoints",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 453,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:11.167Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-1bc948d12b9711ab340b",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 287,
+          "column": 1
+        },
+        {
+          "title": "language changes repaint a connected strip without dropping controls or the status link",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 622,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:11.628Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-3e2c93a115f4a5d565d0",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 319,
+          "column": 1
+        },
+        {
+          "title": "rapid mouse and keyboard toolbar toggles leave the mobile save strip reachable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 25000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 963,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-29T13:42:12.256Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a105e6afd96cb30133a7-3561e3c5f4fc34d80778",
+          "file": "02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
+          "line": 338,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-29T13:41:46.081Z",
+    "duration": 27198.008,
+    "expected": 53,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
