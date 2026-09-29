@@ -1,8 +1,0 @@
-{
-  "task_id": "task-01",
-  "difficulty": "low",
-  "reasoning": "A markup move plus a CSS consolidation in index.html with one stale selector in tests/gdsync.js; no JS logic changes and the spec pins every selector and rule, so a standard implementer at low effort suffices. The tester needs a bit more care (multi-viewport layout assertions, collapse, shortcuts, i18n), so standard at medium.",
-  "spec_path": "docs/tasks/01-move-salveaza-and-sincronizeaza-buttons-like/spec.md",
-  "implementer": {"tier": "standard", "effort": "low"},
-  "tester": {"tier": "standard", "effort": "medium"}
-}
