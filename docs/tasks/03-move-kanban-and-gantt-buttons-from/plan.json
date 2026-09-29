@@ -1,0 +1,8 @@
+{
+  "task_id": "task-03",
+  "difficulty": "low",
+  "reasoning": "A pure markup move of two buttons in index.html with no CSS, JS or i18n changes and exact target markup given in the spec; the tester needs a modest DOM/geometry/viewport suite, slightly more work than the edit itself.",
+  "spec_path": "docs/tasks/03-move-kanban-and-gantt-buttons-from/spec.md",
+  "implementer": {"tier": "fast", "effort": "low"},
+  "tester": {"tier": "standard", "effort": "medium"}
+}

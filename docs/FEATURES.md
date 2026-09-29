@@ -748,7 +748,7 @@ their original source line numbers when clicked.
 
 ### Kanban board (`kanban.html`)
 
-The editor's **▦ Kanban** button saves the open chapter and opens the board
+The **▦ Kanban** button in the editor's toolbar, right of the task filters, saves the open chapter and opens the board
 scoped to it. The shared navigation opens the board with every workbook in
 scope. The scope picker also offers one workbook or one chapter. Search covers
 task text, workbook, chapter, and responsible; filters cover responsible,
