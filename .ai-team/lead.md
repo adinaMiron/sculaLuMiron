@@ -3,6 +3,13 @@
 ## Planning
 - On a retry, run `git diff main --stat` first and name the changes that
   survived in the spec. Don't prescribe duplicate edits.
+- Before planning, `git branch -a` for an older `task/NN-<same slug>`: a
+  re-queued requirement may have a failed attempt. Say in the spec what
+  to avoid (task-01 dictation: the earlier 8k-line rewrite failed 5
+  rounds; a small spec passed at standard/medium).
+- Name the regression preset in the spec: `--preset header` or
+  `--preset dictation`. Domain skills: `skills/header-layout/`,
+  `skills/dictation/`.
 - Localized markup/CSS moves: give anchor selectors, exact before/after
   blocks, attributes to preserve, and the affected media queries.
   Paste-ready specs passed first review twice (task-01 attempt 2 at
@@ -32,5 +39,9 @@
   before calling work outstanding.
 - Run `run_suites.py --discovery` to confirm that the new suite is
   registered with the right `npm test`.
+- Read the hook's `HYGIENE` line or run `git diff main --stat`; any
+  `.config/` or symlink path blocks the merge (task-01 round 1). The
+  tracked Chrome `Crash Reports/settings.dat` predates the run: not a
+  finding unless the diff touches it.
 - A historical failure name cannot waive a failure in behaviour the task
   changed. Read the observed output.

@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-09-29 (third improve, after the dictation task merged at 57be8ad)
+
+Everything below was run through the sandbox: `--preset dictation` took
+~58 s, and the hook took ~153 s in the worst case (all guards).
+
+- **after-implement.py**
+  - `js/markdown/dictation.js` now maps to `dictate`, `idea` and the
+    task-01 specs. Other `js/markdown/`, `index.html` and `tests/`
+    changes still map to the header guards.
+    - Evidence: on call 40 the hook ran 8 header guards but not `dictate`,
+      so the implementer ran `dictate idea nav` by hand (implementer
+      notes).
+  - It runs `tests/<TASK_SLUG>/` first when that folder already holds
+    `*.spec.js` (fix rounds), so the budget never skips it.
+    - Evidence: call 44 re-ran the task suite by hand after the fix.
+  - New `HYGIENE FAIL` line, with exit 1, for `.config/`, `test-results/`,
+    `node_modules/` or symlink paths in the diff.
+    - Evidence: `git add -A` committed `.config/pulse/HCAlienM7-runtime`
+      twice (c058f2d, 97fa838), and review round 1 plus calls 43–45
+      (≈ $0.88) existed only for that.
+    - Verified against base `1e5e960~1`: it flags the tracked
+      `Crash Reports/settings.dat`.
+- **run_suites.py**: new `--preset dictation` (verify, dictate, idea, the
+  task-01 specs) and timings in the docstring.
+- **New `skills/dictation/SKILL.md`**: where the language logic lives, the
+  engine invariants, the earlier failed rewrite, `helpers.js` to reuse, and
+  the two stub gotchas (both `SpeechRecognition` constructors; the
+  ~1300 ms recording against the 1200-byte floor).
+  - Evidence: call 41 (tester) was the costliest of the pass at 63 turns
+    and $1.56, and its notes record rediscovering both gotchas.
+- **project.md**: checked against `57be8ad`. Added the testMatch entry, the
+  dictation baseline, and the older-branch check. Added `git -C` and
+  `checkout` to the refusals (digest: `git -C … branch -a`, `git -C … log`
+  refused; plain `git log` works). Added the pulse symlink and the
+  tracked Chrome file.
+- **lead.md**: check `git branch -a` for an earlier attempt before planning
+  (the task-01 lead notes). Name the preset in the spec. Treat the
+  HYGIENE line as blocking at review.
+- **implementer.md**: stage named paths, never `git add -A`; how to fix
+  a HYGIENE failure.
+- **tester.md**: what the hook now runs (don't rerun what's green), and
+  the pointer to the dictation skill and helpers.
+- **README**: the new skill, the preset, and the hook's new behaviour.
+
 ## 2026-09-29 (second improve, after task-02 merged at 5ad2dc2)
 
 The sandbox starts now, so the previous entry's "unvalidated" runner and

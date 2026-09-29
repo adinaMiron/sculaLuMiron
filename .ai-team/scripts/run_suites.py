@@ -23,7 +23,7 @@ Usage (from the project root, through the sandbox):
 
 Timings on this machine (sandbox, 2026-09-29): verify 0s, idea 5s, nav 5s,
 gdsync 25s, gantt 1s, wbsaveall 7s, row 10s, buttons 7s, task-02 specs 19s;
-header preset ~80s.
+header preset ~80s; dictate 9s, 01-for-index-html-page-in-idee specs 44s.
 
 Exit code: 0 for complete runs with no unrecognized failures; 1 for failures,
 timeouts, missing files or incomplete runs; 2 for invalid arguments;
@@ -46,6 +46,8 @@ PRESETS = {
                "03-move-kanban-and-gantt-buttons-from/buttons",
                # Playwright Test specs (task-02 desktop wrap, ~45 s)
                "02-adapt-the-menu-for-small-screens"],
+    # js/markdown/dictation.js / idea-box dictation work (~60 s)
+    "dictation": ["verify", "dictate", "idea", "01-for-index-html-page-in-idee"],
     # the cheap always-run check
     "verify": ["verify"],
     "browser-check": [],

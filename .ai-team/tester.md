@@ -1,9 +1,14 @@
 # Tester notes
 
-- Start from the hook output. It opens with `BROWSER: OK|BLOCKED`, then
-  runs verify plus `--preset header`-style guards with KNOWN tags. If
-  BLOCKED: the report `status` is `"fail"` and the summary starts with
-  `ENVIRONMENT:`, with no invented bugs.
+- Start from the hook output. It prints `HYGIENE FAIL` for machine state
+  in the diff (a bug to report), then `BROWSER: OK|BLOCKED`, then verify,
+  `tests/<TASK_SLUG>/*.spec.js` if it exists (fix rounds), and the guards
+  for what changed, with KNOWN tags. Don't rerun what it already ran
+  green. If BLOCKED: the report `status` is `"fail"` and the summary
+  starts with `ENVIRONMENT:`, with no invented bugs.
+- Dictation tests: reuse `tests/01-for-index-html-page-in-idee/helpers.js`
+  and read `skills/dictation/SKILL.md` first (two stub gotchas cost the
+  task-01 tester most of its 63 turns).
 - Write a provisional `test-report.json` after the first complete run and
   update it as you go. Task-02's 18 failures once lived only in stream logs
   when the tester hit its 80-turn cap.
