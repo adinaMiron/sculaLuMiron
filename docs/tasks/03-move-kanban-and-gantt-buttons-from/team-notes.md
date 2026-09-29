@@ -9,3 +9,9 @@
 - Spec was precise on structure and placement; grep for anchor ids then read narrow ranges worked cleanly
 - Added 3 lines to toolbar while removing 2 from header (net +1 line), but changes localized; MAP.md anchors stayed valid
 - Verification passed immediately; no iteration needed on the layout change
+
+## tester
+
+- `index.html`'s default UI language is Romanian, not English — a fresh page (empty `localStorage`) loads with `document.documentElement.lang === "ro"` and RO tooltips already applied; toggle with `#navLangBtn` (not by dispatching `scula-ui-lang` directly) to exercise the real nav flow, and assert RO first, then EN.
+- `#toolbar-groups`'s collapse is CSS-transitioned (`0.2s`); `waitForTimeout(150)` after clicking `#btn-toolbar-toggle` is flaky — computed `max-height`/`opacity` can still be mid-transition. Wait ~400ms before asserting the collapsed values.
+- Clicking a toolbar button that opens a modal (e.g. `#btn-gantt` → `#gantt-modal`) covers the button afterward, so a second real `page.click()` on it times out ("element intercepts pointer events"). To test repeated/rapid activation, call the handler directly via `page.evaluate(() => openGantt())` instead of repeated `page.click()`.
