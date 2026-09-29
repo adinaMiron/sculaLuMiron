@@ -1,8 +1,0 @@
-{
-  "task_id": "task-02",
-  "difficulty": "low",
-  "reasoning": "One CSS media block (1025–1600px) plus a comment rewrite in index.html, fully specified with target rules; the only subtlety is flex-wrap/ellipsis behaviour, which the spec pins down. The tester's job (worst-case state setup, geometry assertions across 7 widths × 2 languages) is more involved than the fix, so it gets a notch more effort.",
-  "spec_path": "docs/tasks/02-adapt-the-menu-for-small-screens/spec.md",
-  "implementer": {"tier": "standard", "effort": "medium"},
-  "tester": {"tier": "standard", "effort": "high"}
-}

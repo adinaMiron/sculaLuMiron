@@ -1139,54 +1139,6 @@
     .toolbar-sep { margin: 0 2px; }
   }
 
-  /* ═══════════ LAPTOP (1025px – 1600px) ═══════════
-     Above 1024px nothing let the header wrap, so on a laptop the
-     save/sync group ran past the right edge with no way to reach it
-     (body has overflow:hidden). Let the header wrap instead of spilling,
-     with the save/sync group breaking onto its own row below the other
-     header buttons — the same idea as the tablet layout, but nothing is
-     hidden, moved into a menu, or reduced to an icon. */
-  @media (min-width: 1025px) and (max-width: 1600px) {
-    header {
-      height: auto;
-      min-height: 52px;
-      padding: 6px 20px;
-      gap: 12px;
-    }
-    .logo { flex: 0 0 auto; white-space: nowrap; }
-    .header-actions {
-      flex: 1 1 0;
-      min-width: 0;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 6px;
-    }
-    .header-actions .btn { padding: 6px 10px; white-space: nowrap; }
-    .header-actions .file-name,
-    .header-actions .wb-crumb {
-      flex: 0 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .header-actions .file-name { max-width: 260px; }
-    .header-actions .wb-crumb  { max-width: 220px; }
-
-    /* save/sync group: its own row, right-aligned, under the other buttons */
-    .wb-save-sync-row {
-      display: flex;
-      flex: 1 1 100%;
-      justify-content: flex-end;
-      align-items: center;
-      flex-wrap: wrap;           /* last-resort fallback at 1025px in Romanian */
-      gap: 6px;
-      min-width: 0;
-    }
-    .wb-save-sync-row .btn { flex: 0 0 auto; }
-    .wb-save-sync-row #wb-cloud-where { flex: 0 1 auto; min-width: 0; max-width: 260px; }
-  }
-
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
   @media (max-width: 1024px) {
     :root { --panel-w: 240px; }
@@ -3629,9 +3581,7 @@
     <!-- Save/sync trio: kept in its own row so on tablet/mobile it never
          breaks apart or wraps under the other header buttons — it stays
          one readable row, scrolling sideways if it doesn't fit
-         (docs/MAP.md). Above 1600px: display:contents, no layout change.
-         1025–1600px: its own right-aligned row under the other header
-         buttons. ≤1024px: its own scrollable row, first. -->
+         (docs/MAP.md). Desktop: display:contents, no layout change. -->
     <div class="wb-save-sync-row">
     <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook (Ctrl+S)">📓 Save to workbook</button>
     <!-- Beside ☁ rather than inside the Caiete panel: the two are one
