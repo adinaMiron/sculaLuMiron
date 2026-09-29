@@ -578,7 +578,7 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
   the disk: `requestPermission()` is only legal inside a user gesture, and
   a keystroke isn't one.
 - **Explicit save → store + mirror.** `saveToWorkbook()` (the primary
-  save/sync row button, Ctrl+S), `saveAllModifiedChapters()` (Ctrl+Alt+S — see
+  header button, Ctrl+S), `saveAllModifiedChapters()` (Ctrl+Alt+S — see
   *Pending edits* below), the save modal, rename, delete and *Sync to
   folder* all run inside a click, so they can call
   `ScuLaFolder.dir(true)` and write the file.
@@ -676,7 +676,7 @@ is that record.
   you edit then switch away from — leaves a marker that survives a reload.
 - The workbook panel shows it: a `•` after the chapter name (`.wb-ch-row.modified`)
   and after its workbook's name (`.wb-book-row.has-modified`).
-- **`saveAllModifiedChapters()`** (save/sync row button `📚 Save all modified`,
+- **`saveAllModifiedChapters()`** (header button `📚 Save all modified`,
   **Ctrl+Alt+S**) flushes the open chapter, then walks `wbPendingIds`:
   `wbMirrorWrite` for each, and `wbPendingClear(id)` once its file is
   written. `saveToWorkbook`, `confirmSaveToWorkbook`, `syncAllToFolder`,
@@ -1897,8 +1897,6 @@ what this is: the same account, the same files, one sign-in.
 The button is `#btn-wb-cloud`, in the save/sync row under the header, next
 to the Save buttons (not
 inside the Caiete/Workbooks panel, so it's reachable without opening it).
-The row wraps on desktop when needed; at 1024px and below it stays on one
-sideways-scrollable line. The formatting toolbar follows beneath it.
 Left-click connects, then syncs; right-click forgets the connection, the
 same gesture the folder button and `editor.html`'s Drive button use. The
 line under it (`#wb-cloud-where`) always says where the chapters are —
