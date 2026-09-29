@@ -803,6 +803,8 @@ means those to be a workbook and a chapter. So the button
 sits in the save/sync row (`#wb-save-sync-row`, the line between the
 header and the formatting toolbar) right beside `#btn-wb-cloud` (it used to live inside the
 Caiete panel): on a new device the two are one gesture, folder and account.
+The separate row wraps when needed above 1024px; at 1024px and below it
+stays on one line and scrolls sideways.
 
 1. `wbAdoptFromFolder()` walks `<root>/markdown`. A directory whose name
    matches no `book.folder` becomes a workbook — the folder name is both
@@ -1899,7 +1901,7 @@ to the Save buttons (not
 inside the Caiete/Workbooks panel, so it's reachable without opening it).
 Left-click connects, then syncs; right-click forgets the connection, the
 same gesture the folder button and `editor.html`'s Drive button use. The
-line under it (`#wb-cloud-where`) always says where the chapters are —
+status in that row (`#wb-cloud-where`) always says where the chapters are —
 local only, connected, syncing, synced at a time, or *sign-in expired*.
 
 ### What lands in Drive

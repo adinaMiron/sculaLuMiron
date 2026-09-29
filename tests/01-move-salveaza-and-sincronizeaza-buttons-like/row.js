@@ -113,7 +113,7 @@ async function freshPage(browser, viewport) {
     passCount++;
   }
 
-  // ---- 4. geometry across every named viewport: one line, left-aligned, ordered, not squashed ----
+  // ---- 4. geometry across every named viewport: desktop may wrap; mobile stays on one line ----
   const viewports = [
     { width: 1920, height: 1000 },
     { width: 1440, height: 900 },
@@ -147,14 +147,17 @@ async function freshPage(browser, viewport) {
       };
     });
     assert(result.visible, `row visible at ${vp.width}px`, result);
-    const spread = Math.max(...result.centersY) - Math.min(...result.centersY);
-    assert(spread <= 2, `vertical centres within 2px at ${vp.width}px`, result.centersY);
-    for (let i = 1; i < result.lefts.length; i++) {
-      assert(result.lefts[i] > result.lefts[i - 1] || (i === 3 /* wb-cloud-where may be zero-width, allow equal */ && result.lefts[i] >= result.lefts[i - 1]),
-        `left edges strictly increase at index ${i} at ${vp.width}px`, result.lefts);
+    if (vp.width <= 1024) {
+      const spread = Math.max(...result.centersY) - Math.min(...result.centersY);
+      assert(spread <= 2, `vertical centres within 2px at ${vp.width}px`, result.centersY);
+      for (let i = 1; i < result.lefts.length; i++) {
+        assert(result.lefts[i] > result.lefts[i - 1] || (i === 3 /* wb-cloud-where may be zero-width, allow equal */ && result.lefts[i] >= result.lefts[i - 1]),
+          `left edges strictly increase at index ${i} at ${vp.width}px`, result.lefts);
+      }
     }
     assert(result.lefts[0] - result.rowLeft <= 24, `first button within 24px of row's left edge at ${vp.width}px`, { first: result.lefts[0], rowLeft: result.rowLeft });
-    assert(result.flexWrap === 'nowrap', `flex-wrap computes to nowrap at ${vp.width}px`, result.flexWrap);
+    assert(result.flexWrap === (vp.width <= 1024 ? 'nowrap' : 'wrap'),
+      `flex-wrap matches the task-02 breakpoint at ${vp.width}px`, result.flexWrap);
     for (const ws of result.whiteSpaces) assert(ws === 'nowrap', `button has white-space: nowrap at ${vp.width}px`, result.whiteSpaces);
     for (const ns of result.notSquashed) assert(ns, `no button is squashed (scrollWidth<=clientWidth+1) at ${vp.width}px`, result.notSquashed);
     await ctx.close();
