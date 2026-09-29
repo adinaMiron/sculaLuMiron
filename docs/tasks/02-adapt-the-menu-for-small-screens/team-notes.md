@@ -27,3 +27,6 @@
 - The retained browser-verification-report.json covers 53 successful cases; the latest suite has 64 cases and root discovery totals 221. The final review run hit the same Chromium startup restriction before any page executed.
 
 - Current discovery is 66 task-02 cases / 223 total; retained browser evidence still covers 53. Commits `8eaa1a4` and `ae0cf4e` contain the latest implementation/test work, so their reports' Git commit blocker is historical.
+
+- In the final-review session, root `npm test -- tests/02-adapt-the-menu-for-small-screens/` launched Chromium directly (no sandbox wrapper) and passed 70/70 in ~43s. Try it before declaring browser verification blocked.
+- To check that a retained Playwright JSON report is current, grep its `"expected"/"skipped"/"unexpected"` stats (at the end of the file) and the `startTime` values, rather than reading the whole 2.5k-line file.
