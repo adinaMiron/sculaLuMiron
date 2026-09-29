@@ -5,6 +5,8 @@
 - Prior task suites live as plain node Playwright scripts in `tests/<task-slug>/*.js` (see `tests/03-for-index-html-page-in-idee/`), run with the shared `tests/package.json`/`node_modules`.
 - Attempt 2: the orchestrator's "start again" reset reverted `index.html` and `docs/FEATURES.md` but NOT `tests/gdsync.js`, which already asserts `#wb-save-sync-row #btn-wb-cloud` — so on this branch gdsync fails until the row exists with that id.
 - Attempt 1 died on the implementer's 30-turn cap (see `docs/orchestrator-retro.md`), not on bad code; the spec now carries paste-ready edits and a ≤15-call budget. Why an attempt failed is in `.orchestrator-logs/launcher.log` and `docs/orchestrator-retro.md`.
+- Final review: `docs/MAP.md:26` gives the `index.html` nav anchor as `:1907`, but after this task `<nav id="site-nav"` is at line 2270. It was already wrong before this branch (CLAUDE.md says ~2052), so it doesn't block the merge; a later docs chore should fix both anchors.
+- Review re-run that worked unattended: `node tests/verify.js` from the repo root, then `cd tests && node 01-move-salveaza-and-sincronizeaza-buttons-like/row.js` and `cd tests && node gdsync.js` (both about a minute, system Chrome by default). The shell refused a pipe with a `|| true` / `2>/dev/null` chain; plain `2>&1 | tail` was fine.
 
 ## implementer
 
