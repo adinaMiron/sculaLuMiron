@@ -1,0 +1,8 @@
+{
+  "task_id": "task-01",
+  "difficulty": "low",
+  "reasoning": "A markup move plus one consolidated set of CSS rules in index.html, fully specified as paste-ready edits; attempt 1 failed only on the implementer's turn cap, so the implementer gets medium effort with a tight step budget rather than a bigger model. The tester needs care for multi-viewport geometry checks, collapse transitions and both languages.",
+  "spec_path": "docs/tasks/01-move-salveaza-and-sincronizeaza-buttons-like/spec.md",
+  "implementer": {"tier": "standard", "effort": "medium"},
+  "tester": {"tier": "standard", "effort": "medium"}
+}
