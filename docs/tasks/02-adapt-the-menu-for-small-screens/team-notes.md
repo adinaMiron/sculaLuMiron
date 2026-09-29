@@ -7,6 +7,7 @@
 
 ## tester
 
+- At 360px in EN, a real click on Save all scrolls the independent save strip; a subsequent click can return to Save to workbook. The 1024px boundary also keeps both actions clickable.
 - The default disconnected page intentionally hides `#btn-map`; disconnected-state geometry checks should exclude it while asserting that it remains hidden.
 - Root `npm test` now discovers the new task-02 Playwright file as well as the task-01 Playwright files; all 196 tests passed in Chromium.
 - The natural expired Drive status can fit without ellipsis, so the 120-plus-character anchor-text fixture is the reliable truncation check.

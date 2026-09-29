@@ -427,3 +427,34 @@ for (const lang of ['ro', 'en']) {
     }
   });
 }
+
+for (const width of [360, 1024]) {
+  test(`English mobile save strip keeps both end actions clickable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, 'en');
+    await page.evaluate(() => {
+      window.__mobileSaveCalls = [];
+      window.saveAllModifiedChapters = () => window.__mobileSaveCalls.push('all');
+      window.saveToWorkbook = () => window.__mobileSaveCalls.push('workbook');
+    });
+
+    const row = page.locator('#wb-save-sync-row');
+    const start = await row.evaluate(e => ({
+      wrap: getComputedStyle(e).flexWrap,
+      overflow: getComputedStyle(e).overflowX,
+      scrollable: e.scrollWidth > e.clientWidth + 1,
+    }));
+    expect(start.wrap).toBe('nowrap');
+    expect(start.overflow).toBe('auto');
+    if (width === 360) expect(start.scrollable).toBe(true);
+    await expect(page.locator('#btn-save-all-modified')).toHaveText('📚 Save all modified');
+    await expect(page.locator('[data-i="saveToWorkbookBtn"]')).toHaveText('📓 Save to workbook');
+
+    await page.locator('#btn-save-all-modified').click();
+    if (width === 360) expect(await row.evaluate(e => e.scrollLeft)).toBeGreaterThan(0);
+    await page.locator('[data-i="saveToWorkbookBtn"]').click();
+    expect(await page.evaluate(() => window.__mobileSaveCalls)).toEqual(['all', 'workbook']);
+    await expect(page.locator('#wb-cloud-where a')).toHaveAttribute(
+      'href', 'https://drive.google.com/drive/folders/test-folder');
+  });
+}
