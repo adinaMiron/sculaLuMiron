@@ -1,0 +1,8 @@
+{
+  "task_id": "task-01",
+  "difficulty": "medium",
+  "reasoning": "New logic confined to one shared JS file (drop language/prompt from the Whisper request, a model guard, a neutral tidy prompt plus a word-retention guard) with help text and docs; the previous attempt failed by over-engineering a PCM/VAD rewrite, which this spec explicitly forbids. Standard/medium suits both roles; the tester must parse multipart bodies and stub two endpoints.",
+  "spec_path": "docs/tasks/01-for-index-html-page-in-idee/spec.md",
+  "implementer": {"tier": "standard", "effort": "medium"},
+  "tester": {"tier": "standard", "effort": "medium"}
+}

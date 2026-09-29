@@ -1,0 +1,6 @@
+{
+  "task_id": "task-01",
+  "status": "pass",
+  "summary": "Re-check of the symlink-removal round: .config/pulse/HCAlienM7-runtime is no longer tracked by git, .gitignore now ignores .config/pulse/, and git diff main --stat lists no .config/ path, all as the round required. Added tests/01-for-index-html-page-in-idee/repo-hygiene.spec.js to pin this down as a permanent regression check (untracked pulse path, .gitignore coverage against a differently-named runtime symlink, and the diff-vs-main assertion). The full existing suite for this task (dictation.spec.js, edge-cases.spec.js, repo-hygiene.spec.js) passes: 29/29. The known pre-existing failures in idea.js and nav.js (per CLAUDE.md 'Known issues') are unaffected and out of this task's scope. One unrelated observation: .config/google-chrome-for-testing/Crash Reports/settings.dat is tracked by git and predates this branch (introduced in commit 1e5e960, present on main too), so it is not part of this task's diff and not a regression from this round, but it means the repo is not fully clean of accidental .config/ content in general.",
+  "bugs": []
+}

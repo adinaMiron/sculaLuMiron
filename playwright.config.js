@@ -4,7 +4,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests',
-  testMatch: ['**/01-for-index-html-page-please-add/*.spec.js', '**/02-adapt-the-menu-for-small-screens/*.spec.js'],
+  testMatch: ['**/01-for-index-html-page-please-add/*.spec.js', '**/02-adapt-the-menu-for-small-screens/*.spec.js', '**/01-for-index-html-page-in-idee/*.spec.js'],
   timeout: 25000,
   expect: { timeout: 4000 },
   workers: 1,

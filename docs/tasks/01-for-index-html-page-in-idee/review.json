@@ -1,0 +1,14 @@
+{
+  "task_id": "task-01",
+  "status": "pass",
+  "summary": "Round 2 re-check. The one blocking item from round 1 is fixed. `.config/pulse/HCAlienM7-runtime` is no longer tracked: `git ls-files .config` lists only the pre-existing Chrome `Crash Reports/settings.dat`, which is also on main and not part of this diff. `.gitignore` now ignores `.config/pulse/` (lines 36–37). `git diff main --stat` lists no `.config/` path. The tester added `tests/01-for-index-html-page-in-idee/repo-hygiene.spec.js` to pin this down. It covers three things: the pulse path is untracked, `.gitignore` covers a runtime symlink with a different name, and the diff against main has no `.config/`. The tester reports the task suite at 29/29. The product change was approved in round 1 and hasn't changed since. It meets the spec and the owner's decision to take a different, small approach this time. transcribe() no longer forces `language`/`prompt`. pickModel() avoids English-only models. The tidy-up prompt is language-neutral, with the keepsWords() guard. Docs and help text are updated in both languages. The after-implement hook ran clean apart from the documented known failures in idea.js (#3) and nav.js. This task doesn't touch the button order or the nav, so those failures are unrelated to it.",
+  "findings": [],
+  "unresolved": [],
+  "follow_ups": [
+    "`.config/google-chrome-for-testing/Crash Reports/settings.dat` is tracked on main (commit 1e5e960). It is sandbox browser state, not repo content. In a separate change, untrack it and ignore `.config/` wholesale, not just `.config/pulse/`.",
+    "voice.html keeps its own copy of the dictation code (~L2622), and that copy still forces `language` and prompt context. Consider the same fix there, or sharing the engine.",
+    "A recording that mixes languages is still transcribed with one detected language per request/segment. This is an accepted limitation. If the owner reports mistranscribed mixed phrases, lowering segMin is the cheapest lever.",
+    "keepsWords() cannot catch a translation that keeps most tokens, such as names and numbers in a short phrase. Note it if tidy-up ever gets a more aggressive model.",
+    "S.hint no longer has any effect in index.html's API engine. Any settings text claiming it applies here should say it now applies only to voice.html."
+  ]
+}

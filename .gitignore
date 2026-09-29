@@ -32,3 +32,6 @@ tests/package-lock.json
 
 # The task pipeline's run log (absolute timestamps, task text) — local state, not repo content.
 /orchestrator_state.json
+
+# Sandbox pulseaudio runtime symlink (points into /tmp), not repo content.
+.config/pulse/
