@@ -3,6 +3,8 @@
 - `docs/tasks/` already has an unrelated `03-for-index-html-page-in-idee` (and `tests/03-for-index-html-page-in-idee/`); task numbers are not unique — always use the full slug directory.
 - `#btn-kanban`/`#btn-gantt` are referenced only by id (`tests/gantt.js`), never by header ancestry; `tests/idea.js` does check the order of `.header-actions .btn`, so rerun it after any header edit (it already fails on HEAD — CLAUDE.md known issue 3).
 - There is no playwright.config in `tests/`; suites are plain `node file.js` scripts listed in `tests/package.json`'s `test` loop.
+- Review: a Bash command prefixed with `PW_CHROME_PATH=... node ...` is refused in unattended mode; run `node <suite>.js` from `tests/` without the prefix (`tests/lib.js` and the task suites already default to `/usr/bin/google-chrome-stable`).
+- None of the per-task suites (`tests/0N-<slug>/`) are in the `npm test` loop yet. The loop runs `node $f.js` from `tests/`, so an entry like `03-move-kanban-and-gantt-buttons-from/buttons` would work if we decide to wire them in.
 
 ## implementer
 
