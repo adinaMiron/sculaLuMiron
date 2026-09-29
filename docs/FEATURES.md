@@ -748,7 +748,7 @@ their original source line numbers when clicked.
 
 ### Kanban board (`kanban.html`)
 
-The editor's **▦ Kanban** button saves the open chapter and opens the board
+The **▦ Kanban** button in the editor's toolbar, right of the task filters, saves the open chapter and opens the board
 scoped to it. The shared navigation opens the board with every workbook in
 scope. The scope picker also offers one workbook or one chapter. Search covers
 task text, workbook, chapter, and responsible; filters cover responsible,
@@ -800,7 +800,8 @@ folder is a folder, and a person who drops a directory of notes into
 `<root>/markdown`, or a `.md` next to the ones a workbook already owns,
 means those to be a workbook and a chapter. So the button
 (`#btn-wb-sync`, `syncAllToFolder()`) now **looks before it writes**. It
-sits in the header right beside `#btn-wb-cloud` (it used to live inside the
+sits in the save/sync row (`#wb-save-sync-row`, the line between the
+header and the formatting toolbar) right beside `#btn-wb-cloud` (it used to live inside the
 Caiete panel): on a new device the two are one gesture, folder and account.
 
 1. `wbAdoptFromFolder()` walks `<root>/markdown`. A directory whose name
@@ -1893,7 +1894,8 @@ it is browser-internal, and a page cannot read or write it. The
 account-shaped store a page *can* write to is **Google Drive**, so that is
 what this is: the same account, the same files, one sign-in.
 
-The button is `#btn-wb-cloud`, in the header next to the Save buttons (not
+The button is `#btn-wb-cloud`, in the save/sync row under the header, next
+to the Save buttons (not
 inside the Caiete/Workbooks panel, so it's reachable without opening it).
 Left-click connects, then syncs; right-click forgets the connection, the
 same gesture the folder button and `editor.html`'s Drive button use. The

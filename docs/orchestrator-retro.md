@@ -1,53 +1,191 @@
-# Task-round retrospective — 2026-09-28
+# Orchestrator retrospective — run of 2026-09-29 (with the resume)
 
-Three tasks passed and merged to `main`; task 04 remains unmerged and needs a resource-cleanup fix plus real speech verification. This retrospective changes documentation only. It is based on the [run summary](../.orchestrator-logs/summary.md), task specs, implementation/test/review reports, repository conventions, and targeted inspection of current code and test configuration. Test counts below are reported results from the round, not fresh executions in this retrospective.
+Task source: `ai_orchestra/tasks/example-tasks.md`. It had 3 tasks, all on
+`index.html`'s header and toolbar. Engine: claude throughout. The run had
+two passes:
 
-## 1. Delivered work, failures, and maintainer actions
+- **First pass** (calls 1–10, ≈ $6.4 + $0.65 retro): task-03 passed. Task-01
+  and task-02 each hit a turn cap and went to manual review.
+- **Resume** (calls 12–15, ≈ $2.51): the owner asked for another attempt at
+  task-01 only. The orchestrator undid the first attempt's code, merged
+  `main` in, and ran the full lead → implementer → tester → review loop. It
+  passed first time and was merged. Task-02 was skipped because it was
+  already finished as `manual_review`.
 
-| Task | Outcome | Delivered behavior and evidence |
-|---|---|---|
-| 01 — Diagrams and drawing | Passed; merged | Extended flowcharts and mind maps with eight connection ports, pinned endpoints, movable branches, node colors and auto-layout reset. Added sequence diagrams, SVG/PNG downloads through `ScuLaFolder.save`, and a sketch modal with pen, highlighter, eraser, undo/redo and editing of preview pictures. The final reviewer reports 157/157 Playwright tests passing, plus `diagram`, `codecopy`, `mdundo`, `timeline` and `cause` regressions. See [review](tasks/01-for-index-html-page-please-add/review.json). |
-| 02 — Recording button text | Passed; merged | Both dictation entry points display “Oprește înregistrarea” / “Stop recording” while recording, with translated tooltip and accessible name; idle labels return on stop. The narrow toolbar uses a stop icon. The tester reports 60+ checks covering both engines, errors, delayed transcription, language changes and 390/700/701 px layouts; `dictate.js` and `/verify` also passed. The reviewer inspected code but could not rerun commands. See [test report](tasks/02-for-index-html-page-dicteaza-menu/test-report.json) and [review](tasks/02-for-index-html-page-dicteaza-menu/review.json). |
-| 03 — Quick Idea chapter picker | Passed; merged | Added title-only search across workbooks, ignoring case and diacritics, with keyboard selection and the open chapter as a soft default. Explicit picks and uniquely resolved searches win and preserve the entered text; matching `Name:` prefixes can override the soft default; unresolved searches fall back to existing routing. Hint and save share `ideaResolve()`. A discovered double-submit bug was fixed with a save-in-flight guard released in `finally`. Reviewer reruns passed 81 picker checks and 13 double-save checks. See [review](tasks/03-for-index-html-page-in-idee/review.json). |
-| 04 — Preserve spoken Romanian/English | Failed review after five rounds; unmerged | Branch `task/04-for-index-html-page-in-idee` contains phrase-based PCM/WAV capture, Groq `whisper-large-v3` requests without language/prompt, ordered result insertion and failure markers. These are branch work, not delivered behavior on `main`. The unresolved startup cancellation defect blocks merge. |
+| Task | Branch | Outcome | Cost |
+|---|---|---|---|
+| 01 — Save/Sync buttons onto a new line | merged to `main` (`0dac8f7`) | **Passed** on the second attempt, review round 1 | $1.16 (attempt 1, wasted) + $2.51 (attempt 2) |
+| 02 — Header overflow on laptop widths | `task/02-adapt-the-menu-for-small-screens` (not merged) | **Manual review.** The tester hit `max_turns` (81/80) after finding a real bug | $3.54 |
+| 03 — Kanban/Gantt into the ☰ toolbar | merged to `main` (`8b9106c`) | **Passed**, review round 1 | $1.71 |
 
-**Task 04 must remain unmerged until cancellation releases acquired resources immediately.** The final branch review reproduced this sequence: acquire the microphone, leave `AudioContext.resume()` pending, then close Quick Idea. Cancellation clears startup state but leaves the stream/context local to `startApi`; no tracks stop and no context closes until resume settles. A replacement session can acquire another stream in the meantime.
+## 1. For the maintainer (skim this)
 
-Attach an idempotent cleanup operation or the acquired resources to the startup record and invoke it on discard. Keep guards against late completion of a cancelled startup. Update `tests/04-for-index-html-page-in-idee/startup-cleanup.spec.js` to assert stopped tracks, disconnected nodes and context closure **before resolving resume**, then prove a replacement session works and late resolution/rejection cannot affect it. The branch tester reported 38 passing tests, but that does not refute the review's intermediate-state reproduction. Its report also recorded a Git staging/commit failure due to a read-only index; verify the tests and report are actually preserved in the final branch diff before resuming review.
+### Merged
+- **task-01** (attempt 2): `📓 Save to workbook`, `#btn-wb-sync`,
+  `#btn-wb-cloud`, `#wb-cloud-where` and `#btn-save-all-modified` moved out
+  of `header .header-actions` into `#wb-save-sync-row`. That row is a
+  direct child of `<body>` between `</header>` and `<div class="toolbar">`,
+  so the ☰ collapse never hides it.
+  - One base CSS rule covers every width: flex, `nowrap`, `overflow-x:auto`,
+    and theme tokens only. The four `@media` blocks now change only padding.
+  - Ids, handlers, `data-i` keys and titles are byte-identical to before.
+  - `docs/FEATURES.md` § E and § O were updated, and so was the placement
+    selector in `tests/gdsync.js`.
+  - New suite: `tests/01-move-salveaza-and-sincronizeaza-buttons-like/row.js`,
+    23 checks from 1920 px down to 360 px plus a landscape phone, in RO and
+    EN. It passes.
+  - `verify`, `gdsync` (64 checks), `wbsaveall`, `wbadopt` and `gantt` pass.
+    `idea` and `nav` show only their known failures.
+- **task-03**: `#btn-kanban` and `#btn-gantt` moved into `#toolbar-groups`
+  after `.toolbar-filters`. Suite:
+  `tests/03-move-kanban-and-gantt-buttons-from/buttons.js`. See the git
+  log at `8b9106c`.
 
-Task 04's reports are absent from `main`'s `docs/tasks/`; they were read without switching branches using `git show task/04-for-index-html-page-in-idee:docs/tasks/04-for-index-html-page-in-idee/review.json` and the corresponding `test-report.json`. The reviewer could not launch Chromium because of a sandbox permission error, but reproduced the leak with a Node harness executing the actual module. Real Groq mixed-language recognition remains unverified: stubbed transcripts prove request and insertion behavior, not recognition quality. After the cleanup fix, perform the branch spec's real-audio verification before claiming the language-preservation requirement is met.
+### Needs manual review: task-02 (still open, and now stale)
+The branch was cut from `main` before task-01 or task-03 landed. It
+rewrites the same header CSS and the same four `@media` blocks that
+task-01 has since replaced, so **it will conflict, and much of its purpose
+is gone**: the five save/sync controls no longer sit in the header.
 
-Other follow-up items:
+What its tester found before the cap (it is in the stream log only, not in
+any report):
+- At **1601 px and 1920 px with a long `.wb-crumb`**, header controls
+  overflowed the viewport: 18 failures. `.wb-crumb` has no `max-width`
+  above 1600 px.
+- The 1025–1600 px band the task targeted passed.
 
-- **Merged-result verification is not established by these branch reports.** Tasks 01–03 requested checks after integration because branches overlapped in `index.html`, i18n, events and docs. Run `/verify` and the task suites against the final merged revision and record that revision. Root `npm test` currently runs only task 01: `playwright.config.js` fixes `testDir` to its folder. Task 02's `stop-label.js` and task 03's `picker.js` and `double-save.js` require separate execution.
-- **Known regression remains visible:** `tests/idea.js` fails “idea button is right of New,” documented as known issue #3 and explicitly excluded from task 03. Do not report that suite as wholly green. The `tests/package.json` loop exits on this failure and never reaches later suites.
-- **User-visible limitations:** filing into the open chapter clears editor undo history through the existing `ideaAppendTo()`/`undoReset()` behavior; the new default makes this more common. Quick Idea's open results/hint wait until subsequent input to repaint after a UI-language change. Task 01's final review also records two cosmetic issues: the picture edit button persists until the pointer leaves the preview, and sketch numbering counts only alt text in the current UI language. These were accepted as nonblocking, not fixed.
-- **Historical infrastructure errors are not additional open product failures.** The summary retains planning API errors for tasks 02–04 and an initial implementer API error for task 01. Tasks 01–03 subsequently passed. Task 04's current blocker is the concrete cleanup defect, not its earlier planning error.
+**Recommendation:** don't merge `task/02-adapt-the-menu-for-small-screens`.
+Delete it, re-run task-02 as a new task on the current `main`, and have the
+lead first measure whether the header still overflows at 1024–1920 px with
+a long crumb in both languages. The task may now reduce to a
+`.wb-crumb { max-width }` rule. The branch may also hold a stray
+`tests/02-adapt-the-menu-for-small-screens/_scratch.js`.
 
-## 2. Codebase knowledge for the next round
+### Housekeeping for a human
+- **Stale branches** (local and `origin`): `task/02-adapt-the-menu-for-small-screens`,
+  `task/01-for-index-html-page-please-add`, `task/02-for-index-html-page-dicteaza-menu`,
+  `task/03-for-index-html-page-in-idee` and `task/04-for-index-html-page-in-idee`.
+  The agents can't delete branches.
+- **Per-task suites are not in `npm test`.** None of the
+  `tests/0N-<slug>/*.js` suites appear in `tests/package.json`'s loop. The
+  loop runs `node $f.js` from `tests/`, so entries such as
+  `01-move-salveaza-and-sincronizeaza-buttons-like/row` and
+  `03-move-kanban-and-gantt-buttons-from/buttons` would work as they are.
+- **Stale anchors.** `docs/MAP.md:26` and CLAUDE.md Rule 2 give the
+  `index.html` nav line as ~1907 / ~2052. It is now ~2270.
+- **An undocumented known failure.** `nav.js` has a third failure, "and the
+  preview too" (`pvTop` 707–726, a smooth scroll read mid-flight). It fails
+  on `main` too, but CLAUDE.md "Known issues" #1 still lists only two.
+- **`.ai-team/project.md` § "Open state" is now wrong**: it says task-01 is
+  unmerged. Update it in the improve step.
 
-The repository contains nine standalone browser tools. Application runtime stays free of a build step; dev-only npm/Playwright tooling is permitted and required by team policy. Some older wording in `CLAUDE.md` (“no package manager,” “no test framework exists”) predates the current root test harness and should be clarified in a future documentation pass.
+## 2. What a new teammate should know about this codebase
 
-Start with [MAP.md](MAP.md), then read narrow code ranges. Markdown logic lives in ordered, synchronous plain scripts under `js/markdown/`, sharing global state and inline event handlers; preserve their order and naming conventions. See the [script map](../js/markdown/README.md). Most other pages retain large inline scripts. Line anchors drift, so locate symbols before editing.
+Most of this is already in `.ai-team/project.md`, written after the first
+pass and confirmed by the resume. Read that first. What the resume added
+or confirmed:
 
-The shared navigation block must remain byte-identical across all nine pages. It also owns saving and other shared services, so a seemingly local nav edit has repository-wide consequences. `/verify` checks JS parsing, nav identity and Romanian diacritics. Downloads should use `ScuLaFolder.save`; diagram/sketch changes must preserve the editor's one-action undo behavior and modal keyboard isolation.
+- **Paste-ready specs make cheap implementers succeed.** Attempt 2's spec
+  gave exact before/after text for all 5 `index.html` edits and 2
+  `docs/FEATURES.md` edits. The Sonnet implementer followed it verbatim, with
+  no deviation, in 111 s for $0.44. The same task with a looser spec died at
+  the turn cap in attempt 1. For markup/CSS moves in `index.html`, this is
+  the pattern to keep.
+- **Header/toolbar layout, as of now.** The layout from top to bottom is:
+  - `<header>` with `.header-actions`, which ends with the Export HTML
+    button;
+  - `#wb-save-sync-row`, the save/sync controls, which scroll sideways and
+    never wrap;
+  - `.toolbar`, holding `#toolbar-groups`, which the ☰ button collapses
+    and which contains `.toolbar-filters`, then `#btn-kanban` and
+    `#btn-gantt`.
 
-UI language and spoken language are independent, as [I18N.md](I18N.md) explains. Recording text must update the `data-i*` keys as well as visible strings, or a later language repaint can restore stale labels. Preserve comma-below ș/ț. Theme tokens belong in chrome; canvas/SVG export colors need explicit handling.
+  Any new header task should start from that picture, not from the old
+  specs under `docs/tasks/`.
+- **`.wb-save-sync-row .btn` has specificity 0,2,0 on purpose.** It must
+  beat the phone rule `.btn { flex: 1 1 auto; min-width: 0 }`. If you add
+  buttons to that row, give them the same treatment.
+- **`#wb-cloud-where` can be zero-width** when Drive is disconnected. For
+  geometry assertions, compare centre-Y, and allow its left edge to equal
+  the previous element's.
+- **"Start again" resets only some files.** On attempt 2 it reverted
+  `index.html` and `docs/FEATURES.md` but not `tests/gdsync.js`, so `gdsync`
+  failed on the reset branch until the row existed again. The lead caught
+  this by reading the diff against `main`. A lead planning a retry should
+  always run `git diff main --stat` first.
+- **Run node suites from `tests/`.** `cd tests && node gdsync.js` works
+  (both implementer and reviewer did this on attempt 2). `node tests/verify.js`
+  runs from the repo root. The heredoc `git commit -m "$(cat <<'EOF' …)"`
+  worked when it was the only command, and was refused when prefixed with
+  `cd … &&`.
+- **The after-implement hook paid off.** `.ai-team/hooks/after-implement.py`
+  ran `verify, idea, nav, gdsync, gantt` in 36.5 s and tagged every failure
+  KNOWN. The tester then spent no turns on "was this failure already here?",
+  which was the $0.9 sink on task-02. Tester cost fell from $2.32 (task-02)
+  and $0.71 (task-03) to $0.56 (task-01, attempt 2).
 
-Quick Idea routing and persistence have separate responsibilities: keep the hint and save on the same resolver, render chapter titles with `textContent`, and retain the append contract (trim trailing whitespace, append one newline, the idea, and a final newline; no leading newline for an empty chapter). Duplicate chapter names, deleted selections, unmatched prefixes, failed writes and repeated submit events are established regression cases.
+## 3. Suggestions for `.ai-team/` (with evidence from this run)
 
-Review task changes against their merge base. Task 02's report explicitly warns that diffing its stale branch directly against newer `main` made task 01 appear removed. Branch approvals do not establish that the eventual merge is correct.
+Suggestions already carried out after the first pass: the baseline/KNOWN
+tagging (`run_suites.py`), the after-implement hook, and the refused-command
+list in `project.md`. The resume showed they work. What remains:
 
-## 3. Evidence-based improvements to recurring tooling
+1. **Refresh `project.md` "Open state" and the header picture.**
+   *Evidence:* that section still says task-01 is unmerged, and the header
+   notes describe the pre-task-01 layout (the save/sync trio inside
+   `.header-actions`). Replace them with the three-row layout from §2 above,
+   the 0,2,0 specificity note, and the `#wb-cloud-where` zero-width note.
+   Add the third `nav.js` known failure there too, since CLAUDE.md doesn't
+   list it.
 
-1. **Add a round-suite runner script.** Maintain an explicit inventory of task suites, support both Playwright Test and existing Node scripts, and make root `npm test` invoke the agreed inventory. Resolve the browser path once, report every suite separately, continue collecting failures, and return a failing aggregate exit code. Keep the known idea-button failure visible with a named exception policy rather than silently skipping it. Evidence: three separate test entry points today, omitted task 02/03 suites, and the legacy loop stopping early.
+2. **Add the new suites to the hook.** In `after-implement.py`'s
+   `SUITES_FOR`, map `index.html` and `js/markdown/` to also run
+   `01-move-salveaza-and-sincronizeaza-buttons-like/row` and
+   `03-move-kanban-and-gantt-buttons-from/buttons`, if `run_suites.py`
+   accepts slug paths; if it doesn't, make it. Also add `wbsaveall`, which
+   the task-01 tester ran by hand. *Evidence:* these are the regression
+   guards for the two layouts that just landed, and the next header task is
+   exactly the kind of change that could break them. Check the 240 s budget:
+   the current set ran in 36.5 s, so there is room.
 
-2. **Use a recurring asynchronous-lifecycle reviewer for capture/persistence changes.** Give this Claude Code subagent a concrete checklist: cancel before permission resolves, cancel after acquisition but before resume settles, reject/throw during setup, reopen immediately, settle an old request late, and submit twice while writes are pending. Require resource and ownership assertions at each pause point, not only after completion. Evidence: task 04's five unsuccessful review rounds and task 03's duplicate append. Share deferred-promise microphone/context fixtures between suites so these cases are inexpensive to reproduce.
+3. **Playbook for the lead on a retry: diff the branch against `main`
+   before writing the spec.** *Evidence:* the orchestrator's reset left
+   `tests/gdsync.js` changed on the branch. The lead found this only by
+   inspection and had to write around it in the spec. The playbook line:
+   "On a restarted task, run `git diff main --stat` first. Any file still
+   changed is either in scope or must be named in the spec."
 
-3. **Add a report-consistency script.** Validate report structure, record tested commit and command, distinguish product failures from infrastructure/commit failures, and regenerate the run summary from final status while retaining retry history separately. Archive unmerged-task reports in a run artifact. Evidence: recovered API errors still appear under “Needs manual review,” task 04's test status is fail despite 38 passing tests, and its reports are not present on `main`.
+4. **Playbook for the lead: give paste-ready before/after blocks for
+   markup/CSS moves, and state a tool-call budget.** *Evidence:* attempt 1
+   (loose spec, low effort) ran out of turns at 31/30. Attempt 2
+   (paste-ready spec, "≤15 calls, report before optional checks") finished
+   in 28 turns, well inside the 45 cap, with zero deviations. The 15-call
+   budget was still exceeded: about 25 tool calls, including 2 duplicate
+   Greps and 2 commit attempts. So the budget is a useful nudge, not a
+   guarantee. Keep the implementer cap at 45 or more.
 
-4. **Extend the existing `/apptest` command for unattended environments.** Keep its system-browser discovery and pixel assertions, but document direct commands compatible with restricted execution and distinguish browser-launch failures from assertion failures. Remove reliance on refused wrappers in that execution profile; do not retry prohibited operations. Evidence: `.claude/commands/apptest.md` currently suggests `timeout` and compound commands, while multiple reports say those forms were refused. Task 04 also needs a clear fallback for running lifecycle harnesses when Chromium cannot launch.
+5. **Implementer playbook: commit as a single plain command, never with a
+   `cd … &&` prefix.** *Evidence:* call 13 lost a turn to a refused
+   `cd /…/sculaLuMiron && git add -A && git commit …`, then succeeded with
+   the same command minus the `cd`. `project.md` currently says heredoc
+   commits are refused, which is wrong: it's the `cd &&` prefix that gets
+   refused. Correct that line.
 
-5. **Add a focused integration-review checklist to the existing workflow.** Require a merge-base diff, changed-suite inventory, shared-nav verification and test results on the merged revision. Clarify which role runs browser tests so implementer reports do not conflict with specs demanding browser execution. Evidence: tasks 01–03 all flagged integration verification, and implementation reports explicitly deferred spec-mandated browser checks to the tester. Extend the existing `app-change`, `/verify` and `/apptest` workflow rather than creating a competing general-purpose skill.
+6. **Orchestrator: stale-branch awareness for overlapping tasks.** This
+   carries over from the first retro and still stands. *Evidence:* task-02's
+   branch is now obsolete because task-01 changed the same selectors.
+   Nothing in the pipeline flags this. At minimum, the summary for a
+   `manual_review` task should note when a later-merged task touched the
+   same files (`git diff --name-only` intersection), so the maintainer
+   knows to re-run rather than rescue.
 
-No source, test configuration, branch or report-status changes were made in this retrospective. The actions above are follow-up work; existing pass/fail evidence has been preserved as reported.
+7. **Tester writes a provisional `test-report.json` after its first full
+   suite run.** This also carries over. *Evidence:* the task-02 finding
+   (18 failures above 1600 px) still exists only in a stream log, and I had
+   to carry it forward by hand in this retro. Attempt 2's tester finished in
+   29 turns, so nothing contradicts the need. Keep it in the tester
+   playbook.
+
+Not recommended, for lack of evidence: a shared `assertInViewport` helper
+in `tests/lib.js`. The task-01 suite wrote its geometry checks cheaply
+($0.56 all in), so the duplication hasn't cost anything measurable yet.
