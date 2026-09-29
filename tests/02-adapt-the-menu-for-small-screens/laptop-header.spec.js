@@ -39,6 +39,21 @@ async function fixture(page, lang, stress = false) {
 function inspectDesktop(stress) {
   const problems = [];
   const box = e => e.getBoundingClientRect();
+  const visible = (e, id) => {
+    if (!e) { problems.push(`${id}: missing`); return false; }
+    const cs = getComputedStyle(e);
+    if (cs.display === 'none' || cs.visibility !== 'visible' || e.hidden)
+      problems.push(`${id}: hidden (${cs.display}/${cs.visibility})`);
+    if (box(e).width <= 0 || box(e).height <= 0)
+      problems.push(`${id}: zero-size ${box(e).width}x${box(e).height}`);
+    return true;
+  };
+  const expected = (parent, selectors, name) => selectors.flatMap(selector => {
+    const matches = Array.from(parent.querySelectorAll(selector));
+    if (matches.length !== 1) problems.push(`${name}/${selector}: expected one, found ${matches.length}`);
+    for (const e of matches) visible(e, `${name}/${selector}`);
+    return matches;
+  });
   const inside = (r, parent, id) => {
     if (r.width <= 0 || r.height <= 0) problems.push(`${id}: zero-size ${r.width}x${r.height}`);
     if (r.left < parent.left - 1 || r.right > parent.right + 1 ||
@@ -51,20 +66,34 @@ function inspectDesktop(stress) {
   const actions = header.querySelector('.header-actions');
   const row = document.getElementById('wb-save-sync-row');
   const toolbar = document.querySelector('.toolbar');
-  const hdr = Array.from(actions.querySelectorAll('.btn'));
-  const save = Array.from(row.querySelectorAll('.btn'));
-  const tools = Array.from(toolbar.querySelectorAll('button, select, input[type=color]'))
+  const hdr = expected(actions, [
+    '#btn-workbooks', '[data-i="newFileBtn"]', '#btn-help', '#btn-idea', '#btn-cal-sync',
+    '#btn-map', '[data-i="openFileBtn"]', '[data-i="importDocxBtn"]', '[data-i="exportHtmlBtn"]',
+  ], 'header');
+  const save = expected(row, [
+    '[data-i="saveToWorkbookBtn"]', '#btn-wb-sync', '#btn-wb-cloud', '#btn-save-all-modified',
+  ], 'save');
+  const toolSelectors = [
+    '#btn-undo', '#btn-redo', '#heading-select', '#size-select',
+    '.tb-color-control[data-i-title="textColorTip"]', '.tb-color-control[data-i-title="highlightColorTip"]',
+    'input[type="color"][aria-label="Text color"]', 'input[type="color"][aria-label="Highlight color"]',
+    'button[onclick="wrapSelection(\'**\',\'**\')"]', 'button[onclick="wrapSelection(\'*\',\'*\')"]',
+    'button[data-i="listBtn"]', 'button[data-i="orderedListBtn"]',
+    '#task-status-select', '#importance-insert-select',
+    'button[data-i="linkBtn"]', 'button[data-i="imageBtn"]',
+    'button[data-i="tableBtn"]', 'button[data-i="codeBtn"]', 'button[data-i="timelineBtn"]',
+    '#btn-diagram', '#btn-sketch', '#btn-dictate',
+    'button[data-i="wikilinkBtn"]', 'button[data-i="graphBtn"]', '#btn-media',
+    '#btn-find', '#btn-explorer', '#btn-nav',
+    '#btn-filter-todo', '#importance-select', '#btn-kanban', '#btn-gantt',
+  ];
+  const tools = expected(toolbar, toolSelectors, 'toolbar');
+  const colorInputs = tools.filter(e => e.matches('input[type=color]'));
+  const toolbarControls = Array.from(toolbar.querySelectorAll('button, select, input[type=color], .tb-color-control'))
     .filter(e => !['btn-garden', 'btn-toolbar-toggle', 'responsible-select'].includes(e.id));
-  const labels = Array.from(toolbar.querySelectorAll('.tb-color-control'));
-  if (hdr.length !== 9) problems.push(`header button inventory: ${hdr.length}, expected 9`);
-  if (save.length !== 4) problems.push(`save button inventory: ${save.length}, expected 4`);
-  for (const id of ['btn-workbooks', 'btn-help', 'btn-idea', 'btn-cal-sync', 'btn-map']) {
-    if (!hdr.some(e => e.id === id)) problems.push(`${id}: absent from header`);
-  }
-  for (const id of ['btn-kanban', 'btn-gantt', 'heading-select', 'size-select', 'btn-filter-todo', 'importance-select']) {
-    if (!tools.some(e => e.id === id)) problems.push(`${id}: absent from toolbar`);
-  }
-  if (tools.filter(e => e.matches('input[type=color]')).length !== 2) problems.push('color input inventory changed');
+  if (hdr.length !== actions.querySelectorAll('button').length) problems.push('unexpected header button inventory');
+  if (save.length !== row.querySelectorAll('button').length) problems.push('unexpected save button inventory');
+  if (tools.length !== toolbarControls.length) problems.push(`toolbar inventory: expected ${tools.length}, found ${toolbarControls.length}`);
   if (document.getElementById('btn-garden').getBoundingClientRect().width !== 0) problems.push('hidden Garden became visible');
   if (document.getElementById('btn-toolbar-toggle').getBoundingClientRect().width !== 0) problems.push('desktop toolbar toggle became visible');
   if (header.nextElementSibling !== row || row.nextElementSibling !== toolbar || row.parentElement !== document.body)
@@ -80,12 +109,16 @@ function inspectDesktop(stress) {
   const sets = [
     ['header', [...hdr, document.getElementById('wb-crumb'), document.getElementById('current-file')], header],
     ['save', [...save, document.getElementById('wb-cloud-where')], row],
-    ['toolbar', [...tools.filter(e => !e.matches('input[type=color]')), ...labels], toolbar],
+    ['toolbar', tools.filter(e => !e.matches('input[type=color]')), toolbar],
   ];
   for (const [name, elements, parent] of sets) {
     for (const e of elements) {
       const id = e.id || e.getAttribute('data-i') || e.getAttribute('title') || e.textContent.trim();
       inside(box(e), box(parent), `${name}/${id}`);
+      if (name === 'header' && e.matches('button')) {
+        const r = box(e), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (hit !== e && !e.contains(hit)) problems.push(`${id}: header button is covered`);
+      }
       if (e.matches('button')) {
         if (e.scrollWidth > e.clientWidth + 1) problems.push(`${id}: label clipped ${e.scrollWidth}/${e.clientWidth}`);
         if (getComputedStyle(e).textOverflow === 'ellipsis') problems.push(`${id}: button label ellipsized`);
@@ -103,7 +136,7 @@ function inspectDesktop(stress) {
         problems.push(`${name}: ${peers[i].id || peers[i].textContent.trim()} overlaps ${peers[j].id || peers[j].textContent.trim()}`);
     }
   }
-  for (const input of tools.filter(e => e.matches('input[type=color]'))) inside(box(input), box(toolbar), `color/${input.getAttribute('aria-label')}`);
+  for (const input of colorInputs) inside(box(input), box(toolbar), `color/${input.getAttribute('aria-label')}`);
   for (const id of ['current-file', 'wb-crumb', 'wb-cloud-where']) {
     const e = document.getElementById(id), cs = getComputedStyle(e);
     if (cs.textOverflow !== 'ellipsis' || cs.whiteSpace !== 'nowrap' || cs.overflowX !== 'hidden')
@@ -130,7 +163,12 @@ function inspectDesktop(stress) {
     if (cs.paddingLeft !== (compact ? '10px' : '14px') || cs.paddingRight !== (compact ? '10px' : '14px'))
       problems.push(`${e.id || e.textContent}: wrong desktop padding ${cs.paddingLeft}/${cs.paddingRight}`);
   }
-  return { problems, headerHeight: box(header).height, saveHeight: box(row).height, toolbarHeight: box(toolbar).height };
+  const lines = elements => {
+    const tops = elements.filter(e => box(e).height > 0).map(e => box(e).top).sort((a, b) => a - b);
+    return tops.reduce((count, top, index) => count + (index === 0 || top - tops[index - 1] > 10 ? 1 : 0), 0);
+  };
+  return { problems, headerHeight: box(header).height, saveHeight: box(row).height,
+    headerActionLines: lines(hdr), saveLines: lines(save), toolbarHeight: box(toolbar).height };
 }
 
 for (const width of WIDTHS) for (const lang of ['ro', 'en']) for (const stress of [false, true]) {
@@ -139,6 +177,12 @@ for (const width of WIDTHS) for (const lang of ['ro', 'en']) for (const stress o
     await fixture(page, lang, stress);
     const result = await page.evaluate(inspectDesktop, stress);
     expect(result.problems, JSON.stringify({ width, lang, stress, heights: result }, null, 2)).toEqual([]);
+    if (stress && [1025, 1280, 1536, 1601, 1920].includes(width)) {
+      const measurement = { width, lang, status: 'stress', headerHeight: result.headerHeight,
+        saveHeight: result.saveHeight, headerActionLines: result.headerActionLines, saveLines: result.saveLines };
+      console.log('TASK-02 MEASUREMENT ' + JSON.stringify(measurement));
+      await test.info().attach('desktop-geometry', { body: JSON.stringify(measurement, null, 2), contentType: 'application/json' });
+    }
     if (stress && lang === 'ro' && [1025, 1536, 1601].includes(width))
       await page.screenshot({ path: `test-results/task-02-${width}-ro.png`, fullPage: true });
   });
@@ -152,22 +196,26 @@ test('ordinary 1920px header remains a single 52px row', async ({ page }) => {
   expect(height).toBe(52);
 });
 
-test('save actions work with mouse and keyboard, including repeated clicks', async ({ page }) => {
+for (const lang of ['ro', 'en']) test(`save actions work with mouse and keyboard at 1280px ${lang}`, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await fixture(page, 'ro', true);
+  await fixture(page, lang, true);
+  const beforeClick = await page.evaluate(inspectDesktop, true);
+  expect(beforeClick.problems, JSON.stringify(beforeClick, null, 2)).toEqual([]);
   await page.evaluate(() => {
     window.__calls = [];
     for (const name of ['saveToWorkbook', 'syncAllToFolder', 'cloudButton', 'saveAllModifiedChapters'])
       window[name] = () => window.__calls.push(name);
   });
-  for (const selector of ROW_BUTTONS) {
+  const names = ['saveToWorkbook', 'syncAllToFolder', 'cloudButton', 'saveAllModifiedChapters'];
+  for (const [index, selector] of ROW_BUTTONS.entries()) {
     await page.locator(selector).click();
+    expect(await page.evaluate(() => window.__calls)).toEqual(names.slice(0, index).flatMap(n => [n, n, n]).concat(names[index]));
     await page.locator(selector).click();
+    expect(await page.evaluate(() => window.__calls)).toEqual(names.slice(0, index).flatMap(n => [n, n, n]).concat([names[index], names[index]]));
     await page.locator(selector).focus();
     await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => window.__calls)).toEqual(names.slice(0, index + 1).flatMap(n => [n, n, n]));
   }
-  expect(await page.evaluate(() => window.__calls)).toEqual(
-    ['saveToWorkbook', 'syncAllToFolder', 'cloudButton', 'saveAllModifiedChapters'].flatMap(n => [n, n, n]));
 });
 
 for (const [width, height] of [[1024, 900], [700, 900], [420, 900], [360, 900], [844, 390]]) {
