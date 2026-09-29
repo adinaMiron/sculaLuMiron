@@ -14,49 +14,59 @@ import sys
 BUDGET = 240  # seconds of suites; the orchestrator's hard limit is 300
 
 # changed file (prefix) -> suites under tests/ worth running for it
+# index.html header/toolbar regression guards: the four shared suites plus
+# the layouts merged in the 2026-09-29 run (save/sync row, kanban/gantt move)
+MARKDOWN = ["idea", "nav", "gdsync", "gantt", "wbsaveall",
+            "01-move-salveaza-and-sincronizeaza-buttons-like/row",
+            "03-move-kanban-and-gantt-buttons-from/buttons"]
 SUITES_FOR = [
-    ("index.html", ["idea", "nav", "gdsync", "gantt"]),
-    ("js/markdown/", ["idea", "nav", "gdsync", "gantt"]),
-    ("calendar.html", ["calendar"]),
-    ("map.html", ["map"]),
+    ("index.html", MARKDOWN),
+    ("js/markdown/", MARKDOWN),
+    ("tests/", MARKDOWN),
 ]
 
 
 def changed_since(base):
     """Committed and uncommitted changes since the branch left base."""
     res = subprocess.run(["git", "diff", "--name-only", "--merge-base", base],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, timeout=5)
+    if res.returncode:
+        raise RuntimeError("cannot compare base: " + res.stderr.strip())
     return [l for l in res.stdout.splitlines() if l.strip()]
 
 
 def main():
-    # argv fallback (`after-implement.py <base> [slug]`) for running it by hand,
+    # argv fallback (`after-implement.py <base>`) for running it by hand,
     # since `VAR=x cmd` prefixes are refused in unattended Bash
     argv = sys.argv[1:]
     base = os.environ.get("BASE_BRANCH") or (argv[0] if argv else "main")
-    slug = os.environ.get("TASK_SLUG") or (argv[1] if len(argv) > 1 else "")
-    changed = changed_since(base)
+    if base.startswith("-"):
+        print("ERROR: base must be a revision, not an option")
+        return 1
+    try:
+        changed = changed_since(base)
+    except (OSError, RuntimeError, subprocess.TimeoutExpired) as e:
+        print(f"ERROR: {e}; suite selection incomplete")
+        return 1
     print("Changed vs " + base + ": " + (", ".join(changed) if changed else "(nothing)"))
-
-    status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-    stray = [l[3:] for l in status.stdout.splitlines()
-             if l.startswith("??") and os.path.basename(l[3:].rstrip("/")).startswith(("_", "scratch"))]
-    if stray:
-        print("WARNING stray scratch files (must not be committed): " + ", ".join(stray))
 
     suites = ["verify"]
     for prefix, names in SUITES_FOR:
-        if any(c == prefix or c.startswith(prefix) for c in changed):
+        if any(c == prefix or (prefix.endswith("/") and c.startswith(prefix)) for c in changed):
             suites += names
     names = ",".join(dict.fromkeys(suites))
-    task = slug if slug and os.path.isdir(os.path.join("tests", slug)) else ""
-    print(f"Running: run_suites.py --budget {BUDGET} --suites {names} --task {task or '(none yet)'}")
+    print(f"Running: run_suites.py --budget {BUDGET} --suites {names}")
+    print("New task suites must also be run explicitly by the tester; helper files are not auto-executed.")
     sys.stdout.flush()
-    res = subprocess.run(["python3", ".ai-team/scripts/run_suites.py", "--budget", str(BUDGET),
-                          "--suites", names, "--task", task],
-                         capture_output=True, text=True, timeout=290)
+    try:
+        res = subprocess.run(["python3", ".ai-team/scripts/run_suites.py", "--budget", str(BUDGET),
+                              "--suites", names],
+                             capture_output=True, text=True, timeout=250)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"ERROR: suite runner did not finish: {e}")
+        return 1
     print(res.stdout + res.stderr)
-    return 0
+    return res.returncode
 
 
 if __name__ == "__main__":

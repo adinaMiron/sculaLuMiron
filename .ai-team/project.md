@@ -1,70 +1,63 @@
-# Project facts (sculaLuMiron)
+# Facts confirmed for the 2026-09-29 run
 
-Things agents rediscovered in run 2026-09-29. CLAUDE.md is the project
-guide; this file only adds what it doesn't say or says wrongly for our setup.
+## Where to look
+- Nine standalone browser apps; markdown markup/CSS is in `index.html`,
+  ordered plain scripts in `js/markdown/`. App execution has no build step.
+- `docs/FEATURES.md` § E covers workbook saves; § O covers Drive sync.
+  `tests/gdsync.js` checks the cloud button's parent; `tests/idea.js` checks
+  `.header-actions .btn` order. `tests/gantt.js` selects buttons by id.
+- `docs/MAP.md` has no header/toolbar markup anchors. Its nav line and
+  CLAUDE.md's nav line are stale: locate selectors with `rg -n`, then read
+  the surrounding range. The digest counted 27 reads of `index.html`.
+- Task numbers repeat: always use full slugs under `docs/tasks/` and `tests/`.
 
-## Commands in the unattended Bash
-Refused (don't retry, don't rephrase): `VAR=x cmd` prefixes, `export`,
-`timeout`, `echo $VAR`, `rm`, `mv`, `perl -pi`, `git worktree add`,
-`git -C <path> …`, `git commit` with a `$(cat <<EOF)` heredoc, `ls` outside
-the project, and most compounds (`cd X && …`, `a; b`, `… | head`).
-So the `/apptest` recipe (export + timeout) does not work here.
+## Current markdown layout (task-01 and task-03 merged)
+1. `<header>` contains `.header-actions`, ending with Export HTML.
+2. `#wb-save-sync-row` is the next body child, followed by `.toolbar`.
+   Children: save-to-workbook, `#btn-wb-sync`, `#btn-wb-cloud`,
+   `#wb-cloud-where`, `#btn-save-all-modified`. It scrolls horizontally.
+3. `.toolbar` contains collapsible `#toolbar-groups`; `.toolbar-filters`
+   is followed by a separator, `#btn-kanban`, then `#btn-gantt`.
+- `.wb-save-sync-row .btn` specificity (0,2,0) beats the phone `.btn`
+  flex rule. Cloud text is owned by `paintCloud()`; the button has no `data-i`.
+- Relevant media queries: 1600, 1024, 700, 420 px and short landscape.
+  `.toolbar` and `.toolbar-filters` already wrap without a breakpoint gate.
+- Task-02's stale branch overflowed with a long `.wb-crumb` at 1601/1920 px.
+  This was reported in the retro, not remeasured after the two merges.
+  Re-plan from current code; do not assume the old CSS patch still applies.
+  Task-02's docs are absent here; use the digest and retro for its evidence.
 
-Works: one plain command per call from the project root — `node tests/verify.js`,
-`git log/diff/show/status` without `-C`, and
-`python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py …`.
-Use Read/Grep/Glob instead of cat/grep/sed; Edit instead of perl/sed -i.
+## Test entry points (two distinct systems)
+- Root `npm test` invokes Playwright Test; `playwright.config.js` targets
+  only `tests/01-for-index-html-page-please-add`. Inspect discovery when changing it.
+- `tests/package.json` has a separate `npm test` loop for plain Node suites.
+  The two merged layout suites are absent from that loop. Their hook coverage
+  does not replace wiring new suites into the appropriate npm test entry.
+- Run `node tests/verify.js` from the root. Run plain browser suites with
+  the sandbox runner in README, which sets their working directory to `tests/`.
+  Choose affected suites; run broader checks when required by the task.
+- Browser defaults differ: `tests/lib.js` uses Playwright's browser, while
+  `gantt.js` and layout suites default to a system Chrome wrapper. The runner
+  uses an installed Playwright browser when no override is already supplied.
+  Missing browser dependencies are an environment failure, not a known failure.
 
-## Running Playwright suites
-- Use `.ai-team/scripts/run_suites.py` (see README). It runs each suite with
-  node from `tests/`, prints only FAIL lines and tags pre-existing ones KNOWN.
-- Suites are plain `node file.js` scripts printing `PASS name` / `FAIL name  -> {json}`
-  and exiting 1 on any failure. No Playwright Test, no playwright.config.
-- `tests/lib.js`, `nav.js`, `idea.js`, `gdsync.js` use `PW_CHROME_PATH || undefined`
-  (Playwright's own installed browser). `gantt.js` and the task suites default
-  to `/usr/bin/google-chrome-stable` — works in plain Bash, NOT in the sandbox
-  (the wrapper's real binary is invisible there); run_suites fixes that.
-- `npm test` runs ~50 suites serially: far too long for a step. Don't.
-- Per-task suites live in `tests/<full-slug>/*.js` and are not in the
-  `npm test` loop. Task numbers repeat across runs (two `03-…` dirs exist):
-  always use the full slug.
-- Scratch probes: Write them to `tests/node_modules/.scratch/<name>.js`
-  (git-ignored; `require('playwright')` resolves; index.html is
-  `path.resolve(__dirname, '../../../index.html')`) and run them with
-  `run_suites.py --verbose node_modules/.scratch/<name>`. Tried and working
-  on 2026-09-29; a plain `node tmp/x.js` was refused for the lead. Never put
-  scratch in `tests/<slug>/`: you can't delete it and it gets committed.
+## Historical baseline (retro and task reports, main at 0dac8f7)
+- `nav`: "on a phone the click shows the preview", "and leaves the source
+  (and the keyboard) alone", and "and the preview too". The third is missing
+  from CLAUDE.md; smooth-scroll timing is suspected, not proven.
+- `idea`: "💡 button is right of New". `wbrename`: first-double-click timeout.
+- Previously passing: verify, gdsync, gantt, wbsaveall, wbadopt, and the two
+  layout suites in the header preset. Counts differ between reports; trust
+  current output, not a copied count. KNOWN-ONLY is never an all-pass result.
+- If the task changes a known failing behavior, investigate that failure;
+  matching the historical name alone does not establish lack of regression.
 
-## Failing on main at 0d96fbc (pre-existing; don't investigate)
-- `nav.js`: "on a phone the click shows the preview", "and leaves the source
-  (and the keyboard) alone" (CLAUDE.md #1) and "and the preview too" (NOT in
-  CLAUDE.md; pvTop varies 707/726 between runs → a smooth scroll read mid-flight).
-- `idea.js`: "💡 button is right of New" (CLAUDE.md #3).
-- `wbrename.js`: times out (CLAUDE.md #2).
-- Passing on main: `verify`, `gdsync` (64 checks, 25 s), `gantt`,
-  `03-move-kanban-and-gantt-buttons-from/buttons`.
-
-## index.html header / toolbar (the hot zone of the last run)
-- `docs/MAP.md` has no anchors for index.html markup/CSS: grep index.html.
-- CSS ~75–200 plus the TABLET / MOBILE / VERY SMALL / landscape `@media`
-  blocks ~1140–1330; markup ~3555–3670 (drifts; grep `header-actions`,
-  `wb-save-sync-row`, `toolbar-groups`). A breakpoint change usually needs
-  matching edits in all four media blocks.
-- Header-sensitive suites: `idea.js` (order of `.header-actions .btn`),
-  `nav.js`, `gdsync.js` (line ~293 selects `header .header-actions #btn-wb-cloud`
-  — moving that button must update it), `gantt.js` (ids only).
-- `.toolbar` / `.toolbar-filters` already `flex-wrap: wrap` at every width.
-- Default UI language is Romanian (`lang="ro"` on a fresh profile). Switch with
-  a click on `#navLangBtn`, not by dispatching `scula-ui-lang`.
-- `#toolbar-groups` collapse is a 0.2 s transition: wait ~400 ms before
-  asserting collapsed styles.
-- A modal covers the button that opened it: a second `page.click()` times
-  out; call the handler via `page.evaluate` (e.g. `openGantt()`).
-- `overflow:hidden` + ellipsis elements (`.wb-crumb`, `#wb-cloud-where`): click
-  inside the visible box, not the element centre.
-
-## Open state after run 2026-09-29
-Branches `task/01-move-salveaza-and-sincronizeaza-buttons-like` and
-`task/02-adapt-the-menu-for-small-screens` are unmerged and edit the same
-header CSS. Task-02 still overflows above 1600 px with a long `.wb-crumb`.
-See `docs/orchestrator-retro.md` § 1 before touching the header again.
+## Unattended command lessons
+- Plain Node commands from the proper working directory worked. Browser
+  environment prefixes, export/probe chains, outside-project probes, scratch
+  removal/moves and worktree attempts were refused. Do not retry refusals.
+- A heredoc commit succeeded as a standalone command; adding `cd … &&`
+  was refused. Commit only when the current phase requires it; improve does not.
+- This improve session could not start the sandbox: bwrap's NETLINK_ROUTE
+  socket was denied. Both entry points were attempted; revised runtime behavior
+  remains unvalidated. The owner must restore sandbox support before relying on it.
