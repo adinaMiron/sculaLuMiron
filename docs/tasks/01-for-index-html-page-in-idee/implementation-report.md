@@ -6,7 +6,26 @@ Fixed the four language-biasing spots in `js/markdown/dictation.js` so the
 API dictation engine keeps whatever language was actually spoken instead of
 translating towards `S.lang`. No PCM rewrite, no new recording pipeline —
 `MediaRecorder`, segment rotation, the queue and the live engine are
-untouched, per the lead's binding decision.
+untouched, per the lead's binding decision. This round only addressed the
+lead's review-round-1 blocking finding (below); the product change itself
+is unchanged from the prior round.
+
+## This round: removed the committed sandbox symlink
+
+The lead's round-1 review (`review.json`) passed the product change but
+blocked the merge on `.config/pulse/HCAlienM7-runtime`, a machine-local
+symlink into `/tmp/pulse-PKdhtXMmr18n` created by the sandbox's pulseaudio.
+It had already been removed once (`66f905e`) and was re-added by the
+implementer's own `git add -A` in `97fa838`. This round:
+
+- `git rm --cached .config/pulse/HCAlienM7-runtime` — untracks it (the
+  symlink still exists on disk for the sandbox's pulseaudio to use; only
+  the git-tracked copy is gone).
+- Added `.config/pulse/` to `.gitignore` so a future `git add -A` on this
+  or any later branch cannot restage anything under that directory.
+- Verified `git diff main --stat -- .config/` now prints nothing.
+
+No product code changed in this round.
 
 ## Changes, file by file
 

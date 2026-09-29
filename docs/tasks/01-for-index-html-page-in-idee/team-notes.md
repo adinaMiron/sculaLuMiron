@@ -7,6 +7,7 @@
 ## implementer
 - `git add -A` in this sandbox picks up `.config/pulse/HCAlienM7-runtime`, a runtime symlink into `/tmp` created by the sandbox's pulseaudio, not repo content — `git status`/`git diff` before committing and `git rm --cached` it if it's staged.
 - `run_suites.py dictate idea nav` and `--preset header` both finished clean (only the documented known failures) after the dictation.js edits; good smoke check for any future `dictation.js` change.
+- `git rm --cached` on a tracked symlink only untracks it — the symlink stays on disk (needed for the sandbox's own pulseaudio), so don't `rm` it too. Adding `.config/pulse/` (not just the one filename) to `.gitignore` covers any future `HCAlienM7-runtime`-style name the sandbox generates.
 
 ## tester
 - Chrome exposes **both** `window.SpeechRecognition` (unprefixed) and `window.webkitSpeechRecognition` natively, and `dictation.js`'s `startLive()` tries the unprefixed one first. A live-engine test stub must override both — stubbing only `webkitSpeechRecognition` silently falls through to the real (network-backed) API and every assertion on the stub just times out.
