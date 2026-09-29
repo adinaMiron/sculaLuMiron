@@ -1,18 +1,6 @@
 {
   "task_id": "task-02",
   "status": "fail",
-  "summary": "The completed task-02 Playwright suite ran in Chromium: 40/40 passed, including both RO and EN 1280px save-action spies, explicit inventory, visibility, geometry, and pre-click header hit tests. Mobile regression cases passed. The task remains incomplete because git add -A exited 128: Git could not create .git/index.lock on the read-only filesystem. The four task-scoped files remain uncommitted; the refused command was not retried.",
-  "command": "npm test -- tests/02-adapt-the-menu-for-small-screens/laptop-header.spec.js",
-  "measurements": {
-    "fixture": "900px high, device scale 1, long filename and crumb, Map shown, connected folder, 120-plus-character status text",
-    "units": "CSS pixels; lines are header action lines and save-button lines",
-    "1025": { "ro": { "header": 82, "save": 75, "headerLines": 2, "saveLines": 2 }, "en": { "header": 82, "save": 41, "headerLines": 2, "saveLines": 1 } },
-    "1280": { "ro": { "header": 82, "save": 41, "headerLines": 2, "saveLines": 1 }, "en": { "header": 82, "save": 41, "headerLines": 2, "saveLines": 1 } },
-    "1536": { "ro": { "header": 82, "save": 41, "headerLines": 2, "saveLines": 1 }, "en": { "header": 52, "save": 41, "headerLines": 1, "saveLines": 1 } },
-    "1601": { "ro": { "header": 84, "save": 41, "headerLines": 2, "saveLines": 1 }, "en": { "header": 52, "save": 41, "headerLines": 1, "saveLines": 1 } },
-    "1920": { "ro": { "header": 52, "save": 41, "headerLines": 1, "saveLines": 1 }, "en": { "header": 52, "save": 41, "headerLines": 1, "saveLines": 1 } }
-  },
-  "screenshots": "Inspected generated RO stress screenshots at 1025, 1536, and 1601px in test-results/. Headers and save row wrap as measured; all visible controls fit, and long metadata ends in ellipsis. These screenshots are ignored test artifacts.",
-  "other_checks": "npm test -- --list: 197 tests in 7 files; node tests/verify.js: pass; sandbox runner: gdsync 64 passes, wbsaveall 13 passes, task-01 row exit 0 with no emitted case count, task-03 buttons 1 pass.",
+  "summary": "Chromium task suite passed all 53 cases, including the desktop width and language matrix, mobile regressions, pointer targets, keyboard interaction, language changes, and live resizing. Root npm test discovers 210 tests, node tests/verify.js passed, and the related gdsync, wbsaveall, task-01 row, and task-03 button suites passed. No product defects were reproduced. The required commit is blocked: git add -A exited 128 because Git could not create .git/index.lock on the read-only filesystem. The test and report changes remain uncommitted; the refused command was not retried.",
   "bugs": []
 }

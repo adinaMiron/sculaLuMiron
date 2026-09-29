@@ -256,3 +256,101 @@ for (const [width, height] of [[1024, 900], [700, 900], [420, 900], [360, 900], 
     }
   });
 }
+
+// Rectangles alone can pass when a transparent or misplaced element covers a
+// control. Exercise the actual browser hit target before Playwright scrolls it.
+for (const width of [1025, 1280, 1600, 1601, 1920]) for (const lang of ['ro', 'en']) {
+  test(`desktop ${width}px ${lang} save and formatting controls accept pointer hits`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, lang, true);
+    const misses = await page.evaluate(() => {
+      const row = document.getElementById('wb-save-sync-row');
+      const toolbar = document.querySelector('.toolbar');
+      const controls = [
+        ...row.querySelectorAll('button, a'),
+        ...toolbar.querySelectorAll('button:not(#btn-toolbar-toggle):not(#btn-garden), select, input[type="color"]'),
+      ];
+      return controls.flatMap(element => {
+        // The link is inline: its full text rectangle extends through the
+        // ellipsis clip. Use a point in its visible parent instead.
+        const r = element.matches('a') ? element.parentElement.getBoundingClientRect() : element.getBoundingClientRect();
+        const x = element.matches('a') ? r.left + Math.min(10, r.width / 2) : r.left + r.width / 2;
+        const hit = document.elementFromPoint(x, r.top + r.height / 2);
+        if (r.width <= 0 || r.height <= 0 || hit === element || element.contains(hit)) return [];
+        return [`${element.id || element.getAttribute('data-i') || element.tagName}: hit ${hit?.id || hit?.tagName || 'nothing'}`];
+      });
+    });
+    expect(misses).toEqual([]);
+  });
+}
+
+test('a scrolled tablet strip recovers when resized across both desktop breakpoints', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await fixture(page, 'ro', true);
+  await page.locator('#wb-save-sync-row').evaluate(row => { row.scrollLeft = row.scrollWidth; });
+  for (const width of [1025, 1600, 1601, 1024, 1025]) {
+    await page.setViewportSize({ width, height: 900 });
+    const state = await page.evaluate(() => {
+      const row = document.getElementById('wb-save-sync-row');
+      const all = [...row.querySelectorAll('button')];
+      const bounds = row.getBoundingClientRect();
+      return {
+        wrap: getComputedStyle(row).flexWrap,
+        overflow: getComputedStyle(row).overflowX,
+        documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        bodyOverflow: document.body.scrollWidth - document.body.clientWidth,
+        escaped: all.filter(e => {
+          const r = e.getBoundingClientRect();
+          return r.left < bounds.left - 1 || r.right > bounds.right + 1;
+        }).map(e => e.id || e.getAttribute('data-i')),
+      };
+    });
+    if (width > 1024) {
+      expect(state, `after resize to ${width}px`).toMatchObject({ wrap: 'wrap', overflow: 'visible', escaped: [] });
+      expect(state.documentOverflow).toBeLessThanOrEqual(1);
+      expect(state.bodyOverflow).toBeLessThanOrEqual(1);
+    } else {
+      expect(state.wrap).toBe('nowrap');
+      expect(state.overflow).toBe('auto');
+    }
+  }
+});
+
+test('language changes repaint a connected strip without dropping controls or the status link', async ({ page }) => {
+  await page.setViewportSize({ width: 1025, height: 900 });
+  await fixture(page, 'ro', false);
+  for (const lang of ['en', 'ro', 'en']) {
+    await page.locator('#navLangBtn').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', lang);
+    // There is no real open workbook in this isolated layout fixture.
+    await page.locator('#wb-crumb').evaluate((e, crumb) => { e.hidden = false; e.textContent = crumb; }, CRUMB);
+    await expect(page.locator('#btn-wb-cloud')).toHaveText(lang === 'ro' ? '☁ Sincronizează acum' : '☁ Sync now');
+    await expect(page.locator('#btn-save-all-modified')).toHaveText(
+      lang === 'ro' ? '📚 Salvează tot ce s-a modificat' : '📚 Save all modified');
+    await expect(page.locator('#wb-cloud-where a')).toHaveAttribute('href', 'https://drive.google.com/drive/folders/test-folder');
+    const result = await page.evaluate(inspectDesktop, false);
+    expect(result.problems, `${lang}: ${JSON.stringify(result)}`).toEqual([]);
+  }
+  await page.locator('#wb-cloud-where a').focus();
+  await expect(page.locator('#wb-cloud-where a')).toBeFocused();
+});
+
+test('rapid mouse and keyboard toolbar toggles leave the mobile save strip reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 900 });
+  await fixture(page, 'ro', true);
+  const toggle = page.locator('#btn-toolbar-toggle');
+  for (let i = 0; i < 3; i++) await toggle.click();
+  await expect(page.locator('.toolbar')).toHaveClass(/collapsed/);
+  await page.waitForFunction(() => document.getElementById('toolbar-groups').getBoundingClientRect().height < 5);
+  for (const selector of ROW_BUTTONS) {
+    const button = page.locator(selector);
+    await button.scrollIntoViewIfNeeded();
+    await expect(button).toBeVisible();
+  }
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.toolbar')).not.toHaveClass(/collapsed/);
+  await page.waitForFunction(() => document.getElementById('toolbar-groups').getBoundingClientRect().height > 20);
+  await expect(page.locator('#btn-gantt')).toBeVisible();
+  await expect(page.locator('#wb-save-sync-row')).toBeVisible();
+});
