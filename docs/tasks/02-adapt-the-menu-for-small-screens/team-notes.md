@@ -20,3 +20,5 @@
 - Geometry heights returned only inside a successful assertion message are not retained as measurement evidence; persist or report them explicitly.
 
 - At final review, commits `68e4d04` and `76b0f6a` already contained the follow-up implementation/tests and the working tree was clean; the reports' read-only Git commit blocker was historical. Check branch history before treating it as outstanding work.
+
+- The retained browser-verification-report.json covers 53 successful cases; the latest suite has 64 cases and root discovery totals 221. The final review run hit the same Chromium startup restriction before any page executed.
