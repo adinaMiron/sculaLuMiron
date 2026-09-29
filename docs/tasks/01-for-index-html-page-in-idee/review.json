@@ -1,0 +1,15 @@
+{
+  "task_id": "task-01",
+  "status": "fail",
+  "summary": "The product change is correct and follows the owner's binding decision to take a different, small approach: no PCM capture, no pause detection and no new pipeline. It meets the spec. transcribe() no longer sends `language` or `prompt`, and tailPrompt() is gone. pickModel() swaps English-only models (`-en`/`.en`/`distil-whisper*`) for the provider's multilingual default. tidyUp() now has a language-neutral system prompt, and keepsWords() throws away a tidy result unless it keeps at least 80% of the words and stays within 0.8x–1.25x of the word count. The live engine is untouched, and there is no markup, CSS or nav change. FEATURES.md § J, MAP.md and both help languages are updated, with diacritics. I reran the checks myself through run_suites.py: verify OK; dictate 11/11; idea 24/25, where the one failure is known issue #3 (button order), which this task doesn't touch; the new suite tests/01-for-index-html-page-in-idee 25/25. The after-implement hook also reported gdsync, nav (known failures only), wbsaveall and the header guards clean. The new suite has a test for each of acceptance checks 1–8. The tests drive the real index.html with the fake mic and read the multipart bodies, so they can fail. The suite is registered in the root playwright.config.js testMatch. One thing blocks the merge: the branch commits a machine-local symlink, `.config/pulse/HCAlienM7-runtime -> /tmp/pulse-PKdhtXMmr18n`. The implementer's first-pass commit 97fa838 re-added it after commit 66f905e on this same branch had removed it for exactly this reason. It must not land on main.",
+  "findings": [
+    "Remove the committed sandbox symlink `.config/pulse/HCAlienM7-runtime` (points at /tmp/pulse-PKdhtXMmr18n; re-added by 97fa838 after 66f905e removed it): `git rm --cached .config/pulse/HCAlienM7-runtime` and add `.config/pulse/` to `.gitignore` so a future `git add -A` cannot stage it again. `git diff main --stat` must then list no `.config/` path."
+  ],
+  "unresolved": [],
+  "follow_ups": [
+    "voice.html keeps its own copy of the dictation code (~L2622), and that copy still forces `language` and prompt context. The spec left it out of scope on purpose, but a user dictating on Caiet vocal will still see English pulled towards Romanian. Consider the same fix there, or sharing the engine.",
+    "A mixed-language recording inside one request is still transcribed as Whisper hears it (detection runs once per request/segment). This is documented as an accepted limitation. If the owner reports mistranscribed mixed phrases, lowering the Caiet vocal segMin is the cheapest lever before any pipeline work.",
+    "keepsWords() cannot catch a translation that keeps most tokens, such as proper names and numbers in a short phrase. That is acceptable for now, but it's worth a note if tidy-up is ever given a more aggressive model.",
+    "S.hint (the Caiet vocal 'hint' setting) no longer has any effect in index.html's API engine. If the Caiet vocal settings page describes it as applying here, that description should say it now applies only to voice.html."
+  ]
+}
