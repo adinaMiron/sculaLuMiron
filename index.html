@@ -682,6 +682,14 @@
     padding: 4px;
   }
   #idea-chapter-list.open { display: block; }
+  /* Phone / tablet: pin the idea box to the top so the on-screen keyboard
+     never covers its buttons. */
+  @media (max-width: 1024px), (pointer: coarse) {
+    #idea-modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
+    #idea-modal .modal-box { width: 100%; max-width: 560px; margin: 0 auto; padding: 16px; gap: 10px; }
+    #idea-modal #idea-text { height: 5.5rem; max-height: 30vh; }
+    #idea-chapter-list { max-height: 120px; }
+  }
   .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .help-modal-box { width: 640px; max-width: 92vw; max-height: 82vh; overflow: auto; }
