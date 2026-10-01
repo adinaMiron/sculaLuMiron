@@ -31,7 +31,7 @@ const SETTINGS = {
   segMin: 0, tidy: false, hint: ''
 };
 
-async function newPage(browser, settings) {
+async function newPage(browser, settings, stub) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
   const page = await ctx.newPage();
   const errors = [];
@@ -41,13 +41,13 @@ async function newPage(browser, settings) {
     if (/Failed to load resource/.test(m.text())) return;   // the mammoth CDN, offline
     errors.push('CONSOLE ' + m.text());
   });
-  // Stub the transcription service: always returns the same text.
-  await page.route('**/audio/transcriptions', route => route.fulfill({
+  // Stub the transcription service: by default always returns the same text.
+  await page.route('**/audio/transcriptions', stub || (route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     headers: { 'access-control-allow-origin': '*' },
     body: JSON.stringify({ text: 'salut lume' })
-  }));
+  })));
   await page.addInitScript(s => {
     try { localStorage.setItem('caiet-vocal:settings', JSON.stringify(s)); } catch (e) {}
   }, settings);
@@ -59,11 +59,15 @@ async function newPage(browser, settings) {
 
 // Start dictation, let the fake mic run, stop, wait for the stubbed text to land.
 async function dictateOnce(page, ms) {
+  const runs = () => page.evaluate(() => document.getElementById('editor').value.split('salut lume').length - 1);
+  const before = await runs();
   await page.click('#btn-dictate');
   await page.waitForFunction(() => document.getElementById('btn-dictate').classList.contains('active'));
   await sleep(ms);
   await page.click('#btn-dictate');
-  await page.waitForFunction(() => document.getElementById('editor').value.includes('salut lume'), null, { timeout: 8000 });
+  // wait for *this* run's text, not one an earlier run already left behind
+  await page.waitForFunction(n => document.getElementById('editor').value.split('salut lume').length - 1 > n,
+    before, { timeout: 8000 });
   await sleep(100);
 }
 
@@ -133,6 +137,72 @@ async function dictateOnce(page, ms) {
         return !!el && el.classList.contains('show') && /Caiet vocal/i.test(el.textContent);
       }));
     check('unconfigured: the chapter is untouched', (await page.inputValue('#editor')) === 'neatins');
+    check('no page errors', errors.length === 0, errors);
+    await ctx.close();
+  }
+
+  // 5-7. Spoken language: only ever Romanian or English. A stub that acts
+  //      like Whisper — its own detection hears a short Romanian clip as
+  //      Russian — must still end in Romanian text, through the 💡 idea box.
+  //      `spoken` is what was "said"; `detect` is what Whisper's
+  //      auto-detection answers; `autoFails` makes the undirected request
+  //      fail the way a runaway hallucination does.
+  function whisperStub(log, { spoken, detect, autoFails }) {
+    const said = { ro: 'salut lume', en: 'hello world' };
+    return route => {
+      const body = route.request().postData() || '';
+      const field = name => {
+        const m = body.match(new RegExp('name="' + name + '"\\r\\n\\r\\n([^\\r]*)'));
+        return m ? m[1] : '';
+      };
+      const lang = field('language');
+      log.push({ lang, format: field('response_format'), prompt: field('prompt') });
+      const reply = (status, obj) => route.fulfill({
+        status, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(obj)
+      });
+      if (!lang && autoFails) return reply(400, { error: { message: 'The generated text is too long' } });
+      if (!lang && detect === 'russian') return reply(200, {
+        language: 'russian', text: 'Салют луме',
+        segments: [{ start: 0, end: 1.5, avg_logprob: -1.1 }] });
+      const as = lang || (detect === 'english' ? 'en' : 'ro');
+      const right = as === spoken;
+      return reply(200, {
+        language: as === 'en' ? 'english' : 'romanian',
+        text: right ? said[spoken] : (as === 'en' ? 'salute loom' : 'helo uorld'),
+        segments: [{ start: 0, end: 1.5, avg_logprob: right ? -0.2 : -0.9 }]
+      });
+    };
+  }
+  async function ideaDictate(page, wanted) {
+    await page.evaluate(() => openIdeaModal());
+    await page.click('#btn-idea-dictate');
+    await page.waitForFunction(() => document.getElementById('btn-idea-dictate').classList.contains('active'));
+    await sleep(1200);
+    await page.click('#btn-idea-dictate');
+    await page.waitForFunction(w => document.getElementById('idea-text').value.includes(w), wanted, { timeout: 8000 })
+      .catch(() => {});   // the checks below report what landed instead
+    await sleep(300);
+    return page.inputValue('#idea-text');
+  }
+  for (const c of [
+    { name: 'Romanian heard as Russian', spoken: 'ro', detect: 'russian', want: 'salut lume' },
+    { name: 'English, preferred language Romanian', spoken: 'en', detect: 'english', want: 'hello world' },
+    { name: 'Romanian, the undirected request fails', spoken: 'ro', autoFails: true, want: 'salut lume' }
+  ]) {
+    const log = [];
+    const { ctx, page, errors } = await newPage(browser, SETTINGS, whisperStub(log, c));
+    const val = await ideaDictate(page, c.want);
+    check(c.name + ': the idea box gets "' + c.want + '"', val === c.want, val);
+    check(c.name + ': no Cyrillic, no wrong-language guess',
+      !/[Ѐ-ӿ]/.test(val) && !/salute loom|helo uorld/.test(val), val);
+    check(c.name + ': no prompt sent, and the first request forces no language',
+      log.length > 0 && log.every(r => !r.prompt) && log[0].lang === '', log);
+    if (c.detect === 'english')
+      check(c.name + ': a detected ro/en answer is kept with one request', log.length === 1, log);
+    else
+      check(c.name + ': retried forced as ro and as en, still asking for confidence',
+        log.filter(r => r.lang).map(r => r.lang + ':' + r.format).sort().join() === 'en:verbose_json,ro:verbose_json', log);
     check('no page errors', errors.length === 0, errors);
     await ctx.close();
   }

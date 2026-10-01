@@ -357,7 +357,7 @@ function within a feature file.
 | Wikilink picker and suggester | `js/markdown/wikilinks.js` | `openWikiModal`, `maybeWikiSuggest` |
 | Import, export, and file/table/link dialogs | `js/markdown/files.js` | `importDocx`, `exportHtml` |
 | Editor event handlers and keyboard shortcuts | `js/markdown/events.js` | DOM event listeners |
-| Dictation into editor or idea | `js/markdown/dictation.js` | `toggleDictation`, `toggleIdeaDictation`, `pickModel`, `keepsWords` |
+| Dictation into editor or idea | `js/markdown/dictation.js` | `toggleDictation`, `toggleIdeaDictation`, `pickModel`, `transcribe` (`request`, `langCode`, `confidence`), `keepsWords` |
 | Responsive layout and initial boot | `js/markdown/startup.js` | `applyResponsiveDefaults`, `loadWorkbooks` |
 | First-run modal on a new device (folder, then cloud) | `js/markdown/startup.js` | `welcomeMaybe`, `welcomeCloud`, `#welcome-modal` |
 | Google Drive chapter sync | `js/markdown/drive.js` | `cloudSync`, `cloudButton`, `cloudBoot` |

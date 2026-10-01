@@ -199,29 +199,88 @@
     }
     return m;
   }
-  /* Never send language or prompt: either one biases Whisper towards one
-     language and turns the other language's speech into a translation. */
-  async function transcribe(blob, ext){
+  /* Never send a prompt, and never force one language up front: either
+     biases Whisper towards one language and turns the other language's
+     speech into a translation. But Whisper's own detection picks among ~100
+     languages and, on a few seconds of Romanian, often settles on Russian
+     (then writes Cyrillic, or a runaway hallucination that the service
+     rejects as too long). Speech here is only ever Romanian or English, so:
+     detect first; keep the answer when it is ro or en; otherwise transcribe
+     the clip as each of the two and keep the one Whisper was surer of. */
+  const LANGS = ["ro", "en"];
+  const LANG_NAMES = { romanian:"ro", english:"en", moldavian:"ro", moldovan:"ro" };
+  /* "Romanian" / "romanian" / "ro" → "ro"; any other language keeps its own
+     name, and "" means the service did not say. */
+  function langCode(l){
+    const k = String(l || "").trim().toLowerCase();
+    return LANG_NAMES[k] || k;
+  }
+  /* Mean per-segment log-probability, weighted by segment length — Whisper's
+     own confidence in what it wrote. -Infinity when there is nothing to score. */
+  function confidence(data){
+    const segs = data && Array.isArray(data.segments) ? data.segments : [];
+    let sum = 0, w = 0;
+    for(const sg of segs){
+      if(typeof sg.avg_logprob !== "number") continue;
+      const d = Math.max(0.1, (+sg.end || 0) - (+sg.start || 0));
+      sum += sg.avg_logprob * d; w += d;
+    }
+    return w ? sum / w : -Infinity;
+  }
+  /* The gpt-4o transcribe models only answer plain json (no detected
+     language, no segments); everything Whisper answers verbose_json. */
+  function verboseOk(model){ return !/^gpt-4o/i.test(model); }
+  async function request(blob, ext, model, lang, verbose){
     const p = PROVIDERS[S.provider] || PROVIDERS.groq;
     const url = S.provider === "custom" ? S.endpoint : p.url;
     if(!url) throw new Error(t("dictateNoSetup"));
     const fd = new FormData();
     fd.append("file", blob, "dictation." + (ext || "webm"));
-    fd.append("model", pickModel());
-    fd.append("response_format", "json");
+    fd.append("model", model);
+    fd.append("response_format", verbose ? "verbose_json" : "json");
     fd.append("temperature", "0");
+    if(lang) fd.append("language", lang);
     const headers = {};
     if(S.key) headers.Authorization = "Bearer " + S.key;
     let res;
     try{ res = await fetch(url, { method:"POST", headers, body:fd }); }
-    catch(e){ throw new Error(t("dictateNetwork")); }
+    catch(e){ const err = new Error(t("dictateNetwork")); err.status = 0; throw err; }
     if(!res.ok){
       let msg = "HTTP " + res.status;
       try{ const j = await res.json(); if(j && j.error) msg = j.error.message || (typeof j.error === "string" ? j.error : msg); }catch(_){}
-      throw new Error(msg);
+      const err = new Error(msg); err.status = res.status; throw err;
     }
     const data = await res.json();
-    return String(data.text || "").trim();
+    return { text:String((data && data.text) || "").trim(), lang:langCode(data && data.language), score:confidence(data) };
+  }
+  /* Errors a second try with a forced language cannot fix. */
+  function fatal(e){ return !e || [0, 401, 403, 413, 429].includes(e.status); }
+  async function transcribe(blob, ext){
+    const model = pickModel();
+    const verbose = verboseOk(model);
+    let first = null, firstErr = null;
+    try{ first = await request(blob, ext, model, "", verbose); }
+    catch(e){
+      if(fatal(e)) throw e;
+      firstErr = e;
+      /* a custom endpoint may refuse verbose_json: if plain json works, it
+         cannot report a language, so take its answer as it is */
+      if(verbose && e.status === 400 && S.provider === "custom"){
+        try{ return (await request(blob, ext, model, "", false)).text; }
+        catch(e2){ if(fatal(e2)) throw e2; }
+      }
+    }
+    if(first && (!verbose || !first.lang || LANGS.includes(first.lang))) return first.text;
+    /* detected something other than ro/en (or failed): try both, keep the surer */
+    const pref = S.lang === "en" ? ["en", "ro"] : ["ro", "en"];
+    const tries = await Promise.all(pref.map(l =>
+      request(blob, ext, model, l, verbose).catch(e => ({ err:e }))));
+    const ok = tries.filter(r => !r.err && r.text);
+    if(!ok.length){
+      if(first && first.text) return first.text;
+      throw (tries[0] && tries[0].err) || firstErr || new Error(t("dictateNetwork"));
+    }
+    return ok.reduce((best, r) => r.score > best.score ? r : best).text;
   }
   /* Folds a string into comparable word tokens: casefold, strip diacritics,
      split on anything that isn't a letter or digit. */

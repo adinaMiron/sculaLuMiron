@@ -1443,7 +1443,25 @@ the Caiet vocal default — a mixed Romanian/English recording comes back the
 way it was spoken. Detection happens once per request, which means once per
 recording, or once per `segMin` segment if the recording is rotated: a
 segment that itself mixes languages is transcribed as the service hears it,
-with no language forced. An English-only saved model (matching `/(^|[-.])en$/i`
+with no language forced.
+
+**Only Romanian or English comes back.** Whisper's own detection chooses
+among ~100 languages, and on a few seconds of Romanian it often settles on
+Russian — Cyrillic text for a short clip, and for a longer one a runaway
+hallucination the service rejects as too long. So the first request asks for
+`verbose_json`, which reports the detected `language` and each segment's
+`avg_logprob`. A detected Romanian or English is kept as it is (one request).
+Anything else — or a failed first request that a forced language could fix,
+i.e. not network/401/403/413/429 — sends the clip twice more, forced as `ro`
+and as `en`, and keeps the transcript Whisper was surer of (segment
+`avg_logprob` weighted by duration; a tie goes to the Caiet vocal `S.lang`).
+A language is only ever forced in that second step, so English said with a
+Romanian default is never translated. `gpt-4o*` models answer plain `json`
+and are taken as they come; a custom endpoint that refuses `verbose_json` is
+retried once as plain `json`. `tests/dictate.js` drives all three paths
+through the 💡 idea box against a stub that hears Romanian as Russian.
+
+An English-only saved model (matching `/(^|[-.])en$/i`
 or `/^distil-whisper/i`) is replaced by the provider's multilingual default
 (`pickModel()` in `js/markdown/dictation.js`) before the request goes out,
 since it cannot write Romanian at all. When `tidy` is on, `tidyUp()`'s output

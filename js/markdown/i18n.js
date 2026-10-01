@@ -437,7 +437,7 @@ const I18N = {
       <p>„Import DOCX” aduce un Word ca markdown; „Export HTML” scrie o pagină de sine stătătoare, cu buton de copiere pe blocurile de cod.</p>
       <h3>Dictare vocală</h3>
       <p>Iconița 🎙 din bară transcrie vorbirea direct la cursor, folosind setările din pagina „Caiet vocal”.</p>
-      <p>Limba vorbită este detectată singură și textul nu este niciodată tradus (cu excepția dictării din browser, care folosește limba aleasă în Caiet vocal).</p>
+      <p>Limba vorbită — română sau engleză — este detectată singură și textul nu este niciodată tradus (cu excepția dictării din browser, care folosește limba aleasă în Caiet vocal).</p>
       <h3>Scurtături</h3>
       <p>
         <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> salvează tot ce s-a modificat ·
@@ -883,7 +883,7 @@ const I18N = {
       <p>"Import DOCX" brings in a Word file as markdown; "Export HTML" writes a self-contained page, with a copy button on its code blocks.</p>
       <h3>Voice dictation</h3>
       <p>The 🎙 icon in the toolbar transcribes speech straight at the caret, using the settings saved on the "Caiet vocal" page.</p>
-      <p>The spoken language is detected on its own and the text is never translated (except for browser dictation, which uses the language chosen in Caiet vocal).</p>
+      <p>The spoken language — Romanian or English — is detected on its own and the text is never translated (except for browser dictation, which uses the language chosen in Caiet vocal).</p>
       <h3>Shortcuts</h3>
       <p>
         <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> save all modified ·
