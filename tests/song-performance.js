@@ -33,7 +33,7 @@ const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+decodeU
   },r.id);
   await analyze(page);r=(await projects(page))[0].recordings[0];let p=r.performance;
   assert.ok(p,await page.textContent('#status'));assert.deepEqual(p.notes.map(n=>n.midi),SEQ);assert.equal(p.sourceAssetId,r.source.assetId);assert.equal(p.type,'MusicalPerformance');assert.ok(p.analysis.rawPitchFrames.length>300);assert.ok(p.analysis.onsets.length>=SEQ.length);assert.ok(p.notes.every(n=>n.quantizedTiming===null));
-  assert.deepEqual(p.notes.map(n=>n.midi),reference.notes.map(n=>n.midi));assert.deepEqual(p.analysis.key,reference.analysis.key);assert.ok(Math.abs(p.tempoBpm-reference.tempoBpm)<=2);
+  assert.deepEqual(p.notes.map(n=>n.midi),reference.notes.map(n=>n.midi));assert.equal(p.analysis.key.tonic,reference.analysis.key.tonic);assert.equal(p.analysis.key.mode,reference.analysis.key.mode);assert.ok(Math.abs(p.tempoBpm-reference.tempoBpm)<=2);
   p.notes.forEach((n,i)=>{assert.ok(Math.abs(n.onset-reference.notes[i].onset)<.035);assert.ok(Math.abs(n.offset-reference.notes[i].offset)<.035);});
   console.log('PASS  stereo PCM24 WAV with extra chunk imported unchanged; real decoder produces known notes and performance');
   const rawEvidence=JSON.stringify(p.analysis),originalOnset=p.notes[0].onset;

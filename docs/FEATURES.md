@@ -3103,10 +3103,12 @@ float32 mono/stereo at 8–192 kHz, and handles data before fmt, unknown chunks 
 odd padding. A windowed-sinc low-pass resampler downmixes directly from each
 bounded source slice to the derived mono buffer. The source Blob is unchanged.
 The analysis cap is checked from the validated WAV length before allocating that
-buffer. Decoding and onset/pitch CPU work yield and check cancellation; progress
+buffer. Decoding, onset/pitch CPU work and evidence/expression extraction yield and check cancellation; progress
 and **Cancel analysis** appear in RO/EN. A canceled or failed reanalysis publishes
 no replacement performance and writes no metadata. Voice keeps its original
-browser decoder and synchronous onset path.
+browser decoder and synchronous onset path. Starting analysis stops existing source,
+melody and arrangement playback. Page exit cancels pending analysis; completion
+or an already-started storage commit does not recreate source players after exit.
 
 `js/audio/performance.js` exposes `ScuLaPerformance` v1. Each recording's
 `performance` becomes a `MusicalPerformance` with `schemaVersion:1`, its own
@@ -3241,7 +3243,10 @@ cancellation, RO/EN, phone layout and `file://` staging.
 channel counts at 8, 22.05 and 192 kHz, skipped unknown payloads, 64 KiB maximum
 source reads, a sparse 180-second 192 kHz stereo source, malformed/truncated files,
 the 180-second cap and cancellation in
-decoding, onset FFT and pitch tracking. Its known sine samples stay within 0.006
+decoding, onset FFT, pitch tracking, evidence/expression extraction and completion.
+`node tests/song-analysis-lifecycle.js` drives the actual page handler with stubs:
+starting analysis stops audio, cancellation preserves edited notes, and page exit
+during analysis or a storage commit cannot recreate source players. Its known sine samples stay within 0.006
 of the expected source amplitude. The Song performance browser check compares a
 known phrase against the unchanged browser decoder: same notes/key, tempo within
 2 BPM and note onsets/offsets within 35 ms. It also checks visible RO/EN progress,
