@@ -51,11 +51,14 @@ async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>fal
   const pt=await A.trackPitch(A.decimate2(normalized),A.AN_SR/2,f=>onStep(.55+f*.4,'analysis'),cancelled);
   checkCancel(cancelled);
   const dt=1/pt.fps;
-  const frames=Array.from(pt.f0,(hz,i)=>{
+  const frames=[];
+  for(let i=0;i<pt.f0.length;i++){
+    if((i&255)===0){onStep(.95+.02*i/(pt.f0.length||1),'analysis');await yieldUI();checkCancel(cancelled);}
+    const hz=pt.f0[i];
     let energy=0;for(let j=0;j<512;j++)energy+=(raw[i*A.HOP+j]||0)**2;
     const midi=hz>0?69+12*Math.log2(hz/440):null;
-    return {time:i*dt,hz:hz||null,midi,cents:midi===null?null:100*(midi-Math.round(midi)),confidence:pt.clar[i],rms:Math.sqrt(energy/512)};
-  });
+    frames.push({time:i*dt,hz:hz||null,midi,cents:midi===null?null:100*(midi-Math.round(midi)),confidence:pt.clar[i],rms:Math.sqrt(energy/512)});
+  }
   // Spectral attacks may split repeated pitches, but only when the measured
   // amplitude rises appreciably: pitch wobble alone is not a new attack.
   const segments=[];
@@ -69,17 +72,19 @@ async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>fal
     boundaries.push(n.start+n.dur);
     for(let i=0;i<boundaries.length-1;i++)segments.push({...n,start:boundaries[i],dur:boundaries[i+1]-boundaries[i]});
   }
-  const detectedNotes=segments.map((n,i)=>{
-    if((i&31)===0)checkCancel(cancelled);
+  const detectedNotes=[];
+  for(let i=0;i<segments.length;i++){
+    if((i&31)===0){onStep(.97+.02*i/segments.length,'analysis');await yieldUI();checkCancel(cancelled);}
+    const n=segments[i];
     const fs=frames.filter(f=>f.time>=n.start && f.time<n.start+n.dur && f.hz && f.confidence>.62);
     const rmsPeak=Math.max(0,...fs.map(f=>f.rms));
     const mean=fs.reduce((s,f)=>s+f.rms,0)/(fs.length||1);
     const attack=fs.find(f=>f.rms>=rmsPeak*.8),release=fs.slice().reverse().find(f=>f.rms>=rmsPeak*.8);
-    return {id:'n'+i,midi:n.midi,onset:n.start,offset:Math.min(duration,n.start+n.dur),confidence:fs.reduce((s,f)=>s+f.confidence,0)/(fs.length||1),cents:median(fs.map(f=>100*(f.midi-n.midi))),velocity:clamp(Math.round(n.vel*127),1,127),dynamics:{rms:mean,peak:rmsPeak},vibrato:vibrato(fs),legato:false,attackSeconds:attack?attack.time-n.start:0,releaseSeconds:release?Math.max(0,n.start+n.dur-release.time):0};
-  });
+    detectedNotes.push({id:'n'+i,midi:n.midi,onset:n.start,offset:Math.min(duration,n.start+n.dur),confidence:fs.reduce((s,f)=>s+f.confidence,0)/(fs.length||1),cents:median(fs.map(f=>100*(f.midi-n.midi))),velocity:clamp(Math.round(n.vel*127),1,127),dynamics:{rms:mean,peak:rmsPeak},vibrato:vibrato(fs),legato:false,attackSeconds:attack?attack.time-n.start:0,releaseSeconds:release?Math.max(0,n.start+n.dur-release.time):0});
+  }
   detectedNotes.forEach((n,i)=>{const next=detectedNotes[i+1];n.legato=!!next && next.onset-n.offset<=dt*2;});
   const notes=editable(detectedNotes),bpm=60*fps/lag;
-  checkCancel(cancelled);onStep(1,'analysis');
+  checkCancel(cancelled);onStep(1,'analysis');await yieldUI();checkCancel(cancelled);
   return {schemaVersion:1,type:'MusicalPerformance',analyzerVersion:A.version,sourceAssetId,duration,analysis:{sampleRate:A.AN_SR,pitchHopSeconds:dt,pitchWindowSeconds:512/(A.AN_SR/2),rawPitchFrames:frames,onsetEnvelope:Array.from(env),onsetHopSeconds:1/fps,onsets:peaks,detectedNotes,tempo:{bpm,phaseSeconds:A.beatPhase(env,lag)/fps},key:A.detectKey(segments)},notes,tempoBpm:Math.round(bpm),timingMode:'original',quantizationDivision:4};
 }
 async function analyze(blob,sourceAssetId,onStep=()=>{},{cancelled=()=>false}={}){

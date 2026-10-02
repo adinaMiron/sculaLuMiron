@@ -52,10 +52,18 @@ function watched(bytes){const base=new Blob([bytes]),reads=[];return {size:base.
  stop=false;await assert.rejects(P.decodeWavMono(sparse,{cancelled:()=>stop,progress:p=>{if(p>.051)stop=true;}}),/analysisCancelled/);
  assert.ok(sparseReads.length<20,`180-second high-rate stereo source stays sliced: ${sparseReads.length} reads`);
  const cpu=new Float32Array(A.AN_SR*5);
- for(const threshold of [.4,.6]){
+ for(const threshold of [.4,.6,.95,1]){
   stop=false;let reached=0;
   await assert.rejects(P.analyzeBuffer(cpu,'source',f=>{reached=Math.max(reached,f);if(f>=threshold)stop=true;},{cancelled:()=>stop}),/analysisCancelled/);
   assert.ok(reached>=threshold);
  }
- console.log('PASS  malformed/truncated and over-limit WAVs; sparse 180-second stereo source; cancellation during source reads, tiny chunks, onset FFT and pitch tracking');
+ // A real timer must run during expression extraction, not just a progress callback.
+ const noteInput=new Float32Array(A.AN_SR*2);
+ for(let i=0;i<noteInput.length;i++)noteInput[i]=.2*Math.sin(2*Math.PI*440*i/A.AN_SR);
+ stop=false;let expressionYield=false;
+ await assert.rejects(P.analyzeBuffer(noteInput,'expression',(f)=>{
+  if(f>=.97 && !expressionYield){expressionYield=true;setTimeout(()=>{stop=true;},0);}
+ },{cancelled:()=>stop}),/analysisCancelled/);
+ assert.ok(expressionYield,'note-expression work yields to cancellation');
+ console.log('PASS  malformed/truncated and over-limit WAVs; sparse 180-second stereo source; cancellation during source reads, tiny chunks, onset FFT, pitch, evidence, expression and completion');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,34 @@
+name: Song regression checks
+on:
+  push:
+    branches: [codex/finish-song-analysis-wip]
+  pull_request:
+    paths:
+      - song.html
+      - voice.html
+      - js/audio/**
+      - tests/song*.js
+      - tests/voice.js
+      - tests/melody.js
+      - .github/workflows/song.yml
+permissions:
+  contents: read
+jobs:
+  song:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Verify scripts, navigation, Song and shared Voice behavior
+        shell: bash
+        run: |
+          export PW_CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          for suite in verify song-analysis song-bounded-analysis song-analysis-lifecycle song-synthesis song-arrangement-generation song-integrity song-incremental-inspection song song-performance song-arrangement song-backup-import voice melody; do
+            node "tests/$suite.js"
+          done

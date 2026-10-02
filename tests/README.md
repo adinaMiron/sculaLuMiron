@@ -175,7 +175,9 @@ Phase 2 adds `node tests/song-analysis.js` accuracy fixtures (pitch, onset/offse
 tempo/key, detuning/vibrato, repeated notes, dynamics, legato, silence, short input,
 duration limits and immutable evidence), `node tests/song-bounded-analysis.js`
 (instrumented 64 KiB source reads, skipped chunks, PCM/float mono/stereo and rate
-extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch cancellation),
+extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch/evidence/expression/completion cancellation),
+`node tests/song-analysis-lifecycle.js` (actual page handler: audio cleanup, canceled
+reanalysis, and no player recreation after page exit during analysis or commit),
 and `/apptest song-performance`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-performance.js`).
 The browser test uses a synthesized hummed phrase through the real WAV importer,
@@ -239,3 +241,10 @@ Run `song-analysis`, `song-synthesis`, `song-arrangement-generation`, `song`,
 `song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium
 emulation.
+
+### Song CI
+
+`.github/workflows/song.yml` runs `/verify`, all Song unit/browser checks and the
+shared Voice/melody regressions for Song pull requests. It uses the root locked
+dev dependencies and Playwright Chromium, explicitly setting `PW_CHROME_PATH`.
+The apps gain no runtime dependencies.

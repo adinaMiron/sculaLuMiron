@@ -902,7 +902,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `arrangementAudio`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
 | `js/audio/synthesis.js` | Versioned Voice/Song instrument, harmony, rendering and export kernels |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, MIDI CC7/part tracks, fixed-headroom stereo mix |
-| `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
+| `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json` | Pre-extraction Voice accuracy reference; synthesis/harmony/WAV/MIDI regression fixtures |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |

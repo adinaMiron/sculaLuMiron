@@ -1388,7 +1388,7 @@ const now = () => new Date().toISOString();
 const time = seconds => `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 function say(k,error=false){statusKey=k; $('status').textContent=t(k);$('status').classList.toggle('error',error);}
 function paintAnalysisProgress(){
-  if(!analysisJob || analysisJob.cancelled)return;
+  if(state!=='analyzing' || !analysisJob || analysisJob.cancelled)return;
   const pct=Math.max(0,Math.min(100,Math.floor(analysisFraction*100)));
   $('analysisProgress').value=pct;$('status').textContent=t(analysisPhase==='decoding'?'decodingProgress':'analysisProgress',pct);
 }
@@ -1562,22 +1562,22 @@ async function analyzeTake(r){
   if(state!=='idle')return;
   if(r.performance && !confirm(t('reanalyzeAsk')))return;
   if(r.duration>P.MAX_SECONDS){say('tooLong',true);return;}
-  stopPreview();const job={cancelled:false};analysisJob=job;analysisFraction=0;analysisPhase='decoding';setState('analyzing');say('analyzing');paintAnalysisProgress();
+  stopPreview();stopArrangement();++generation;clearPlayers();
+  const job={cancelled:false};analysisJob=job;analysisFraction=0;analysisPhase='decoding';setState('analyzing');say('analyzing');paintAnalysisProgress();
   try{
     const blob=await blobFor(r);if(!blob)throw new Error('missing');
     const performance=await P.analyze(blob,r.source.assetId,(f,phase)=>{analysisFraction=f;analysisPhase=phase;paintAnalysisProgress();},{cancelled:()=>job.cancelled});
     if(job.cancelled)throw new Error('analysisCancelled');
     // Publication starts only after decoding and analysis have finished. From
     // here the cancel control is hidden while the atomic transaction commits.
-    analysisJob=null;setState('saving');say('saving');
+    setState('saving');say('saving');
     const previous=r.performance,updatedAt=project.updatedAt,stamp=now();
     r.performance={...performance,id:id(),createdAt:stamp,updatedAt:stamp};touch();
     const saved=await persist();
     if(!saved && previous){r.performance=previous;project.updatedAt=updatedAt;say('analysisError',true);}
     else if(saved){histories.delete(r.id);say(performance.notes.length?'analyzed':'noPitch');}
-    await render();
-  }catch(e){say(job.cancelled || e.message==='analysisCancelled'?'analysisCancelled':e.message==='tooLong'?'tooLong':e.message==='missing'?'missing':'analysisError',true);}
-  finally{if(analysisJob===job)analysisJob=null;setState('idle');}
+  }catch(e){if(!job.pageHidden)say(job.cancelled || e.message==='analysisCancelled'?'analysisCancelled':e.message==='tooLong'?'tooLong':e.message==='missing'?'missing':'analysisError',true);}
+  finally{if(analysisJob===job)analysisJob=null;setState('idle');if(!job.pageHidden)await render();}
 }
 async function importWav(file){
   try{
@@ -1868,7 +1868,7 @@ $('exportProject').onclick=()=>run(exportMetadata);
 $('retry').onclick=()=>run(async()=>{if(await persist())say('recovered');});
 window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping','analyzing','importing','hashing'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopArrangement();});
-window.addEventListener('pagehide',()=>{if(analysisJob)analysisJob.cancelled=true;if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
+window.addEventListener('pagehide',()=>{if(analysisJob){analysisJob.pageHidden=true;analysisJob.cancelled=true;}if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
 async function init(){
   applyUILang();
   try{db=await openDB();projects=await read('projects');}catch(_){dirty=true;}
