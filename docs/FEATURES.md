@@ -3361,6 +3361,21 @@ removes its versions and their linked sections. Older projects without
 `timeline` load with an empty timeline. The expanded song is capped at 20
 minutes to bound rendering memory.
 
+The visual overview above the section editors gives each section a width
+proportional to its full duration (`arrangement.duration × repeats`). Divisions
+and a count show repeats. Each block shows the section name, linked version,
+tempo and key; a final audio-tail block accounts for the 1.8 seconds included
+in the WAV. On narrow screens the overview scrolls horizontally while the
+page stays within the viewport. Click or tap a block to seek within it, use the
+range control with a pointer or keyboard for precise seeking, or choose **Play
+from here / Redă de aici** on a section to begin at its first repeat. The
+playhead and elapsed/total time follow the complete WAV-length buffer. Stop cancels an in-progress
+render or stops playback and resets the playhead; audio nodes and contexts are
+cleaned up. Seeking during playback restarts the same rendered buffer at the
+chosen offset, so it follows the same mix as WAV export. Playback position
+exists only in page memory and resets on reload; the project stores only the
+section edits (`id`, `name`, `arrangementId`, `repeats`).
+
 Sections join at each arrangement's musical `duration`, with no inserted gap.
 The preceding stereo reverb/release tail overlaps the next section, including
 repeats. Each section keeps its own tempo and key: there is no tempo averaging,
@@ -3384,9 +3399,11 @@ Backup validation checks section IDs, names, repeat counts, duration and live
 version references; restore remaps both section IDs and version references.
 
 `tests/song-timeline.js` exercises the file:// UI with two hummed takes,
-section order/duplicate/remove/repeats, tempo and key MIDI joins, WAV timing,
-playback buffer versus exported PCM, reload, backup restore, source WAV bytes,
-RO/EN and phone width.
+section order/duplicate/remove/repeats, proportional overview, pointer and
+keyboard seeking across sections and repeats, section playback, playhead and
+elapsed time, Stop during rendering and playback with audio cleanup, tempo and
+key MIDI joins, WAV timing, playback buffer versus exported PCM, reload,
+backup restore, source WAV bytes, RO/EN and phone width.
 `tests/song-sample-browser.js` also checks that a one-section song matches
 sample-aware arrangement WAVs and follows sample remapping and synthesis fallback.
 

@@ -211,8 +211,11 @@ selected timing, tempo/key/harmony, independent controls, MIDI tracks/programs/
 CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrangement`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-arrangement.js`).
 `node tests/song-timeline.js` checks two humming takes assembled into linked
-sections, order and repeats, variable-tempo/key MIDI, WAV timing, playback/export
-PCM parity, reload, backup restoration and byte-identical source WAVs.
+sections, order and repeats, proportional overview, pointer/keyboard seeking
+across repeats, section playback, playhead, Stop during rendering and playback
+with audio cleanup, variable-tempo/key MIDI, WAV timing, playback/export PCM
+parity, reload, backup restoration, RO/EN phone layout and byte-identical
+source WAVs.
 `node tests/song-samples.js` checks nearest recorded pitch, dynamic layers,
 five-semitone shift limit, loop boundaries, release, legacy one-shot defaults,
 invalid settings, velocity and synthesis fallback.

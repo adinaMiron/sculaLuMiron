@@ -1,7 +1,7 @@
 /* Project sections link to arrangement versions. Each version owns its tempo/key. */
 (function(root){
 'use strict';
-const A=root.ScuLaArrangement,S=root.ScuLaSynthesis,PARTS=A.PARTS,TPQ=480;
+const A=root.ScuLaArrangement,S=root.ScuLaSynthesis,PARTS=A.PARTS,TPQ=480,TAIL_SECONDS=1.8;
 function resolve(project){
  const sections=project.timeline||[],byId=new Map((project.arrangements||[]).map(a=>[a.id,a]));
  if(!Array.isArray(sections))throw new Error('timelineInvalid');
@@ -20,7 +20,7 @@ function resolve(project){
 }
 async function render(project,{sampleRate=44100,samplesFor=async()=>({}),cancelled=()=>false,yieldUI=()=>new Promise(r=>setTimeout(r,0))}={}){
  const plan=resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');
- const length=Math.ceil((plan.seconds+1.8)*sampleRate),L=new Float32Array(length),R=new Float32Array(length),cache=new Map();
+ const length=Math.ceil((plan.seconds+TAIL_SECONDS)*sampleRate),L=new Float32Array(length),R=new Float32Array(length),cache=new Map();
  for(const item of plan.items){
   if(cancelled())throw new Error('cancelled');
   let mix=cache.get(item.arrangement.id);
@@ -60,5 +60,5 @@ function midi(project){
  return new Blob([new Uint8Array(bytes)],{type:'audio/midi'});
 }
 function vlq(value){const out=[value&127];while(value>>=7)out.unshift((value&127)|128);return out;}
-root.ScuLaSongTimeline=Object.freeze({resolve,render,midi,wav:A.wav});
+root.ScuLaSongTimeline=Object.freeze({resolve,render,midi,wav:A.wav,tailSeconds:TAIL_SECONDS});
 })(typeof window==='undefined'?globalThis:window);
