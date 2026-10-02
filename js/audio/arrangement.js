@@ -7,6 +7,37 @@ const copy=v=>JSON.parse(JSON.stringify(v));
 const PARTS=['lead','chords','bass','drums'];
 const DEFAULTS={lead:{instrument:'piano',enabled:true,volume:.85},chords:{instrument:'strings',enabled:true,volume:.65},bass:{instrument:'bass',enabled:true,volume:.8},drums:{instrument:'standard',enabled:true,volume:.65}};
 const KITS={standard:{gm:0},soft:{gm:8},electronic:{gm:24}};
+// A sample set is the instrument name on sample takes. Empty means synthesis.
+const MAX_SHIFT=5;
+const SAMPLE_VELOCITIES={ppp:20,pp:32,p:45,soft:45,mp:60,mf:80,medium:80,f:99,loud:99,ff:114,fff:124};
+function sampleVelocity(dynamic){
+ const value=String(dynamic||'').trim().toLowerCase();
+ if(/^\d{1,3}$/.test(value))return Math.max(1,Math.min(127,Number(value)));
+ return Object.hasOwn(SAMPLE_VELOCITIES,value)?SAMPLE_VELOCITIES[value]:80;
+}
+function mapSample(samples,pitch,velocity){
+ let best=null,score=Infinity;
+ for(const s of samples){
+  if(!Number.isInteger(s.midiNote)||s.midiNote<0||s.midiNote>127||!s.channels||![1,2].includes(s.channels.length)||!Number.isFinite(s.sampleRate)||s.sampleRate<=0||s.channels[0].length<s.sampleRate*.03)continue;
+  const distance=Math.abs(pitch-s.midiNote);if(distance>MAX_SHIFT)continue;
+  const rank=distance*128+Math.abs(sampleVelocity(s.dynamic)-velocity);
+  if(rank<score){best=s;score=rank;}
+ }
+ return best;
+}
+function placeSample(L,R,s,n,volume,pan,sr){
+ const pitch=n.midi+(n.cents||0)/100,rate=2**((pitch-s.midiNote)/12)*s.sampleRate/sr;
+ const start=Math.round(n.start*sr),hold=Math.max(1,Math.round(n.dur*sr)),release=Math.round(.12*sr),attack=Math.max(1,Math.round(.003*sr));
+ const source=s.channels,stereo=source.length===2,gain=volume*Math.pow(Math.max(0,n.vel),.8);
+ const gl=gain*Math.cos((pan+1)*Math.PI/4),gr=gain*Math.sin((pan+1)*Math.PI/4);
+ const count=Math.min(L.length-start,hold+release,Math.floor((source[0].length-1)/rate));
+ for(let i=0;i<count;i++){
+  const at=i*rate,j=Math.floor(at),f=at-j,en=Math.min(1,i/attack)*Math.min(1,(hold+release-i)/release)*Math.min(1,(source[0].length-1-at)/(sr*.01*rate));
+  const left=(source[0][j]*(1-f)+source[0][j+1]*f)*en;
+  const right=stereo?(source[1][j]*(1-f)+source[1][j+1]*f)*en:left;
+  L[start+i]+=left*gl;R[start+i]+=right*gr;
+ }
+}
 function create(recording,meta){
  const p=recording.performance;
  if(!p || !p.notes.length)throw new Error('noPitch');
@@ -16,7 +47,7 @@ function create(recording,meta){
 }
 function validate(a){
  if(!Number.isInteger(a.tempoBpm)||a.tempoBpm<40||a.tempoBpm>220||!Number.isInteger(a.key.tonic)||a.key.tonic<0||a.key.tonic>11||!['major','minor'].includes(a.key.mode)||!['original','quantized'].includes(a.timingMode))throw new Error('invalidEdit');
- for(const id of PARTS){const p=a.parts[id];if(!p||typeof p.enabled!=='boolean'||!Number.isFinite(p.volume)||p.volume<0||p.volume>1||!(id==='drums'?Object.hasOwn(KITS,p.instrument):Object.hasOwn(S.INSTR,p.instrument)))throw new Error('invalidEdit');}
+ for(const id of PARTS){const p=a.parts[id];if(!p||typeof p.enabled!=='boolean'||!Number.isFinite(p.volume)||p.volume<0||p.volume>1||!(id==='drums'?Object.hasOwn(KITS,p.instrument):Object.hasOwn(S.INSTR,p.instrument))||p.sampleSet!==undefined&&(id==='drums'||typeof p.sampleSet!=='string'||p.sampleSet.length>120))throw new Error('invalidEdit');}
 }
 function generate(a){
  validate(a);
@@ -58,7 +89,7 @@ function midi(a){
  });
  return new Blob([new Uint8Array(bytes)],{type:'audio/midi'});
 }
-async function render(a,{sampleRate=44100,cancelled=()=>false,yieldUI=()=>new Promise(r=>setTimeout(r,0))}={}){
+async function render(a,{sampleRate=44100,samples={},cancelled=()=>false,yieldUI=()=>new Promise(r=>setTimeout(r,0))}={}){
  validate(a);
  const check=()=>{if(cancelled())throw new Error('cancelled');};check();
  const sr=sampleRate,L=new Float32Array(Math.ceil((a.duration+1.8)*sr)),R=new Float32Array(L.length),cache=new Map();
@@ -70,6 +101,8 @@ async function render(a,{sampleRate=44100,cancelled=()=>false,yieldUI=()=>new Pr
    check();let buf,hold=n.dur,rel=.005,gain=.28;
    if(kit){buf=kit[drumTypes[n.midi]];hold=buf.length/sr;gain=({36:.4,38:.25,42:.13,46:.12})[n.midi];
    }else {
+    const selected=p.sampleSet?mapSample(samples[p.sampleSet]||[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
+    if(selected){placeSample(L,R,selected,n,(id==='chords'?.2:.28)*p.volume,pan[id],sr);if((++count&7)===0){await yieldUI();check();}continue;}
     const pitch=n.midi+(n.cents||0)/100,key=p.instrument+'|'+pitch+'|'+hold+'|'+Math.round(n.vel*8);
     if(!cache.has(key))cache.set(key,I.instrument(p.instrument,pitch,hold+S.INSTR[p.instrument].rel,sr,Math.round(n.vel*8)/8));
     buf=cache.get(key);rel=S.INSTR[p.instrument].rel;gain=id==='chords'?.2:.28;
@@ -87,5 +120,5 @@ async function render(a,{sampleRate=44100,cancelled=()=>false,yieldUI=()=>new Pr
  if(peak>.95)for(let i=0;i<L.length;i++){L[i]*=.95/peak;R[i]*=.95/peak;}
  check();return {L,R,sr};
 }
-root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
+root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,sampleVelocity,mapSample,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
 })(typeof window==='undefined'?globalThis:window);

@@ -3252,7 +3252,12 @@ and eighth-note hat pattern, including open hats on alternating bars.
 
 Each of **Lead / Chords / Bass / Drums** has its own instrument, enable and volume
 controls. Pitched parts offer the fourteen synthesized instruments; drums offer
-standard, soft and electronic kits. The roll draws all four parts in the same
+standard, soft and electronic kits. Lead, chords and bass also have a **Sample set**
+selector. A set groups project sample takes by their Instrument field; only takes
+with a MIDI note can be selected. The synth instrument remains the MIDI program
+and the fallback sound for notes without a nearby usable recording. Sample set
+selection is stored per arrangement version; older versions default to synthesis.
+The roll draws all four parts in the same
 colors as its legend; disabled/zero-volume parts fade. RO/EN controls repaint
 with the shared language toggle, and part controls stack on narrow phone screens.
 
@@ -3269,12 +3274,21 @@ delay lines with pick-position filtering and different body/pickup responses.
 The standard, soft and electronic drum kits have distinct kick sweeps, snare
 shell/wire balances and metallic hat decays. Other pitched choices continue to
 use the shared models. The new models use seeded excitation, so their individual
-notes render consistently across exports. Recorded instrument
-sample takes are retained as source recordings; arrangements do not yet map
-them to playable multisamples. No modules, network requests or app dependencies
-are added; scripts load from `file://`.
+notes render consistently across exports. Sample takes can be recorded or imported
+as WAV while Purpose is **Instrument sample**. Their original WAV Blobs are never
+rewritten. At render time, selected sets decode from project storage (including
+unsaved in-memory recovery), and the nearest recorded MIDI note within five
+semitones is pitch shifted by its note difference plus edited cents. Equal-pitch
+recordings can carry dynamics (`pp` through `ff`, soft/loud, or MIDI velocity
+1–127); the closest dynamic layer is chosen. Note velocity also scales loudness.
+Mono and stereo sources keep their channels, with a short attack, note-off fade
+and source-end fade. Invalid, missing, oversized (>64 MiB or 30 s) or distant
+samples use the part's synth instrument. No modules, network requests or app
+dependencies are added; scripts load from `file://`.
 
 **Play arrangement** renders a 44.1 kHz stereo mix, then plays a buffer source.
+Playback and stereo WAV export call the same sample-aware renderer; MIDI remains
+the same note/program/volume export.
 Cents are audible in synthesis. Song uses fixed headroom and only attenuates
 peaks above 0.95, so reducing volume does not get normalized away. Rendering
 caches tones, yields between note batches/parts and checks cancellation; caches
@@ -3347,6 +3361,11 @@ versions/reload, invalid inputs, playback lifecycle/errors/cancellation, RO/EN,
 phone layout, storage failure/retry and `file://` without IndexedDB. Master
 exports remain byte-identical (including extra RIFF chunks); source metadata,
 analysis and edited performances remain unchanged.
+`node tests/song-samples.js` checks pitch and dynamic mapping, the shift limit,
+release and velocity, synthesis fallback and WAV output.
+`node tests/song-sample-browser.js` checks real `file://` sample import, byte-identical
+source export, saved selection, played buffer against stereo WAV PCM, and fallback
+for a missing source Blob or deleted sample take.
 
 `node tests/song-analysis.js` checks known pitch/onset/offset/tempo/key, repeated
 notes, detuning, vibrato, measured dynamics, legato, silence/short input, duration

@@ -210,6 +210,11 @@ and distinct drum kit attacks and decays),
 selected timing, tempo/key/harmony, independent controls, MIDI tracks/programs/
 CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrangement`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-arrangement.js`).
+`node tests/song-samples.js` checks nearest recorded pitch, dynamic layers,
+five-semitone shift limit, release, velocity and synthesis fallback.
+`node tests/song-sample-browser.js` imports a sample WAV through `file://`,
+checks original bytes and saved selection, compares played channels with exported
+stereo PCM, and checks fallback for missing audio storage or a deleted sample take.
 The browser check opens the shipped page from `file://`, imports a synthetic WAV
 with an extra RIFF chunk, extracts/edits it and drives arrangement controls.
 It checks roll pixels, independent versions/reload, real WAV/MIDI exports,
@@ -249,8 +254,9 @@ nonstandard chunk order, odd padding, malformed/duplicate chunks, dimensions,
 five tiny reads from a sparse 128 MiB WAV and cancellation during a pending
 read or hundreds of tiny chunks. The backup browser check asserts bounded
 inspection plus full-byte hashing and cancellation through the shipped controls.
-Run `song-analysis`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song`,
-`song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
+Run `song-analysis`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`,
+`song-samples`, `song-sample-browser`, `song`, `song-performance`, `song-arrangement`,
+`voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium
 emulation.
 

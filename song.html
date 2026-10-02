@@ -1335,7 +1335,7 @@
 <label><span data-i="articulation">Articulație</span><input id="articulation" maxlength="120"></label>
 <label><span data-i="dynamic">Dinamică / intensitate</span><input id="dynamic" maxlength="120"></label>
 <label><span data-i="notes">Observații</span><textarea id="notes" maxlength="2000"></textarea></label></div></fieldset>
-<div class="row" style="margin-top:1rem"><label><span data-i="importWav">Importă WAV fredonat</span><input id="importWav" type="file" accept=".wav,audio/wav,audio/x-wav"></label></div>
+<div class="row" style="margin-top:1rem"><label><span data-i="importWav">Importă WAV</span><input id="importWav" type="file" accept=".wav,audio/wav,audio/x-wav"></label></div>
 <small data-i="importHint">WAV PCM 16/24/32 biți sau float 32 biți, mono/stereo. Fișierul original este păstrat fără modificări.</small>
 <p id="quality" class="hint"></p>
 <label><span data-i="level">Nivel de intrare</span><meter id="level" min="0" max="1" value="0"></meter></label>
@@ -1370,6 +1370,8 @@ Object.assign(I18N.ro,{cancelAnalysis:'Anulează analiza',analysisCancelled:'Ana
 Object.assign(I18N.en,{cancelAnalysis:'Cancel analysis',analysisCancelled:'Analysis cancelled. Existing melody and source WAV remain unchanged.',decodingProgress:n=>`Decoding WAV… ${n}%`,analysisProgress:n=>`Analyzing recording… ${n}%`,analysisError:'Analysis failed. Check the WAV file and try again.'});
 Object.assign(I18N.ro,{"arrangement": "Aranjament instrumental", "arrangementHint": "Fiecare versiune păstrează o copie a melodiei editate. Tempo-ul scalează timpii, tonalitatea transpune melodia; modul major/minor schimbă armonia. Modificările nu ating WAV-ul, analiza sau interpretarea. Creează o versiune nouă pentru a folosi editări ulterioare ale melodiei.", "createArrangement": "Creează versiune de aranjament", "arrangementVersion": "Versiune de aranjament", "revision": "revizie", "arrangementTempo": "Tempo aranjament (BPM)", "arrangementKey": "Tonalitate aranjament", "arrangementMode": "Mod aranjament", "arrangementTiming": "Timpi aranjament", "lead": "Melodie principală", "chords": "Acorduri", "bass": "Bas", "drums": "Tobe", "partEnabled": "Activ", "partVolume": "Volum", "standard": "Set standard", "soft": "Set discret", "electronic": "Set electronic", "arrangementRoll": "Pianola aranjamentului: melodie, acorduri, bas și tobe", "playArrangement": "Ascultă aranjamentul", "stopArrangement": "Oprește aranjamentul", "saveArrangementWav": "Salvează WAV stereo", "saveArrangementMidi": "Salvează MIDI multitrack", "renderingArrangement": "Se generează sunetul aranjamentului…", "playingArrangement": "Se redă aranjamentul.", "stoppedArrangement": "Aranjament oprit.", "arrangementError": "Aranjamentul nu poate fi redat sau exportat. Reîncearcă.", "instPiano": "Pian", "instGuitar": "Chitară", "instHarp": "Harpă", "instBox": "Cutie muzicală", "instXylo": "Xilofon", "instViolin": "Vioară", "instCello": "Violoncel", "instStrings": "Corzi", "instFlute": "Flaut", "instClarinet": "Clarinet", "instTrumpet": "Trompetă", "instOrgan": "Orgă", "instSynth": "Sintetizator", "instBass": "Bas electric"});
 Object.assign(I18N.en,{"arrangement": "Instrumental arrangement", "arrangementHint": "Each version keeps a snapshot of the edited melody. Tempo scales timing, key transposes the melody; major/minor changes harmony. Changes leave the WAV, analysis and performance intact. Create a new version to use later melody edits.", "createArrangement": "Create arrangement version", "arrangementVersion": "Arrangement version", "revision": "revision", "arrangementTempo": "Arrangement tempo (BPM)", "arrangementKey": "Arrangement key", "arrangementMode": "Arrangement mode", "arrangementTiming": "Arrangement timing", "lead": "Lead", "chords": "Chords", "bass": "Bass", "drums": "Drums", "partEnabled": "Enabled", "partVolume": "Volume", "standard": "Standard kit", "soft": "Soft kit", "electronic": "Electronic kit", "arrangementRoll": "Arrangement piano roll: lead, chords, bass and drums", "playArrangement": "Play arrangement", "stopArrangement": "Stop arrangement", "saveArrangementWav": "Save stereo WAV", "saveArrangementMidi": "Save multitrack MIDI", "renderingArrangement": "Rendering arrangement audio…", "playingArrangement": "Playing arrangement.", "stoppedArrangement": "Arrangement stopped.", "arrangementError": "Cannot play or export the arrangement. Try again.", "instPiano": "Piano", "instGuitar": "Guitar", "instHarp": "Harp", "instBox": "Music box", "instXylo": "Xylophone", "instViolin": "Violin", "instCello": "Cello", "instStrings": "Strings", "instFlute": "Flute", "instClarinet": "Clarinet", "instTrumpet": "Trumpet", "instOrgan": "Organ", "instSynth": "Synthesizer", "instBass": "Electric bass"});
+Object.assign(I18N.ro,{sampleSet:'Set de mostre',synthOnly:'Sunet sintetizat',importWav:'Importă WAV',sampleDetails:'Detalii ale mostrei (nota MIDI este necesară pentru redare)'});
+Object.assign(I18N.en,{sampleSet:'Sample set',synthOnly:'Synthesized sound',importWav:'Import WAV',sampleDetails:'Sample details (MIDI note needed for playback)'});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
 Object.assign(I18N.en,{backupImport:'Restore an exported project',backupHint:'1. Select the project JSON. 2. Select all source WAVs with their exported names (multiple selection). 3. Validate, then import a separate project. No folder picker is needed.',backupJsonLabel:'Project JSON',backupWavsLabel:'Exported source WAVs',validateBackup:'Validate backup',restoreBackup:'Import separate project',cancelBackup:'Cancel import',importing:'Validating backup…',backupSelect:'Select the project JSON and source WAVs.',backupReady:v=>`Backup validated: ${v.name}\n${v.count} recordings. Only these named WAVs will be imported:\n${v.files.join('\n')}\nPress “Import separate project” to restore.`,backupJson:'Invalid JSON. Select the exported project metadata.',backupInvalid:p=>`Inconsistent backup: ${p}. Check metadata and source files.`,backupVersion:p=>`Unsupported version or data: ${p}. This page supports schema and helpers v1.`,backupFiles:v=>[v.missing.length?'Missing WAVs:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Ambiguous WAV names (select one file for each name):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`Invalid or unsupported WAV: ${p}. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.`,backupCancelled:'Import cancelled. Existing projects remain unchanged.',backupRestored:'Separate project imported. WAVs and musical data were preserved.',backupRead:'Cannot read the files. Select them again.'});
 const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
@@ -1585,8 +1587,11 @@ async function analyzeTake(r){
 async function importWav(file){
   try{
     const meta=await P.inspectWav(file),recId=id();
+    const purpose=$('purpose').value,midi=$('midiNote').value;
+    if(purpose==='sample' && midi!=='' && (!Number.isInteger(+midi)||+midi<0||+midi>127)){say('badNote',true);return;}
+    const sample=purpose==='sample'?Object.fromEntries(['instrument','note','midiNote','articulation','dynamic','notes'].map(k=>[k,k==='midiNote'?(midi===''?null:+midi):$(k).value.trim()])):null;
     // Imported masters keep their original encoding, header and metadata chunks.
-    const r={id:recId,name:file.name.replace(/\.wav$/i,'').slice(0,120)||t('take'),createdAt:now(),duration:meta.duration,mimeType:'audio/wav',sampleRate:meta.sampleRate,channelCount:meta.channelCount,bitDepth:meta.bitDepth,purpose:'melody',source:{assetId:recId,immutable:true,size:file.size,captureBackend:'WAV import',encoding:meta.encoding,originalFilename:file.name,inputSettings:{}},waveform:[],derivedAssets:[],performance:null};
+    const r={id:recId,name:$('takeName').value.trim().slice(0,120)||file.name.replace(/\.wav$/i,'').slice(0,120)||t('take'),createdAt:now(),duration:meta.duration,mimeType:'audio/wav',sampleRate:meta.sampleRate,channelCount:meta.channelCount,bitDepth:meta.bitDepth,purpose,...(sample?{sample}:{}),source:{assetId:recId,immutable:true,size:file.size,captureBackend:'WAV import',encoding:meta.encoding,originalFilename:file.name,inputSettings:{}},waveform:[],derivedAssets:[],performance:null};
     project.recordings.push(r);pendingBlobs.set(recId,file);touch();if(await persist())say('imported');await render();
   }catch(_){say('badWav',true);}
 }
@@ -1675,14 +1680,40 @@ function stopArrangement(){
   if(statusKey==='playingArrangement' || statusKey==='renderingArrangement')say('stoppedArrangement');
   paintState();
 }
+function sampleSets(){
+  const sets=new Map();
+  for(const r of project.recordings)if(r.purpose==='sample' && r.sample && r.sample.instrument && Number.isInteger(r.sample.midiNote) && r.sample.midiNote>=0 && r.sample.midiNote<=127){
+    const name=r.sample.instrument.trim();if(name){const group=sets.get(name)||[];group.push(r);sets.set(name,group);}
+  }
+  return sets;
+}
+async function arrangementSamples(a,ctx,cancelled){
+  const available=sampleSets(),selected=new Set(['lead','chords','bass'].filter(id=>a.parts[id].enabled && a.parts[id].volume).map(id=>a.parts[id].sampleSet).filter(Boolean)),result=Object.create(null);
+  for(const name of selected){result[name]=[];
+    for(const r of available.get(name)||[]){
+      if(cancelled())throw new Error('cancelled');
+      try{
+        const blob=await blobFor(r);if(!blob || blob.size>64*1048576)continue;
+        const decoded=await ctx.decodeAudioData(await blob.arrayBuffer());if(cancelled())throw new Error('cancelled');
+        if(decoded.duration>30 || ![1,2].includes(decoded.numberOfChannels))continue;
+        result[name].push({midiNote:r.sample.midiNote,dynamic:r.sample.dynamic,channels:Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i)),sampleRate:decoded.sampleRate});
+      }catch(e){if(cancelled())throw new Error('cancelled');}
+    }
+  }
+  return result;
+}
 async function arrangementAudio(a,play){
   stopArrangement();stopPreview();document.querySelectorAll('.take audio').forEach(audio=>audio.pause());
-  const job={cancelled:false,ctx:null,node:null,started:false};arrangementJob=job;paintState();say('renderingArrangement');
+  const job={cancelled:false,ctx:null,decodeCtx:null,node:null,started:false};arrangementJob=job;paintState();say('renderingArrangement');
   try{
     // Open/resume in the user's gesture, before asynchronous synthesis.
     if(play){if(!AC)throw new Error('audio');job.ctx=new AC();await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');
       job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
-    const mix=await A.render(a,{cancelled:()=>job.cancelled});
+    const needsSamples=['lead','chords','bass'].some(id=>a.parts[id].enabled && a.parts[id].volume && a.parts[id].sampleSet);
+    if(needsSamples && !job.ctx && AC)try{job.decodeCtx=new AC();}catch(_){}
+    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled):{};
+    if(job.decodeCtx){await job.decodeCtx.close();job.decodeCtx=null;}
+    const mix=await A.render(a,{samples,cancelled:()=>job.cancelled});
     if(job.cancelled)return;
     if(play){
       const ctx=job.ctx,buffer=ctx.createBuffer(2,mix.L.length,mix.sr);buffer.copyToChannel(mix.L,0);buffer.copyToChannel(mix.R,1);
@@ -1692,7 +1723,7 @@ async function arrangementAudio(a,play){
       const result=await ScuLaFolder.save(arrangementFilename(a,'wav'),A.wav(mix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
     }
   }catch(e){if(!job.cancelled)say('arrangementError',true);}
-  finally{if(!play || !job.started){if(arrangementJob===job)stopArrangement();}}
+  finally{if(job.decodeCtx){job.decodeCtx.close().catch(()=>{});job.decodeCtx=null;}if(!play || !job.started){if(arrangementJob===job)stopArrangement();}}
 }
 function arrangementFilename(a,ext){return projectStem()+'-arrangement-v'+a.version+'-'+a.id+'.'+ext;}
 async function exportArrangementMidi(a){const result=await ScuLaFolder.save(arrangementFilename(a,'mid'),A.midi(a),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';}
@@ -1745,6 +1776,13 @@ function arrangementEditor(r){
     const inst=document.createElement('select');inst.setAttribute('aria-label',t(id)+' '+t('instrument'));
     (id==='drums'?Object.keys(A.KITS):Object.keys(S.INSTR)).forEach(key=>inst.add(new Option(t(id==='drums'?key:S.INSTR[key].k),key)));inst.value=p.instrument;
     inst.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].instrument=inst.value;}));
+    if(id!=='drums'){
+      const set=document.createElement('select');set.setAttribute('aria-label',t(id)+' '+t('sampleSet'));
+      set.add(new Option(t('synthOnly'),''));for(const name of sampleSets().keys())set.add(new Option(name,name));
+      if(p.sampleSet && !Array.from(set.options).some(o=>o.value===p.sampleSet))set.add(new Option(p.sampleSet+' ('+t('missing')+')',p.sampleSet));
+      set.value=p.sampleSet||'';set.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].sampleSet=set.value;}));
+      fieldset.append(label('sampleSet',set));
+    }
     const volume=document.createElement('input');volume.type='range';volume.min=0;volume.max=1;volume.step=.01;volume.value=p.volume;volume.setAttribute('aria-label',t(id)+' '+t('partVolume'));
     const value=document.createElement('output');value.textContent=Math.round(p.volume*100)+'%';volume.oninput=()=>{value.textContent=Math.round(Number(volume.value)*100)+'%';};
     volume.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].volume=Number(volume.value);}));
