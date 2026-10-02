@@ -3259,7 +3259,20 @@ and the fallback sound for notes without a nearby usable recording. Sample set
 selection is stored per arrangement version; older versions default to synthesis.
 The **Sample Set Editor** groups all recorded/imported sample takes by Instrument,
 including takes without a MIDI note. Each take can audition its untouched source
-WAV or its edited sound. The editor stores `recording.sample.playback` in project
+WAV or its edited sound. The editor draws a peak waveform directly from each
+stored source WAV. Colored markers show playback start, loop start, loop end,
+and the beginning of the loop crossfade. Dragging a marker updates its numeric
+field, and editing a valid number moves its marker. Loop markers remain visible
+but inactive for one shots; enabling Sustain loop activates them. Marker drags
+are constrained by the same timing rules as the numeric fields, and invalid
+numeric edits are rejected without changing saved metadata. The editor also
+lets users change Instrument, MIDI note, and Dynamics on an existing take.
+An empty Instrument or MIDI note leaves the take unassigned until completed;
+changing the MIDI note clears its old descriptive note name. A renamed
+Instrument appears as a new sample set; arrangement versions keep their
+selected set name until the user selects another one. Dynamics affect layer
+selection when several takes cover the same pitch. The editor stores
+`recording.sample.playback` in project
 metadata: `startSeconds`, optional `loopStartSeconds`/`loopEndSeconds` (both `null`
 for one shot), `crossfadeSeconds` and `releaseSeconds`. Times are seconds in the
 source WAV. Playback start must leave at least 30 ms; a sustain loop must fit
@@ -3273,6 +3286,10 @@ missing, oversized, undecodable or unsuitable sample at render time uses the
 selected synth instrument. Editing sample playback affects every arrangement
 version that selects that set, while arrangement notes and MIDI remain fixed.
 Source WAV Blobs and exported WAV bytes are never edited by these controls.
+Waveform peaks are computed in memory from bounded source reads and are not
+stored as replacement audio. Audition, arrangement playback, and stereo export
+all call the same arrangement renderer with the edited metadata; MIDI export
+keeps its arrangement notes and programs.
 The roll draws all four parts in the same
 colors as its legend; disabled/zero-volume parts fade. RO/EN controls repaint
 with the shared language toggle, and part controls stack on narrow phone screens.

@@ -214,7 +214,8 @@ CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrange
 five-semitone shift limit, loop boundaries, release, legacy one-shot defaults,
 invalid settings, velocity and synthesis fallback.
 `node tests/song-sample-browser.js` imports a sample WAV through `file://`,
-edits and reloads sample playback settings, auditions the edited sample,
+checks its waveform, drags all four timing markers, rejects invalid boundaries,
+edits instrument/MIDI/dynamics mapping, reloads metadata, auditions the edited sample,
 checks original bytes and saved selection, compares played channels with exported
 stereo PCM, and checks fallback for missing audio storage or a deleted sample take.
 The browser check opens the shipped page from `file://`, imports a synthetic WAV

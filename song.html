@@ -7,7 +7,7 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem system-ui,sans-serif}main{max-width:64rem;margin:auto;padding:1.5rem 1rem 4rem}h1{margin:0}h2{font-size:1.2rem}p,small{line-height:1.5}small,.hint{color:var(--text-2)}.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-top:1rem}.row{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}label{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:0}input,select,textarea,button{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:.5rem;min-height:2.8rem;padding:.6rem;max-width:100%}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--accent);color:var(--on-accent);font-weight:700}#recordBtn{min-height:4rem;min-width:11rem;font-size:1.2rem}#recordBtn[aria-pressed=true]{background:var(--danger);color:var(--text)}#timer{font:2rem ui-monospace,monospace;min-width:6rem}meter{width:100%;height:1.5rem;accent-color:var(--accent)}#quality{white-space:pre-line;overflow-wrap:anywhere;font-size:.9rem}#status{min-height:1.5rem}#status.error,#backupSummary.error,#recovery{color:var(--danger)}.take{padding:1rem 0;border-top:1px solid var(--border)}.take h3{margin:.3rem 0;overflow-wrap:anywhere}.take audio{width:100%;margin:.6rem 0}.take canvas{width:100%;height:3rem;display:block}.take .row{align-items:center}.badge{color:var(--accent)}[hidden]{display:none!important}@media(max-width:38rem){.grid{grid-template-columns:1fr}main{padding:1rem .75rem 3rem}.panel{padding:.9rem}.row>label{flex-basis:100%}#recordBtn{flex:1}}
 .performance{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.performance h4{margin:0 0 .5rem}.performance .row{margin:.8rem 0}.take canvas.melody-roll{height:11rem;margin:.8rem 0}.note-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0}.note-table{border-collapse:collapse;width:100%;font-size:.9rem}.note-table th,.note-table td{padding:.4rem;text-align:left;border-bottom:1px solid var(--border)}.note-table input{width:6.5rem}.note-table td:nth-child(7){min-width:16rem;color:var(--text-2)}
 .arrangement{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.arrangement h4{margin:0 0 .5rem}.arrangement .row{margin:.8rem 0}.arrangement-parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.arrangement-parts fieldset{min-width:0;margin:0;border:1px solid var(--border);border-radius:.5rem;padding:.75rem;display:grid;gap:.6rem}.arrangement-parts input[type=checkbox]{align-self:start;width:2.8rem;margin:0}.arrangement-parts input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.take canvas.arrangement-roll{height:16rem;margin:.8rem 0}.arrangement-legend{display:flex;gap:1rem;flex-wrap:wrap}.arrangement-legend [data-part=lead]{color:var(--accent)}.arrangement-legend [data-part=chords]{color:var(--ok)}.arrangement-legend [data-part=bass]{color:var(--text-2)}.arrangement-legend [data-part=drums]{color:var(--danger)}@media(max-width:38rem){.arrangement-parts{grid-template-columns:1fr}.arrangement{padding:.75rem}.arrangement .row>button{flex:1 1 9rem}}
-.sample-set-editor{border-top:1px solid var(--border);margin-top:1rem;padding-top:.5rem}.sample-set-editor fieldset{border:1px solid var(--border);border-radius:.5rem;margin:.75rem 0;padding:.75rem;min-width:0}.sample-set-editor legend{padding:0 .4rem}.sample-set-editor .grid{gap:.7rem}.sample-set-editor input[type=checkbox]{width:2.8rem;align-self:start}.sample-set-editor .row{margin-top:.8rem}
+.sample-set-editor{border-top:1px solid var(--border);margin-top:1rem;padding-top:.5rem}.sample-set-editor fieldset{border:1px solid var(--border);border-radius:.5rem;margin:.75rem 0;padding:.75rem;min-width:0}.sample-set-editor legend{padding:0 .4rem}.sample-set-editor .grid{gap:.7rem}.sample-set-editor input[type=checkbox]{width:2.8rem;align-self:start}.sample-set-editor .row{margin-top:.8rem}.sample-wave{position:relative;height:11.2rem;margin:.8rem .7rem 1.8rem;border:1px solid var(--border);border-radius:.4rem;background:var(--surface-2);touch-action:none}.sample-wave canvas{display:block;width:100%;height:100%}.sample-marker{position:absolute;top:var(--marker-top);width:1.5rem;height:2.8rem;min-height:0;padding:0;border:0;border-radius:0;background:transparent;transform:translateX(-50%);touch-action:none;cursor:ew-resize;z-index:1}.sample-marker::before{content:'';display:block;position:absolute;left:calc(50% - 1px);top:calc(-1 * var(--marker-top));height:11.2rem;width:2px;background:var(--marker-color);pointer-events:none}.sample-marker::after{content:'';display:block;position:absolute;top:0;left:calc(50% - .38rem);width:.76rem;height:.76rem;border-radius:0 0 .2rem .2rem;background:var(--marker-color)}.sample-marker:disabled{opacity:.4;cursor:default}.sample-marker:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sample-marker[data-marker=start]{--marker-color:var(--accent);--marker-top:0rem}.sample-marker[data-marker=loopStart]{--marker-color:var(--ok);--marker-top:2.8rem}.sample-marker[data-marker=loopEnd]{--marker-color:var(--danger);--marker-top:5.6rem}.sample-marker[data-marker=crossfade]{--marker-color:var(--text);--marker-top:8.4rem}
 </style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
@@ -1346,7 +1346,7 @@
 <small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
 </section>
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
-<section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Ascultă fiecare mostră și reglează redarea. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
+<section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
 <script src="js/audio/analysis.js"></script>
@@ -1374,8 +1374,10 @@ Object.assign(I18N.ro,{"arrangement": "Aranjament instrumental", "arrangementHin
 Object.assign(I18N.en,{"arrangement": "Instrumental arrangement", "arrangementHint": "Each version keeps a snapshot of the edited melody. Tempo scales timing, key transposes the melody; major/minor changes harmony. Changes leave the WAV, analysis and performance intact. Create a new version to use later melody edits.", "createArrangement": "Create arrangement version", "arrangementVersion": "Arrangement version", "revision": "revision", "arrangementTempo": "Arrangement tempo (BPM)", "arrangementKey": "Arrangement key", "arrangementMode": "Arrangement mode", "arrangementTiming": "Arrangement timing", "lead": "Lead", "chords": "Chords", "bass": "Bass", "drums": "Drums", "partEnabled": "Enabled", "partVolume": "Volume", "standard": "Standard kit", "soft": "Soft kit", "electronic": "Electronic kit", "arrangementRoll": "Arrangement piano roll: lead, chords, bass and drums", "playArrangement": "Play arrangement", "stopArrangement": "Stop arrangement", "saveArrangementWav": "Save stereo WAV", "saveArrangementMidi": "Save multitrack MIDI", "renderingArrangement": "Rendering arrangement audio…", "playingArrangement": "Playing arrangement.", "stoppedArrangement": "Arrangement stopped.", "arrangementError": "Cannot play or export the arrangement. Try again.", "instPiano": "Piano", "instGuitar": "Guitar", "instHarp": "Harp", "instBox": "Music box", "instXylo": "Xylophone", "instViolin": "Violin", "instCello": "Cello", "instStrings": "Strings", "instFlute": "Flute", "instClarinet": "Clarinet", "instTrumpet": "Trumpet", "instOrgan": "Organ", "instSynth": "Synthesizer", "instBass": "Electric bass"});
 Object.assign(I18N.ro,{sampleSet:'Set de mostre',synthOnly:'Sunet sintetizat',importWav:'Importă WAV',sampleDetails:'Detalii ale mostrei (nota MIDI este necesară pentru redare)'});
 Object.assign(I18N.en,{sampleSet:'Sample set',synthOnly:'Synthesized sound',importWav:'Import WAV',sampleDetails:'Sample details (MIDI note needed for playback)'});
-Object.assign(I18N.ro,{sampleSetEditor:'Editor de seturi de mostre',sampleSetHint:'Ascultă fiecare mostră și reglează redarea. WAV-urile sursă rămân neschimbate.',unassignedSamples:'Fără instrument',playbackStart:'Început redare (s)',sustainLoop:'Buclă de susținere',loopStart:'Început buclă (s)',loopEnd:'Sfârșit buclă (s)',loopCrossfade:'Suprapunere buclă (s)',sampleRelease:'Eliberare (s)',auditionSample:'Ascultă mostra editată',sampleEditInvalid:'Timpii mostrei sunt invalizi. Bucla trebuie să fie în WAV, după începutul redării; suprapunerea trebuie să fie mai scurtă decât jumătate din buclă.',sampleUnavailable:'Mostra nu este disponibilă pentru redare.'});
-Object.assign(I18N.en,{sampleSetEditor:'Sample Set Editor',sampleSetHint:'Audition each sample and adjust playback. Source WAVs stay unchanged.',unassignedSamples:'No instrument',playbackStart:'Playback start (s)',sustainLoop:'Sustain loop',loopStart:'Loop start (s)',loopEnd:'Loop end (s)',loopCrossfade:'Loop crossfade (s)',sampleRelease:'Release (s)',auditionSample:'Audition edited sample',sampleEditInvalid:'Invalid sample timing. Keep the loop inside the WAV and after playback start; crossfade must be shorter than half the loop.',sampleUnavailable:'Sample is unavailable for playback.'});
+Object.assign(I18N.ro,{sampleSetEditor:'Editor de seturi de mostre',sampleSetHint:'Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.',unassignedSamples:'Fără instrument',playbackStart:'Început redare (s)',sustainLoop:'Buclă de susținere',loopStart:'Început buclă (s)',loopEnd:'Sfârșit buclă (s)',loopCrossfade:'Suprapunere buclă (s)',sampleRelease:'Eliberare (s)',auditionSample:'Ascultă mostra editată',sampleEditInvalid:'Timpii mostrei sunt invalizi. Bucla trebuie să fie în WAV, după începutul redării; suprapunerea trebuie să fie mai scurtă decât jumătate din buclă.',sampleUnavailable:'Mostra nu este disponibilă pentru redare.'});
+Object.assign(I18N.en,{sampleSetEditor:'Sample Set Editor',sampleSetHint:'Adjust sample timing and mapping. Source WAVs stay unchanged.',unassignedSamples:'No instrument',playbackStart:'Playback start (s)',sustainLoop:'Sustain loop',loopStart:'Loop start (s)',loopEnd:'Loop end (s)',loopCrossfade:'Loop crossfade (s)',sampleRelease:'Release (s)',auditionSample:'Audition edited sample',sampleEditInvalid:'Invalid sample timing. Keep the loop inside the WAV and after playback start; crossfade must be shorter than half the loop.',sampleUnavailable:'Sample is unavailable for playback.'});
+Object.assign(I18N.ro,{sampleWaveform:'Forma de undă a mostrei',sampleMarker:'marcaj',sampleMarkerHint:'Trage marcajele sau editează timpii. Marcajul alb arată începutul suprapunerii.',sampleMappingInvalid:'Instrumentul trebuie să aibă cel mult 120 de caractere, iar nota MIDI trebuie să fie între 0 și 127.'});
+Object.assign(I18N.en,{sampleWaveform:'Sample waveform',sampleMarker:'marker',sampleMarkerHint:'Drag markers or edit times. The white marker shows where the crossfade begins.',sampleMappingInvalid:'Instrument must be at most 120 characters and MIDI note must be from 0 to 127.'});
 Object.assign(I18N.ro,{auditionSource:'Ascultă WAV-ul sursă'});
 Object.assign(I18N.en,{auditionSource:'Audition source WAV'});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
@@ -1695,6 +1697,46 @@ function sampleSets(){
   }
   return sets;
 }
+const sampleWaveCache=new Map();
+async function sampleWavePeaks(r){
+  if(sampleWaveCache.has(r.id))return sampleWaveCache.get(r.id);
+  const task=(async()=>{
+    const blob=await blobFor(r),meta=await P.inspectWav(blob),peaks=new Float32Array(512);
+    const frames=meta.dataBytes/meta.alignment,step=meta.bitDepth/8;
+    for(let first=0;first<frames;){
+      const count=Math.min(frames-first,Math.max(1,Math.floor(65536/meta.alignment)));
+      const bytes=await blob.slice(meta.dataOffset+first*meta.alignment,meta.dataOffset+(first+count)*meta.alignment).arrayBuffer();
+      if(bytes.byteLength!==count*meta.alignment)throw new Error('badWav');
+      const view=new DataView(bytes);
+      for(let i=0;i<count;i++){
+        let peak=0;
+        for(let c=0;c<meta.channelCount;c++){
+          const at=i*meta.alignment+c*step;
+          let value;
+          if(meta.encoding===3)value=view.getFloat32(at,true);
+          else if(meta.bitDepth===16)value=view.getInt16(at,true)/32768;
+          else if(meta.bitDepth===32)value=view.getInt32(at,true)/2147483648;
+          else {let v=view.getUint8(at)|(view.getUint8(at+1)<<8)|(view.getUint8(at+2)<<16);if(v&0x800000)v-=0x1000000;value=v/8388608;}
+          peak=Math.max(peak,Number.isFinite(value)?Math.abs(value):0);
+        }
+        const bin=Math.min(511,Math.floor((first+i)*512/frames));peaks[bin]=Math.max(peaks[bin],peak);
+      }
+      first+=count;
+      if(first% (count*16)===0)await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    return peaks;
+  })();
+  sampleWaveCache.set(r.id,task);
+  try{return await task;}catch(e){sampleWaveCache.delete(r.id);throw e;}
+}
+async function drawSampleWave(r,canvas){
+  let peaks;
+  try{peaks=await sampleWavePeaks(r);}catch(_){peaks=r.waveform||[];}
+  if(!canvas.isConnected)return;
+  const ctx=canvas.getContext('2d'),width=canvas.width,height=canvas.height;
+  ctx.clearRect(0,0,width,height);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  peaks.forEach((peak,i)=>{const x=i*width/peaks.length,h=Math.max(1,Math.min(1,peak)*height*.45);ctx.fillRect(x,height/2-h,Math.max(1,width/peaks.length),h*2);});
+}
 function renderSampleSetEditor(){
   const all=new Map();
   for(const r of project.recordings)if(r.purpose==='sample'){
@@ -1715,23 +1757,65 @@ function renderSampleSetEditor(){
       const to=numericInput(p.loopEndSeconds??Math.max(.03,r.duration*.75),0,r.duration,.001,t('loopEnd'));
       const fade=numericInput(p.crossfadeSeconds,.001,.1,.001,t('loopCrossfade'));
       const release=numericInput(p.releaseSeconds,.01,2,.01,t('sampleRelease'));
+      const instrument=document.createElement('input');instrument.value=r.sample?.instrument||'';instrument.maxLength=120;
+      const midi=numericInput(r.sample?.midiNote??'',0,127,1,t('midiNote'));midi.value=r.sample?.midiNote??'';
+      const dynamic=document.createElement('input');dynamic.value=r.sample?.dynamic||'';dynamic.maxLength=120;
       const loopFields=[from,to,fade];const toggle=()=>loopFields.forEach(input=>{input.disabled=!loop.checked;input.dataset.empty=String(!loop.checked);});toggle();
+      const playback=()=>({startSeconds:Number(start.value),loopStartSeconds:loop.checked?Number(from.value):null,loopEndSeconds:loop.checked?Number(to.value):null,crossfadeSeconds:Number(fade.value),releaseSeconds:Number(release.value)});
       const save=()=>run(async()=>{
-        const next={startSeconds:Number(start.value),loopStartSeconds:loop.checked?Number(from.value):null,loopEndSeconds:loop.checked?Number(to.value):null,crossfadeSeconds:Number(fade.value),releaseSeconds:Number(release.value)};
+        const next=playback();
         if(!A.samplePlayback(next,r.duration)){say('sampleEditInvalid',true);await render();return;}
         r.sample={...(r.sample||{}),playback:next};touch();await persist();await render();
       });
-      [start,from,to,fade,release].forEach(input=>input.onchange=save);loop.onchange=()=>{toggle();save();};
+      const mapping=()=>run(async()=>{
+        const name=instrument.value.trim(),value=midi.value.trim(),pitch=value===''?null:Number(value);
+        if(name.length>120 || value!=='' && (!Number.isInteger(pitch)||pitch<0||pitch>127)){say('sampleMappingInvalid',true);await render();return;}
+        r.sample={...(r.sample||{}),instrument:name,midiNote:pitch,dynamic:dynamic.value.trim(),...(pitch!==r.sample?.midiNote?{note:''}:{})};
+        touch();await persist();await render();
+      });
+      [instrument,midi,dynamic].forEach(input=>input.onchange=mapping);
+      const wave=document.createElement('div');wave.className='sample-wave';wave.setAttribute('aria-label',r.name+' '+t('sampleWaveform'));
+      const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=112;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',r.name+' '+t('sampleWaveform'));wave.append(canvas);
+      const markerInputs={start,loopStart:from,loopEnd:to,crossfade:fade},markerKeys={start:'playbackStart',loopStart:'loopStart',loopEnd:'loopEnd',crossfade:'loopCrossfade'},markers={};
+      const markerTime=(kind,next)=>kind==='crossfade'?Number(to.value)-next.crossfadeSeconds:kind==='start'?next.startSeconds:Number(markerInputs[kind].value);
+      const paintMarkers=()=>{
+        const next=playback();if(!A.samplePlayback(next,r.duration))return;
+        for(const [kind,marker] of Object.entries(markers)){
+          const time=markerTime(kind,next);marker.style.left=(100*Math.max(0,Math.min(1,time/r.duration)))+'%';
+          marker.dataset.empty=String(kind!=='start'&&!loop.checked);marker.disabled=marker.dataset.empty==='true';marker.setAttribute('aria-valuenow',String(Number(time.toFixed(3))));
+        }
+      };
+      for(const kind of Object.keys(markerInputs)){
+        const marker=document.createElement('button');marker.type='button';marker.className='sample-marker';marker.dataset.marker=kind;
+        marker.setAttribute('role','slider');marker.setAttribute('aria-label',r.name+' '+t(markerKeys[kind])+' '+t('sampleMarker'));marker.setAttribute('aria-valuemin','0');marker.setAttribute('aria-valuemax',String(r.duration));
+        const move=clientX=>{
+          const bounds=wave.getBoundingClientRect(),time=Math.round(Math.max(0,Math.min(r.duration,(clientX-bounds.left)/bounds.width*r.duration))*1000)/1000;
+          const next=playback();if(kind==='crossfade')next.crossfadeSeconds=Math.round((next.loopEndSeconds-time)*1000)/1000;
+          else next[kind==='start'?'startSeconds':kind+'Seconds']=time;
+          if(!A.samplePlayback(next,r.duration))return;
+          markerInputs[kind].value=String(kind==='crossfade'?next.crossfadeSeconds:time);paintMarkers();
+        };
+        marker.onpointerdown=e=>{if(marker.disabled)return;marker.setPointerCapture(e.pointerId);marker.dataset.before=markerInputs[kind].value;move(e.clientX);e.preventDefault();};
+        marker.onpointermove=e=>{if(marker.hasPointerCapture(e.pointerId))move(e.clientX);};
+        marker.onpointerup=e=>{if(!marker.hasPointerCapture(e.pointerId))return;marker.releasePointerCapture(e.pointerId);if(markerInputs[kind].value!==marker.dataset.before)save();};
+        marker.onpointercancel=e=>{if(!marker.hasPointerCapture(e.pointerId))return;marker.releasePointerCapture(e.pointerId);markerInputs[kind].value=marker.dataset.before;paintMarkers();};
+        marker.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key)||marker.disabled)return;e.preventDefault();const before=markerInputs[kind].value,at=markerTime(kind,playback())+(e.key==='ArrowRight'?.001:-.001);move(wave.getBoundingClientRect().left+at/r.duration*wave.getBoundingClientRect().width);if(markerInputs[kind].value!==before)save();};
+        markers[kind]=marker;wave.append(marker);
+      }
+      paintMarkers();item.append(wave);drawSampleWave(r,canvas);
+      const hint=document.createElement('small');hint.textContent=t('sampleMarkerHint');item.append(hint);
+      [start,from,to,fade,release].forEach(input=>{input.oninput=paintMarkers;input.onchange=save;});loop.onchange=()=>{toggle();paintMarkers();save();};
       const controls=document.createElement('div');controls.className='grid';controls.append(field(r,'playbackStart',start),field(r,'sustainLoop',loop),field(r,'loopStart',from),field(r,'loopEnd',to),field(r,'loopCrossfade',fade),field(r,'sampleRelease',release));item.append(controls);
+      const mappingControls=document.createElement('div');mappingControls.className='grid';mappingControls.append(field(r,'instrument',instrument),field(r,'midiNote',midi),field(r,'dynamic',dynamic));item.append(mappingControls);
       const source=button('auditionSource',async()=>{const audio=document.querySelector(`.take[data-id="${r.id}"] audio`);if(!audio?.src){say('sampleUnavailable',true);return;}stopArrangement();audio.currentTime=0;await audio.play();});
-      const audition=button('auditionSample',()=>auditionEditedSample(r));audition.dataset.empty=String(!Number.isInteger(r.sample?.midiNote));
+      const audition=button('auditionSample',()=>auditionEditedSample(r));audition.dataset.empty=String(!r.sample?.instrument?.trim()||!Number.isInteger(r.sample?.midiNote));
       const actions=document.createElement('div');actions.className='row';actions.append(source,audition);item.append(actions);group.append(item);
     }
     host.append(group);
   }
 }
 async function auditionEditedSample(r){
-  if(!Number.isInteger(r.sample?.midiNote)||!A.samplePlayback(r.sample.playback,r.duration)){say('sampleUnavailable',true);return;}
+  if(!r.sample?.instrument?.trim()||!Number.isInteger(r.sample?.midiNote)||!A.samplePlayback(r.sample.playback,r.duration)){say('sampleUnavailable',true);return;}
   const name=r.sample.instrument.trim(),note={start:0,dur:1.5,midi:r.sample.midiNote,vel:.8,velocity:102,cents:0};
   const parts={lead:{instrument:'piano',sampleSet:name,enabled:true,volume:1,notes:[note]},chords:{instrument:'strings',enabled:false,volume:1,notes:[]},bass:{instrument:'bass',enabled:false,volume:1,notes:[]},drums:{instrument:'standard',enabled:false,volume:1,notes:[]}};
   await arrangementAudio({tempoBpm:120,timingMode:'original',key:{tonic:0,mode:'major'},duration:2,parts},true,r.id);

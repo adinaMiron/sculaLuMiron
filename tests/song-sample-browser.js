@@ -11,6 +11,10 @@ function sampleWav(){
 }
 async function ready(page){await page.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');}
 async function save(page,button){const pending=page.waitForEvent('download');await button.click();const d=await pending;return fs.readFileSync(await d.path());}
+async function dragMarker(page,kind,seconds,duration=1){
+ const wave=page.locator('.sample-wave').first(),marker=wave.locator(`[data-marker="${kind}"]`),box=await wave.boundingBox(),from=await marker.boundingBox();
+ await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width*seconds/duration,from.y+from.height/2,{steps:5});await page.mouse.up();await ready(page);
+}
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.PW_CHROME_PATH});
  try{
@@ -24,13 +28,28 @@ async function save(page,button){const pending=page.waitForEvent('download');awa
   await page.selectOption('#purpose','sample');await page.fill('#instrument','My Flute');await page.fill('#midiNote','60');await page.fill('#dynamic','mf');
   await page.setInputFiles('#importWav',{name:'flute.wav',mimeType:'audio/wav',buffer:source});await ready(page);await page.waitForFunction(()=>document.querySelectorAll('.take').length===2);
   assert.deepEqual(await save(page,page.locator('.take').nth(1).getByRole('button',{name:'Save WAV',exact:true})),source,'source WAV must remain byte-for-byte unchanged');
-  const sampleEditor=page.locator('.sample-set-editor fieldset');assert.equal(await sampleEditor.count(),1);
+  const sampleEditor=page.locator('.sample-set-editor fieldset');await sampleEditor.waitFor();assert.equal(await sampleEditor.count(),1,errors.join('\n'));
+  await page.waitForFunction(()=>{const c=document.querySelector('.sample-wave canvas');if(!c)return false;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;return d.some((v,i)=>i%4===3&&v>0);});
+  assert.equal(await sampleEditor.locator('.sample-marker').count(),4,'all four timing markers remain visible for one shots');
   await page.getByLabel('flute Playback start (s)',{exact:true}).fill('0.05');await page.getByLabel('flute Playback start (s)',{exact:true}).press('Tab');await ready(page);
   await page.getByLabel('flute Sustain loop',{exact:true}).check();await ready(page);
   await page.getByLabel('flute Loop start (s)',{exact:true}).fill('0.2');await page.getByLabel('flute Loop start (s)',{exact:true}).press('Tab');await ready(page);
   await page.getByLabel('flute Loop end (s)',{exact:true}).fill('0.8');await page.getByLabel('flute Loop end (s)',{exact:true}).press('Tab');await ready(page);
   await page.getByLabel('flute Loop crossfade (s)',{exact:true}).fill('0.03');await page.getByLabel('flute Loop crossfade (s)',{exact:true}).press('Tab');await ready(page);
   await page.getByLabel('flute Release (s)',{exact:true}).fill('0.2');await page.getByLabel('flute Release (s)',{exact:true}).press('Tab');await ready(page);
+  assert.equal(await page.locator('.sample-marker[data-marker="start"]').evaluate(el=>parseFloat(el.style.left)),5,'number edits move the playback marker');
+  assert.equal(await page.locator('.sample-marker[data-marker="crossfade"]').evaluate(el=>parseFloat(el.style.left)),77,'crossfade marker shows the overlap start');
+  await dragMarker(page,'start',.1);assert.ok(Math.abs(Number(await page.getByLabel('flute Playback start (s)',{exact:true}).inputValue())-.1)<.012);
+  await dragMarker(page,'loopStart',.25);assert.ok(Math.abs(Number(await page.getByLabel('flute Loop start (s)',{exact:true}).inputValue())-.25)<.012);
+  await dragMarker(page,'loopEnd',.75);assert.ok(Math.abs(Number(await page.getByLabel('flute Loop end (s)',{exact:true}).inputValue())-.75)<.012);
+  await dragMarker(page,'crossfade',.7);assert.ok(Math.abs(Number(await page.getByLabel('flute Loop crossfade (s)',{exact:true}).inputValue())-.05)<.012);
+  let edited=JSON.parse(await save(page,page.locator('#exportProject'))).recordings[1].sample.playback;
+  assert.ok(Math.abs(edited.startSeconds-.1)<.012 && Math.abs(edited.loopStartSeconds-.25)<.012 && Math.abs(edited.loopEndSeconds-.75)<.012 && Math.abs(edited.crossfadeSeconds-.05)<.012,'dragged values persist as playback metadata');
+  await dragMarker(page,'loopStart',.9);assert.ok(Math.abs(Number(await page.getByLabel('flute Loop start (s)',{exact:true}).inputValue())-.25)<.012,'marker cannot cross loop end');
+  await page.getByLabel('flute Loop end (s)',{exact:true}).fill('0.26');await page.getByLabel('flute Loop end (s)',{exact:true}).press('Tab');await ready(page);
+  assert.match(await page.textContent('#status'),/Invalid sample timing/);
+  edited=JSON.parse(await save(page,page.locator('#exportProject'))).recordings[1].sample.playback;assert.ok(Math.abs(edited.loopEndSeconds-.75)<.012,'invalid field edit does not persist');
+  for(const [key,value] of [['Playback start (s)','0.05'],['Loop start (s)','0.2'],['Loop end (s)','0.8'],['Loop crossfade (s)','0.03']]){const input=page.getByLabel('flute '+key,{exact:true});await input.fill(value);await input.press('Tab');await ready(page);}
   assert.deepEqual(await save(page,page.locator('.take').nth(1).getByRole('button',{name:'Save WAV',exact:true})),source,'sample edits must leave every source byte unchanged');
   await sampleEditor.getByRole('button',{name:'Audition edited sample'}).click();await page.waitForFunction(()=>window.played && document.querySelector('#status').textContent.includes('Playing arrangement'));
   const originalMidi=await save(page,page.getByRole('button',{name:'Save multitrack MIDI',exact:true}));
@@ -47,6 +66,31 @@ async function save(page,button){const pending=page.waitForEvent('download');awa
   assert.deepEqual(metadata.recordings[1].sample.playback,{startSeconds:.05,loopStartSeconds:.2,loopEndSeconds:.8,crossfadeSeconds:.03,releaseSeconds:.2});
   await page.reload();await ready(page);assert.equal(await page.getByLabel('Lead Sample set',{exact:true}).inputValue(),'My Flute');
   assert.equal(await page.getByLabel('flute Loop end (s)',{exact:true}).inputValue(),'0.8');
+  const originalSet=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);
+  await page.getByLabel('flute Instrument',{exact:true}).fill('New Flute');await page.getByLabel('flute Instrument',{exact:true}).press('Tab');await ready(page);
+  assert.equal(await page.locator('.sample-set-editor').getAttribute('aria-label'),'New Flute');
+  await page.getByLabel('flute Velocity / dynamics',{exact:true}).fill('ff');await page.getByLabel('flute Velocity / dynamics',{exact:true}).press('Tab');await ready(page);
+  await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
+  assert.equal(await page.locator('.sample-set-editor').getByRole('button',{name:'Audition edited sample'}).isDisabled(),true,'an unpitched take remains editable but cannot map yet');
+  await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('90');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
+  assert.equal(await page.getByLabel('Lead Sample set',{exact:true}).inputValue(),'My Flute','arrangement version keeps its selected set');
+  const unmapped=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.notDeepEqual(unmapped,originalSet);
+  await page.getByLabel('Lead Sample set',{exact:true}).selectOption('New Flute');await ready(page);
+  const tooFar=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.deepEqual(tooFar,unmapped,'out of range MIDI note falls back to synthesis');
+  await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('60');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
+  const remapped=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.deepEqual(remapped,originalSet,'remapped take plays through the same renderer');
+  await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('128');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
+  assert.match(await page.textContent('#status'),/Instrument must/);assert.equal(await page.getByLabel('flute MIDI note (0–127)',{exact:true}).inputValue(),'60');
+  await page.reload();await ready(page);assert.equal(await page.getByLabel('flute Instrument',{exact:true}).inputValue(),'New Flute');assert.equal(await page.getByLabel('flute Velocity / dynamics',{exact:true}).inputValue(),'ff');
+  assert.deepEqual(await save(page,page.locator('.take').nth(0).getByRole('button',{name:'Save WAV',exact:true})),melody);
+  assert.deepEqual(await save(page,page.locator('.take').nth(1).getByRole('button',{name:'Save WAV',exact:true})),source,'mapping edits leave both WAV sources unchanged');
+  await page.getByLabel('flute Instrument',{exact:true}).fill('My Flute');await page.getByLabel('flute Instrument',{exact:true}).press('Tab');await ready(page);
+  await page.getByLabel('Lead Sample set',{exact:true}).selectOption('My Flute');await ready(page);
+  await page.getByLabel('flute Sustain loop',{exact:true}).uncheck();await ready(page);
+  assert.equal(await page.locator('.sample-marker[data-marker="loopStart"]').isDisabled(),true);
+  assert.deepEqual(JSON.parse(await save(page,page.locator('#exportProject'))).recordings[1].sample.playback.loopStartSeconds,null,'one-shot metadata remains available');
+  await page.getByRole('button',{name:'Audition edited sample'}).click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Playing arrangement'));
+  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'sample controls fit a phone');
   await page.getByLabel('Lead Sample set',{exact:true}).selectOption('');await ready(page);
   const synthesized=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);
   await page.getByLabel('Lead Sample set',{exact:true}).selectOption('My Flute');await ready(page);
@@ -59,6 +103,6 @@ async function save(page,button){const pending=page.waitForEvent('download');awa
   const versions=JSON.parse(await save(page,page.locator('#exportProject'))).arrangements;
   assert.equal(versions.length,2);assert.equal(versions[0].parts.lead.sampleSet,'My Flute');assert.equal(versions[1].parts.lead.sampleSet,undefined);
   assert.deepEqual(errors,[]);await context.close();
-  console.log('PASS  file:// sample import, unchanged source WAV and MIDI, saved/versioned selection, identical playback/export and missing-sample fallback');
+  console.log('PASS  file:// waveform and marker drags, invalid timing, mapping edits, one-shot/reload, immutable WAV and MIDI, played/exported PCM and synthesis fallback');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
