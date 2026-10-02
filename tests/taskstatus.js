@@ -148,6 +148,12 @@ function check(name, ok, detail) {
   check('the next state reaches every selected task',
     await source() === '- [x] unu\n- [x] doi\n\n- [x] trei', await source());
   check('the toolbar tip names the shortcuts', (await page.getAttribute('#task-status-select', 'title')).includes('Ctrl+Shift+7'));
+  const optTips = () => page.evaluate(() => [...document.querySelectorAll('#task-status-select option')].map(o => o.value + '=' + o.title));
+  check('hovering an option shows its own shortcut', (await optTips()).join('|') ===
+    '=|todo=De făcut — Ctrl+Shift+7|inwork=În lucru — Ctrl+Shift+8|onhold=|blocked=|done=Terminată — Ctrl+Shift+9', await optTips());
+  await page.evaluate(() => { UI = 'en'; applyUILang(); });
+  check('and in English', (await optTips()).includes('inwork=In work — Ctrl+Shift+8'), await optTips());
+  await page.evaluate(() => { UI = 'ro'; applyUILang(); });
   // a field elsewhere keeps its own keys
   await place('Plain\n', 'Plain');
   await page.evaluate(() => { const i = document.createElement('input'); i.id = 'tmp-field'; document.body.appendChild(i); i.focus(); });

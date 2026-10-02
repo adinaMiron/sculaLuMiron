@@ -17,6 +17,7 @@ const I18N = {
     taskStatusTip:"Alege starea sarcinii de la cursor sau a sarcinilor selectate (Ctrl+Shift+7 de făcut · 8 în lucru · 9 terminată)",
     taskStatusDefault:"— Stare sarcină —", taskStatusTodo:"☐ De făcut", taskStatusInwork:"◐ În lucru",
     taskStatusOnhold:"Ⅱ În așteptare", taskStatusBlocked:"⛔ Blocată", taskStatusDone:"☑ Terminată",
+    taskStatusTodoTip:"De făcut — Ctrl+Shift+7", taskStatusInworkTip:"În lucru — Ctrl+Shift+8", taskStatusDoneTip:"Terminată — Ctrl+Shift+9",
     filterTaskStatusDefault:"— Toate stările —", filterTaskStatusTip:"Arată doar capitolele cu sarcini în starea aleasă",
     filterAllTodoBtn:"▣ Doar sarcini", filterAllTodoTip:"Arată doar capitolele cu o bifă neterminată („- [ ]”), din toate caietele, și în capitolul deschis doar liniile nebifate",
     // Importance markers. The *syntax* stays English (!nice / !important /
@@ -468,6 +469,7 @@ const I18N = {
     taskStatusTip:"Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)",
     taskStatusDefault:"— Task status —", taskStatusTodo:"☐ To do", taskStatusInwork:"◐ In work",
     taskStatusOnhold:"Ⅱ On hold", taskStatusBlocked:"⛔ Blocked", taskStatusDone:"☑ Done",
+    taskStatusTodoTip:"To do — Ctrl+Shift+7", taskStatusInworkTip:"In work — Ctrl+Shift+8", taskStatusDoneTip:"Done — Ctrl+Shift+9",
     filterTaskStatusDefault:"— All task states —", filterTaskStatusTip:"Show only chapters with tasks in the selected state",
     filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
     impTip:"Show only tasks with the selected importance across all workbooks",

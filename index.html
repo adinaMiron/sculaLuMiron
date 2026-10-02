@@ -3745,11 +3745,11 @@
   <select class="tb-select" id="task-status-select" onchange="setTaskStatus(this.value)"
           data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)">
     <option value="" data-i="taskStatusDefault">— Task status —</option>
-    <option value="todo" data-i="taskStatusTodo">☐ To do</option>
-    <option value="inwork" data-i="taskStatusInwork">◐ In work</option>
+    <option value="todo" data-i="taskStatusTodo" data-i-title="taskStatusTodoTip" title="Ctrl+Shift+7">☐ To do</option>
+    <option value="inwork" data-i="taskStatusInwork" data-i-title="taskStatusInworkTip" title="Ctrl+Shift+8">◐ In work</option>
     <option value="onhold" data-i="taskStatusOnhold">Ⅱ On hold</option>
     <option value="blocked" data-i="taskStatusBlocked">⛔ Blocked</option>
-    <option value="done" data-i="taskStatusDone">☑ Done</option>
+    <option value="done" data-i="taskStatusDone" data-i-title="taskStatusDoneTip" title="Ctrl+Shift+9">☑ Done</option>
   </select>
   <select class="tb-select" id="importance-insert-select" onchange="insertImportanceAtCursor(this.value)"
           data-i-title="impInsertTip" title="Insert an importance marker at the cursor">
