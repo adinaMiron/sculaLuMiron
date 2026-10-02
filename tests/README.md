@@ -212,7 +212,8 @@ CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrange
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-arrangement.js`).
 `node tests/song-timeline.js` checks two humming takes assembled into linked
 sections, order and repeats, proportional overview, pointer/keyboard seeking
-across repeats, section playback, playhead, Stop during rendering and playback
+across repeats, full/section/custom loops and overview ranges, keyboard/touch
+range adjustment in both languages and phone width, section playback, playhead, Stop during rendering and playback
 with audio cleanup, variable-tempo/key MIDI, WAV timing, playback/export PCM
 parity, reload, backup restoration, RO/EN phone layout and byte-identical
 source WAVs.

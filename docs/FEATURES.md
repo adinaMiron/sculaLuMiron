@@ -3376,6 +3376,21 @@ chosen offset, so it follows the same mix as WAV export. Playback position
 exists only in page memory and resets on reload; the project stores only the
 section edits (`id`, `name`, `arrangementId`, `repeats`).
 
+The **Song loop / Buclă melodie** control repeats the full rendered song
+(including its audio tail), one selected section (including all its repeats),
+or a custom start and end. The overview shades the active interval. For a
+custom loop, adjust the two labelled range sliders by touch, pointer or
+keyboard arrows; their time readouts and the overview update immediately.
+Playback starts at the loop start when the playhead lies outside it and wraps
+at the end using the same rendered stereo buffer. Changing the loop during
+playback restarts at the current position if it remains inside the new range.
+With section looping selected, **Play from here** selects that section and
+starts its first repeat.
+The loop mode, selected section and custom times are page-only state: they are
+not written to project JSON or backups, reset on reload or project switch,
+and do not change WAV or MIDI exports. Stop still cancels rendering and closes
+playback resources; the chosen loop remains available until the page resets.
+
 Sections join at each arrangement's musical `duration`, with no inserted gap.
 The preceding stereo reverb/release tail overlaps the next section, including
 repeats. Each section keeps its own tempo and key: there is no tempo averaging,
@@ -3400,7 +3415,8 @@ version references; restore remaps both section IDs and version references.
 
 `tests/song-timeline.js` exercises the file:// UI with two hummed takes,
 section order/duplicate/remove/repeats, proportional overview, pointer and
-keyboard seeking across sections and repeats, section playback, playhead and
+keyboard seeking across sections and repeats, full/section/custom looping,
+touch and keyboard range adjustment, loop boundary restart, section playback, playhead and
 elapsed time, Stop during rendering and playback with audio cleanup, tempo and
 key MIDI joins, WAV timing, playback buffer versus exported PCM, reload,
 backup restore, source WAV bytes, RO/EN and phone width.

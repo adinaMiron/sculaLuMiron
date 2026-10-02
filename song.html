@@ -10,6 +10,7 @@
 .song-section{border-top:1px solid var(--border);padding:.8rem 0}.song-section .row{align-items:center}.song-section label{min-width:9rem}.song-section .section-name{flex:1 1 10rem}.song-section .section-version{flex:2 1 15rem}.song-section .section-repeats{flex:0 1 6rem}.song-section button{min-width:2.8rem}.song-section small{display:block;margin:.3rem 0}.song-actions{margin-top:1rem}
 .song-overview-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0;scrollbar-gutter:stable}.song-overview{min-width:max(100%,40rem);position:relative}.song-overview-blocks{display:flex;min-height:7rem;border:1px solid var(--border);border-radius:.5rem;overflow:hidden}.song-overview-block{flex:var(--song-duration) 1 0;min-width:0;min-height:7rem;border:0;border-right:1px solid var(--border);border-radius:0;text-align:left;padding:.45rem;background:var(--surface-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:flex;flex-direction:column;gap:.1rem}.song-overview-block:nth-child(even){background:var(--border)}.song-overview-block:last-child{border-right:0}.song-overview-block span{overflow:hidden;text-overflow:ellipsis}.song-overview-block strong{color:var(--accent)}.song-overview-block small{color:var(--text);line-height:1.25}.song-overview-block .song-repeat-marks{display:flex;gap:0;width:100%;margin-top:auto;height:.45rem;pointer-events:none}.song-overview-block .song-repeat-marks i{flex:1;border-right:1px solid var(--accent)}.song-overview-block .song-repeat-marks i:last-child{border:0}.song-seek{display:block;width:100%;height:2.4rem;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}.song-time{display:flex;justify-content:space-between;gap:.5rem;font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}.song-playhead{position:absolute;top:0;bottom:2.4rem;left:var(--song-playhead);width:2px;background:var(--accent);pointer-events:none;box-shadow:0 0 0 1px var(--bg)}.song-section .song-play-here{min-width:8rem}@media(max-width:38rem){.song-overview{min-width:40rem}.song-section .song-play-here{flex:1 1 100%}.song-actions button{flex:1 1 9rem}}
 .song-overview-block.song-tail{background:var(--surface);color:var(--text-2);font-size:.85rem}
+.song-loop-range{position:absolute;top:0;bottom:2.4rem;left:var(--song-loop-start);width:calc(var(--song-loop-end) - var(--song-loop-start));background:color-mix(in srgb,var(--accent) 22%,transparent);border-left:3px solid var(--accent);border-right:3px solid var(--accent);pointer-events:none;z-index:1}.song-playhead{z-index:2}.song-loop-controls{display:flex;flex-wrap:wrap;gap:.75rem;margin:.8rem 0;align-items:end}.song-loop-controls label{flex:1 1 12rem}.song-loop-controls input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.song-loop-controls output{font: .9rem ui-monospace,monospace;color:var(--text-2)}.song-loop-controls [data-loop-custom]{flex:1 1 100%;display:flex;gap:.75rem;flex-wrap:wrap}.song-loop-controls [data-loop-custom] label{min-width:10rem}
 .sample-set-editor{border-top:1px solid var(--border);margin-top:1rem;padding-top:.5rem}.sample-set-editor fieldset{border:1px solid var(--border);border-radius:.5rem;margin:.75rem 0;padding:.75rem;min-width:0}.sample-set-editor legend{padding:0 .4rem}.sample-set-editor .grid{gap:.7rem}.sample-set-editor input[type=checkbox]{width:2.8rem;align-self:start}.sample-set-editor .row{margin-top:.8rem}.sample-wave{position:relative;height:11.2rem;margin:.8rem .7rem 1.8rem;border:1px solid var(--border);border-radius:.4rem;background:var(--surface-2);touch-action:none}.sample-wave canvas{display:block;width:100%;height:100%}.sample-marker{position:absolute;top:var(--marker-top);width:1.5rem;height:2.8rem;min-height:0;padding:0;border:0;border-radius:0;background:transparent;transform:translateX(-50%);touch-action:none;cursor:ew-resize;z-index:1}.sample-marker::before{content:'';display:block;position:absolute;left:calc(50% - 1px);top:calc(-1 * var(--marker-top));height:11.2rem;width:2px;background:var(--marker-color);pointer-events:none}.sample-marker::after{content:'';display:block;position:absolute;top:0;left:calc(50% - .38rem);width:.76rem;height:.76rem;border-radius:0 0 .2rem .2rem;background:var(--marker-color)}.sample-marker:disabled{opacity:.4;cursor:default}.sample-marker:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sample-marker[data-marker=start]{--marker-color:var(--accent);--marker-top:0rem}.sample-marker[data-marker=loopStart]{--marker-color:var(--ok);--marker-top:2.8rem}.sample-marker[data-marker=loopEnd]{--marker-color:var(--danger);--marker-top:5.6rem}.sample-marker[data-marker=crossfade]{--marker-color:var(--text);--marker-top:8.4rem}
 </style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
@@ -1389,6 +1390,8 @@ Object.assign(I18N.ro,{songTimeline:'Cronologia melodiei',songTimelineHint:'Adau
 Object.assign(I18N.en,{songTimeline:'Song timeline',songTimelineHint:'Place arrangement versions in order. Each section keeps its tempo and key; the next starts at the end of the previous bars while its reverb tail carries across the join.',addSongSection:'Add section',sectionName:'Section name',sectionVersion:'Arrangement version',sectionRepeats:'Repeats',sectionUp:'Move up',sectionDown:'Move down',sectionDuplicate:'Duplicate section',sectionRemove:'Remove section',sectionDefault:'Section',playSong:'Play whole song',stopSong:'Stop whole song',saveSongWav:'Save song stereo WAV',saveSongMidi:'Save song multitrack MIDI',timelineEmpty:'Add a section from an arrangement version.',timelineInvalid:'The timeline has an invalid section or exceeds 20 minutes.',renderingSong:'Rendering whole song…',playingSong:'Playing whole song.',songError:'Cannot play or export the whole song.'});
 Object.assign(I18N.ro,{songOverview:'Privire de ansamblu',songSeek:'Caută în melodie',songElapsed:'Timp parcurs',songTotal:'Durata melodiei',songPlayHere:'Redă de aici',songTail:'Final audio'});
 Object.assign(I18N.en,{songOverview:'Song overview',songSeek:'Seek in song',songElapsed:'Elapsed time',songTotal:'Song duration',songPlayHere:'Play from here',songTail:'Audio tail'});
+Object.assign(I18N.ro,{songLoop:'Buclă melodie',songLoopOff:'Fără buclă',songLoopFull:'Melodia completă',songLoopSection:'O secțiune',songLoopCustom:'Interval personalizat',songLoopSectionPick:'Secțiunea buclei',songLoopStart:'Începutul buclei',songLoopEnd:'Sfârșitul buclei',songLoopRange:'Intervalul buclei'});
+Object.assign(I18N.en,{songLoop:'Song loop',songLoopOff:'No loop',songLoopFull:'Full song',songLoopSection:'One section',songLoopCustom:'Custom range',songLoopSectionPick:'Loop section',songLoopStart:'Loop start',songLoopEnd:'Loop end',songLoopRange:'Loop range'});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
 Object.assign(I18N.en,{backupImport:'Restore an exported project',backupHint:'1. Select the project JSON. 2. Select all source WAVs with their exported names (multiple selection). 3. Validate, then import a separate project. No folder picker is needed.',backupJsonLabel:'Project JSON',backupWavsLabel:'Exported source WAVs',validateBackup:'Validate backup',restoreBackup:'Import separate project',cancelBackup:'Cancel import',importing:'Validating backup…',backupSelect:'Select the project JSON and source WAVs.',backupReady:v=>`Backup validated: ${v.name}\n${v.count} recordings. Only these named WAVs will be imported:\n${v.files.join('\n')}\nPress “Import separate project” to restore.`,backupJson:'Invalid JSON. Select the exported project metadata.',backupInvalid:p=>`Inconsistent backup: ${p}. Check metadata and source files.`,backupVersion:p=>`Unsupported version or data: ${p}. This page supports schema and helpers v1.`,backupFiles:v=>[v.missing.length?'Missing WAVs:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Ambiguous WAV names (select one file for each name):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`Invalid or unsupported WAV: ${p}. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.`,backupCancelled:'Import cancelled. Existing projects remain unchanged.',backupRestored:'Separate project imported. WAVs and musical data were preserved.',backupRead:'Cannot read the files. Select them again.'});
 const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
@@ -1693,6 +1696,37 @@ const A=window.ScuLaArrangement,S=window.ScuLaSynthesis;
 const selectedArrangements=new Map();
 let arrangementJob=null;
 let songPosition=0,songDuration=0;
+const songLoop={projectId:null,mode:'off',sectionId:null,start:0,end:0,duration:0};
+function syncSongLoop(){
+  if(songLoop.projectId!==project?.id){songLoop.projectId=project?.id||null;songLoop.mode='off';songLoop.sectionId=null;songLoop.start=0;songLoop.end=songDuration;}
+  else if(songLoop.mode!=='custom' && (songLoop.end<=.01 || Math.abs(songLoop.end-songLoop.duration)<.01))songLoop.end=songDuration;
+  songLoop.duration=songDuration;
+  songLoop.start=Math.max(0,Math.min(Math.max(0,songDuration-.01),songLoop.start));
+  songLoop.end=Math.max(songLoop.start+.01,Math.min(songDuration,songLoop.end));
+  if(!project?.timeline?.some(s=>s.id===songLoop.sectionId))songLoop.sectionId=project?.timeline?.[0]?.id||null;
+}
+function songLoopBounds(){
+  if(songLoop.mode==='off')return null;
+  if(songLoop.mode==='full')return {start:0,end:songDuration};
+  if(songLoop.mode==='custom')return {start:songLoop.start,end:songLoop.end};
+  let start=0;
+  for(const section of project.timeline){const a=project.arrangements.find(v=>v.id===section.arrangementId),end=start+a.duration*section.repeats;if(section.id===songLoop.sectionId)return {start,end};start=end;}
+  return null;
+}
+function paintSongLoop(){
+  const overview=$('songOverviewTrack'),mode=$('songLoopMode'),picker=$('songLoopSection'),custom=$('songLoopCustom'),bounds=songLoopBounds();
+  if(!overview)return;
+  overview.style.setProperty('--song-loop-start',((bounds?.start||0)/songDuration*100)+'%');
+  overview.style.setProperty('--song-loop-end',((bounds?.end||0)/songDuration*100)+'%');
+  const shade=$('songLoopRange');shade.hidden=!bounds;shade.setAttribute('aria-label',t('songLoopRange')+(bounds?' · '+bounds.start.toFixed(2)+'–'+bounds.end.toFixed(2)+' s':''));
+  mode.value=songLoop.mode;picker.value=songLoop.sectionId||'';picker.parentElement.hidden=songLoop.mode!=='section';custom.hidden=songLoop.mode!=='custom';
+  for(const [kind,value] of [['start',songLoop.start],['end',songLoop.end]]){const input=$('songLoop'+(kind==='start'?'Start':'End'));input.max=String(songDuration);input.value=String(value);input.setAttribute('aria-valuetext',value.toFixed(2)+' s');$('songLoop'+(kind==='start'?'Start':'End')+'Time').textContent=value.toFixed(2)+' s';}
+}
+function changeSongLoop(){
+  paintSongLoop();const job=arrangementJob;
+  if(job?.kind==='song' && job.started)startSongAt(job,songPosition);
+  else if(job?.kind==='song'){const bounds=songLoopBounds();if(bounds && (songPosition<bounds.start||songPosition>=bounds.end))songPosition=bounds.start;paintSongPosition();}
+}
 function paintSongPosition(){
   const seek=$('songSeek'),elapsed=$('songElapsed'),total=$('songTotal'),overview=$('songOverviewTrack');
   if(!seek)return;
@@ -1703,16 +1737,19 @@ function paintSongPosition(){
 }
 function songTick(job){
   if(arrangementJob!==job || !job.started)return;
-  songPosition=Math.min(songDuration,job.offset+job.ctx.currentTime-job.startedAt);
+  songPosition=Math.min(songLoopBounds()?.end||songDuration,job.offset+job.ctx.currentTime-job.startedAt);
   paintSongPosition();job.frame=requestAnimationFrame(()=>songTick(job));
 }
 function startSongAt(job,position){
   if(job.node){job.node.onended=null;try{job.node.stop();}catch(_){}job.node.disconnect();job.node.buffer=null;}
   cancelAnimationFrame(job.frame);
   const node=job.ctx.createBufferSource();job.node=node;node.buffer=job.buffer;node.connect(job.ctx.destination);
-  job.offset=Math.max(0,Math.min(songDuration,position));job.startedAt=job.ctx.currentTime;
-  node.onended=()=>{if(arrangementJob===job)stopArrangement();};
-  node.start(0,job.offset);job.started=true;songPosition=job.offset;paintSongPosition();
+  const bounds=songLoopBounds();job.offset=Math.max(0,Math.min(songDuration,position));
+  if(bounds && (job.offset<bounds.start||job.offset>=bounds.end))job.offset=bounds.start;
+  job.startedAt=job.ctx.currentTime;
+  node.onended=()=>{if(arrangementJob!==job || job.node!==node)return;if(songLoopBounds())startSongAt(job,songLoopBounds().start);else stopArrangement();};
+  if(bounds)node.start(0,job.offset,Math.max(.001,bounds.end-job.offset));else node.start(0,job.offset);
+  job.started=true;songPosition=job.offset;paintSongPosition();
   job.frame=requestAnimationFrame(()=>songTick(job));
 }
 function seekSong(position){
@@ -1978,7 +2015,7 @@ const Timeline=window.ScuLaSongTimeline;
 function renderSongTimeline(){
   const host=$('songTimeline'),overviewHost=$('songOverview');host.replaceChildren();overviewHost.replaceChildren();const sections=project?.timeline||[],versions=project?.arrangements||[];
   if(!sections.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=t('timelineEmpty');host.append(empty);}
-  const plan=sections.length?Timeline.resolve(project):{items:[],seconds:0},duration=plan.seconds;songDuration=sections.length?Math.ceil((duration+Timeline.tailSeconds)*44100)/44100:0;songPosition=Math.min(songPosition,songDuration);
+  const plan=sections.length?Timeline.resolve(project):{items:[],seconds:0},duration=plan.seconds;songDuration=sections.length?Math.ceil((duration+Timeline.tailSeconds)*44100)/44100:0;songPosition=Math.min(songPosition,songDuration);syncSongLoop();
   if(sections.length){
     const label=document.createElement('h3');label.textContent=t('songOverview');overviewHost.append(label);
     const scroll=document.createElement('div');scroll.className='song-overview-scroll';
@@ -2001,10 +2038,26 @@ function renderSongTimeline(){
       blocks.append(block);start+=span;
     });
     const tail=document.createElement('button');tail.type='button';tail.className='song-overview-block song-tail';tail.style.setProperty('--song-duration',Timeline.tailSeconds);tail.textContent=t('songTail');tail.setAttribute('aria-label',t('songTail')+' · '+t('songSeek'));tail.onclick=event=>{const rect=tail.getBoundingClientRect(),fraction=event.detail===0?0:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));seekSong(duration+fraction*Timeline.tailSeconds);};blocks.append(tail);
-    const playhead=document.createElement('div');playhead.className='song-playhead';playhead.setAttribute('aria-hidden','true');overview.append(blocks,playhead);
+    const loopRange=document.createElement('div');loopRange.id='songLoopRange';loopRange.className='song-loop-range';loopRange.setAttribute('role','img');
+    const playhead=document.createElement('div');playhead.className='song-playhead';playhead.setAttribute('aria-hidden','true');overview.append(blocks,loopRange,playhead);
     const seek=document.createElement('input');seek.type='range';seek.id='songSeek';seek.className='song-seek';seek.min='0';seek.max=String(songDuration);seek.step='0.01';seek.setAttribute('aria-label',t('songSeek'));seek.oninput=()=>seekSong(seek.value);overview.append(seek);
     const times=document.createElement('div');times.className='song-time';const elapsed=document.createElement('output'),total=document.createElement('output');elapsed.id='songElapsed';total.id='songTotal';elapsed.setAttribute('aria-label',t('songElapsed'));total.setAttribute('aria-label',t('songTotal'));times.append(elapsed,total);
-    scroll.append(overview);overviewHost.append(scroll,times);paintSongPosition();
+    const loopControls=document.createElement('div');loopControls.className='song-loop-controls';
+    const loopLabel=(key,input)=>{const label=document.createElement('label'),caption=document.createElement('span');caption.textContent=t(key);label.append(caption,input);return label;};
+    const mode=document.createElement('select');mode.id='songLoopMode';mode.setAttribute('aria-label',t('songLoop'));
+    for(const [value,key] of [['off','songLoopOff'],['full','songLoopFull'],['section','songLoopSection'],['custom','songLoopCustom']])mode.add(new Option(t(key),value));
+    mode.onchange=()=>{songLoop.mode=mode.value;changeSongLoop();};loopControls.append(loopLabel('songLoop',mode));
+    const picker=document.createElement('select');picker.id='songLoopSection';picker.setAttribute('aria-label',t('songLoopSectionPick'));
+    sections.forEach(s=>picker.add(new Option(s.name+(s.repeats>1?' ×'+s.repeats:''),s.id)));
+    picker.onchange=()=>{songLoop.sectionId=picker.value;changeSongLoop();};loopControls.append(loopLabel('songLoopSectionPick',picker));
+    const custom=document.createElement('div');custom.id='songLoopCustom';custom.dataset.loopCustom='true';
+    for(const [kind,key] of [['Start','songLoopStart'],['End','songLoopEnd']]){
+      const input=document.createElement('input');input.type='range';input.id='songLoop'+kind;input.min='0';input.max=String(songDuration);input.step='0.01';input.setAttribute('aria-label',t(key));
+      const output=document.createElement('output');output.id='songLoop'+kind+'Time';output.htmlFor=input.id;
+      input.oninput=()=>{const value=Number(input.value);if(kind==='Start')songLoop.start=Math.min(value,songLoop.end-.01);else songLoop.end=Math.max(value,songLoop.start+.01);changeSongLoop();};
+      const field=loopLabel(key,input);field.append(output);custom.append(field);
+    }
+    loopControls.append(custom);scroll.append(overview);overviewHost.append(scroll,times,loopControls);paintSongPosition();paintSongLoop();
   }
   sections.forEach((section,index)=>{
     const a=versions.find(x=>x.id===section.arrangementId),recording=project.recordings.find(r=>r.id===a?.sourceRecordingId);
@@ -2020,7 +2073,7 @@ function renderSongTimeline(){
     const move=(direction,key)=>{const b=button(key,async()=>{const next=index+direction;[sections[index],sections[next]]=[sections[next],sections[index]];touch();await persist();await render();});b.dataset.empty=String(direction<0?index===0:index===sections.length-1);b.setAttribute('aria-label',t(key)+' '+(index+1));return b;};
     const dup=button('sectionDuplicate',async()=>{sections.splice(index+1,0,{...section,id:id()});try{Timeline.resolve(project);}catch(_){sections.splice(index+1,1);say('timelineInvalid',true);await render();return;}touch();await persist();await render();});dup.setAttribute('aria-label',t('sectionDuplicate')+' '+(index+1));
     const remove=button('sectionRemove',async()=>{sections.splice(index,1);touch();await persist();await render();});remove.setAttribute('aria-label',t('sectionRemove')+' '+(index+1));
-    const playHere=button('songPlayHere',()=>songAudio(true,Number(plan.items.find(x=>x.section.id===section.id).seconds)));playHere.className='song-play-here';playHere.setAttribute('aria-label',t('songPlayHere')+' · '+section.name);
+    const playHere=button('songPlayHere',()=>{if(songLoop.mode==='section'){songLoop.sectionId=section.id;paintSongLoop();}return songAudio(true,Number(plan.items.find(x=>x.section.id===section.id).seconds));});playHere.className='song-play-here';playHere.setAttribute('aria-label',t('songPlayHere')+' · '+section.name);
     actions.append(playHere,move(-1,'sectionUp'),move(1,'sectionDown'),dup,remove);item.append(actions);host.append(item);
   });
   $('addSongSection').dataset.empty=String(!versions.length);['playSong','saveSongWav','saveSongMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length));paintState();
@@ -2166,7 +2219,7 @@ async function stop(){
 $('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
 $('backupJson').onchange=backupSelection;$('backupWavs').onchange=backupSelection;
 $('validateBackup').onclick=validateBackup;$('restoreBackup').onclick=()=>run(restoreBackup);$('cancelBackup').onclick=()=>cancelBackup();
-$('addSongSection').onclick=()=>run(addSongSection);$('playSong').onclick=()=>run(()=>songAudio(true));$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongMidi').onclick=()=>run(exportSongMidi);
+$('addSongSection').onclick=()=>run(addSongSection);$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongMidi').onclick=()=>run(exportSongMidi);
 $('cancelAnalysis').onclick=()=>{if(analysisJob){analysisJob.cancelled=true;$('cancelAnalysis').disabled=true;say('analysisCancelled');}};
 $('recordBtn').onclick=()=>{stopPreview();stopArrangement();start();};$('stopBtn').onclick=stop;
 $('newProject').onclick=()=>run(async()=>{newProject();await persist();await render();});
