@@ -95,6 +95,17 @@ document.addEventListener('keydown', e => {
     navRevealLine(editor.value.slice(0, editor.selectionStart).split('\n').length - 1);
     return;
   }
+  // Ctrl+Shift+. / Ctrl+Shift+, → next / previous heading or task, in the
+  // source, the preview and the navigation panel together (navStep). Ctrl+Shift+6
+  // is already H6, so the pair sits on the angle-bracket keys. e.code because
+  // Shift turns the key into ">" / "<". Another field's focus is left alone.
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && (e.code === 'Period' || e.code === 'Comma')) {
+    const el = document.activeElement;
+    if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+    e.preventDefault();
+    navStep(e.code === 'Period' ? 1 : -1);
+    return;
+  }
   // Ctrl+Alt+I — the idea box. Ctrl+I is italic and Ctrl+Shift+I is the
   // browser's own devtools, so Ctrl+Alt is what is left; e.code and an early
   // return for the same reason the importance chords above use them.

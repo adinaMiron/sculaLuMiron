@@ -700,6 +700,14 @@ Assignee and importance markers can follow the status marker.
 
 ### Task states from the keyboard, and in the navigation panel
 
+**Ctrl+Shift+. / Ctrl+Shift+,** step to the **next / previous** element of the
+navigation panel — a heading or a task — in the Markdown source, the preview
+and the panel at once (`navStep()` in `markdown.js`, key handler in
+`events.js`; `e.code` `Period`/`Comma`). (Ctrl+Shift+6 was already H6.) It
+clicks the panel's own item, so it behaves exactly like a mouse jump, and it
+steps through what the panel currently lists (state chips and the task-state
+select narrow it). Position is the editor caret's line; it wraps at the ends.
+
 **Ctrl+Shift+7 / 8 / 9** set the task at the caret to **to do / in work /
 done** (`TASK_SHORTCUTS` in `editor.js` → `setTaskStatus()`, handled in
 `events.js`). They are the select's three everyday states, in the order a

@@ -447,6 +447,7 @@ const I18N = {
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> anulare/refă ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> bloc de cod ·
         <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> sarcină de făcut / în lucru / terminată ·
+        <kbd>Ctrl+Shift+.</kbd> / <kbd>Ctrl+Shift+,</kbd> următorul / precedentul titlu sau sarcină (în editor, previzualizare și navigare) ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul ·
         <kbd>Ctrl+L</kbd> selectează rândul (apasă din nou pentru paragraf) ·
         <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf · <kbd>Ctrl+5</kbd> grădină · <kbd>Ctrl+6</kbd> poze ·
@@ -896,6 +897,7 @@ const I18N = {
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> undo/redo ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> code block ·
         <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> task to do / in work / done ·
+        <kbd>Ctrl+Shift+.</kbd> / <kbd>Ctrl+Shift+,</kbd> next / previous heading or task (in the editor, preview and navigation) ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line ·
         <kbd>Ctrl+L</kbd> select the line (press again for the paragraph) ·
         <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph · <kbd>Ctrl+5</kbd> garden · <kbd>Ctrl+6</kbd> photos ·

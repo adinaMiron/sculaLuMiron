@@ -1262,6 +1262,24 @@ function navRevealLine(line) {
     navTree.scrollTop = Math.max(0, top - navTree.clientHeight / 2);
 }
 
+// Ctrl+Shift+. / Ctrl+Shift+, → the next / previous element of the panel (a
+// heading or a task), taking all three panes there at once. It is the panel's
+// own click, so the source selection, the preview scroll and the highlight
+// cannot differ from a mouse jump; the panel's current list (chips and the
+// task-state select included) is what is stepped through. Wraps at the ends.
+function navStep(dir) {
+  const items = [...document.querySelectorAll('#nav-tree .nav-item[data-line]')];
+  if (!items.length) return false;
+  const caret = editor.value.slice(0, editor.selectionStart).split('\n').length - 1;
+  let target = dir > 0
+    ? items.find(n => +n.dataset.line > caret)
+    : items.slice().reverse().find(n => +n.dataset.line < caret);
+  if (!target) target = dir > 0 ? items[0] : items[items.length - 1];
+  target.click();
+  navRevealLine(+target.dataset.line);
+  return true;
+}
+
 function updateNav() {
   const navTree = document.getElementById('nav-tree');
   const navTasks = document.getElementById('nav-tasks');
