@@ -174,7 +174,9 @@ is the `/verify` equivalent across all nine pages and plain JS helpers.
 Song analysis uses `node tests/song-analysis.js` deterministic accuracy fixtures (pitch, onset/offset,
 tempo/key, breathy timbre, octave ambiguity, a short slide, detuning/vibrato,
 repeated notes, quiet passages, dynamics, legato, silence, short input,
-duration limits and immutable evidence), `node tests/song-bounded-analysis.js`
+duration limits and immutable evidence), `node tests/song-evaluation.js` for
+the labeled-WAV evaluator and seeded breathy, returning-slide, vibrato, quiet,
+repeated-note and distinct-turn regressions, `node tests/song-bounded-analysis.js`
 (instrumented 64 KiB source reads, skipped chunks, PCM/float mono/stereo and rate
 extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch/evidence/expression/completion cancellation),
 `node tests/song-analysis-lifecycle.js` (actual page handler: audio cleanup, canceled
@@ -191,7 +193,11 @@ failure/retry, canceled decoding and CPU analysis, failed source reads, a retain
 Master exports are compared byte for byte with the imported WAV, including its
 extra RIFF chunk. Version 2 contour evidence is checked through export/reload;
 `song-backup-import` covers version 1 restoration and version 2 round trips.
-The fixtures are generated; labeled human humming remains to be evaluated.
+`node tests/song-evaluate.js path/to/manifest.json` reports per-recording note
+and pitch accuracy, octave errors, missed/extra notes, and onset/offset error
+against independently labeled WAV takes. The manifest format and measured
+generated-case results are in `docs/FEATURES.md` under “Labeled humming
+evaluation.” Labeled human humming remains to be evaluated.
 Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
 

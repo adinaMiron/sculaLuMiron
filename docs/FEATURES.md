@@ -3121,8 +3121,10 @@ ID/timestamps, `analyzerVersion` and `sourceAssetId` referencing the immutable
   and measured RMS before normalization; unvoiced pitch is `null`.
 - A separate interpreted pitch contour with the same frame times. Song repairs
   isolated octave readings only when voiced neighbors on both sides agree.
-  Short pitch slides without a measured attack are folded into the surrounding
-  note; measured attacks can divide repeated notes of the same pitch.
+  Short pitch slides and curved excursions that return to the starting pitch
+  without a measured attack are folded into the surrounding note; measured
+  attacks can divide repeated notes of the same pitch. Song's segmentation
+  retains clearly periodic quiet frames after a louder phrase.
 - Spectral-flux envelope, onset peaks, window/hop sizes, detected tempo/phase
   and key. Detected attacks can split repeated pitches when amplitude rises.
 - Detected notes with original onset/offset, MIDI pitch, cents deviation,
@@ -3142,6 +3144,62 @@ use `null`. Onset/offset remain seconds from the WAV start, including leading
 silence. `quantizedTiming` stores snapped times separately; selecting
 **Original / edited** or **Quantized** determines playback/export timing.
 Tempo and divisions per beat are editable without changing detected evidence.
+
+#### Labeled humming evaluation
+
+Run `node tests/song-evaluate.js path/to/manifest.json` to evaluate version 2
+against original, unaccompanied WAV takes. The UTF-8 JSON manifest has this form:
+
+```json
+{
+  "schemaVersion": 1,
+  "recordings": [
+    {"id": "singer01_take01", "wav": "singer01_take01.wav", "notes": [
+      {"midi": 60, "onset": 0.42, "offset": 0.91},
+      {"midi": 62, "onset": 1.03, "offset": 1.48}
+    ]}
+  ]
+}
+```
+
+WAV paths are relative to the manifest. Use the untouched captured WAV; label
+each intended note with its nearest integer MIDI pitch and audible onset and
+offset in seconds from the WAV start, including leading silence. Keep notes in
+onset order; label repeated notes separately. Record who hummed, microphone,
+room and labeling method alongside the manifest when collecting a corpus.
+Keep recordings and labels independent of the detector. The evaluator accepts
+the same PCM16/24/32 and float32 WAV forms as Song, rejects invalid labels, and
+emits one JSON result per recording. It pairs notes in time order by temporal
+proximity or overlap, without using pitch, so octave mistakes remain visible.
+`pitchAccuracy` counts references matched at the right MIDI pitch (±0.5
+semitone); `noteAccuracy` also requires both boundaries within 50 ms. Missed
+and extra notes are unmatched references and detections. Octave errors are
+matched notes 12 semitones away. Mean absolute onset/offset errors are over
+matched pairs; both are `null` if there are no pairs. The result also lists
+signed timing and pitch errors for each match. Empty reference takes are
+allowed, with accuracy 1 only if Song also emits no notes.
+
+No labeled human humming corpus is in this repository. On five seeded,
+generated WAV cases (14 reference notes), the initial version 2 detector scored
+10/14 for note and pitch accuracy, with 2 missed quiet notes, 2 extra slide
+notes, and 0 octave errors. After the Song-only segmentation changes, the same
+cases scored 14/14, with 0 missed, 0 extra, and 0 octave errors. The regression
+suite also checks a three-note pitch turn with real attacks. Post-change
+per-recording measurements from `node tests/song-evaluation.js` are:
+
+| Generated case | Notes correct | Octave / missed / extra | Mean onset error | Mean offset error |
+| --- | ---: | ---: | ---: | ---: |
+| Breathy | 3/3 | 0 / 0 / 0 | 29.0 ms | 7.4 ms |
+| Returning slide | 2/2 | 0 / 0 / 0 | 24.2 ms | 9.0 ms |
+| Vibrato | 2/2 | 0 / 0 / 0 | 33.1 ms | 15.6 ms |
+| Quiet phrase after loud notes | 4/4 | 0 / 0 / 0 | 29.3 ms | 11.9 ms |
+| Repeated notes | 3/3 | 0 / 0 / 0 | 10.4 ms | 18.2 ms |
+| Separate three-note turn | 3/3 | 0 / 0 / 0 | 26.3 ms | 8.5 ms |
+
+These generated signals are controlled regressions, not evidence of a real
+world accuracy improvement. Breath noise, microphone noise, wide slides,
+ambiguous attacks, very soft notes and overlapping voices may still need
+manual edits. Collect labeled human takes before making an accuracy claim.
 
 The roll overlays either the interpreted or measured voice contour on editable
 notes, with detected onsets and offsets shown by different dashed lines. Older version 1

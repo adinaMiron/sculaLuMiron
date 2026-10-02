@@ -53,13 +53,28 @@ function interpretPitch(frames){
 }
 function songSegments(pt,frames,contour,peaks){
   const f0=Float32Array.from(contour,f=>f.midi===null?0:440*2**((f.midi-69)/12));
-  const base=A.segmentNotes({...pt,f0}),dt=1/pt.fps;
+  // Voice's shared segmenter uses a floor relative to the loudest frame.
+  // For Song, keep a clearly periodic but much quieter phrase eligible.
+  // Its original measured level remains in pt/frames for dynamics.
+  const peak=Math.max(0,...pt.rms),floor=Math.max(.006,peak*.008);
+  const segmentRms=Float32Array.from(pt.rms,(r,i)=>f0[i] && pt.clar[i]>.62 && r>floor?Math.max(r,peak*.065):r);
+  const base=A.segmentNotes({...pt,f0,rms:segmentRms}),dt=1/pt.fps;
   // A short intermediate pitch in a continuous glide belongs to its stable
   // neighbour. A clear attack is always a boundary, even at the same pitch.
   const joined=[];
-  for(const n of base){
+  for(let k=0;k<base.length;k++){
+    const n=base[k],following=base[k+1];
     const prev=joined[joined.length-1],nextAttack=peaks.some(p=>Math.abs(p.time-n.start)<.07 && p.strength>.22);
-    if(prev && !nextAttack && n.start-(prev.start+prev.dur)<.07 && n.dur<.14){prev.dur=n.start+n.dur-prev.start;prev.vel=Math.max(prev.vel,n.vel);}
+    const noReturnAttack=following && !peaks.some(p=>Math.abs(p.time-following.start)<.07 && p.strength>.22);
+    const mid=prev && following && contour.filter(f=>f.time>=n.start && f.time<n.start+n.dur && f.midi!==null).map(f=>f.midi);
+    const curved=mid && mid.length>=8 && (n.midi>prev.midi?Math.max(...mid)-mid[0]>.25 && Math.max(...mid)-mid[mid.length-1]>.25:mid[0]-Math.min(...mid)>.25 && mid[mid.length-1]-Math.min(...mid)>.25);
+    const returningSlide=prev && following && n.midi!==prev.midi && Math.abs(n.midi-prev.midi)<=2 && following.midi===prev.midi && n.dur<.55 && following.dur<.25 && n.start-(prev.start+prev.dur)<.07 && following.start-(n.start+n.dur)<.07 && !nextAttack && noReturnAttack && curved;
+    if(returningSlide){
+      prev.dur=following.start+following.dur-prev.start;prev.vel=Math.max(prev.vel,n.vel,following.vel);prev.glideMerged=true;k++;
+    }
+    else if(prev && !nextAttack && n.start-(prev.start+prev.dur)<.07 && n.dur<.14){
+      prev.dur=n.start+n.dur-prev.start;prev.vel=Math.max(prev.vel,n.vel);
+    }
     else joined.push({...n});
   }
   const segments=[];
@@ -114,7 +129,8 @@ async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>fal
     const rmsPeak=Math.max(0,...fs.map(f=>f.rms));
     const mean=fs.reduce((s,f)=>s+f.rms,0)/(fs.length||1);
     const attack=fs.find(f=>f.rms>=rmsPeak*.8),release=fs.slice().reverse().find(f=>f.rms>=rmsPeak*.8);
-    detectedNotes.push({id:'n'+i,midi:n.midi,onset:n.start,offset:Math.min(duration,n.start+n.dur),confidence:fs.reduce((s,f)=>s+f.confidence,0)/(fs.length||1),cents:median(fs.map(f=>100*(f.midi-n.midi))),velocity:clamp(Math.round(n.vel*127),1,127),dynamics:{rms:mean,peak:rmsPeak},vibrato:vibrato(fs),legato:false,attackSeconds:attack?attack.time-n.start:0,releaseSeconds:release?Math.max(0,n.start+n.dur-release.time):0});
+    const stable=n.glideMerged?[...fs.slice(0,3),...fs.slice(-3)]:fs;
+    detectedNotes.push({id:'n'+i,midi:n.midi,onset:n.start,offset:Math.min(duration,n.start+n.dur),confidence:fs.reduce((s,f)=>s+f.confidence,0)/(fs.length||1),cents:median(stable.map(f=>100*(f.midi-n.midi))),velocity:clamp(Math.round(n.vel*127),1,127),dynamics:{rms:mean,peak:rmsPeak},vibrato:vibrato(fs),legato:false,attackSeconds:attack?attack.time-n.start:0,releaseSeconds:release?Math.max(0,n.start+n.dur-release.time):0});
   }
   detectedNotes.forEach((n,i)=>{const next=detectedNotes[i+1];n.legato=!!next && next.onset-n.offset<=dt*2;});
   const notes=editable(detectedNotes),bpm=60*fps/lag;
