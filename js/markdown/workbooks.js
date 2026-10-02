@@ -194,12 +194,7 @@ function wbPreviewFilteredText(text) {
    any of - * + as the bullet). Used only by the TODO filter button. */
 const WB_OPEN_TASK_RE = /^[ \t]*[-*+] \[ \]/m;
 function wbTaskHasStatus(line, status) {
-  if (!TASK_LINE_RE.test(line)) return false;
-  const match = line.match(TASK_LINE_RE);
-  const marker = match[4].match(TASK_STATUS_LEAD_RE);
-  const actual = match[2].toLowerCase() === 'x' ? 'done'
-    : marker ? marker[1].slice(1) : 'todo';
-  return actual === status;
+  return taskLineStatus(line) === status;
 }
 function wbChapterHasTaskStatus(content, status) {
   let fenced = false;

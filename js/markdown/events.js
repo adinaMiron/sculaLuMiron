@@ -81,6 +81,20 @@ document.addEventListener('keydown', e => {
     setImportance(e.code === 'Digit0' ? 'none' : IMP_LEVELS[+e.code.slice(5) - 1]);
     return;
   }
+  // Ctrl+Shift+7/8/9 → the task at the caret (or the paragraph there, made
+  // into one) is to do / in work / done: the three states in the order a
+  // task moves through them, right after Ctrl+Shift+1..6 changed the line
+  // into a heading — and the same 7/8/9 run Docs uses for its lists. e.code
+  // because Shift turns the digit into "&", "*", "(" on most layouts. Another
+  // field's focus is left alone; the shortcut is for the text being written.
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && /^Digit[7-9]$/.test(e.code)) {
+    const el = document.activeElement;
+    if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+    e.preventDefault();
+    setTaskStatus(TASK_SHORTCUTS[e.code]);
+    navRevealLine(editor.value.slice(0, editor.selectionStart).split('\n').length - 1);
+    return;
+  }
   // Ctrl+Alt+I — the idea box. Ctrl+I is italic and Ctrl+Shift+I is the
   // browser's own devtools, so Ctrl+Alt is what is left; e.code and an early
   // return for the same reason the importance chords above use them.

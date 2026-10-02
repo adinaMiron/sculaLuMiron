@@ -258,6 +258,19 @@ function taskSetLineStatus(line, status) {
     + (marker ? marker + (body ? ' ' : '') : '') + body;
 }
 
+// The one reading of a task line's state: a checked box is done, a ~marker
+// names a middle state, an open box without one is to do. Null for prose.
+function taskLineStatus(line) {
+  const match = String(line).match(TASK_LINE_RE);
+  if (!match) return null;
+  if (match[2].toLowerCase() === 'x') return 'done';
+  const marker = match[4].match(TASK_STATUS_LEAD_RE);
+  return marker ? marker[1].slice(1) : 'todo';
+}
+const TASK_STATUS_ICONS = { todo: '☐', inwork: '◐', onhold: 'Ⅱ', blocked: '⛔', done: '☑' };
+// Ctrl+Shift+7 / 8 / 9 — events.js; the help and the tooltips name them too.
+const TASK_SHORTCUTS = { Digit7: 'todo', Digit8: 'inwork', Digit9: 'done' };
+
 function taskCreateLineStatus(line, status) {
   const match = line.match(/^([ \t]*)(?:([-*+])[ \t]+)?(.*)$/);
   const marker = TASK_STATUS_MARKERS[status];
@@ -282,7 +295,15 @@ function setTaskStatus(status) {
   const next = lines.map(line => hasTask ? taskSetLineStatus(line, status)
     : (line.trim() || lines.length === 1 ? taskCreateLineStatus(line, status) : line)).join('\n');
   if (next === old) return;
-  editor.setRangeText(next, from, to, 'end');
+  // A caret stays on the same word: the edit only touches the start of the
+  // line, so its distance from the line end is what survives. A selection
+  // keeps covering the lines it changed, ready for another state.
+  const fromEnd = to - end;
+  editor.setRangeText(next, from, to, start === end ? 'end' : 'select');
+  if (start === end) {
+    const caret = Math.max(from, from + next.length - fromEnd);
+    editor.setSelectionRange(caret, caret);
+  }
   updatePreview(); updateStatus(); scheduleAutosave();
 }
 

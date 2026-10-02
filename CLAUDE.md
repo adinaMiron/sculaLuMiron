@@ -335,7 +335,11 @@ change, not "later":
 3. `tests/idea.js` fails one check — "💡 button is right of New": `#btn-help`
    now sits between them. Also reproduces on `HEAD`; either the button moved
    or the check is stale. Its other checks pass.
-4. **Not** an issue, though it reads like one: the calendar never talks to
+4. `tests/importance.js` ("tasks-only combines with importance…") and
+   `tests/wbtodo.js` (four checks) still click `#btn-filter-todo` as the old
+   "▣ Tasks only" button; it is a task-state `<select>` since 0860eb6.
+   Reproduces on `HEAD`. `tests/taskstatus.js` was moved to `selectOption`.
+5. **Not** an issue, though it reads like one: the calendar never talks to
    Google. Events reach Google Calendar as an export the person carries
    over — the `.ics` through its Import screen, or the JSON through the
    API. No OAuth, no network call, deliberately — see Rule 3.

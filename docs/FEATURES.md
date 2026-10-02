@@ -698,6 +698,42 @@ status badges, and clicking a checkbox marks a task done or returns it to to
 do. The same status appears in HTML export. Markers stay in Markdown files.
 Assignee and importance markers can follow the status marker.
 
+### Task states from the keyboard, and in the navigation panel
+
+**Ctrl+Shift+7 / 8 / 9** set the task at the caret to **to do / in work /
+done** (`TASK_SHORTCUTS` in `editor.js` → `setTaskStatus()`, handled in
+`events.js`). They are the select's three everyday states, in the order a
+task moves through them, right after Ctrl+Shift+1..6 (headings) — and the
+same 7/8/9 run Google Docs uses for lists. `e.code`, because Shift turns
+the digit into punctuation. A paragraph here is one source line (the parser
+gives every line its own `<p>`), so the caret's line is the one changed: a
+plain line becomes a task, an existing task changes state, a selection
+changes every line in it (blank lines stay blank) and stays selected for
+the next press. A bare caret keeps its place on the same word — the edit
+only touches the start of the line. One undo step each (§ K). Another
+focused field (`input`, `select`, a modal's textarea) keeps its own keys.
+The other two states (on hold, blocked) stay in the select.
+
+`taskLineStatus(line)` is the one reading of a line's state (`null` for
+prose); `wbTaskHasStatus` and the panel both go through it.
+
+**The ☰ navigation panel** lists, under each heading, the tasks written
+beneath it (`updateNav()` in `markdown.js`): the state's icon
+(`TASK_STATUS_ICONS`) and colour, done ones struck through, nested tasks
+indented further, fenced code and empty boxes skipped. Above the list,
+`#nav-tasks` shows "2 of 6 done", a bar, and one chip per state in use with
+its count; a chip hides or shows that state (`navTaskHidden`, kept in
+`localStorage` under `scula:navTaskHidden` — a view preference, never part of
+the chapter). Clicking a task selects its line in the source and flashes its
+`<li>` in the preview (`previewTaskItem()` maps through `wbPreviewLineMap`
+when a toolbar filter narrows the preview; `gotoPreviewEl()` is the jump
+`gotoPreviewAnchor()` now shares). Clicking the **icon** moves the task on —
+to do → in work → done → to do; on hold and blocked go back to in work —
+through `setRangeText`, so one undo step, without focusing the editor (no
+phone keyboard). After a shortcut the changed task is highlighted and
+scrolled into the panel's view (`navRevealLine()`); typing lets the highlight
+go, since line numbers move. Tested in `tests/taskstatus.js`.
+
 A workbook whose **name contains "TODO"** (case-insensitive, `wbIsTodoBook`)
 gets one extra act button in its row: `☑`. It toggles the workbook's id in
 `wbTodoOnly` (a `Set`, in-memory only — not persisted) and re-renders.

@@ -714,7 +714,10 @@ function liWithTodo(mark, text, opts, lineIdx) {
 // only exists rendered — so they leave it unset.
 function gotoPreviewAnchor(id, keepSource) {
   if (!id) return false;
-  const el = preview.querySelector('[id="' + String(id).replace(/["\\]/g, '\\$&') + '"]');
+  return gotoPreviewEl(preview.querySelector('[id="' + String(id).replace(/["\\]/g, '\\$&') + '"]'), keepSource);
+}
+// The jump itself, for an element already found — a task's <li> has no id.
+function gotoPreviewEl(el, keepSource) {
   if (!el) return false;
   if (isMobile()) {
     if (keepSource && document.body.classList.contains('view-source')) {
@@ -1190,12 +1193,84 @@ function highlightPageMatches(all) {
 }
 
 /* ── Navigation panel ── */
+// The panel lists the chapter's headings and, under each, the tasks written
+// beneath it — every "- [ ]" / "- [x]" line, with its state's icon and colour.
+// A chip per state above the list counts them and hides or shows that state;
+// which ones are hidden is a per-browser preference, not part of the chapter.
+const NAV_TASK_ORDER = ['todo', 'inwork', 'onhold', 'blocked', 'done'];
+const NAV_TASK_HIDDEN_KEY = 'scula:navTaskHidden';
+// The icon in the panel walks the three everyday states; the two side states
+// go back to work, which is what usually happens to a task on hold.
+const NAV_TASK_NEXT = { todo: 'inwork', inwork: 'done', done: 'todo', onhold: 'inwork', blocked: 'inwork' };
+let navTaskHidden = new Set();
+try { navTaskHidden = new Set(JSON.parse(localStorage.getItem(NAV_TASK_HIDDEN_KEY) || '[]')); } catch (e) {}
+let navActiveLine = -1;       // the source line of the highlighted item, kept across rebuilds
+
+// Typing moves lines about; a highlight kept by number would land on the
+// wrong item, so the person's own edits let it go.
+editor.addEventListener('beforeinput', () => { navActiveLine = -1; });
+
+function navToggleTaskState(status) {
+  if (navTaskHidden.has(status)) navTaskHidden.delete(status); else navTaskHidden.add(status);
+  try { localStorage.setItem(NAV_TASK_HIDDEN_KEY, JSON.stringify([...navTaskHidden])); } catch (e) {}
+  updateNav();
+}
+
+// The text a task shows in the panel: no box, no state marker, no ^block id.
+function navTaskText(line) {
+  const match = line.match(TASK_LINE_RE);
+  return mdPlain(takeBlockId(match[4].replace(TASK_STATUS_LEAD_RE, '')).text);
+}
+
+// Advance one task from the panel. Through setRangeText, so it is one undo
+// step; the caret is kept where it was, and the editor is not focused — on a
+// phone that would raise the keyboard over the list being worked through.
+function navCycleTask(line) {
+  const val = editor.value;
+  const from = fdOffsetOfLine(val, line);
+  const nl = val.indexOf('\n', from);
+  const to = nl === -1 ? val.length : nl;
+  const old = val.slice(from, to);
+  const status = taskLineStatus(old);
+  if (!status) return;
+  editor.setRangeText(taskSetLineStatus(old, NAV_TASK_NEXT[status]), from, to, 'preserve');
+  navActiveLine = line;
+  updatePreview(); updateStatus(); scheduleAutosave();
+}
+
+// The preview <li> of a source line. A narrowed preview (a toolbar filter)
+// numbers its own lines, so the source line goes through the same map the
+// checkboxes use, backwards.
+function previewTaskItem(line) {
+  const at = wbPreviewLineMap ? wbPreviewLineMap.indexOf(line) : line;
+  if (at < 0) return null;
+  const cb = preview.querySelector('.task-checkbox[data-line="' + at + '"]');
+  return cb ? cb.closest('li') : null;
+}
+
+// After a shortcut: highlight the task in the panel and scroll it into the
+// panel's view, without moving the page or the editor.
+function navRevealLine(line) {
+  navActiveLine = line;
+  const navTree = document.getElementById('nav-tree');
+  navTree.querySelectorAll('.nav-item.active').forEach(n => n.classList.remove('active'));
+  const item = navTree.querySelector('.nav-item[data-line="' + line + '"]');
+  if (!item) return;
+  item.classList.add('active');
+  const top = item.offsetTop - navTree.offsetTop;
+  if (top < navTree.scrollTop || top + item.offsetHeight > navTree.scrollTop + navTree.clientHeight)
+    navTree.scrollTop = Math.max(0, top - navTree.clientHeight / 2);
+}
+
 function updateNav() {
   const navTree = document.getElementById('nav-tree');
+  const navTasks = document.getElementById('nav-tasks');
   const lines = editor.value.split('\n');
-  const headings = [];
+  const entries = [];
+  const counts = { todo: 0, inwork: 0, onhold: 0, blocked: 0, done: 0 };
   let inCode = false;
   let slugCount = {};
+  let level = 0;              // the heading a task sits under, for its indent
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -1203,18 +1278,30 @@ function updateNav() {
     if (inCode) continue;
     const m = line.match(/^(#{1,6})\s+(.*)/);
     if (m) {
-      const level = m[1].length;
+      level = m[1].length;
       const raw = m[2].trim();
       // display text and preview anchor both come from the shared helpers,
       // so the nav panel and every [[Note#Section]] link agree on the slug.
       // `line` is what the source jump needs: the preview knows ids, the
       // textarea only knows offsets, and the line is what connects them
-      headings.push({ level, text: mdPlain(raw), slug: headingSlug(raw, slugCount), line: i });
+      entries.push({ level, text: mdPlain(raw), slug: headingSlug(raw, slugCount), line: i });
+      continue;
     }
+    const status = taskLineStatus(line);
+    if (!status) continue;
+    const text = navTaskText(line);
+    if (!text) continue;      // a box still waiting for its words
+    counts[status]++;
+    const indent = line.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
+    entries.push({ task: true, status, text, line: i, level, depth: Math.min(4, Math.floor(indent / 2)) });
   }
 
-  if (!headings.length) {
-    navTree.innerHTML = '<div class="nav-empty">' + t('noHeadingsYet') + '</div>';
+  const total = NAV_TASK_ORDER.reduce((n, s) => n + counts[s], 0);
+  paintNavTaskBar(navTasks, counts, total);
+
+  const shown = entries.filter(en => !en.task || !navTaskHidden.has(en.status));
+  if (!shown.length) {
+    navTree.innerHTML = '<div class="nav-empty">' + t(entries.length ? 'navTasksAllHidden' : 'noHeadingsYet') + '</div>';
     return;
   }
 
@@ -1222,18 +1309,32 @@ function updateNav() {
   const bullets = ['', '◆', '◇', '▸', '▹', '·', '·'];
 
   navTree.innerHTML = '';
-  headings.forEach(({ level, text, slug, line }) => {
+  shown.forEach(entry => {
+    const { text, line } = entry;
     const item = document.createElement('div');
-    item.className = `nav-item nav-h${level}`;
     item.title = text;
+    item.dataset.line = line;
 
     const bullet = document.createElement('span');
-    bullet.className = 'nav-bullet';
-    bullet.textContent = bullets[level];
-
     const label = document.createElement('span');
     label.className = 'nav-label';
     label.textContent = text;
+
+    if (entry.task) {
+      item.className = `nav-item nav-task nav-task-${entry.status}` + (line === navActiveLine ? ' active' : '');
+      // under its heading: one step further in than the heading's own text
+      item.style.paddingLeft = (20 + entry.level * 8 + entry.depth * 10) + 'px';
+      bullet.className = 'nav-task-icon';
+      bullet.textContent = TASK_STATUS_ICONS[entry.status];
+      bullet.setAttribute('role', 'button');
+      bullet.dataset.iTitle = 'navTaskCycleTip';
+      bullet.title = t('navTaskCycleTip');
+      bullet.addEventListener('click', ev => { ev.stopPropagation(); navCycleTask(line); });
+    } else {
+      item.className = `nav-item nav-h${entry.level}` + (line === navActiveLine ? ' active' : '');
+      bullet.className = 'nav-bullet';
+      bullet.textContent = bullets[entry.level];
+    }
 
     item.appendChild(bullet);
     item.appendChild(label);
@@ -1241,16 +1342,52 @@ function updateNav() {
     // clicking takes both panes to that heading: the preview by its id,
     // the Markdown source by the line it was read from. On a phone this
     // stays on whichever tab is already open instead of always jumping to
-    // Preview — see gotoPreviewAnchor()'s `keepSource`.
+    // Preview — see gotoPreviewAnchor()'s `keepSource`. A task goes the same
+    // way, to its <li> in the preview and its line in the source.
     item.addEventListener('click', () => {
-      gotoPreviewAnchor(slug, true);
+      if (entry.task) gotoPreviewEl(previewTaskItem(line), true);
+      else gotoPreviewAnchor(entry.slug, true);
       gotoSourceHeading(line);
+      navActiveLine = line;
       navTree.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       item.classList.add('active');
     });
 
     navTree.appendChild(item);
   });
+}
+
+// The chips over the list: how many tasks are in each state, and a click
+// hides or shows that state. Only the states the chapter uses get a chip.
+function paintNavTaskBar(bar, counts, total) {
+  if (!bar) return;
+  bar.hidden = !total;
+  bar.innerHTML = '';
+  if (!total) return;
+  const sum = document.createElement('div');
+  sum.className = 'nav-tasks-sum';
+  sum.textContent = t('navTasksSummary', { d: counts.done, n: total });
+  const meter = document.createElement('div');
+  meter.className = 'nav-tasks-meter';
+  const fill = document.createElement('span');
+  fill.style.width = Math.round(counts.done / total * 100) + '%';
+  meter.appendChild(fill);
+  const chips = document.createElement('div');
+  chips.className = 'nav-tasks-chips';
+  NAV_TASK_ORDER.forEach(status => {
+    if (!counts[status]) return;
+    const key = 'taskStatus' + status.charAt(0).toUpperCase() + status.slice(1);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `nav-task-chip nav-task-${status}` + (navTaskHidden.has(status) ? ' off' : '');
+    chip.dataset.status = status;
+    chip.textContent = TASK_STATUS_ICONS[status] + ' ' + counts[status];
+    chip.setAttribute('aria-pressed', String(!navTaskHidden.has(status)));
+    chip.title = t('navTaskChipTip', t(key));
+    chip.addEventListener('click', () => navToggleTaskState(status));
+    chips.appendChild(chip);
+  });
+  bar.append(sum, meter, chips);
 }
 
 function updateStatus() {

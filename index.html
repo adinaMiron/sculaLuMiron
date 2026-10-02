@@ -902,6 +902,33 @@
     margin-top: 1px;
   }
 
+  /* Tasks in the navigation panel — docs/FEATURES.md § E "Task states" */
+  #nav-tasks { flex-shrink: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  #nav-tasks[hidden] { display: none; }
+  .nav-tasks-sum { font-size: 11px; color: var(--text-2); margin-bottom: 5px; }
+  .nav-tasks-meter { height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; margin-bottom: 7px; }
+  .nav-tasks-meter span { display: block; height: 100%; background: var(--imp-nice); transition: width 0.2s; }
+  .nav-tasks-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .nav-task-chip {
+    font: inherit; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; cursor: pointer;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  }
+  .nav-task-chip.off { opacity: 0.4; text-decoration: line-through; }
+  .nav-task-chip:hover { border-color: var(--accent); }
+  .nav-task .nav-label { font-size: 12px; color: var(--text); }
+  .nav-task-icon {
+    flex-shrink: 0; width: 1.2em; text-align: center; font-size: 12px; cursor: pointer;
+    border-radius: 3px; color: var(--text-2);
+  }
+  .nav-task-icon:hover { background: var(--border); color: var(--accent-2); }
+  .nav-task-chip.nav-task-todo, .nav-task-todo .nav-task-icon { color: var(--text); }
+  .nav-task-chip.nav-task-inwork, .nav-task-inwork .nav-task-icon, .nav-task-inwork .nav-label { color: var(--accent-2); }
+  .nav-task-inwork .nav-label { font-weight: 600; }
+  .nav-task-chip.nav-task-onhold, .nav-task-onhold .nav-task-icon { color: var(--text-2); }
+  .nav-task-chip.nav-task-blocked, .nav-task-blocked .nav-task-icon { color: var(--danger); }
+  .nav-task-chip.nav-task-done, .nav-task-done .nav-task-icon { color: var(--imp-nice); }
+  .nav-task-done .nav-label { color: var(--text-3); text-decoration: line-through; }
+
   .file-name { font-size: 12px; color: var(--text-3); padding: 6px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 5px; font-family: var(--font-mono); }
   /* text that is in no chapter — autosave has nowhere to write it, so say so */
   .file-name.loose { color: var(--danger); border-color: var(--danger); }
@@ -1349,6 +1376,9 @@
     .tree-thumb { width: 38px; height: 38px; }
     .tree-dir-label { padding: 8px 10px; }
     .nav-item { padding: 7px 12px; }
+    /* px on purpose: the state icon and the chips are tap targets too */
+    .nav-task-icon { min-width: 28px; padding: 4px 0; margin: -4px 0; font-size: 15px; }
+    .nav-task-chip { padding: 6px 10px; font-size: 13px; }
     /* px on purpose: 44px touch-target floor, see docs/FEATURES.md */
     .wb-book-row { padding: 12px 8px 12px 10px; }
     .wb-ch-row { padding: 11px 8px 11px 24px; }
@@ -3713,7 +3743,7 @@
   <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
   <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
   <select class="tb-select" id="task-status-select" onchange="setTaskStatus(this.value)"
-          data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks">
+          data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)">
     <option value="" data-i="taskStatusDefault">— Task status —</option>
     <option value="todo" data-i="taskStatusTodo">☐ To do</option>
     <option value="inwork" data-i="taskStatusInwork">◐ In work</option>
@@ -3889,8 +3919,9 @@ Use the toolbar above to insert formatting.
       <span class="panel-title" data-i="navTitle">Navigation</span>
       <button class="panel-close" onclick="toggleNav()" data-i-title="closeNavTip" title="Close (Ctrl+1)">✕</button>
     </div>
+    <div id="nav-tasks" hidden></div>
     <div id="nav-tree">
-      <div class="nav-empty" data-i="noHeadingsYet">No headings yet.</div>
+      <div class="nav-empty" data-i="noHeadingsYet">No headings or tasks yet.</div>
     </div>
   </div>
 </div>

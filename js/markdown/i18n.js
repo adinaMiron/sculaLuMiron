@@ -14,7 +14,7 @@ const I18N = {
     boldTip:"Aldin", italicTip:"Cursiv",
     listTip:"Listă neordonată", listBtn:"≡ Listă", orderedListTip:"Listă ordonată", orderedListBtn:"№ Ordonată",
     todoListTip:"Listă de sarcini", todoListBtn:"☐ De făcut", toggleTodoTip:"Marchează/demarchează ca terminat", toggleTodoBtn:"☑ Comută",
-    taskStatusTip:"Alege starea sarcinii de la cursor sau a sarcinilor selectate",
+    taskStatusTip:"Alege starea sarcinii de la cursor sau a sarcinilor selectate (Ctrl+Shift+7 de făcut · 8 în lucru · 9 terminată)",
     taskStatusDefault:"— Stare sarcină —", taskStatusTodo:"☐ De făcut", taskStatusInwork:"◐ În lucru",
     taskStatusOnhold:"Ⅱ În așteptare", taskStatusBlocked:"⛔ Blocată", taskStatusDone:"☑ Terminată",
     filterTaskStatusDefault:"— Toate stările —", filterTaskStatusTip:"Arată doar capitolele cu sarcini în starea aleasă",
@@ -82,7 +82,9 @@ const I18N = {
     noFileChosen:"niciun fișier ales", chooseFileBtn:"⬛ Alege fișier…",
     paneSourceHeader:"Sursă Markdown", panePreviewHeader:"Previzualizare",
     editorPlaceholder:"Începe să scrii Markdown aici…\n\n# Salut, lume!\n## Un subtitlu\n\nScrie **aldin**, *cursiv*, sau folosește - pentru liste.\n\nFolosește bara de instrumente de mai sus pentru formatare.",
-    navTitle:"Navigare", closeNavTip:"Închide (Ctrl+1)", noHeadingsYet:"Încă nu există titluri.",
+    navTitle:"Navigare", closeNavTip:"Închide (Ctrl+1)", noHeadingsYet:"Încă nu există titluri sau sarcini.",
+    navTasksSummary:({d,n})=>`Sarcini: ${d} din ${n} terminate`, navTaskChipTip:s=>`${s} — click: ascunde / arată în listă`,
+    navTaskCycleTip:"Click: următoarea stare (de făcut → în lucru → terminată)", navTasksAllHidden:"Toate sarcinile sunt ascunse — apasă o stare de mai sus.",
     statWords:n=>`${n} cuvânt${n===1?'':'e'}`, statLines:n=>`${n} rând${n===1?'':'uri'}`, statChars:n=>`${n} caracter${n===1?'':'e'}`,
     modalTitleInsertImage:"Inserează imagine", lblImageUrl:"URL imagine sau cale fișier",
     lblOrPickComputer:"— sau alege de pe calculator —", lblAltText:"Text alternativ",
@@ -399,7 +401,7 @@ const I18N = {
       <h3>Marcaje de importanță</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — din selectul din bară sau <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> șterge). Click pe pastilă caută tot ce mai are același marcaj.</p>
       <h3>Starea sarcinilor</h3>
-      <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
+      <p>O sarcină poate fi de făcut (<code>- [ ]</code>), în lucru (<code>- [ ] ~inwork</code>), în așteptare (<code>- [ ] ~onhold</code>), blocată (<code>- [ ] ~blocked</code>) sau terminată (<code>- [x]</code>). Alege starea din bara de instrumente pentru rândul de la cursor sau pentru sarcinile selectate — ori, mai repede, <kbd>Ctrl+Shift+7</kbd> de făcut, <kbd>Ctrl+Shift+8</kbd> în lucru, <kbd>Ctrl+Shift+9</kbd> terminată: un paragraf obișnuit devine sarcină, una existentă își schimbă starea, iar cursorul rămâne pe loc. Panoul ☰ Navigare arată sarcinile sub titlurile lor, cu câte una din fiecare stare; o stare apăsată acolo se ascunde, iar pictograma din fața unei sarcini o duce la starea următoare. Bifa din previzualizare marchează sarcina ca terminată ori o readuce la „de făcut”.</p>
       <p>Butonul ▦ Kanban deschide capitolul curent ca panou de sarcini. Poți alege un capitol, un caiet sau toate caietele, apoi poți căuta, filtra și muta sarcinile între stări. Scrie <code>start@2026-09-24</code> sau <code>end@2026-09-30</code> în sarcină pentru a arăta începutul ori termenul.</p>
       <p>Butonul ▤ Gantt desenează sarcinile din capitolul curent pe zile, inclusiv modificările nesalvate. Pune <code>#1</code> pe o sarcină și <code>$1</code> pe cele care depind de ea; săgețile arată dependențele. Datele <code>start@</code> și <code>end@</code> stabilesc intervalul; o sarcină fără dată apare în ziua de azi. Apasă pe numele unei sarcini ca să ajungi la rândul ei în editor.</p>
       <h3>Responsabil</h3>
@@ -443,7 +445,7 @@ const I18N = {
         <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> salvează tot ce s-a modificat ·
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> anulare/refă ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> bloc de cod ·
-        <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 ·
+        <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> sarcină de făcut / în lucru / terminată ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul ·
         <kbd>Ctrl+L</kbd> selectează rândul (apasă din nou pentru paragraf) ·
         <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf · <kbd>Ctrl+5</kbd> grădină · <kbd>Ctrl+6</kbd> poze ·
@@ -463,7 +465,7 @@ const I18N = {
     boldTip:"Bold", italicTip:"Italic",
     listTip:"Unordered List", listBtn:"≡ List", orderedListTip:"Ordered List", orderedListBtn:"№ Ordered",
     todoListTip:"To-do List", todoListBtn:"☐ Todo", toggleTodoTip:"Mark/unmark as done", toggleTodoBtn:"☑ Toggle Done",
-    taskStatusTip:"Set the status of the task at the caret or selected tasks",
+    taskStatusTip:"Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)",
     taskStatusDefault:"— Task status —", taskStatusTodo:"☐ To do", taskStatusInwork:"◐ In work",
     taskStatusOnhold:"Ⅱ On hold", taskStatusBlocked:"⛔ Blocked", taskStatusDone:"☑ Done",
     filterTaskStatusDefault:"— All task states —", filterTaskStatusTip:"Show only chapters with tasks in the selected state",
@@ -528,7 +530,9 @@ const I18N = {
     noFileChosen:"no file chosen", chooseFileBtn:"⬛ Choose file…",
     paneSourceHeader:"Markdown Source", panePreviewHeader:"Preview",
     editorPlaceholder:"Start writing Markdown here…\n\n# Hello, World!\n## A subtitle\n\nWrite **bold**, *italic*, or use - for lists.\n\nUse the toolbar above to insert formatting.",
-    navTitle:"Navigation", closeNavTip:"Close (Ctrl+1)", noHeadingsYet:"No headings yet.",
+    navTitle:"Navigation", closeNavTip:"Close (Ctrl+1)", noHeadingsYet:"No headings or tasks yet.",
+    navTasksSummary:({d,n})=>`Tasks: ${d} of ${n} done`, navTaskChipTip:s=>`${s} — click: hide / show in the list`,
+    navTaskCycleTip:"Click: next state (to do → in work → done)", navTasksAllHidden:"Every task is hidden — press a state above.",
     statWords:n=>`${n} word${n!==1?'s':''}`, statLines:n=>`${n} line${n!==1?'s':''}`, statChars:n=>`${n} char${n!==1?'s':''}`,
     modalTitleInsertImage:"Insert Image", lblImageUrl:"Image URL or file path",
     lblOrPickComputer:"— or pick from your computer —", lblAltText:"Alt Text",
@@ -845,7 +849,7 @@ const I18N = {
       <h3>Importance markers</h3>
       <p><code>!nice</code> 🌱, <code>!important</code> ⭐, <code>!vital</code> 🔥 — from the toolbar select or <kbd>Ctrl+Alt+1/2/3</kbd> (<kbd>Ctrl+Alt+0</kbd> clears). Clicking a pill searches for everything else carrying the same marker.</p>
       <h3>Task status</h3>
-      <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks. The preview checkbox marks a task done or returns it to to do.</p>
+      <p>A task can be to do (<code>- [ ]</code>), in work (<code>- [ ] ~inwork</code>), on hold (<code>- [ ] ~onhold</code>), blocked (<code>- [ ] ~blocked</code>), or done (<code>- [x]</code>). Pick a status in the toolbar for the task at the caret or the selected tasks — or, faster, <kbd>Ctrl+Shift+7</kbd> to do, <kbd>Ctrl+Shift+8</kbd> in work, <kbd>Ctrl+Shift+9</kbd> done: a plain paragraph becomes a task, an existing one changes state, and the caret stays put. The ☰ Navigation panel lists the tasks under their headings, with a count per state; pressing a state there hides it, and the icon in front of a task moves it to the next state. The preview checkbox marks a task done or returns it to to do.</p>
       <p>The ▦ Kanban button opens the current chapter as a task board. Select one chapter, one workbook, or every workbook, then search, filter, and move tasks between states. Write <code>start@2026-09-24</code> or <code>end@2026-09-30</code> in a task to show its start or due date.</p>
       <p>The ▤ Gantt button draws the current chapter's tasks across days, including unsaved edits. Put <code>#1</code> on a task and <code>$1</code> on tasks that depend on it; arrows show the dependencies. <code>start@</code> and <code>end@</code> set the date range; an undated task appears on today's date. Click a task title to jump to its line in the editor.</p>
       <h3>Assignee marker</h3>
@@ -889,7 +893,7 @@ const I18N = {
         <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> save all modified ·
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> undo/redo ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> code block ·
-        <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 ·
+        <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> task to do / in work / done ·
         <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line ·
         <kbd>Ctrl+L</kbd> select the line (press again for the paragraph) ·
         <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph · <kbd>Ctrl+5</kbd> garden · <kbd>Ctrl+6</kbd> photos ·
@@ -937,6 +941,8 @@ function applyUILang(){
   if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
   try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
   if(typeof updateStatus === "function") updateStatus();
+  // The navigation panel's task counts and chips are generated too.
+  if(typeof updateNav === "function") updateNav();
   // The workbook tree is generated, not markup, so data-i can't reach it.
   // wbBooted is a `var` on purpose: this runs before the rest of the script.
   if(typeof renderWorkbooks === "function" && wbBooted) renderWorkbooks();
