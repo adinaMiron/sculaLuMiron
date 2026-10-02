@@ -1299,7 +1299,9 @@ function updateNav() {
   const total = NAV_TASK_ORDER.reduce((n, s) => n + counts[s], 0);
   paintNavTaskBar(navTasks, counts, total);
 
-  const shown = entries.filter(en => !en.task || !navTaskHidden.has(en.status));
+  // The toolbar's task-state select narrows the panel too, on top of the chips.
+  const shown = entries.filter(en => !en.task ||
+    (!navTaskHidden.has(en.status) && (!wbTaskStatusFilter || en.status === wbTaskStatusFilter)));
   if (!shown.length) {
     navTree.innerHTML = '<div class="nav-empty">' + t(entries.length ? 'navTasksAllHidden' : 'noHeadingsYet') + '</div>';
     return;

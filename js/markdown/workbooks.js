@@ -220,6 +220,7 @@ function filterTodoByStatus(status) {
   wbTaskStatusFilter = ['todo', 'inwork', 'onhold', 'blocked', 'done'].includes(status) ? status : '';
   renderWorkbooks();
   updatePreview();
+  updateNav();
 }
 
 /* ── IndexedDB plumbing ── */
