@@ -6,24 +6,25 @@ const hide=source.match(/window.addEventListener\('pagehide',\(\)=>\{([^\n]*)\}\
 async function scenario(mode){
  const record={duration:1,source:{assetId:'source'},performance:{id:'edited',notes:[{midi:72}]}};
  const calls=[],jobState={value:'idle'},project={updatedAt:'before'};
- let resolveAnalysis,resolveCommit;
+ let resolveAnalysis,resolveCommit,markAnalysis,markCommit;
+ const analysisStarted=new Promise(r=>{markAnalysis=r;}),commitStarted=new Promise(r=>{markCommit=r;});
  const sandbox={record,project,state:'idle',analysisJob:null,analysisFraction:0,analysisPhase:'decoding',generation:0,
   confirm:()=>true,t:k=>k,now:()=> 'after',id:()=> 'new',
   stopPreview:()=>calls.push('preview stopped'),stopArrangement:()=>calls.push('arrangement stopped'),clearPlayers:()=>calls.push('players cleared'),
   paintAnalysisProgress:()=>{},setState:s=>{sandbox.state=s;jobState.value=s;},
   say:k=>calls.push(k),blobFor:async()=>({}),histories:new Map([['record','history']]),
-  touch:()=>{project.updatedAt='after';},persist:()=>new Promise(r=>{resolveCommit=r;}),
+  touch:()=>{project.updatedAt='after';},persist:()=>new Promise(r=>{resolveCommit=r;markCommit();}),
   render:async()=>calls.push('render'),
-  P:{MAX_SECONDS:180,analyze:()=>new Promise(r=>{resolveAnalysis=r;})},
+  P:{MAX_SECONDS:180,analyze:()=>new Promise(r=>{resolveAnalysis=r;markAnalysis();})},
   backupJob:null,cancelBackup:()=>{},capture:null,cleanup:()=>{}};
  vm.createContext(sandbox);vm.runInContext(handler+'\nfunction pagehide(){'+hide+'}',sandbox);
  const operation=vm.runInContext('analyzeTake(record)',sandbox);
- await Promise.resolve();await Promise.resolve();
+ await analysisStarted;
  assert.deepEqual(calls.slice(0,3),['preview stopped','arrangement stopped','players cleared']);
  if(mode==='cancel')sandbox.analysisJob.cancelled=true;
  if(mode==='hidden')sandbox.pagehide();
  resolveAnalysis({notes:[{midi:60}]});
- await Promise.resolve();await Promise.resolve();
+ if(mode!=='cancel' && mode!=='hidden')await commitStarted;
  if(mode==='saving-hidden'){assert.equal(sandbox.state,'saving');sandbox.pagehide();}
  if(resolveCommit)resolveCommit(true);
  await operation;
