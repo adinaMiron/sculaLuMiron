@@ -900,10 +900,11 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `js/audio/performance.js` | `decodeWavMono`: strict inspected data offset, 64 KiB source windows, PCM/float downmix and band-limited 22.05 kHz output; version 2 `analyzeBuffer`/`analyze`, Song-only octave and slide interpretation, separate raw/contour evidence, cancellation, editable notes, quantization and MIDI |
 | `createArrangement`, `changeArrangement`, `arrangementEditor`, `drawArrangement` | Project-level versions/snapshots, independent parts and instrument/mix/tempo/key/timing controls, piano roll |
 | `arrangementAudio`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
-| `js/audio/synthesis.js` | Versioned Voice/Song instrument, harmony, rendering and export kernels |
+| `js/audio/synthesis.js` | Versioned Voice instrument and shared harmony, rendering and export kernels |
+| `js/audio/song-instruments.js` | Song-only struck piano, plucked guitar/bass and distinct acoustic-style drum kit renderers |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, MIDI CC7/part tracks, fixed-headroom stereo mix |
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
-| `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json` | Pre-extraction Voice accuracy reference; synthesis/harmony/WAV/MIDI regression fixtures |
+| `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json`, `tests/song-instruments.js` | Pre-extraction Voice accuracy reference and Song-only acoustic-style instrument checks |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |

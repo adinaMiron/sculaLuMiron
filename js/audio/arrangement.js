@@ -2,11 +2,11 @@
    and MusicalPerformance IDs; generation never edits either input. */
 (function(root){
 'use strict';
-const S=root.ScuLaSynthesis,P=root.ScuLaPerformance;
+const S=root.ScuLaSynthesis,P=root.ScuLaPerformance,I=root.ScuLaSongInstruments;
 const copy=v=>JSON.parse(JSON.stringify(v));
 const PARTS=['lead','chords','bass','drums'];
 const DEFAULTS={lead:{instrument:'piano',enabled:true,volume:.85},chords:{instrument:'strings',enabled:true,volume:.65},bass:{instrument:'bass',enabled:true,volume:.8},drums:{instrument:'standard',enabled:true,volume:.65}};
-const KITS={standard:{pitch:0,gain:1,gm:0},soft:{pitch:0,gain:.55,gm:8},electronic:{pitch:4,gain:.9,gm:24}};
+const KITS={standard:{gm:0},soft:{gm:8},electronic:{gm:24}};
 function create(recording,meta){
  const p=recording.performance;
  if(!p || !p.notes.length)throw new Error('noPitch');
@@ -65,14 +65,13 @@ async function render(a,{sampleRate=44100,cancelled=()=>false,yieldUI=()=>new Pr
  const drumTypes={36:'kick',38:'snare',42:'hat',46:'hato'},pan={lead:0,chords:-.22,bass:.05,drums:.1};
  let count=0;
  for(const id of PARTS){const p=a.parts[id];if(!p.enabled||!p.volume)continue;
-  const kit=id==='drums'?{kick:S.renderKick(sr),snare:S.renderSnare(sr),hat:S.renderHat(sr,false),hato:S.renderHat(sr,true)}:null;
+  const kit=id==='drums'?{kick:I.drum('kick',p.instrument,sr),snare:I.drum('snare',p.instrument,sr),hat:I.drum('hat',p.instrument,sr),hato:I.drum('hato',p.instrument,sr)}:null;
   for(const n of p.notes){
    check();let buf,hold=n.dur,rel=.005,gain=.28;
-   if(kit){buf=kit[drumTypes[n.midi]];hold=buf.length/sr;gain=({36:.4,38:.25,42:.13,46:.12})[n.midi]*KITS[p.instrument].gain;
-    if(KITS[p.instrument].pitch){const factor=2**(KITS[p.instrument].pitch/12),shifted=new Float32Array(Math.ceil(buf.length/factor));for(let j=0;j<shifted.length;j++)shifted[j]=buf[Math.floor(j*factor)]||0;buf=shifted;hold=buf.length/sr;}
+   if(kit){buf=kit[drumTypes[n.midi]];hold=buf.length/sr;gain=({36:.4,38:.25,42:.13,46:.12})[n.midi];
    }else {
-    const pitch=n.midi+(n.cents||0)/100,key=p.instrument+'|'+pitch+'|'+hold;
-    if(!cache.has(key))cache.set(key,S.renderInstrument(p.instrument,pitch,hold+S.INSTR[p.instrument].rel,sr));
+    const pitch=n.midi+(n.cents||0)/100,key=p.instrument+'|'+pitch+'|'+hold+'|'+Math.round(n.vel*8);
+    if(!cache.has(key))cache.set(key,I.instrument(p.instrument,pitch,hold+S.INSTR[p.instrument].rel,sr,Math.round(n.vel*8)/8));
     buf=cache.get(key);rel=S.INSTR[p.instrument].rel;gain=id==='chords'?.2:.28;
    }
    S.place(L,R,buf,n.start,hold,rel,gain*p.volume*n.vel,pan[id],sr);

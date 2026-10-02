@@ -29,6 +29,6 @@ jobs:
         shell: bash
         run: |
           export PW_CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
-          for suite in verify song-analysis song-bounded-analysis song-analysis-lifecycle song-synthesis song-arrangement-generation song-integrity song-incremental-inspection song song-performance song-arrangement song-backup-import voice melody; do
+          for suite in verify song-analysis song-bounded-analysis song-analysis-lifecycle song-synthesis song-instruments song-arrangement-generation song-integrity song-incremental-inspection song song-performance song-arrangement song-backup-import voice melody; do
             node "tests/$suite.js"
           done

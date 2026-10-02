@@ -1,7 +1,7 @@
 // Known edited melody -> four parts, control isolation, stereo PCM and DAW MIDI.
 const assert=require('assert/strict'),fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.resolve(__dirname,'..');
-function load(){let seed=12;const math=Object.create(Math);math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};const c=vm.createContext({Math:math,Blob,Float32Array,Float64Array,Uint8Array,ArrayBuffer,DataView,setTimeout});for(const f of ['analysis','performance','synthesis','arrangement'])vm.runInContext(fs.readFileSync(path.join(root,'js/audio/'+f+'.js'),'utf8'),c);return c.ScuLaArrangement;}
+function load(){let seed=12;const math=Object.create(Math);math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};const c=vm.createContext({Math:math,Blob,Float32Array,Float64Array,Uint8Array,ArrayBuffer,DataView,setTimeout});for(const f of ['analysis','performance','synthesis','song-instruments','arrangement'])vm.runInContext(fs.readFileSync(path.join(root,'js/audio/'+f+'.js'),'utf8'),c);return c.ScuLaArrangement;}
 const recording={id:'take-1',source:{assetId:'master-1',immutable:true},performance:{id:'performance-1',updatedAt:'2026-01-01',tempoBpm:120,timingMode:'original',quantizationDivision:4,analysis:{tempo:{phaseSeconds:0},key:{tonic:0,mode:'major'},detectedNotes:[{midi:60}]},notes:[{id:'edited-1',sourceNoteId:'detected-1',midi:64,onset:.13,offset:.63,cents:23,velocity:77,quantizedTiming:{onset:.125,offset:.625}},{id:'manual-2',sourceNoteId:null,midi:67,onset:1.01,offset:1.43,cents:-7,velocity:110,quantizedTiming:null}]}};
 const json=v=>JSON.parse(JSON.stringify(v)),energy=x=>x.reduce((s,v)=>s+v*v,0);
 function parseMidi(b){

@@ -204,6 +204,8 @@ Run `song`, `voice`,
 
 Phase 3 adds `node tests/song-synthesis.js` (seeded instrument/drum, stereo mix,
 WAV/MIDI and harmony fixtures captured before extracting Voice's code),
+`node tests/song-instruments.js` (Song's piano, plucked strings, velocity response
+and distinct drum kit attacks and decays),
 `node tests/song-arrangement-generation.js` (snapshot references, edited melody,
 selected timing, tempo/key/harmony, independent controls, MIDI tracks/programs/
 CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrangement`
@@ -247,7 +249,7 @@ nonstandard chunk order, odd padding, malformed/duplicate chunks, dimensions,
 five tiny reads from a sparse 128 MiB WAV and cancellation during a pending
 read or hundreds of tiny chunks. The backup browser check asserts bounded
 inspection plus full-byte hashing and cancellation through the shipped controls.
-Run `song-analysis`, `song-synthesis`, `song-arrangement-generation`, `song`,
+Run `song-analysis`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song`,
 `song-performance`, `song-arrangement`, `voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium
 emulation.

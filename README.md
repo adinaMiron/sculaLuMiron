@@ -439,6 +439,10 @@ the arrangement roll shows all four parts. Play/Stop releases audio resources,
 and **Save stereo WAV** / **Save multitrack MIDI** export through the same folder,
 share or download route. Versions retain snapshots, so later melody edits do not
 change an earlier arrangement. Save metadata to back up all versions and settings.
+Song renders piano with struck, slightly detuned strings, guitar and electric bass
+with plucked string models, and three distinct drum kits with pitched shells and
+noise components. These sounds are generated locally; recordings saved as instrument
+samples remain source takes and are not used automatically in arrangements.
 
 Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
 browser storage removes them. Desktop folder saves use `Song Creation/<project>/`

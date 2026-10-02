@@ -3262,8 +3262,17 @@ panning/release, reverb and WAV/MIDI writers. `tests/song-synthesis.js` and
 `fixtures/voice-synthesis-v1.json` captured seeded reference bytes and known
 harmony before extraction. Voice imports these exact kernels but retains its
 score, quantization, mix normalization, playback and export behavior.
-No modules, samples, network requests or app dependencies are added; scripts
-load from `file://`.
+Song loads `js/audio/song-instruments.js` after that shared kernel. Its piano
+uses three slightly detuned, stiff strings with velocity-dependent hammer tone,
+key transient and per-partial decay. Guitar and electric bass use damped plucked
+delay lines with pick-position filtering and different body/pickup responses.
+The standard, soft and electronic drum kits have distinct kick sweeps, snare
+shell/wire balances and metallic hat decays. Other pitched choices continue to
+use the shared models. The new models use seeded excitation, so their individual
+notes render consistently across exports. Recorded instrument
+sample takes are retained as source recordings; arrangements do not yet map
+them to playable multisamples. No modules, network requests or app dependencies
+are added; scripts load from `file://`.
 
 **Play arrangement** renders a 44.1 kHz stereo mix, then plays a buffer source.
 Cents are audible in synthesis. Song uses fixed headroom and only attenuates
@@ -3327,7 +3336,9 @@ phone layout, cancellation without replacing edits, source bytes and `file://`.
 cancellation that yields before the next read. Run alongside all Song, Voice and melody checks.
 
 `node tests/song-synthesis.js` verifies the pre-extraction Voice sound/harmony
-fixtures. `node tests/song-arrangement-generation.js` checks version/source
+fixtures. `node tests/song-instruments.js` checks the Song-only acoustic-style
+models, velocity response and distinct drum kit sounds.
+`node tests/song-arrangement-generation.js` checks version/source
 references, edited expression, timing/tempo/key/harmony, independent controls,
 MIDI notes/programs/CC7, stereo WAV dimensions, proportional volume, mute and
 cancellation without mutating inputs. `/apptest song-arrangement` drives real
