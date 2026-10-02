@@ -872,7 +872,7 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~1990 lines · Song Creation / Creează melodie
+## song.html — ~2140 lines · Song Creation / Creează melodie
 
 See `docs/FEATURES.md` § V for the authoritative architecture, performance/arrangement schemas and staged backup restoration.
 
@@ -880,7 +880,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 |---|---|
 | `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
 | `<nav id="site-nav">` (10) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
-| `<main>` (~1310) | Project, microphone/recording, WAV import, sample metadata and take list controls |
+| `<main>` (~1310) | Project, microphone/recording, WAV import, sample metadata, take list and whole-song timeline controls |
 | `#backupHeading`, `#backupJson`, `#backupWavs` (~1320) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
 | `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
 | `openDB`, `read`, `persist`, `blobFor` | `scula-song` projects/audio stores, atomic commits, in-memory failure recovery |
@@ -903,9 +903,12 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `js/audio/synthesis.js` | Versioned Voice instrument and shared harmony, rendering and export kernels |
 | `js/audio/song-instruments.js` | Song-only struck piano, plucked guitar/bass and distinct acoustic-style drum kit renderers |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, bounded nearest-note sample mapping, playback start/sustain crossfade/release, MIDI CC7/part tracks, fixed-headroom stereo mix |
+| `renderSongTimeline`, `addSongSection`, `songAudio`, `exportSongMidi` | Linked project sections, reorder/duplicate/repeat/remove controls and whole-song playback/exports |
+| `js/audio/song-timeline.js` | Resolve section references and duration cap, overlap shared arrangement renders, stereo WAV and tempo/key/part-aware multitrack MIDI |
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json`, `tests/song-instruments.js` | Pre-extraction Voice accuracy reference and Song-only acoustic-style instrument checks |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
+| `tests/song-timeline.js` | Two-take browser sections, joins/repeats, MIDI/WAV timing, playback parity, backup remapping and source byte preservation |
 | `tests/song-samples.js`, `tests/song-sample-browser.js` | Sample pitch/dynamic mapping, loop boundaries/release, legacy defaults and fallback; file:// import, waveform/marker dragging, invalid boundaries, mapping changes, unchanged source, audition, played/exported PCM and persistence |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |

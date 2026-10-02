@@ -96,10 +96,16 @@ function validate(project){
       if(part==='lead'){check(snapshotIds.has(n.id) && !leadIds.has(n.id),p+'.lead.note.id');leadIds.add(n.id);check(n.sourceNoteId===s.notes.find(x=>x.id===n.id).sourceNoteId,p+'.lead.note.sourceNoteId');}
     });});check(leadIds.size===snapshotIds.size,p+'.lead / snapshot notes');
     array(a.chords,p+'.chords');a.chords.forEach(c=>{object(c,p+'.chord');integer(c.bar,p+'.chord.bar',0);integer(c.root,p+'.chord.root',0,11);check(['maj','min','dim'].includes(c.q),p+'.chord.q');array(c.tones,p+'.chord.tones');c.tones.forEach(n=>integer(n,p+'.chord.tones',0,11));});
-  });return {entities,filenames};
+  });
+  if(project.timeline!==undefined){
+    array(project.timeline,'timeline');
+    project.timeline.forEach((s,i)=>{const p='timeline['+i+']';object(s,p);entity(s.id,p+'.id');string(s.name,p+'.name');check(s.name.trim().length>0 && s.name.length<=120,p+'.name');identity(s.arrangementId,p+'.arrangementId');integer(s.repeats,p+'.repeats',1,16);});
+    try{root.ScuLaSongTimeline.resolve(project);}catch(_){fail('backupInvalid','timeline');}
+  }
+  return {entities,filenames};
 }
 function occupied(projects,extra=[]){
-  const ids=new Set(extra);projects.forEach(p=>{ids.add(p.id);(p.recordings||[]).forEach(r=>{ids.add(r.id);ids.add(r.source.assetId);if(r.performance)ids.add(r.performance.id);});(p.arrangements||[]).forEach(a=>{ids.add(a.id);ids.add(a.sourcePerformanceId);});});return ids;
+  const ids=new Set(extra);projects.forEach(p=>{ids.add(p.id);(p.recordings||[]).forEach(r=>{ids.add(r.id);ids.add(r.source.assetId);if(r.performance)ids.add(r.performance.id);});(p.arrangements||[]).forEach(a=>{ids.add(a.id);ids.add(a.sourcePerformanceId);});(p.timeline||[]).forEach(s=>ids.add(s.id));});return ids;
 }
 async function stage(text,files,{used=new Set(),newId,cancelled=()=>false,progress=()=>{}}={}){
   const cancel=()=>{if(cancelled())fail('backupCancelled','');};cancel();let p;
@@ -126,6 +132,7 @@ async function stage(text,files,{used=new Set(),newId,cancelled=()=>false,progre
   const remap=v=>mapping.get(v)||v;p.id=remap(p.id);
   const audio=new Map();p.recordings.forEach(r=>{audio.set(remap(r.id),blobs.get(r.id));r.id=remap(r.id);r.source.assetId=remap(r.source.assetId);if(r.performance){r.performance.id=remap(r.performance.id);r.performance.sourceAssetId=remap(r.performance.sourceAssetId);}});
   (p.arrangements||[]).forEach(a=>{a.id=remap(a.id);a.sourceRecordingId=remap(a.sourceRecordingId);a.sourceAssetId=remap(a.sourceAssetId);a.sourcePerformanceId=remap(a.sourcePerformanceId);});
+  (p.timeline||[]).forEach(s=>{s.id=remap(s.id);s.arrangementId=remap(s.arrangementId);});
   return {project:p,audio,unverified};
 }
 root.ScuLaSongBackup=Object.freeze({version:1,validate,occupied,stage});

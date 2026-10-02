@@ -93,7 +93,7 @@ function chordsFor(notes, origin, barLen, bars, tonic, mode){
    held tone into a struck one, vibrato, and a breath/bow noise layer.
    The guitar gets its own kernel — a plucked string is a delay line,
    not a sum of sines. */
-function renderTone(sp, freq, hold, sr){
+function renderTone(sp, freq, hold, sr, random=Math.random){
   const n = Math.ceil((hold + 0.03) * sr) + 2;
   const out = new Float32Array(n);
   const nyq = sr * 0.45;
@@ -110,7 +110,7 @@ function renderTone(sp, freq, hold, sr){
   const K = inc.length;
   if(!K) return out;
   const ph = new Float32Array(K);
-  for(let k = 0; k < K; k++) ph[k] = Math.random();
+  for(let k = 0; k < K; k++) ph[k] = random();
   const atk = Math.max(0.001, sp.atk || 0.005);
   const dec = sp.dec || 0, sus = sp.dec ? (sp.sus == null ? 1 : sp.sus) : 1;
   const decK = dec > 0 ? Math.exp(-1 / (dec * sr)) : 0;
@@ -137,7 +137,7 @@ function renderTone(sp, freq, hold, sr){
       s += gain[k] * amp[k] * SINE[(p * TSZ) & TMASK];
     }
     if(nzAmp){
-      lp += 0.28 * ((Math.random()*2 - 1) - lp);
+      lp += 0.28 * ((random()*2 - 1) - lp);
       s += lp * nzAmp * (norm * 0.5);
     }
     out[i] = s * env * scale;
@@ -147,14 +147,14 @@ function renderTone(sp, freq, hold, sr){
 /* Karplus-Strong: a burst of noise round a lowpassed delay line. The
    per-pass decay is derived from the loop length so a high string does
    not die faster than a low one. */
-function renderString(sp, freq, hold, sr){
+function renderString(sp, freq, hold, sr, random=Math.random){
   const n = Math.ceil((hold + 0.03) * sr) + 2;
   const out = new Float32Array(n);
   const L = Math.max(2, Math.round(sr / freq));
   const line = new Float32Array(L);
   let lp = 0;
   for(let i = 0; i < L; i++){
-    lp += 0.55 * ((Math.random()*2 - 1) - lp);
+    lp += 0.55 * ((random()*2 - 1) - lp);
     line[i] = lp;
   }
   const decay = Math.pow(sp.ksHold || 0.012, L / sr);
@@ -170,10 +170,10 @@ function renderString(sp, freq, hold, sr){
   }
   return out;
 }
-function renderInstrument(id, midi, hold, sr){
+function renderInstrument(id, midi, hold, sr, random=Math.random){
   const sp = INSTR[id] || INSTR.piano;
   const freq = 440 * Math.pow(2, (midi - 69) / 12);
-  return sp.ks ? renderString(sp, freq, hold, sr) : renderTone(sp, freq, hold, sr);
+  return sp.ks ? renderString(sp, freq, hold, sr, random) : renderTone(sp, freq, hold, sr, random);
 }
 
 /* --- drums: three one-shots, no samples --------------------------- */

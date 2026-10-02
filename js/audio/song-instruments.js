@@ -63,7 +63,10 @@ function string(midi,hold,sr,velocity,bass){
 function instrument(id,midi,hold,sr,velocity=1){
  if(id==='piano')return piano(midi,hold,sr,velocity);
  if(id==='guitar'||id==='bass')return string(midi,hold,sr,velocity,id==='bass');
- return root.ScuLaSynthesis.renderInstrument(id,midi,hold,sr);
+ // Voice keeps its default random timbre. Song seeds the shared kernel so
+ // separate playback/export renders of the same version produce the same PCM.
+ const next=rng(seedFor(midi,Math.round(hold*1000)+sr+id.length,17));
+ return root.ScuLaSynthesis.renderInstrument(id,midi,hold,sr,()=>(next()+1)/2);
 }
 
 /* Drum kits share the MIDI mapping, but have their own resonances, noise

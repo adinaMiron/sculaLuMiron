@@ -2921,7 +2921,7 @@ browser under Xvfb. Run scripts with `/apptest <name>`.
 
 **Creează melodie / Song Creation** is the ninth standalone page. The workspace
 keeps multiple authoritative source recordings; Phase 2 derives an editable
-melody from a recorded or imported hummed WAV. Phase 3 creates separate instrumental arrangement versions from that performance. Projects can be created, opened and renamed; takes
+melody from a recorded or imported hummed WAV. Phase 3 creates separate instrumental arrangement versions from that performance. Phase 4 assembles those versions into a complete song. Projects can be created, opened and renamed; takes
 can be played, renamed, deleted with confirmation and exported. Purposes are
 `melody` (humming) and `sample`; sample metadata includes instrument, note,
 optional MIDI note, articulation, dynamics and free notes.
@@ -2980,7 +2980,7 @@ All exports call `ScuLaFolder.save`. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
 same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
 `Song Creation/<safe-project-name>-<id>/recordings/` or `samples/`. Project JSON
-is in the project folder; `exports/` holds melody MIDI and arrangement stereo WAV/multitrack MIDI exports.
+is in the project folder; `exports/` holds melody, arrangement and whole-song stereo WAV/multitrack MIDI exports.
 Nothing is overwritten. Mobile share/download cannot enforce nested folders;
 filenames include project and recording IDs and purpose. JSON references each
 WAV filename/path and does not embed it. Name components are limited to 60 UTF-8
@@ -3039,8 +3039,8 @@ it reads the RIFF and chunk headers plus the required `fmt ` fields, and skips
 audio and unknown chunk payloads. Odd-byte padding must fit inside RIFF. Even
 files with many tiny chunks report inspection progress and yield for cancellation.
 
-Every import receives new project, recording, source asset, performance and
-arrangement IDs, including historical performance provenance IDs. References are
+Every import receives new project, recording, source asset, performance,
+arrangement and timeline section IDs, including historical performance provenance IDs. References are
 remapped consistently; note IDs remain local to their performance/snapshot and
 musical values, analysis, snapshots and timestamps stay unchanged. Existing
 metadata, pending audio and stored audio keys (including orphan keys) are reserved
@@ -3347,6 +3347,48 @@ Arrangement changes use the existing atomic project/audio commit. Quota or
 unavailable-storage failures leave arrangements and source Blobs in memory with
 the persistent recovery warning; metadata, WAV and MIDI can still be exported,
 and **Retry local storage** commits them. No audio is stored in localStorage.
+
+### Phase 4: whole-song timeline
+
+The project-level **Song timeline / Cronologia melodiei** places existing
+arrangement versions in order. Add a section, give it a name such as verse or
+chorus, choose any version from any take in the project, set 1–16 repeats, or
+move, duplicate and remove sections. Each section stores an independent ID,
+name, `arrangementId` and `repeats` in `project.timeline`. The ID is a live
+reference to a version: editing that version updates every linked section;
+creating a newer version does not silently switch them. Deleting a recording
+removes its versions and their linked sections. Older projects without
+`timeline` load with an empty timeline. The expanded song is capped at 20
+minutes to bound rendering memory.
+
+Sections join at each arrangement's musical `duration`, with no inserted gap.
+The preceding stereo reverb/release tail overlaps the next section, including
+repeats. Each section keeps its own tempo and key: there is no tempo averaging,
+time stretch at a join, or forced transposition. `js/audio/song-timeline.js`
+calls the existing sample-aware `ScuLaArrangement.render` for each distinct
+version and places its stereo buffer at each section start. Whole-song playback
+and stereo WAV export use that same assembled mix at 44.1 kHz; a global limiter
+only reduces peaks that exceed 0.95. Sample mapping and synthesis fallback work
+as in individual arrangements. Rendering produces derived audio and never
+changes a source WAV. Song seeds random phases/noise when calling the shared
+synth kernel, so separate playback and WAV renders of an unchanged version
+match; Voice keeps its existing synth defaults.
+
+**Save song multitrack MIDI** writes format 1 with a tempo/time-signature/key
+and section-marker track plus the four named part tracks. Tempo and key events
+occur at every section and repeat boundary; part program and CC7 volume changes
+follow each version. Notes use that version's local tempo and key, and muted
+parts remain silent. MIDI represents musical note lengths, while reverb overlap
+is audio-only. Whole-song WAV and MIDI use `ScuLaFolder.save` in `exports/`.
+Backup validation checks section IDs, names, repeat counts, duration and live
+version references; restore remaps both section IDs and version references.
+
+`tests/song-timeline.js` exercises the file:// UI with two hummed takes,
+section order/duplicate/remove/repeats, tempo and key MIDI joins, WAV timing,
+playback buffer versus exported PCM, reload, backup restore, source WAV bytes,
+RO/EN and phone width.
+`tests/song-sample-browser.js` also checks that a one-section song matches
+sample-aware arrangement WAVs and follows sample remapping and synthesis fallback.
 
 ### Testing
 

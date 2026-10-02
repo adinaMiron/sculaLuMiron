@@ -67,6 +67,8 @@ async function dragMarker(page,kind,seconds,duration=1){
   await page.reload();await ready(page);assert.equal(await page.getByLabel('Lead Sample set',{exact:true}).inputValue(),'My Flute');
   assert.equal(await page.getByLabel('flute Loop end (s)',{exact:true}).inputValue(),'0.8');
   const originalSet=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);
+  await page.click('#addSongSection');await ready(page);
+  assert.deepEqual(await save(page,page.locator('#saveSongWav')),originalSet,'a one-section song uses the same sample-aware arrangement renderer');await ready(page);
   await page.getByLabel('flute Instrument',{exact:true}).fill('New Flute');await page.getByLabel('flute Instrument',{exact:true}).press('Tab');await ready(page);
   assert.equal(await page.locator('.sample-set-editor').getAttribute('aria-label'),'New Flute');
   await page.getByLabel('flute Velocity / dynamics',{exact:true}).fill('ff');await page.getByLabel('flute Velocity / dynamics',{exact:true}).press('Tab');await ready(page);
@@ -77,8 +79,10 @@ async function dragMarker(page,kind,seconds,duration=1){
   const unmapped=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.notDeepEqual(unmapped,originalSet);
   await page.getByLabel('Lead Sample set',{exact:true}).selectOption('New Flute');await ready(page);
   const tooFar=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.deepEqual(tooFar,unmapped,'out of range MIDI note falls back to synthesis');
+  assert.deepEqual(await save(page,page.locator('#saveSongWav')),tooFar,'whole-song fallback matches arrangement fallback');await ready(page);
   await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('60');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
   const remapped=await save(page,page.getByRole('button',{name:'Save stereo WAV',exact:true}));await ready(page);assert.deepEqual(remapped,originalSet,'remapped take plays through the same renderer');
+  assert.deepEqual(await save(page,page.locator('#saveSongWav')),remapped,'linked section follows sample remapping');await ready(page);
   await page.getByLabel('flute MIDI note (0–127)',{exact:true}).fill('128');await page.getByLabel('flute MIDI note (0–127)',{exact:true}).press('Tab');await ready(page);
   assert.match(await page.textContent('#status'),/Instrument must/);assert.equal(await page.getByLabel('flute MIDI note (0–127)',{exact:true}).inputValue(),'60');
   await page.reload();await ready(page);assert.equal(await page.getByLabel('flute Instrument',{exact:true}).inputValue(),'New Flute');assert.equal(await page.getByLabel('flute Velocity / dynamics',{exact:true}).inputValue(),'ff');

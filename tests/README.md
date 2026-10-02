@@ -210,6 +210,9 @@ and distinct drum kit attacks and decays),
 selected timing, tempo/key/harmony, independent controls, MIDI tracks/programs/
 CC7/notes, stereo WAV, volume/mute and cancellation), and `/apptest song-arrangement`
 (`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-arrangement.js`).
+`node tests/song-timeline.js` checks two humming takes assembled into linked
+sections, order and repeats, variable-tempo/key MIDI, WAV timing, playback/export
+PCM parity, reload, backup restoration and byte-identical source WAVs.
 `node tests/song-samples.js` checks nearest recorded pitch, dynamic layers,
 five-semitone shift limit, loop boundaries, release, legacy one-shot defaults,
 invalid settings, velocity and synthesis fallback.
@@ -258,7 +261,7 @@ five tiny reads from a sparse 128 MiB WAV and cancellation during a pending
 read or hundreds of tiny chunks. The backup browser check asserts bounded
 inspection plus full-byte hashing and cancellation through the shipped controls.
 Run `song-analysis`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`,
-`song-samples`, `song-sample-browser`, `song`, `song-performance`, `song-arrangement`,
+`song-samples`, `song-sample-browser`, `song`, `song-performance`, `song-arrangement`, `song-timeline`,
 `voice`, `melody` and `node tests/verify.js`
 alongside it. Real-phone audio and long mixes remain unverified beyond Chromium
 emulation.

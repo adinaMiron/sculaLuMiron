@@ -9,7 +9,7 @@ The other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `song.html` | ~1990 | ~26k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, sample set editing, instrumental arrangements and backup restoration | dark (earth) |
+| `song.html` | ~2140 | ~29k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, sample set editing, instrumental arrangements, whole-song timeline and backup restoration | dark (earth) |
 | `voice.html` | ~3262 | ~30k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts, mind maps, sequence diagrams and sketches + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
@@ -280,7 +280,7 @@ export (`codecopy.js` — clicks the real button in the exported file, reads
 the clipboard back), and for
 `voice.html`'s keep-the-audio checkbox (`voice.js` — driven against
 Chromium's fake microphone, asserting on the real files that come out) and
-Song Creation (`song.js` — source PCM/WAV, projects, persistence, microphone and save routes; `song-analysis.js`, `song-bounded-analysis.js` and `song-performance.js` — humming accuracy, bounded-source decoding and cancellation, editable melody, exports and immutable evidence/masters; `song-synthesis.js`, `song-instruments.js`, `song-arrangement-generation.js` and `song-arrangement.js` — shared sound fixtures, Song-only acoustic-style instrument models, instrumental arrangement controls/audio/exports/recovery; `song-backup-import.js` — staged JSON/WAV restore, bounded inspection, validation, collisions, immutable round trips, cancellation, storage recovery, SHA-256 integrity and audio cleanup; `song-integrity.js` — SHA-256 vectors, exact byte hashing and cooperative cancellation; `song-incremental-inspection.js` — sparse large-file RIFF traversal and cancellation), and
+Song Creation (`song.js` — source PCM/WAV, projects, persistence, microphone and save routes; `song-analysis.js`, `song-bounded-analysis.js` and `song-performance.js` — humming accuracy, bounded-source decoding and cancellation, editable melody, exports and immutable evidence/masters; `song-synthesis.js`, `song-instruments.js`, `song-arrangement-generation.js` and `song-arrangement.js` — shared sound fixtures, Song-only acoustic-style instrument models, instrumental arrangement controls/audio/exports/recovery; `song-timeline.js` — two-take linked sections, order/repeats, whole-song WAV/MIDI/playback and backup round trip; `song-backup-import.js` — staged JSON/WAV restore, bounded inspection, validation, collisions, immutable round trips, cancellation, storage recovery, SHA-256 integrity and audio cleanup; `song-integrity.js` — SHA-256 vectors, exact byte hashing and cooperative cancellation; `song-incremental-inspection.js` — sparse large-file RIFF traversal and cancellation), and
 its **melody** (`melody.js` — a hummed C-major phrase at a known tempo fed
 in both ways, through the file picker and through the microphone itself
 with Chromium playing a real WAV into it, then the notes read back out of
