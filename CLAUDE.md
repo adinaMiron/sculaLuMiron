@@ -9,7 +9,7 @@ The other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
-| `song.html` | ~1860 | ~24k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, instrumental arrangements and backup restoration | dark (earth) |
+| `song.html` | ~1990 | ~26k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, sample set editing, instrumental arrangements and backup restoration | dark (earth) |
 | `voice.html` | ~3262 | ~30k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts, mind maps, sequence diagrams and sketches + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |

@@ -3257,6 +3257,22 @@ selector. A set groups project sample takes by their Instrument field; only take
 with a MIDI note can be selected. The synth instrument remains the MIDI program
 and the fallback sound for notes without a nearby usable recording. Sample set
 selection is stored per arrangement version; older versions default to synthesis.
+The **Sample Set Editor** groups all recorded/imported sample takes by Instrument,
+including takes without a MIDI note. Each take can audition its untouched source
+WAV or its edited sound. The editor stores `recording.sample.playback` in project
+metadata: `startSeconds`, optional `loopStartSeconds`/`loopEndSeconds` (both `null`
+for one shot), `crossfadeSeconds` and `releaseSeconds`. Times are seconds in the
+source WAV. Playback start must leave at least 30 ms; a sustain loop must fit
+after that start, last at least 30 ms, and have a 1–100 ms crossfade no longer
+than half its length. Release is 10 ms to 2 s. The loop overlaps its end with
+its beginning, then resumes after the overlapped head; note off fades to zero.
+Without a loop, the existing one shot and source end fade remain. Absent
+playback metadata in old projects uses the original one shot defaults
+(0 s start, 120 ms release). Invalid settings in a backup are rejected; a
+missing, oversized, undecodable or unsuitable sample at render time uses the
+selected synth instrument. Editing sample playback affects every arrangement
+version that selects that set, while arrangement notes and MIDI remain fixed.
+Source WAV Blobs and exported WAV bytes are never edited by these controls.
 The roll draws all four parts in the same
 colors as its legend; disabled/zero-volume parts fade. RO/EN controls repaint
 with the shared language toggle, and part controls stack on narrow phone screens.
@@ -3362,9 +3378,10 @@ phone layout, storage failure/retry and `file://` without IndexedDB. Master
 exports remain byte-identical (including extra RIFF chunks); source metadata,
 analysis and edited performances remain unchanged.
 `node tests/song-samples.js` checks pitch and dynamic mapping, the shift limit,
-release and velocity, synthesis fallback and WAV output.
+loop boundaries, release envelope, invalid settings, old one shot defaults,
+velocity, synthesis fallback and WAV output.
 `node tests/song-sample-browser.js` checks real `file://` sample import, byte-identical
-source export, saved selection, played buffer against stereo WAV PCM, and fallback
+source export, editable playback metadata/reload, audition, played buffer against stereo WAV PCM, and fallback
 for a missing source Blob or deleted sample take.
 
 `node tests/song-analysis.js` checks known pitch/onset/offset/tempo/key, repeated

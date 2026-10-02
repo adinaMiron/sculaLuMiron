@@ -7,6 +7,7 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem system-ui,sans-serif}main{max-width:64rem;margin:auto;padding:1.5rem 1rem 4rem}h1{margin:0}h2{font-size:1.2rem}p,small{line-height:1.5}small,.hint{color:var(--text-2)}.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-top:1rem}.row{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}label{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:0}input,select,textarea,button{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:.5rem;min-height:2.8rem;padding:.6rem;max-width:100%}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--accent);color:var(--on-accent);font-weight:700}#recordBtn{min-height:4rem;min-width:11rem;font-size:1.2rem}#recordBtn[aria-pressed=true]{background:var(--danger);color:var(--text)}#timer{font:2rem ui-monospace,monospace;min-width:6rem}meter{width:100%;height:1.5rem;accent-color:var(--accent)}#quality{white-space:pre-line;overflow-wrap:anywhere;font-size:.9rem}#status{min-height:1.5rem}#status.error,#backupSummary.error,#recovery{color:var(--danger)}.take{padding:1rem 0;border-top:1px solid var(--border)}.take h3{margin:.3rem 0;overflow-wrap:anywhere}.take audio{width:100%;margin:.6rem 0}.take canvas{width:100%;height:3rem;display:block}.take .row{align-items:center}.badge{color:var(--accent)}[hidden]{display:none!important}@media(max-width:38rem){.grid{grid-template-columns:1fr}main{padding:1rem .75rem 3rem}.panel{padding:.9rem}.row>label{flex-basis:100%}#recordBtn{flex:1}}
 .performance{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.performance h4{margin:0 0 .5rem}.performance .row{margin:.8rem 0}.take canvas.melody-roll{height:11rem;margin:.8rem 0}.note-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0}.note-table{border-collapse:collapse;width:100%;font-size:.9rem}.note-table th,.note-table td{padding:.4rem;text-align:left;border-bottom:1px solid var(--border)}.note-table input{width:6.5rem}.note-table td:nth-child(7){min-width:16rem;color:var(--text-2)}
 .arrangement{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.arrangement h4{margin:0 0 .5rem}.arrangement .row{margin:.8rem 0}.arrangement-parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.arrangement-parts fieldset{min-width:0;margin:0;border:1px solid var(--border);border-radius:.5rem;padding:.75rem;display:grid;gap:.6rem}.arrangement-parts input[type=checkbox]{align-self:start;width:2.8rem;margin:0}.arrangement-parts input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.take canvas.arrangement-roll{height:16rem;margin:.8rem 0}.arrangement-legend{display:flex;gap:1rem;flex-wrap:wrap}.arrangement-legend [data-part=lead]{color:var(--accent)}.arrangement-legend [data-part=chords]{color:var(--ok)}.arrangement-legend [data-part=bass]{color:var(--text-2)}.arrangement-legend [data-part=drums]{color:var(--danger)}@media(max-width:38rem){.arrangement-parts{grid-template-columns:1fr}.arrangement{padding:.75rem}.arrangement .row>button{flex:1 1 9rem}}
+.sample-set-editor{border-top:1px solid var(--border);margin-top:1rem;padding-top:.5rem}.sample-set-editor fieldset{border:1px solid var(--border);border-radius:.5rem;margin:.75rem 0;padding:.75rem;min-width:0}.sample-set-editor legend{padding:0 .4rem}.sample-set-editor .grid{gap:.7rem}.sample-set-editor input[type=checkbox]{width:2.8rem;align-self:start}.sample-set-editor .row{margin-top:.8rem}
 </style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
   <a href="index.html" data-page="index.html">Markdown</a>
@@ -1345,6 +1346,7 @@
 <small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
 </section>
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
+<section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Ascultă fiecare mostră și reglează redarea. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
 <script src="js/audio/analysis.js"></script>
@@ -1372,6 +1374,10 @@ Object.assign(I18N.ro,{"arrangement": "Aranjament instrumental", "arrangementHin
 Object.assign(I18N.en,{"arrangement": "Instrumental arrangement", "arrangementHint": "Each version keeps a snapshot of the edited melody. Tempo scales timing, key transposes the melody; major/minor changes harmony. Changes leave the WAV, analysis and performance intact. Create a new version to use later melody edits.", "createArrangement": "Create arrangement version", "arrangementVersion": "Arrangement version", "revision": "revision", "arrangementTempo": "Arrangement tempo (BPM)", "arrangementKey": "Arrangement key", "arrangementMode": "Arrangement mode", "arrangementTiming": "Arrangement timing", "lead": "Lead", "chords": "Chords", "bass": "Bass", "drums": "Drums", "partEnabled": "Enabled", "partVolume": "Volume", "standard": "Standard kit", "soft": "Soft kit", "electronic": "Electronic kit", "arrangementRoll": "Arrangement piano roll: lead, chords, bass and drums", "playArrangement": "Play arrangement", "stopArrangement": "Stop arrangement", "saveArrangementWav": "Save stereo WAV", "saveArrangementMidi": "Save multitrack MIDI", "renderingArrangement": "Rendering arrangement audio…", "playingArrangement": "Playing arrangement.", "stoppedArrangement": "Arrangement stopped.", "arrangementError": "Cannot play or export the arrangement. Try again.", "instPiano": "Piano", "instGuitar": "Guitar", "instHarp": "Harp", "instBox": "Music box", "instXylo": "Xylophone", "instViolin": "Violin", "instCello": "Cello", "instStrings": "Strings", "instFlute": "Flute", "instClarinet": "Clarinet", "instTrumpet": "Trumpet", "instOrgan": "Organ", "instSynth": "Synthesizer", "instBass": "Electric bass"});
 Object.assign(I18N.ro,{sampleSet:'Set de mostre',synthOnly:'Sunet sintetizat',importWav:'Importă WAV',sampleDetails:'Detalii ale mostrei (nota MIDI este necesară pentru redare)'});
 Object.assign(I18N.en,{sampleSet:'Sample set',synthOnly:'Synthesized sound',importWav:'Import WAV',sampleDetails:'Sample details (MIDI note needed for playback)'});
+Object.assign(I18N.ro,{sampleSetEditor:'Editor de seturi de mostre',sampleSetHint:'Ascultă fiecare mostră și reglează redarea. WAV-urile sursă rămân neschimbate.',unassignedSamples:'Fără instrument',playbackStart:'Început redare (s)',sustainLoop:'Buclă de susținere',loopStart:'Început buclă (s)',loopEnd:'Sfârșit buclă (s)',loopCrossfade:'Suprapunere buclă (s)',sampleRelease:'Eliberare (s)',auditionSample:'Ascultă mostra editată',sampleEditInvalid:'Timpii mostrei sunt invalizi. Bucla trebuie să fie în WAV, după începutul redării; suprapunerea trebuie să fie mai scurtă decât jumătate din buclă.',sampleUnavailable:'Mostra nu este disponibilă pentru redare.'});
+Object.assign(I18N.en,{sampleSetEditor:'Sample Set Editor',sampleSetHint:'Audition each sample and adjust playback. Source WAVs stay unchanged.',unassignedSamples:'No instrument',playbackStart:'Playback start (s)',sustainLoop:'Sustain loop',loopStart:'Loop start (s)',loopEnd:'Loop end (s)',loopCrossfade:'Loop crossfade (s)',sampleRelease:'Release (s)',auditionSample:'Audition edited sample',sampleEditInvalid:'Invalid sample timing. Keep the loop inside the WAV and after playback start; crossfade must be shorter than half the loop.',sampleUnavailable:'Sample is unavailable for playback.'});
+Object.assign(I18N.ro,{auditionSource:'Ascultă WAV-ul sursă'});
+Object.assign(I18N.en,{auditionSource:'Audition source WAV'});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
 Object.assign(I18N.en,{backupImport:'Restore an exported project',backupHint:'1. Select the project JSON. 2. Select all source WAVs with their exported names (multiple selection). 3. Validate, then import a separate project. No folder picker is needed.',backupJsonLabel:'Project JSON',backupWavsLabel:'Exported source WAVs',validateBackup:'Validate backup',restoreBackup:'Import separate project',cancelBackup:'Cancel import',importing:'Validating backup…',backupSelect:'Select the project JSON and source WAVs.',backupReady:v=>`Backup validated: ${v.name}\n${v.count} recordings. Only these named WAVs will be imported:\n${v.files.join('\n')}\nPress “Import separate project” to restore.`,backupJson:'Invalid JSON. Select the exported project metadata.',backupInvalid:p=>`Inconsistent backup: ${p}. Check metadata and source files.`,backupVersion:p=>`Unsupported version or data: ${p}. This page supports schema and helpers v1.`,backupFiles:v=>[v.missing.length?'Missing WAVs:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Ambiguous WAV names (select one file for each name):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`Invalid or unsupported WAV: ${p}. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.`,backupCancelled:'Import cancelled. Existing projects remain unchanged.',backupRestored:'Separate project imported. WAVs and musical data were preserved.',backupRead:'Cannot read the files. Select them again.'});
 const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
@@ -1408,7 +1414,7 @@ function paintState(){
   $('recordBtn').setAttribute('aria-pressed',String(state==='recording'));
   $('stopBtn').disabled=state!=='recording';
   $('analysisControls').hidden=state!=='analyzing';$('cancelAnalysis').disabled=!analysisJob || analysisJob.cancelled;
-  document.querySelectorAll('.take button,.performance input,.performance select,.arrangement input,.arrangement select').forEach(b=>b.disabled=b.dataset.stopAudio==='true'? !arrangementJob : !idle || b.dataset.empty==='true');
+  document.querySelectorAll('.take button,.performance input,.performance select,.arrangement input,.arrangement select,.sample-set-editor button,.sample-set-editor input').forEach(b=>b.disabled=b.dataset.stopAudio==='true'? !arrangementJob : !idle || b.dataset.empty==='true');
 }
 function setState(s){state=s;paintState();}
 function quality(q){
@@ -1538,6 +1544,7 @@ function clearPlayers(){document.querySelectorAll('.take audio').forEach(a=>{a.p
 function button(key,action){const b=document.createElement('button');b.textContent=t(key);b.type='button';b.onclick=()=>run(action);return b;}
 async function render(){
   const gen=++generation;stopArrangement();clearPlayers();const host=$('recordings');host.replaceChildren();
+  $('sampleSetEditor').replaceChildren();$('sampleSetPanel').hidden=true;
   if(!project || !project.recordings.length){host.textContent=t('empty');return;}
   for(const r of project.recordings){
     const card=document.createElement('article');card.className='take';card.dataset.id=r.id;
@@ -1551,6 +1558,7 @@ async function render(){
     const blob=await blobFor(r).catch(()=>null);if(gen!==generation)return;
     if(blob){const url=URL.createObjectURL(blob);urls.add(url);audio.src=url;}else{audio.hidden=true;const warning=document.createElement('p');warning.textContent=t('missing');card.append(warning);}
   }
+  renderSampleSetEditor();
   paintState();
 }
 async function run(action){if(state!=='idle')return;stopPreview();stopArrangement();setState('saving');try{await action();}catch(_){say('failed',true);}finally{setState('idle');}}
@@ -1687,22 +1695,65 @@ function sampleSets(){
   }
   return sets;
 }
-async function arrangementSamples(a,ctx,cancelled){
+function renderSampleSetEditor(){
+  const all=new Map();
+  for(const r of project.recordings)if(r.purpose==='sample'){
+    const name=r.sample?.instrument?.trim()||t('unassignedSamples'),group=all.get(name)||[];group.push(r);all.set(name,group);
+  }
+  if(!all.size)return;
+  $('sampleSetPanel').hidden=false;const host=$('sampleSetEditor');
+  const field=(r,key,input)=>{const label=document.createElement('label');label.textContent=t(key)+' ';input.setAttribute('aria-label',r.name+' '+t(key));label.append(input);return label;};
+  for(const [name,records] of all){
+    const group=document.createElement('section');group.className='sample-set-editor';group.setAttribute('aria-label',name);
+    const heading=document.createElement('h3');heading.textContent=name;group.append(heading);
+    for(const r of records){
+      const item=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=r.name+' · '+(r.sample?.midiNote??'—')+' MIDI · '+r.duration.toFixed(2)+' s';item.append(legend);
+      const p=A.samplePlayback(r.sample?.playback,r.duration)||A.DEFAULT_PLAYBACK;
+      const start=numericInput(p.startSeconds,0,Math.max(0,r.duration-.03),.001,t('playbackStart'));
+      const loop=document.createElement('input');loop.type='checkbox';loop.checked=p.loopStartSeconds!==null;
+      const from=numericInput(p.loopStartSeconds??Math.max(0,Math.min(r.duration*.25,r.duration-.06)),0,r.duration,.001,t('loopStart'));
+      const to=numericInput(p.loopEndSeconds??Math.max(.03,r.duration*.75),0,r.duration,.001,t('loopEnd'));
+      const fade=numericInput(p.crossfadeSeconds,.001,.1,.001,t('loopCrossfade'));
+      const release=numericInput(p.releaseSeconds,.01,2,.01,t('sampleRelease'));
+      const loopFields=[from,to,fade];const toggle=()=>loopFields.forEach(input=>{input.disabled=!loop.checked;input.dataset.empty=String(!loop.checked);});toggle();
+      const save=()=>run(async()=>{
+        const next={startSeconds:Number(start.value),loopStartSeconds:loop.checked?Number(from.value):null,loopEndSeconds:loop.checked?Number(to.value):null,crossfadeSeconds:Number(fade.value),releaseSeconds:Number(release.value)};
+        if(!A.samplePlayback(next,r.duration)){say('sampleEditInvalid',true);await render();return;}
+        r.sample={...(r.sample||{}),playback:next};touch();await persist();await render();
+      });
+      [start,from,to,fade,release].forEach(input=>input.onchange=save);loop.onchange=()=>{toggle();save();};
+      const controls=document.createElement('div');controls.className='grid';controls.append(field(r,'playbackStart',start),field(r,'sustainLoop',loop),field(r,'loopStart',from),field(r,'loopEnd',to),field(r,'loopCrossfade',fade),field(r,'sampleRelease',release));item.append(controls);
+      const source=button('auditionSource',async()=>{const audio=document.querySelector(`.take[data-id="${r.id}"] audio`);if(!audio?.src){say('sampleUnavailable',true);return;}stopArrangement();audio.currentTime=0;await audio.play();});
+      const audition=button('auditionSample',()=>auditionEditedSample(r));audition.dataset.empty=String(!Number.isInteger(r.sample?.midiNote));
+      const actions=document.createElement('div');actions.className='row';actions.append(source,audition);item.append(actions);group.append(item);
+    }
+    host.append(group);
+  }
+}
+async function auditionEditedSample(r){
+  if(!Number.isInteger(r.sample?.midiNote)||!A.samplePlayback(r.sample.playback,r.duration)){say('sampleUnavailable',true);return;}
+  const name=r.sample.instrument.trim(),note={start:0,dur:1.5,midi:r.sample.midiNote,vel:.8,velocity:102,cents:0};
+  const parts={lead:{instrument:'piano',sampleSet:name,enabled:true,volume:1,notes:[note]},chords:{instrument:'strings',enabled:false,volume:1,notes:[]},bass:{instrument:'bass',enabled:false,volume:1,notes:[]},drums:{instrument:'standard',enabled:false,volume:1,notes:[]}};
+  await arrangementAudio({tempoBpm:120,timingMode:'original',key:{tonic:0,mode:'major'},duration:2,parts},true,r.id);
+}
+async function arrangementSamples(a,ctx,cancelled,onlyId){
   const available=sampleSets(),selected=new Set(['lead','chords','bass'].filter(id=>a.parts[id].enabled && a.parts[id].volume).map(id=>a.parts[id].sampleSet).filter(Boolean)),result=Object.create(null);
   for(const name of selected){result[name]=[];
     for(const r of available.get(name)||[]){
+      if(onlyId && r.id!==onlyId)continue;
       if(cancelled())throw new Error('cancelled');
       try{
         const blob=await blobFor(r);if(!blob || blob.size>64*1048576)continue;
         const decoded=await ctx.decodeAudioData(await blob.arrayBuffer());if(cancelled())throw new Error('cancelled');
         if(decoded.duration>30 || ![1,2].includes(decoded.numberOfChannels))continue;
-        result[name].push({midiNote:r.sample.midiNote,dynamic:r.sample.dynamic,channels:Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i)),sampleRate:decoded.sampleRate});
+        result[name].push({midiNote:r.sample.midiNote,dynamic:r.sample.dynamic,playback:r.sample.playback,channels:Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i)),sampleRate:decoded.sampleRate});
       }catch(e){if(cancelled())throw new Error('cancelled');}
     }
   }
+  if(onlyId && !Object.values(result).some(group=>group.some(s=>A.mapSample([s],s.midiNote,80))))throw new Error('sampleUnavailable');
   return result;
 }
-async function arrangementAudio(a,play){
+async function arrangementAudio(a,play,onlyId){
   stopArrangement();stopPreview();document.querySelectorAll('.take audio').forEach(audio=>audio.pause());
   const job={cancelled:false,ctx:null,decodeCtx:null,node:null,started:false};arrangementJob=job;paintState();say('renderingArrangement');
   try{
@@ -1711,7 +1762,7 @@ async function arrangementAudio(a,play){
       job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
     const needsSamples=['lead','chords','bass'].some(id=>a.parts[id].enabled && a.parts[id].volume && a.parts[id].sampleSet);
     if(needsSamples && !job.ctx && AC)try{job.decodeCtx=new AC();}catch(_){}
-    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled):{};
+    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,onlyId):{};
     if(job.decodeCtx){await job.decodeCtx.close();job.decodeCtx=null;}
     const mix=await A.render(a,{samples,cancelled:()=>job.cancelled});
     if(job.cancelled)return;
@@ -1722,7 +1773,7 @@ async function arrangementAudio(a,play){
     }else {
       const result=await ScuLaFolder.save(arrangementFilename(a,'wav'),A.wav(mix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
     }
-  }catch(e){if(!job.cancelled)say('arrangementError',true);}
+  }catch(e){if(!job.cancelled)say(onlyId?'sampleUnavailable':'arrangementError',true);}
   finally{if(job.decodeCtx){job.decodeCtx.close().catch(()=>{});job.decodeCtx=null;}if(!play || !job.started){if(arrangementJob===job)stopArrangement();}}
 }
 function arrangementFilename(a,ext){return projectStem()+'-arrangement-v'+a.version+'-'+a.id+'.'+ext;}

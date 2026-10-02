@@ -9,6 +9,16 @@ const DEFAULTS={lead:{instrument:'piano',enabled:true,volume:.85},chords:{instru
 const KITS={standard:{gm:0},soft:{gm:8},electronic:{gm:24}};
 // A sample set is the instrument name on sample takes. Empty means synthesis.
 const MAX_SHIFT=5;
+const DEFAULT_PLAYBACK=Object.freeze({startSeconds:0,loopStartSeconds:null,loopEndSeconds:null,crossfadeSeconds:.02,releaseSeconds:.12});
+function samplePlayback(value,duration){
+ const p=value===undefined?DEFAULT_PLAYBACK:value;
+ if(!p || typeof p!=='object' || Array.isArray(p) || !Number.isFinite(duration) || duration<=0)return null;
+ const {startSeconds:start,loopStartSeconds:a,loopEndSeconds:b,crossfadeSeconds:fade,releaseSeconds:release}=p;
+ if(!Number.isFinite(start)||start<0||start>=duration-.03||!Number.isFinite(fade)||fade<.001||fade>.1||!Number.isFinite(release)||release<.01||release>2)return null;
+ if(a===null && b===null)return p;
+ if(!Number.isFinite(a)||!Number.isFinite(b)||a<start||b>duration||b-a<.03||fade>(b-a)/2)return null;
+ return p;
+}
 const SAMPLE_VELOCITIES={ppp:20,pp:32,p:45,soft:45,mp:60,mf:80,medium:80,f:99,loud:99,ff:114,fff:124};
 function sampleVelocity(dynamic){
  const value=String(dynamic||'').trim().toLowerCase();
@@ -18,7 +28,7 @@ function sampleVelocity(dynamic){
 function mapSample(samples,pitch,velocity){
  let best=null,score=Infinity;
  for(const s of samples){
-  if(!Number.isInteger(s.midiNote)||s.midiNote<0||s.midiNote>127||!s.channels||![1,2].includes(s.channels.length)||!Number.isFinite(s.sampleRate)||s.sampleRate<=0||s.channels[0].length<s.sampleRate*.03)continue;
+  if(!s||!Number.isInteger(s.midiNote)||s.midiNote<0||s.midiNote>127||!Array.isArray(s.channels)||![1,2].includes(s.channels.length)||!s.channels[0]||s.channels.length===2&&s.channels[1]?.length!==s.channels[0].length||!Number.isFinite(s.sampleRate)||s.sampleRate<=0||s.channels[0].length<s.sampleRate*.03||!samplePlayback(s.playback,s.channels[0].length/s.sampleRate))continue;
   const distance=Math.abs(pitch-s.midiNote);if(distance>MAX_SHIFT)continue;
   const rank=distance*128+Math.abs(sampleVelocity(s.dynamic)-velocity);
   if(rank<score){best=s;score=rank;}
@@ -27,14 +37,21 @@ function mapSample(samples,pitch,velocity){
 }
 function placeSample(L,R,s,n,volume,pan,sr){
  const pitch=n.midi+(n.cents||0)/100,rate=2**((pitch-s.midiNote)/12)*s.sampleRate/sr;
- const start=Math.round(n.start*sr),hold=Math.max(1,Math.round(n.dur*sr)),release=Math.round(.12*sr),attack=Math.max(1,Math.round(.003*sr));
+ const settings=samplePlayback(s.playback,s.channels[0].length/s.sampleRate),start=Math.round(n.start*sr),hold=Math.max(1,Math.round(n.dur*sr)),release=Math.max(1,Math.round(settings.releaseSeconds*sr)),attack=Math.max(1,Math.round(.003*sr));
  const source=s.channels,stereo=source.length===2,gain=volume*Math.pow(Math.max(0,n.vel),.8);
  const gl=gain*Math.cos((pan+1)*Math.PI/4),gr=gain*Math.sin((pan+1)*Math.PI/4);
- const count=Math.min(L.length-start,hold+release,Math.floor((source[0].length-1)/rate));
+ const sourceStart=settings.startSeconds*s.sampleRate,loop=settings.loopStartSeconds!==null;
+ const loopA=settings.loopStartSeconds*s.sampleRate,loopB=settings.loopEndSeconds*s.sampleRate,fade=settings.crossfadeSeconds*s.sampleRate;
+ const count=Math.max(0,Math.min(L.length-start,hold+release,loop?Infinity:Math.floor((source[0].length-1-sourceStart)/rate)));
+ const read=(channel,at)=>{const j=Math.floor(at),f=at-j;return source[channel][j]*(1-f)+source[channel][Math.min(j+1,source[channel].length-1)]*f;};
  for(let i=0;i<count;i++){
-  const at=i*rate,j=Math.floor(at),f=at-j,en=Math.min(1,i/attack)*Math.min(1,(hold+release-i)/release)*Math.min(1,(source[0].length-1-at)/(sr*.01*rate));
-  const left=(source[0][j]*(1-f)+source[0][j+1]*f)*en;
-  const right=stereo?(source[1][j]*(1-f)+source[1][j+1]*f)*en:left;
+  let at=sourceStart+i*rate;
+  if(loop && at>=loopB)at=loopA+fade+(at-loopB)%(loopB-loopA-fade);
+  const blend=loop&&at>=loopB-fade?Math.min(1,(at-(loopB-fade))/fade):0;
+  const envelope=Math.min(1,i/attack)*(loop?(i<hold?1:(1+Math.cos(Math.PI*Math.min(1,(i-hold)/release)))/2):Math.min(1,(hold+release-i)/release));
+  const en=envelope*(loop?1:Math.min(1,(source[0].length-1-at)/(sr*.01*rate)));
+  const left=(read(0,at)*(1-blend)+(blend?read(0,loopA+at-(loopB-fade))*blend:0))*en;
+  const right=stereo?(read(1,at)*(1-blend)+(blend?read(1,loopA+at-(loopB-fade))*blend:0))*en:left;
   L[start+i]+=left*gl;R[start+i]+=right*gr;
  }
 }
@@ -101,7 +118,8 @@ async function render(a,{sampleRate=44100,samples={},cancelled=()=>false,yieldUI
    check();let buf,hold=n.dur,rel=.005,gain=.28;
    if(kit){buf=kit[drumTypes[n.midi]];hold=buf.length/sr;gain=({36:.4,38:.25,42:.13,46:.12})[n.midi];
    }else {
-    const selected=p.sampleSet?mapSample(samples[p.sampleSet]||[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
+    const group=p.sampleSet&&Object.hasOwn(samples,p.sampleSet)?samples[p.sampleSet]:[];
+    const selected=p.sampleSet?mapSample(Array.isArray(group)?group:[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
     if(selected){placeSample(L,R,selected,n,(id==='chords'?.2:.28)*p.volume,pan[id],sr);if((++count&7)===0){await yieldUI();check();}continue;}
     const pitch=n.midi+(n.cents||0)/100,key=p.instrument+'|'+pitch+'|'+hold+'|'+Math.round(n.vel*8);
     if(!cache.has(key))cache.set(key,I.instrument(p.instrument,pitch,hold+S.INSTR[p.instrument].rel,sr,Math.round(n.vel*8)/8));
@@ -120,5 +138,5 @@ async function render(a,{sampleRate=44100,samples={},cancelled=()=>false,yieldUI
  if(peak>.95)for(let i=0;i<L.length;i++){L[i]*=.95/peak;R[i]*=.95/peak;}
  check();return {L,R,sr};
 }
-root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,sampleVelocity,mapSample,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
+root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,DEFAULT_PLAYBACK,samplePlayback,sampleVelocity,mapSample,placeSample,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
 })(typeof window==='undefined'?globalThis:window);

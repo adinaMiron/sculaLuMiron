@@ -50,7 +50,10 @@ function validate(project){
     string(r.name,p+'.name');stamp(r.createdAt,p+'.createdAt');number(r.duration,p+'.duration',0.000001);
     check(r.mimeType==='audio/wav',p+'.mimeType');integer(r.sampleRate,p+'.sampleRate',8000,192000);check([1,2].includes(r.channelCount),p+'.channelCount');check([16,24,32].includes(r.bitDepth),p+'.bitDepth');
     check(['melody','sample'].includes(r.purpose),p+'.purpose');array(r.waveform,p+'.waveform');r.waveform.forEach(v=>number(v,p+'.waveform',0));emptyDerived(r.derivedAssets,p+'.derivedAssets');
-    if(r.sample!==undefined){object(r.sample,p+'.sample');Object.entries(r.sample).forEach(([k,v])=>{if(k==='midiNote'){if(v!==null)integer(v,p+'.sample.midiNote',0,127);}else check(typeof v==='string',p+'.sample.'+k);});}
+    if(r.sample!==undefined){object(r.sample,p+'.sample');Object.entries(r.sample).forEach(([k,v])=>{if(k==='midiNote'){if(v!==null)integer(v,p+'.sample.midiNote',0,127);}else if(k==='playback'){
+      object(v,p+'.sample.playback');check(Object.keys(v).every(field=>['startSeconds','loopStartSeconds','loopEndSeconds','crossfadeSeconds','releaseSeconds'].includes(field)),p+'.sample.playback');
+      check(!!root.ScuLaArrangement.samplePlayback(v,r.duration),p+'.sample.playback');
+    }else check(typeof v==='string',p+'.sample.'+k);});}
     object(r.source,p+'.source');const s=r.source;identity(s.assetId,p+'.source.assetId');if(s.assetId!==r.id)entity(s.assetId,p+'.source.assetId');
     if(s.integrity!==undefined){
       const v=s.integrity;
