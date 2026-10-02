@@ -11,7 +11,8 @@ function phrase(notes,{beat=.6,cents=0,vibrato=0,amplitude=.2,legato=false}={}){
 (async()=>{
  const seq=[60,62,64,65,67,65,64,62,60,64,67,64],master=phrase(seq),bytes=Buffer.from(master.buffer).toString('hex');
  const p=await P.analyzeBuffer(master,'master');
- assert.deepEqual(p.notes.map(n=>n.midi),seq);assert.equal(p.sourceAssetId,'master');assert.equal(p.schemaVersion,1);
+ assert.deepEqual(p.notes.map(n=>n.midi),seq);assert.equal(p.sourceAssetId,'master');assert.equal(p.schemaVersion,1);assert.equal(p.analyzerVersion,2);
+ assert.equal(p.analysis.interpretedPitchFrames.length,p.analysis.rawPitchFrames.length);
  assert.ok(Math.abs(p.tempoBpm-100)<3);assert.equal(p.analysis.key.tonic,0);assert.equal(p.analysis.key.mode,'major');
  p.notes.forEach((n,i)=>{assert.ok(Math.abs(n.onset-(.1+i*.6))<.065,`onset ${i}: ${n.onset}`);assert.ok(Math.abs(n.offset-(.1+i*.6+.492))<.07);});
  assert.equal(Buffer.from(master.buffer).toString('hex'),bytes);assert.ok(p.analysis.rawPitchFrames.some(f=>f.hz && f.confidence>.95));assert.ok(p.analysis.rawPitchFrames.some(f=>f.hz===null));
@@ -22,7 +23,23 @@ function phrase(notes,{beat=.6,cents=0,vibrato=0,amplitude=.2,legato=false}={}){
  assert.ok(held.analysis.detectedNotes[0].attackSeconds>=0 && held.analysis.detectedNotes[0].releaseSeconds>=0);
  console.log('PASS  detuning and vibrato preserved without fragmenting a held note');
  const repeated=await P.analyzeBuffer(phrase([60,60,60]),'repeat');assert.deepEqual(repeated.notes.map(n=>n.midi),[60,60,60]);
- const soft=await P.analyzeBuffer(phrase([64],{amplitude:.05}),'soft'),loud=await P.analyzeBuffer(phrase([64],{amplitude:.3}),'loud');assert.ok(loud.analysis.detectedNotes[0].dynamics.rms>soft.analysis.detectedNotes[0].dynamics.rms*5);
+ repeated.notes.forEach((n,i)=>{assert.ok(Math.abs(n.onset-(.1+i*.6))<.07,JSON.stringify(repeated.notes));assert.ok(Math.abs(n.offset-(.1+i*.6+.492))<.08,JSON.stringify(repeated.notes));});
+ const octaveFrames=[60,60,60,72,60,60,60].map((m,i)=>({time:i*.023,midi:m,confidence:.9}));
+ const interpreted=P.interpretPitch(octaveFrames);
+ assert.deepEqual(interpreted.map(f=>f.midi),[60,60,60,60,60,60,60]);assert.equal(octaveFrames[3].midi,72);
+ const slide=phrase([60],{beat:1.35});
+ for(let i=Math.floor(.42*SR);i<Math.floor(.53*SR);i++){
+  const t=(i/SR-.42)/.11, f=440*2**((60+1.1*Math.sin(Math.PI*t)-69)/12);
+  slide[i]=.2*Math.sin(2*Math.PI*f*i/SR);
+ }
+ const slipped=await P.analyzeBuffer(slide,'slide');
+ assert.deepEqual(slipped.notes.map(n=>n.midi),[60]);
+ const breathy=phrase([60,62,64],{beat:.55,amplitude:.11});
+ for(let i=0;i<breathy.length;i++)if(breathy[i]){const t=i/SR;breathy[i]+=.005*Math.sin(2*Math.PI*3197*t)+.003*Math.sin(2*Math.PI*4729*t);}
+ const airy=await P.analyzeBuffer(breathy,'breathy');
+ assert.deepEqual(airy.notes.map(n=>n.midi),[60,62,64]);
+ airy.notes.forEach((n,i)=>{assert.ok(Math.abs(n.onset-(.1+i*.55))<.08);assert.ok(Math.abs(n.offset-(.1+i*.55+.451))<.09);});
+ const soft=await P.analyzeBuffer(phrase([64],{amplitude:.05}),'soft'),loud=await P.analyzeBuffer(phrase([64],{amplitude:.3}),'loud');assert.deepEqual(soft.notes.map(n=>n.midi),[64]);assert.ok(Math.abs(soft.notes[0].onset-.1)<.07 && Math.abs(soft.notes[0].offset-.592)<.08);assert.ok(loud.analysis.detectedNotes[0].dynamics.rms>soft.analysis.detectedNotes[0].dynamics.rms*5);
  const empty=await P.analyzeBuffer(new Float32Array(SR),'silence');assert.equal(empty.notes.length,0);assert.ok(empty.analysis.rawPitchFrames.every(f=>f.hz===null));
  const short=await P.analyzeBuffer(new Float32Array(100),'short');assert.equal(short.notes.length,0);
  const connected=await P.analyzeBuffer(phrase([60,62,64],{legato:true}),'legato');assert.ok(connected.analysis.detectedNotes.some(n=>n.legato));

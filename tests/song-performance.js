@@ -32,7 +32,8 @@ const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+decodeU
     return ScuLaPerformance.analyzeBuffer(await ScuLaAnalysis.decodeMono(blob,ScuLaAnalysis.AN_SR),assetId);
   },r.id);
   await analyze(page);r=(await projects(page))[0].recordings[0];let p=r.performance;
-  assert.ok(p,await page.textContent('#status'));assert.deepEqual(p.notes.map(n=>n.midi),SEQ);assert.equal(p.sourceAssetId,r.source.assetId);assert.equal(p.type,'MusicalPerformance');assert.ok(p.analysis.rawPitchFrames.length>300);assert.ok(p.analysis.onsets.length>=SEQ.length);assert.ok(p.notes.every(n=>n.quantizedTiming===null));
+  assert.ok(p,await page.textContent('#status'));assert.deepEqual(p.notes.map(n=>n.midi),SEQ);assert.equal(p.sourceAssetId,r.source.assetId);assert.equal(p.type,'MusicalPerformance');assert.equal(p.analyzerVersion,2);assert.ok(p.analysis.rawPitchFrames.length>300);assert.equal(p.analysis.interpretedPitchFrames.length,p.analysis.rawPitchFrames.length);assert.ok(p.analysis.onsets.length>=SEQ.length);assert.ok(p.notes.every(n=>n.quantizedTiming===null));
+  assert.equal(await page.getByLabel('Voice contour',{exact:true}).inputValue(),'interpreted');await page.getByLabel('Voice contour',{exact:true}).selectOption('raw');assert.equal(await page.getByLabel('Voice contour',{exact:true}).inputValue(),'raw');
   assert.deepEqual(p.notes.map(n=>n.midi),reference.notes.map(n=>n.midi));assert.equal(p.analysis.key.tonic,reference.analysis.key.tonic);assert.equal(p.analysis.key.mode,reference.analysis.key.mode);assert.ok(Math.abs(p.tempoBpm-reference.tempoBpm)<=2);
   p.notes.forEach((n,i)=>{assert.ok(Math.abs(n.onset-reference.notes[i].onset)<.035);assert.ok(Math.abs(n.offset-reference.notes[i].offset)<.035);});
   console.log('PASS  stereo PCM24 WAV with extra chunk imported unchanged; real decoder produces known notes and performance');
@@ -62,13 +63,13 @@ const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+decodeU
   await page.evaluate(()=>{IDBObjectStore.prototype.put=window.reanalysisPut;});await page.click('#retry');await ready(page);
   assert.equal(JSON.stringify((await projects(page))[0].recordings[0].performance),beforeCancel);
   assert.ok((await download(page,()=>page.getByRole('button',{name:'Save WAV',exact:true}).click())).equals(master));
-  const manifest=JSON.parse(await download(page,()=>page.click('#exportProject')));assert.equal(manifest.recordings[0].performance.notes[0].midi,72);assert.equal(manifest.recordings[0].performance.sourceAssetId,manifest.recordings[0].source.assetId);
+  const manifest=JSON.parse(await download(page,()=>page.click('#exportProject')));assert.equal(manifest.recordings[0].performance.notes[0].midi,72);assert.equal(manifest.recordings[0].performance.sourceAssetId,manifest.recordings[0].source.assetId);assert.equal(JSON.stringify(manifest.recordings[0].performance.analysis),rawEvidence);
   console.log('PASS  edits, undo/redo, quantized timing, MIDI, preview and reload preserve evidence and master bytes');
   page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Analyze again',exact:true}).click();await ready(page);assert.equal((await projects(page))[0].recordings[0].performance.notes[0].midi,72);
   await page.getByRole('button',{name:'Add note',exact:true}).click();await ready(page);assert.equal((await projects(page))[0].recordings[0].performance.notes.length,SEQ.length+1);
   await page.locator('.note-table tbody tr:last-child').getByRole('button',{name:'Delete',exact:true}).click();await ready(page);
   page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Restore detected notes',exact:true}).click();await ready(page);assert.equal((await projects(page))[0].recordings[0].performance.notes[0].midi,60);
-  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.click('#navLangBtn');await page.waitForFunction(()=>document.documentElement.lang==='ro');assert.equal(await page.getByRole('button',{name:'Adaugă notă',exact:true}).count(),1);await page.click('#navLangBtn');await ready(page);
+  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.click('#navLangBtn');await page.waitForFunction(()=>document.documentElement.lang==='ro');assert.equal(await page.getByRole('button',{name:'Adaugă notă',exact:true}).count(),1);assert.equal(await page.getByLabel('Contur vocal',{exact:true}).count(),1);await page.click('#navLangBtn');await ready(page);
   console.log('PASS  reanalysis cancellation, add/delete/reset, Romanian labels and phone layout');
   await page.evaluate(()=>{const put=IDBObjectStore.prototype.put;window.originalPut=put;IDBObjectStore.prototype.put=function(...args){if(this.name==='projects')throw new DOMException('full','QuotaExceededError');return put.apply(this,args);};});
   await edit(page,'midi',74);assert.equal((await projects(page))[0].recordings[0].performance.notes[0].midi,60);assert.ok(await page.isVisible('#recovery'));

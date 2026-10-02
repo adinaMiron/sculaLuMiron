@@ -422,11 +422,15 @@ and displays the device actually used.
 
 Import a hummed WAV or use a microphone take, then choose **Extract melody**.
 Edit notes, timing, cents and velocity in the melody table; add/delete notes,
-undo/redo or restore the detected notes. The roll shows the original pitch
-contour alongside the edited melody. Choose original or quantized timing,
+undo/redo or restore the detected notes. The roll shows editable notes and
+detected note onsets and offsets, with a choice of measured or interpreted pitch contour.
+Song's version 2 analysis repairs isolated octave readings and treats short
+slides as part of a note when there is no measured attack. Choose original or quantized timing,
 preview the melody and save MIDI. Metadata keeps the full detected performance
 and your edits; the master WAV stays byte-for-byte unchanged. Analysis accepts
-monophonic humming up to 180 seconds. Imported WAVs retain their original format.
+solo humming up to 180 seconds; accompaniment and overlapping voices can confuse
+the estimates. Imported WAVs retain their original format. Older version 1
+performances and backups remain readable; reanalysis creates version 2 evidence.
 
 Choose **Create arrangement version** to turn the edited melody into lead,
 chords, bass and drums. Select instruments and independently enable or adjust

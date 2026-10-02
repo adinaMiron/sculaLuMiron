@@ -887,17 +887,17 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references, complete WAV SHA-256 hashes and cancelable ScuLaFolder exports |
 | `paintBackup`, `cancelBackup`, `backupSelection`, `validateBackup`, `restoreBackup` (~1482–1518) | Cancelable staging, reserved audio keys, reviewed publication through atomic persistence and in-memory recovery |
 | `js/audio/integrity.js` | `ScuLaIntegrity.sha256`: incremental exact-byte SHA-256, 64 KiB Blob slices, progress and timer-yield cancellation; no Web Crypto or secure-origin dependency |
-| `js/audio/backup.js` | `ScuLaSongBackup` v1: `validate`, `occupied`, `stage`; schema/helper versions, relationships, exact filename matching, bounded/cancelable WAV inspection, strict integrity metadata, declared full-byte digest verification/legacy warnings and consistent entity ID remapping without musical changes |
+| `js/audio/backup.js` | `ScuLaSongBackup` v1: `validate`, `occupied`, `stage`; version 1/2 performance and contour validation, relationships, exact filename matching, bounded/cancelable WAV inspection, strict integrity metadata, declared full-byte digest verification/legacy warnings and consistent entity ID remapping without musical changes |
 | `render`, `clearPlayers` | Recording cards, waveform, playback and object URL cleanup |
 | `constraints`, `openMicrophone`, `listDevices` | Music constraints, stale-device recovery and permission-dependent microphone selection |
 | `makeTap`, `takeBlock`, `start`, `stop`, `cleanup` | Worklet/fallback PCM capture, flush, meter, teardown |
 | `js/audio/pcm.js` | Shared Voice/Song signed PCM24 interleaving and correct WAV header/padding |
 | `js/audio/performance.js:90` | `inspectWav(blob,{cancelled,progress})`: 12/8/16-byte RIFF, chunk and `fmt ` reads; validated offset skips, dimensions and tiny-chunk timer yields; optional controls keep old callers compatible |
 | `importWav`, `analyzeTake`, `#analysisControls` | Unchanged imported WAV masters, bounded-source derived performance extraction, RO/EN progress and cancellation |
-| `performanceEditor`, `drawMelody`, `saveEdit`, `undoEdit` | Editable note table/roll, original vs quantized timing, persistence and history |
+| `performanceEditor`, `drawMelody`, `saveEdit`, `undoEdit` | Editable note table/roll, version 2 interpreted/measured contour selector and detected onset/offset lines, original vs quantized timing, persistence and history |
 | `previewMelody`, `stopPreview`, `exportMidi` | Synthetic preview lifecycle and ScuLaFolder MIDI export |
 | `js/audio/analysis.js` | Versioned Voice decoder and shared pitch/onset/beat/key kernels; cooperative onset and pitch checkpoints for Song |
-| `js/audio/performance.js:140` | `decodeWavMono`: strict inspected data offset, 64 KiB source windows, PCM/float downmix and band-limited 22.05 kHz output; `analyzeBuffer`/`analyze`, cancellation, raw evidence/expression, editable notes, quantization and MIDI |
+| `js/audio/performance.js` | `decodeWavMono`: strict inspected data offset, 64 KiB source windows, PCM/float downmix and band-limited 22.05 kHz output; version 2 `analyzeBuffer`/`analyze`, Song-only octave and slide interpretation, separate raw/contour evidence, cancellation, editable notes, quantization and MIDI |
 | `createArrangement`, `changeArrangement`, `arrangementEditor`, `drawArrangement` | Project-level versions/snapshots, independent parts and instrument/mix/tempo/key/timing controls, piano roll |
 | `arrangementAudio`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
 | `js/audio/synthesis.js` | Versioned Voice/Song instrument, harmony, rendering and export kernels |

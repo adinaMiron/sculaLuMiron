@@ -1,4 +1,4 @@
-/* MusicalPerformance v1: detection evidence and editable notes are separate.
+/* MusicalPerformance: detection evidence and editable notes are separate.
    All times are seconds from the beginning of the untouched source WAV. */
 (function(root){
 'use strict';
@@ -36,6 +36,50 @@ function vibrato(frames){
   const depth=Math.sqrt(2*energy/residual.length);
   return {rateHz:best>.35 && depth>3?1/(bestLag*dt):null,depthCents:depth,confidence:best};
 }
+/* Song interpretation is separate from Voice's shared v1 segmenter. A frame
+   can be corrected only when voiced neighbours on both sides support the same
+   octave. The measured frame is never changed. */
+function interpretPitch(frames){
+  const contour=frames.map(f=>({time:f.time,midi:f.confidence>.62?f.midi:null}));
+  for(let i=0;i<frames.length;i++){
+    const m=contour[i].midi;if(m===null)continue;
+    const side=(step)=>{const a=[];for(let j=i+step;Math.abs(j-i)<=4 && j>=0 && j<frames.length;j+=step)if(frames[j].confidence>.62 && frames[j].midi!==null)a.push(frames[j].midi);return a.length>=2?median(a):null;};
+    const left=side(-1),right=side(1);
+    if(left===null || right===null || Math.abs(left-right)>1.5)continue;
+    const ref=(left+right)/2;
+    for(const shift of [-12,12])if(Math.abs(m-ref)>9 && Math.abs(m+shift-ref)<1.5){contour[i].midi=m+shift;break;}
+  }
+  return contour;
+}
+function songSegments(pt,frames,contour,peaks){
+  const f0=Float32Array.from(contour,f=>f.midi===null?0:440*2**((f.midi-69)/12));
+  const base=A.segmentNotes({...pt,f0}),dt=1/pt.fps;
+  // A short intermediate pitch in a continuous glide belongs to its stable
+  // neighbour. A clear attack is always a boundary, even at the same pitch.
+  const joined=[];
+  for(const n of base){
+    const prev=joined[joined.length-1],nextAttack=peaks.some(p=>Math.abs(p.time-n.start)<.07 && p.strength>.22);
+    if(prev && !nextAttack && n.start-(prev.start+prev.dur)<.07 && n.dur<.14){prev.dur=n.start+n.dur-prev.start;prev.vel=Math.max(prev.vel,n.vel);}
+    else joined.push({...n});
+  }
+  const segments=[];
+  for(const n of joined){
+    const boundaries=[n.start],ends=[];
+    for(const p of peaks){
+      if(p.time-n.start<.12 || n.start+n.dur-p.time<.12 || p.time-boundaries[boundaries.length-1]<.12)continue;
+      const i=Math.round(p.time/dt),before=frames[Math.max(0,i-2)]?.rms||0,after=frames[Math.min(frames.length-1,i+2)]?.rms||0;
+      if(after>before*1.4){
+        const from=Math.max(0,i-7),localPeak=Math.max(...frames.slice(from,Math.min(frames.length,i+3)).map(f=>f.rms));
+        let previousEnd=p.time;
+        for(let j=from;j<i;j++)if(frames[j].rms<localPeak*.25){previousEnd=Math.max(boundaries[boundaries.length-1]+.075,frames[j].time);break;}
+        ends.push(previousEnd);boundaries.push(p.time);
+      }
+    }
+    boundaries.push(n.start+n.dur);
+    for(let i=0;i<boundaries.length-1;i++)segments.push({...n,start:boundaries[i],dur:(ends[i]||boundaries[i+1])-boundaries[i]});
+  }
+  return segments;
+}
 async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>false}={}){
   if(mono.length>A.AN_SR*MAX_SECONDS)throw new Error('tooLong');
   checkCancel(cancelled);
@@ -59,24 +103,14 @@ async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>fal
     const midi=hz>0?69+12*Math.log2(hz/440):null;
     frames.push({time:i*dt,hz:hz||null,midi,cents:midi===null?null:100*(midi-Math.round(midi)),confidence:pt.clar[i],rms:Math.sqrt(energy/512)});
   }
-  // Spectral attacks may split repeated pitches, but only when the measured
-  // amplitude rises appreciably: pitch wobble alone is not a new attack.
-  const segments=[];
-  for(const n of A.segmentNotes(pt)){
-    const boundaries=[n.start];
-    for(const p of peaks){
-      if(p.time-n.start<.12 || n.start+n.dur-p.time<.12 || p.time-boundaries[boundaries.length-1]<.12)continue;
-      const i=Math.round(p.time/dt),before=frames[Math.max(0,i-2)]?.rms||0,after=frames[Math.min(frames.length-1,i+2)]?.rms||0;
-      if(after>before*1.4)boundaries.push(p.time);
-    }
-    boundaries.push(n.start+n.dur);
-    for(let i=0;i<boundaries.length-1;i++)segments.push({...n,start:boundaries[i],dur:boundaries[i+1]-boundaries[i]});
-  }
+  const interpretedPitchFrames=interpretPitch(frames);
+  const segments=songSegments(pt,frames,interpretedPitchFrames,peaks);
   const detectedNotes=[];
   for(let i=0;i<segments.length;i++){
     if((i&31)===0){onStep(.97+.02*i/segments.length,'analysis');await yieldUI();checkCancel(cancelled);}
     const n=segments[i];
-    const fs=frames.filter(f=>f.time>=n.start && f.time<n.start+n.dur && f.hz && f.confidence>.62);
+    const fs=[];
+    for(let j=0;j<frames.length;j++){const f=frames[j],pitch=interpretedPitchFrames[j].midi;if(f.time>=n.start && f.time<n.start+n.dur && pitch!==null)fs.push({...f,midi:pitch});}
     const rmsPeak=Math.max(0,...fs.map(f=>f.rms));
     const mean=fs.reduce((s,f)=>s+f.rms,0)/(fs.length||1);
     const attack=fs.find(f=>f.rms>=rmsPeak*.8),release=fs.slice().reverse().find(f=>f.rms>=rmsPeak*.8);
@@ -85,7 +119,7 @@ async function analyzeBuffer(mono,sourceAssetId,onStep=()=>{},{cancelled=()=>fal
   detectedNotes.forEach((n,i)=>{const next=detectedNotes[i+1];n.legato=!!next && next.onset-n.offset<=dt*2;});
   const notes=editable(detectedNotes),bpm=60*fps/lag;
   checkCancel(cancelled);onStep(1,'analysis');await yieldUI();checkCancel(cancelled);
-  return {schemaVersion:1,type:'MusicalPerformance',analyzerVersion:A.version,sourceAssetId,duration,analysis:{sampleRate:A.AN_SR,pitchHopSeconds:dt,pitchWindowSeconds:512/(A.AN_SR/2),rawPitchFrames:frames,onsetEnvelope:Array.from(env),onsetHopSeconds:1/fps,onsets:peaks,detectedNotes,tempo:{bpm,phaseSeconds:A.beatPhase(env,lag)/fps},key:A.detectKey(segments)},notes,tempoBpm:Math.round(bpm),timingMode:'original',quantizationDivision:4};
+  return {schemaVersion:1,type:'MusicalPerformance',analyzerVersion:2,sourceAssetId,duration,analysis:{sampleRate:A.AN_SR,pitchHopSeconds:dt,pitchWindowSeconds:512/(A.AN_SR/2),rawPitchFrames:frames,interpretedPitchFrames,onsetEnvelope:Array.from(env),onsetHopSeconds:1/fps,onsets:peaks,detectedNotes,tempo:{bpm,phaseSeconds:A.beatPhase(env,lag)/fps},key:A.detectKey(segments)},notes,tempoBpm:Math.round(bpm),timingMode:'original',quantizationDivision:4};
 }
 async function analyze(blob,sourceAssetId,onStep=()=>{},{cancelled=()=>false}={}){
   const mono=await decodeWavMono(blob,{cancelled,progress:f=>onStep(f*.35,'decoding')});
@@ -199,5 +233,5 @@ async function decodeWavMono(blob,{cancelled=()=>false,progress=()=>{}}={}){
   }
   checkCancel(cancelled);progress(1);return out;
 }
-root.ScuLaPerformance=Object.freeze({version:1,MAX_SECONDS,analyze,analyzeBuffer,decodeWavMono,editable,copy,quantize,timing,midi,inspectWav});
+root.ScuLaPerformance=Object.freeze({version:2,MAX_SECONDS,analyze,analyzeBuffer,interpretPitch,decodeWavMono,editable,copy,quantize,timing,midi,inspectWav});
 })(typeof window==='undefined'?globalThis:window);

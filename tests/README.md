@@ -171,8 +171,9 @@ Run `voice` and `melody` for shared PCM-helper regressions. `node tests/verify.j
 is the `/verify` equivalent across all nine pages and plain JS helpers.
 
 
-Phase 2 adds `node tests/song-analysis.js` accuracy fixtures (pitch, onset/offset,
-tempo/key, detuning/vibrato, repeated notes, dynamics, legato, silence, short input,
+Song analysis uses `node tests/song-analysis.js` deterministic accuracy fixtures (pitch, onset/offset,
+tempo/key, breathy timbre, octave ambiguity, a short slide, detuning/vibrato,
+repeated notes, quiet passages, dynamics, legato, silence, short input,
 duration limits and immutable evidence), `node tests/song-bounded-analysis.js`
 (instrumented 64 KiB source reads, skipped chunks, PCM/float mono/stereo and rate
 extremes, malformed/long WAVs, sample tolerance and decoding/onset/pitch/evidence/expression/completion cancellation),
@@ -188,7 +189,10 @@ timing, preview/MIDI/JSON, reload, RO/EN, phone layout, invalid input, storage
 failure/retry, canceled decoding and CPU analysis, failed source reads, a retained
 181-second WAV, visible translated progress and `file://` without IndexedDB.
 Master exports are compared byte for byte with the imported WAV, including its
-extra RIFF chunk. Run `song`, `voice`,
+extra RIFF chunk. Version 2 contour evidence is checked through export/reload;
+`song-backup-import` covers version 1 restoration and version 2 round trips.
+The fixtures are generated; labeled human humming remains to be evaluated.
+Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
 
 

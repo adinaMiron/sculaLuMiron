@@ -3003,7 +3003,9 @@ The ordered plain helper `js/audio/backup.js` exposes `ScuLaSongBackup` v1.
 It parses and validates project schema v1, performance schema/analyzer v1 and
 arrangement schema/generator v1 before publication. It checks IDs, timestamps,
 recording/sample metadata, analysis and edited note structure, source relationships,
-version uniqueness, snapshots and generated part references. Phase 1 projects
+version uniqueness, snapshots and generated part references. Performance analyzer
+versions 1 and 2 are accepted; version 2 requires a frame-aligned interpreted
+contour, which is validated when present in either version. Phase 1 projects
 without performances and Phase 2 projects without arrangements are accepted;
 the missing optional fields remain missing. Nonempty `derivedAssets` are reserved
 for a future format and rejected, as are unsupported schema/helper versions.
@@ -3110,20 +3112,29 @@ browser decoder and synchronous onset path. Starting analysis stops existing sou
 melody and arrangement playback. Page exit cancels pending analysis; completion
 or an already-started storage commit does not recreate source players after exit.
 
-`js/audio/performance.js` exposes `ScuLaPerformance` v1. Each recording's
+`js/audio/performance.js` exposes `ScuLaPerformance` v2. Each recording's
 `performance` becomes a `MusicalPerformance` with `schemaVersion:1`, its own
 ID/timestamps, `analyzerVersion` and `sourceAssetId` referencing the immutable
 `SongRecording.source.assetId`. Its `analysis` retains:
 
 - Raw pitch frames: time, Hz, fractional MIDI, cents, periodicity confidence,
   and measured RMS before normalization; unvoiced pitch is `null`.
+- A separate interpreted pitch contour with the same frame times. Song repairs
+  isolated octave readings only when voiced neighbors on both sides agree.
+  Short pitch slides without a measured attack are folded into the surrounding
+  note; measured attacks can divide repeated notes of the same pitch.
 - Spectral-flux envelope, onset peaks, window/hop sizes, detected tempo/phase
   and key. Detected attacks can split repeated pitches when amplitude rises.
 - Detected notes with original onset/offset, MIDI pitch, cents deviation,
   confidence, relative MIDI velocity, measured dynamics, vibrato rate/depth/
   confidence, inferred legato and attack/release durations.
 
-These are estimates for a monophonic voice, not polyphonic transcription.
+These are estimates for unaccompanied, single voice humming. Accompaniment,
+overlapping voices and noisy recordings need manual correction. Deterministic
+generated fixtures cover the analysis, but real humming accuracy has not been
+measured against labeled human recordings. Version 1 performances remain readable
+and restorable; reanalysis replaces them with version 2 after confirmation.
+The source WAV and existing arrangement snapshots are unchanged.
 Vibrato and articulation estimates depend on note length and signal clarity.
 `analysis.detectedNotes` and `analysis.rawPitchFrames` stay unchanged during
 editing. Separate `notes` link back through `sourceNoteId`; manually added notes
@@ -3132,7 +3143,9 @@ silence. `quantizedTiming` stores snapped times separately; selecting
 **Original / edited** or **Quantized** determines playback/export timing.
 Tempo and divisions per beat are editable without changing detected evidence.
 
-The roll overlays the raw voice contour on the editable notes. The table edits
+The roll overlays either the interpreted or measured voice contour on editable
+notes, with detected onsets and offsets shown by different dashed lines. Older version 1
+performances default to the measured contour. The table edits
 MIDI pitch, onset/offset, cents and velocity, shows detected expression, and
 supports adding/deleting notes. Undo/redo keeps up to 40 in-session edit states;
 **Restore detected notes** asks before replacement and can itself be undone.
