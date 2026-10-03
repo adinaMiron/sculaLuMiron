@@ -393,6 +393,40 @@ function selectLineOrParagraph() {
   updateStatus();
 }
 
+/* Ctrl+Shift+/ — copy the words on the caret's line while leaving them
+   selected for another copy or edit. Task boxes and their status markers,
+   and heading hashes, are source syntax rather than part of the label. */
+function selectAndCopyLineText() {
+  const val = editor.value;
+  const lineStart = val.lastIndexOf('\n', editor.selectionStart - 1) + 1;
+  const nl = val.indexOf('\n', lineStart);
+  const line = val.slice(lineStart, nl === -1 ? val.length : nl);
+  let bodyStart = 0;
+  const task = line.match(TASK_LINE_RE);
+  if (task) {
+    bodyStart = line.length - task[4].length;
+    const status = task[4].match(TASK_STATUS_LEAD_RE);
+    if (status) bodyStart += status[0].length;
+  } else {
+    const heading = line.match(/^[ \t]*#{1,6}[ \t]+/);
+    if (heading) bodyStart = heading[0].length;
+  }
+  while (bodyStart < line.length && /[ \t]/.test(line[bodyStart])) bodyStart++;
+  let bodyEnd = line.length;
+  while (bodyEnd > bodyStart && /[ \t]/.test(line[bodyEnd - 1])) bodyEnd--;
+  if (bodyStart === bodyEnd) return false;
+  editor.focus();
+  editor.setSelectionRange(lineStart + bodyStart, lineStart + bodyEnd);
+  updateStatus();
+  // A synchronous copy works when the page is opened from file:// as well.
+  // Keep the selection if the browser refuses clipboard access.
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch (e) {}
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(val.slice(lineStart + bodyStart, lineStart + bodyEnd)).catch(() => {});
+  return true;
+}
+
 function toggleTodoDone() {
   editor.focus();
   const start = editor.selectionStart, end = editor.selectionEnd;
@@ -827,4 +861,3 @@ function handleTab(e) {
     updatePreview();
   }
 }
-

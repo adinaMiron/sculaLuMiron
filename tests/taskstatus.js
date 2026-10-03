@@ -161,6 +161,43 @@ function check(name, ok, detail) {
   check('another focused field leaves the chapter alone', await source() === 'Plain\n', await source());
   await page.evaluate(() => document.getElementById('tmp-field').remove());
 
+  // Ctrl+Shift+/ selects and copies the current label, without source markers.
+  const copyLine = async (md, needle) => {
+    await place(md, needle);
+    await page.focus('#editor');
+    await page.keyboard.press('Control+Shift+Slash');
+    const selected = await page.evaluate(() => editor.value.slice(editor.selectionStart, editor.selectionEnd));
+    await page.evaluate(() => {
+      const input = document.createElement('input');
+      input.id = 'copy-paste-probe';
+      document.body.appendChild(input);
+      input.focus();
+    });
+    await page.keyboard.press('Control+v');
+    const pasted = await page.locator('#copy-paste-probe').inputValue();
+    await page.locator('#copy-paste-probe').evaluate(el => el.remove());
+    return { selected, pasted };
+  };
+  for (const [md, needle, expected] of [
+    ['  ## Plan de lucru  ', 'Plan', 'Plan de lucru'],
+    ['- [ ] Cumpără lapte', 'Cumpără', 'Cumpără lapte'],
+    ['  * [x] Termină raportul', 'Termin', 'Termină raportul'],
+    ['- [ ] ~inwork Sună la Ana', 'Sună', 'Sună la Ana'],
+    ['- [ ] ~onhold Așteaptă răspunsul', 'Așteapt', 'Așteaptă răspunsul'],
+    ['- [ ] ~blocked Repară robinetul', 'Repar', 'Repară robinetul'],
+    ['  Text obișnuit  ', 'Text', 'Text obișnuit']
+  ]) {
+    const result = await copyLine(md, needle);
+    check('Ctrl+Shift+/ selects and copies ' + needle, result.selected === expected && result.pasted === expected, result);
+  }
+  const emptyCopy = await copyLine('- [ ] ~blocked   ', '~blocked');
+  check('empty task text leaves the clipboard unchanged', emptyCopy.selected === '' && emptyCopy.pasted === 'Text obișnuit', emptyCopy);
+  await place('- [ ] Keep this task', 'Keep');
+  await page.evaluate(() => { const input = document.createElement('input'); input.id = 'copy-focus-probe'; document.body.appendChild(input); input.focus(); });
+  await page.keyboard.press('Control+Shift+Slash');
+  check('copy shortcut leaves another input focused', await page.evaluate(() => document.activeElement.id === 'copy-focus-probe'));
+  await page.locator('#copy-focus-probe').evaluate(el => el.remove());
+
   // ---- the tasks in the navigation panel --------------------------------
   const DOC = '- [ ] Before any heading\n# Casa\n- [ ] Vopsește gardul\n- [ ] ~inwork **Repară** robinetul ^rob\n'
     + '  - [x] Cumpără garnituri\nProză obișnuită\n## Grădina\n- [ ] ~blocked Udă roșiile\n- [ ] \n'
@@ -208,6 +245,9 @@ function check(name, ok, detail) {
   check('clicking a task selects its line in the source', jump.picked === '- [ ] ~blocked Udă roșiile', jump);
   check('and flashes it in the preview', jump.flashed.includes('Udă roșiile'), jump);
   check('and marks it active', jump.active, jump);
+  await page.keyboard.press('Control+Shift+Slash');
+  check('copy shortcut uses the task selected by navigation',
+    await page.evaluate(() => editor.value.slice(editor.selectionStart, editor.selectionEnd)) === 'Udă roșiile');
 
   // the icon walks the states, one undo step each, the caret untouched
   await page.evaluate(() => editor.setSelectionRange(3, 3));

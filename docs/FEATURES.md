@@ -725,6 +725,15 @@ The other two states (on hold, blocked) stay in the select.
 `taskLineStatus(line)` is the one reading of a line's state (`null` for
 prose); `wbTaskHasStatus` and the panel both go through it.
 
+**Ctrl+Shift+/** (`selectAndCopyLineText()` in `editor.js`) selects the
+caret line's text and copies that selection to the clipboard. A heading's
+`#` prefix and a task's checkbox plus leading `~inwork`, `~onhold`, or
+`~blocked` state are excluded. Ordinary lines are selected without leading
+or trailing whitespace. The source text inside the selection, including
+inline Markdown, is copied as written. An empty body leaves the clipboard
+alone. The shortcut also works after a navigation-panel jump selects a
+heading or task line.
+
 **The ☰ navigation panel** lists, under each heading, the tasks written
 beneath it (`updateNav()` in `markdown.js`): the state's icon
 (`TASK_STATUS_ICONS`) and colour, done ones struck through, nested tasks

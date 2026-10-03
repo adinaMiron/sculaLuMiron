@@ -106,6 +106,15 @@ document.addEventListener('keydown', e => {
     navStep(e.code === 'Period' ? 1 : -1);
     return;
   }
+  // Ctrl+Shift+/ copies the caret line's text without a heading prefix,
+  // task checkbox or task status. e.code survives Shift and keyboard layouts.
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && e.code === 'Slash') {
+    const el = document.activeElement;
+    if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+    e.preventDefault();
+    selectAndCopyLineText();
+    return;
+  }
   // Ctrl+Alt+I — the idea box. Ctrl+I is italic and Ctrl+Shift+I is the
   // browser's own devtools, so Ctrl+Alt is what is left; e.code and an early
   // return for the same reason the importance chords above use them.
@@ -139,4 +148,3 @@ document.addEventListener('keydown', e => {
   if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); moveLineDown(); }
   else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); moveLineUp(); }
 });
-
