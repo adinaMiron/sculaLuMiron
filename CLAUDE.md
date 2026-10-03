@@ -5,12 +5,13 @@ manager.** The apps open directly in a browser. `index.html` keeps its CSS and
 markup in the page and loads its editor JavaScript from `js/markdown/`;
 Song keeps its workspace logic inline; Voice and Song share `js/audio/pcm.js` and the versioned `js/audio/analysis.js` and `js/audio/synthesis.js`;
 Song adds `js/audio/performance.js`, `js/audio/arrangement.js`, `js/audio/integrity.js` and `js/audio/backup.js` for staged project restoration.
-The other apps keep their JavaScript inline. There is no build step.
+Voice also loads `js/voice/teleprompter.js` for the Subtitrare chapter reader
+and speech following. The other apps keep their JavaScript inline. There is no build step.
 
 | File | Lines | ~Tokens | What it is | Theme |
 |---|---|---|---|---|
 | `song.html` | ~2140 | ~29k | "Creează melodie" / "Song Creation" — immutable WAVs, humming analysis, editable performances, sample set editing, instrumental arrangements, whole-song timeline and backup restoration | dark (earth) |
-| `voice.html` | ~3262 | ~30k | "Caiet vocal" — voice dictation → text, **and the recording turned into a melody** | dark (earth) |
+| `voice.html` | ~3350 | ~32k | "Caiet vocal" — voice dictation → text, melody from recordings, and a voice-following **Subtitrare teleprompter** | dark (earth) |
 | `editor.html` | 6106 | 55k | "Image Marker" — canvas annotation/drawing (incl. the infinite canvas) | dark (earth) |
 | `index.html` + `js/markdown/` | 4036 + scripts | — | Markdown editor + preview + workbooks + search + knowledge graph + causality diagram + timeline + flowcharts, mind maps, sequence diagrams and sketches + `^@` places + **a folder of photos and films read through its own metadata** + Google Drive sync | dark (earth) |
 | `recipes.html` | 10235 | 99k | "Rețete" — PDF/photo → recipe markdown/HTML, with USDA nutrition, a day composed out of a recipe library, and daily calorie/macro targets | dark (earth) |

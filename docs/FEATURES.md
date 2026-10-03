@@ -2151,6 +2151,47 @@ involved. Run: `/apptest gdsync`.
 
 ---
 
+## P0. Voice-following teleprompter (`voice.html`)
+
+The **Teleprompter** button above the recorder reveals a chapter picker for
+the Markdown workbook named **Subtitrare** (case and surrounding whitespace
+ignored). `js/voice/teleprompter.js` reads `scula-md` without writing to it or
+creating an empty database. A newer `scula:md:draft` journal entry takes
+precedence over the saved chapter, just as in the Markdown editor. Refresh
+reloads the picker; selecting a chapter copies its prose into an editable
+script. The original chapter remains unchanged. Pasting a script also works
+when storage is unavailable or the workbook is in another browser/profile.
+Markdown headings, emphasis and links become plain text; fenced code,
+images and HTML markup are omitted. Rendering uses text nodes, never HTML.
+
+**Open teleprompter** displays a modal reader covering the viewport, with
+adjustable 2–6 rem text, paragraph spacing, a highlighted current word,
+manual back/next/restart, click-to-reposition and keyboard controls. Space
+in the text starts/pauses voice following; arrow keys reposition; Escape
+exits. Opening the reader does not activate the microphone. Active or pending
+dictation/recording must finish first.
+
+**Follow my voice** uses browser `SpeechRecognition` interim results with
+an explicit Romanian or English spoken language. Each result is aligned
+against nearby script words, ignoring case, punctuation and diacritics and
+tolerating short skips and filler words. An utterance keeps its initial
+anchor across interim revisions, preventing repeated phrases from moving
+twice. Movement needs a sufficiently strong match; silence and unrelated
+speech do not advance it. Smooth scrolling holds the current line near the
+upper third, with reduced-motion support. There is no timed auto-scroll.
+
+Pause, exit, hiding the tab and reaching the end abort recognition and
+release the wake lock. Unexpected recognition endings retry with a bounded
+backoff; permission, network and other terminal errors retain a readable
+message and allow manual operation. Unsupported browsers retain the manual
+reader. Browser speech may use an online service: response time/accuracy
+depends on that service and cannot be guaranteed. No API key is needed, and
+this feature does not append to dictation or save audio.
+
+Validation: `tests/teleprompter.js` checks alignment plus real browser storage,
+reader geometry and lifecycle with deterministic speech events. Real spoken
+recognition accuracy/latency needs a microphone trial in the target browser.
+
 ## P. The melody (`voice.html`)
 
 "Caiet vocal" § 14 turns a recording into a piece of music: it finds the

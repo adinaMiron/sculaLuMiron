@@ -80,6 +80,33 @@
   .notice code{font-family:var(--font-mono);font-size:12px}
   .hidden{display:none !important}
 
+  /* ---------- teleprompter ---------- */
+  .tp-panel{border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin:1rem 0;background:var(--surface)}
+  .tp-panel[hidden]{display:none}
+  .tp-panel h2{margin:0;font:1.5rem var(--font-display)}
+  .tp-panel textarea{width:100%;min-height:12rem;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:.5rem;padding:.75rem;font:1rem/1.6 var(--font-ui)}
+  .tp-panel select{width:100%;min-width:0}
+  .tp-panel label{display:block;margin:.75rem 0 .35rem}
+  .tp-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
+  .tp-toolbar .btn{min-height:2.75rem}
+  .tp-open{overflow:hidden}
+  #tpDialog{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;padding:1rem;padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));background:var(--bg);color:var(--text)}
+  #tpDialog[open]{display:flex;flex-direction:column;gap:.5rem}
+  #tpDialog::backdrop{background:var(--bg)}
+  #tpReader{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;position:relative;font:3rem/1.65 var(--font-ui);padding:0 max(.5rem, calc((100% - 60rem)/2));overflow-wrap:anywhere;scrollbar-width:thin}
+  #tpReader::before,#tpReader::after{content:"";display:block;height:20vh}
+  #tpReader::after{height:65vh}
+  #tpReader p{margin:0 0 1em;white-space:pre-line}
+  #tpReader span{cursor:pointer;border-radius:.1em}
+  #tpReader .tp-read{color:var(--text-2)}
+  #tpReader .tp-current{color:var(--accent);text-decoration:underline;text-underline-offset:.2em}
+  #tpDialog :focus-visible,.tp-panel :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  #tpStatus,#tpHeard{margin:0}
+  #tpHeard{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:1.5em;color:var(--text-2)}
+  #tpProgress{margin-inline-start:auto;font-family:var(--font-mono)}
+  #tpSize{width:7rem;vertical-align:middle}
+  @media(max-width:480px){#tpDialog{padding:.65rem}.tp-toolbar .btn{padding:.5rem .65rem;font-size:.85rem}}
+
   /* ---------- stage: growth rings + record ---------- */
   .stage{
     position:relative;display:grid;place-items:center;
@@ -1576,6 +1603,25 @@
   <div class="notice hidden" id="secureWarn"></div>
   <div class="notice hidden" id="setupWarn"></div>
 
+  <button class="btn" id="tpToggle" type="button" aria-expanded="false" aria-controls="tpPanel" data-i="tpTitle">Teleprompter</button>
+  <section class="tp-panel" id="tpPanel" hidden aria-labelledby="tpHeading">
+    <h2 id="tpHeading" data-i="tpTitle">Teleprompter</h2>
+    <p class="tiny" data-i="tpIntro">Alege un capitol din caietul „Subtitrare” din pagina Markdown sau lipește scenariul mai jos. Textul urmărește vocea și se oprește când faci pauză.</p>
+    <label for="tpChapter" data-i="tpChapter">Capitol din Subtitrare</label>
+    <select id="tpChapter"></select>
+    <div class="actions">
+      <button class="btn ghost" id="tpRefresh" type="button" data-i="tpRefresh">Reîncarcă lista</button>
+      <a class="btn ghost" href="index.html" target="_blank" rel="noopener" data-i="tpMarkdown">Deschide Markdown</a>
+    </div>
+    <label for="tpScript" data-i="tpScript">Scenariu (copie editabilă pentru citire)</label>
+    <textarea id="tpScript" data-i-placeholder="tpPlaceholder" placeholder="Scrie sau lipește aici textul de citit."></textarea>
+    <label for="tpLanguage" data-i="langLabel">Limba vorbită</label>
+    <select id="tpLanguage"><option value="ro-RO">Română</option><option value="en-US">English</option></select>
+    <p class="tiny" data-i="tpPrivacy">Urmărirea vocală folosește recunoașterea browserului, care poate trimite sunetul către serviciul său online. Întârzierea depinde de browser și conexiune. Poți citi și avansa manual fără microfon.</p>
+    <p class="tiny" id="tpSourceStatus" role="status"></p>
+    <button class="btn" id="tpOpen" type="button" data-i="tpOpen">Deschide teleprompterul</button>
+  </section>
+
   <div class="stage idle" id="stage">
     <div class="rings" aria-hidden="true">
       <div class="ring" data-i0></div>
@@ -1797,6 +1843,24 @@
 </div>
 
 <script src="js/audio/pcm.js"></script>
+<dialog id="tpDialog" aria-label="Teleprompter" data-i-aria="tpTitle">
+  <div class="tp-toolbar">
+    <button class="btn" id="tpListen" type="button" aria-pressed="false">Urmărește vocea</button>
+    <button class="btn ghost" id="tpBack" type="button" data-i="tpBack">Înapoi</button>
+    <button class="btn ghost" id="tpNext" type="button" data-i="tpNext">Înainte</button>
+    <button class="btn ghost" id="tpReset" type="button" data-i="tpReset">De la început</button>
+    <button class="btn ghost" id="tpExit" type="button" data-i="tpExit">Ieși</button>
+  </div>
+  <div class="tp-toolbar">
+    <label for="tpSize"><span data-i="tpSize">Mărimea textului</span> <input id="tpSize" type="range" min="2" max="6" step="0.25" value="3"></label>
+    <span id="tpProgress"></span>
+  </div>
+  <p id="tpStatus" role="status"></p>
+  <p class="tiny" id="tpInstructions" data-i="tpInstructions">Atinge un cuvânt pentru a relua de acolo. În text: săgeți pentru deplasare, Spațiu pentru pauză; Esc pentru ieșire.</p>
+  <div id="tpReader" tabindex="0" role="region" aria-label="Scenariu" data-i-aria="tpScript" aria-describedby="tpInstructions"></div>
+  <p id="tpHeard" data-i-title="tpHeard" title="Ultimele cuvinte auzite"></p>
+</dialog>
+<script src="js/voice/teleprompter.js"></script>
 <script src="js/audio/analysis.js"></script>
 <script src="js/audio/synthesis.js"></script>
 <script>
@@ -1808,6 +1872,17 @@
    ============================================================ */
 const I18N = {
   ro:{
+    tpTitle:"Teleprompter", tpIntro:"Alege un capitol din caietul „Subtitrare” din pagina Markdown sau lipește scenariul mai jos. Textul urmărește vocea și se oprește când faci pauză.",
+    tpChapter:"Capitol din Subtitrare", tpRefresh:"Reîncarcă lista", tpMarkdown:"Deschide Markdown",
+    tpScript:"Scenariu (copie editabilă pentru citire)", tpPlaceholder:"Scrie sau lipește aici textul de citit.",
+    tpPrivacy:"Urmărirea vocală folosește recunoașterea browserului, care poate trimite sunetul către serviciul său online. Întârzierea depinde de browser și conexiune. Poți citi și avansa manual fără microfon.",
+    tpOpen:"Deschide teleprompterul", tpListen:"Urmărește vocea", tpPause:"Pauză", tpBack:"Înapoi", tpNext:"Înainte", tpReset:"De la început", tpExit:"Ieși", tpSize:"Mărimea textului",
+    tpInstructions:"Atinge un cuvânt pentru a relua de acolo. În text: săgeți pentru deplasare, Spațiu pentru pauză; Esc pentru ieșire.", tpHeard:"Ultimele cuvinte auzite",
+    tpProgress:({current,total}) => current + " / " + total + " cuvinte",
+    tpReady:"Gata de citire. Pornește urmărirea vocală când ești pregătit.", tpPaused:"În pauză — poziția este păstrată.", tpFollowing:"Te ascult — citește în ritmul tău.", tpStarting:"Pornesc microfonul…", tpReconnecting:"Reconectez recunoașterea vocală…", tpFinished:"Ai ajuns la sfârșitul scenariului.",
+    tpChoose:"Alege un capitol…", tpNoChapters:"Nu există capitole în „Subtitrare”. Creează caietul și un capitol în Markdown, în același browser, apoi reîncarcă lista; sau lipește textul mai jos.",
+    tpLoading:"Citesc lista capitolelor…", tpLoaded:"Scenariul a fost încărcat. Modificările de aici nu schimbă capitolul original.", tpEmpty:"Adaugă un scenariu cu text înainte de a deschide teleprompterul.", tpStorageError:"Nu pot citi caietele. Reîncarcă lista sau lipește scenariul mai jos.",
+    tpUnsupported:"Browserul nu oferă recunoaștere vocală. Poți citi și avansa manual.", tpDenied:"Accesul la microfon a fost refuzat. Permite-l în browser și încearcă din nou, sau avansează manual.", tpNetwork:"Recunoașterea vocală a pierdut conexiunea. Repornește urmărirea sau avansează manual.", tpSpeechError:"Recunoașterea vocală nu a putut continua. Verifică microfonul și limba, apoi repornește urmărirea sau avansează manual.", tpBusy:"Oprește înregistrarea sau dictarea înainte de a deschide teleprompterul.",
     eyebrow:"dictare · română / english",
     settings:"Setări", langLabel:"Limba vorbită", auto:"Automat",
     engineLabel:"Motor de transcriere", engApi:"Server (precis)", engLive:"Browser (fără cheie)",
@@ -1925,6 +2000,17 @@ const I18N = {
     `
   },
   en:{
+    tpTitle:"Teleprompter", tpIntro:"Choose a chapter from the “Subtitrare” workbook on the Markdown page, or paste your script below. The text follows your voice and waits when you pause.",
+    tpChapter:"Chapter from Subtitrare", tpRefresh:"Refresh chapters", tpMarkdown:"Open Markdown",
+    tpScript:"Script (editable reading copy)", tpPlaceholder:"Write or paste your script here.",
+    tpPrivacy:"Voice following uses browser recognition, which may send audio to its online service. Delay depends on your browser and connection. You can read and advance manually without a microphone.",
+    tpOpen:"Open teleprompter", tpListen:"Follow my voice", tpPause:"Pause", tpBack:"Back", tpNext:"Next", tpReset:"Restart", tpExit:"Exit", tpSize:"Text size",
+    tpInstructions:"Tap a word to resume there. In the text: arrow keys to move, Space to pause; Esc to exit.", tpHeard:"Last words heard",
+    tpProgress:({current,total}) => current + " / " + total + " words",
+    tpReady:"Ready to read. Start voice following when you are ready.", tpPaused:"Paused — your place is kept.", tpFollowing:"Listening — read at your own pace.", tpStarting:"Starting microphone…", tpReconnecting:"Reconnecting speech recognition…", tpFinished:"You have reached the end of the script.",
+    tpChoose:"Choose a chapter…", tpNoChapters:"No chapters in “Subtitrare”. Create the workbook and a chapter in Markdown in the same browser, then refresh; or paste your script below.",
+    tpLoading:"Loading chapters…", tpLoaded:"Script loaded. Edits here do not change the original chapter.", tpEmpty:"Add a script with text before opening the teleprompter.", tpStorageError:"Cannot read the workbooks. Refresh or paste your script below.",
+    tpUnsupported:"This browser does not offer speech recognition. You can read and advance manually.", tpDenied:"Microphone access was denied. Allow it in the browser and retry, or advance manually.", tpNetwork:"Speech recognition lost its connection. Restart voice following or advance manually.", tpSpeechError:"Speech recognition could not continue. Check your microphone and language, then restart voice following or advance manually.", tpBusy:"Stop recording or dictation before opening the teleprompter.",
     eyebrow:"dictation · romanian / english",
     settings:"Settings", langLabel:"Spoken language", auto:"Auto",
     engineLabel:"Transcription engine", engApi:"Server (accurate)", engLive:"Browser (no key)",
@@ -2171,6 +2257,7 @@ function applyUILang(){
   const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
   secureWarn.innerHTML = t("insecure");
   melSyncLabels();
+  teleprompter.labels();
   updateCounts(); updateProviderUI(); checkSetup();
 }
 window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); if(!helpSheet.classList.contains("hidden")) paintHelp(); });
@@ -2445,9 +2532,11 @@ keepWavEl.addEventListener("change", () => {
 const queue = { items:[], busy:false, done:0 };
 let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
 
-recBtn.addEventListener("click", () => {
+recBtn.addEventListener("click", async () => {
   if(S.engine === "live"){ live.active ? stopLive() : startLive(); return; }
-  rec.active ? stopRec() : startRec();
+  recBtn.disabled = true;
+  try{ if(rec.active) stopRec(); else await startRec(); }
+  finally{ recBtn.disabled = false; }
 });
 
 async function startRec(){
@@ -3255,6 +3344,8 @@ window.addEventListener("resize", () => { clearTimeout(melRollTimer); melRollTim
 /* ============================================================
    15. Go
    ============================================================ */
+const teleprompter = ScuLaTeleprompter.mount({t, getLanguage:() => S.lang,
+  isRecording:() => rec.active || live.active || recBtn.disabled || !!rec.stream});
 load();
 })();
 </script>

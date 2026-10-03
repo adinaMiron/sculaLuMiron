@@ -95,43 +95,44 @@ nothing keeps it in sync automatically.
 
 ---
 
-## voice.html — ~3262 lines · "Caiet vocal" (voice dictation)
+## voice.html — ~3350 lines · "Caiet vocal" (dictation and teleprompter)
 
 `lang="ro"`. Uses the shared RO/EN i18n pattern described in `docs/I18N.md`.
 
 | Lines | Contents |
 |---|---|
-| 11–256 | App CSS. `:root` palette at **12–37** (earth-palette tokens, migrated). `.rec-opt` (the keep-the-sound rows) **137–140**, `.rec-sub` indenting the WAV row under its parent, `.melody-card` and the piano roll **216–232** |
-| 262–1561 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
-| 1563–1798 | Markup: header, controls, `#keepAudio` **1580–1584**, `#keepWav` **1586–1590**, `#melodyArm` **1592–1596**, textarea, **the melody panel `#melodyCard` 1607–1684**, settings sheet |
-| ~1802–3260 | App script, numbered sections below |
+| 11–283 | App CSS. `:root` palette at **12–37**; teleprompter **83–107**; recording controls and melody card below |
+| 287–1586 | **Shared nav + `ScuLaFolder` + `ScuLaCal` + `ScuLaGeo`** (identical in all nine files) |
+| 1589–1860 | Markup: teleprompter setup **1604–1621**, `#keepAudio` **1638**, `#keepWav` **1644**, `#melodyArm` **1650**, textarea, melody panel **1688**, settings/help and teleprompter dialog **1844–1860** |
+| 1865–3349 | App script, numbered sections below |
+| `js/voice/teleprompter.js` | Read-only Subtitrare chapter/draft loading, prose conversion, speech alignment, modal reader and microphone lifecycle. See FEATURES § P0 |
 
 Script sections (comment banners `/* === N. Title === */`):
 
 | Line | Section |
 |---|---|
-| 1808 | **1. i18n** — `I18N` at 1808, `t()` at 2045 |
-| 2048 | 2. Providers |
-| 2073 | 3. Settings store — `store` at 2076 with memory fallback; `save`/`load` |
-| 2109 | 4. DOM refs |
-| 2140 | 5. Language / engine chips |
-| 2159 | **6. UI language** — `applyUILang()` **2159** (it also calls `melSyncLabels()`) |
-| 2178 | 7. Settings sheet |
-| 2261 | 7b. Help |
-| 2273 | 8. Secure-context check |
-| 2278 | 9. Recording (MediaRecorder) + segment rotation — **keep-the-sound recorder 2301–2431** |
-| 2575 | 10. Transcription queue |
-| 2669 | 11. Browser dictation (Web Speech API) |
-| 2730 | 12. File import |
-| 2744 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
-| **2799** | **14. Melodie** — the recording turned into music (§ below) |
-| ~3257 | 15. Init |
+| 1869 | **1. i18n** — `I18N` at 1871, `t()` at 2130; teleprompter `tp*` keys |
+| 2133 | 2. Providers |
+| 2158 | 3. Settings store — guarded storage with memory fallback; `save`/`load` |
+| 2194 | 4. DOM refs |
+| 2225 | 5. Language / engine chips |
+| 2240 | **6. UI language** — `applyUILang()` **2244**, including melody and teleprompter labels |
+| 2264 | 7. Settings sheet |
+| 2347 | 7b. Help |
+| 2359 | 8. Secure-context check |
+| 2364 | 9. Recording (MediaRecorder) + segment rotation; keep-the-sound recorder starts at `armAudio()` **2405** |
+| 2663 | 10. Transcription queue |
+| 2757 | 11. Browser dictation (Web Speech API) |
+| 2818 | 12. File import |
+| 2832 | 13. Copy / share / **save → `ScuLaFolder.save()`** / clear |
+| **2887** | **14. Melodie** — the recording turned into music (§ below) |
+| 3343 | 15. Init — mount teleprompter, load settings |
 
 **Two independent language axes — do not conflate:**
 - `S.ui` (`UI`) = interface language. Toggle `#navLangBtn`.
 - `S.lang` = *spoken* language for dictation (`ro-RO`/`en-US`/auto), `#langChips`.
 
-### The melody (§ 14, ~2800–3240)
+### The melody (§ 14, ~2887–3340)
 
 Analysis and synthesis, both hand-rolled, no library and no samples — see
 `docs/FEATURES.md` § P for the why and the shape. Sub-banners inside it:
@@ -139,17 +140,17 @@ Analysis and synthesis, both hand-rolled, no library and no samples — see
 | Line | Part |
 |---|---|
 | `js/audio/synthesis.js` | `INSTR` (fourteen models), pickers/note names/scales, sine table, `snapMidi`/`chordsFor`, `fitRange`/`chordVoicing`, additive/Karplus-Strong, drums, mixing/reverb, WAV/MIDI writers; unchanged Voice kernels shared with Song |
-| ~2824 | `ScuLaSynthesis` import; accuracy baseline in `tests/song-synthesis.js` |
-| ~2827 | `ScuLaAnalysis` import — implementation in `js/audio/analysis.js` |
+| 2911 | `ScuLaSynthesis` import; accuracy baseline in `tests/song-synthesis.js` |
+| 2914 | `ScuLaAnalysis` import — implementation in `js/audio/analysis.js` |
 | `js/audio/analysis.js` | `decodeMono`/`resample`/`normalise`/`decimate2`, YIN `trackPitch`, `segmentNotes`, spectral-flux/tempo/phase, Pearson `detectKey` |
-| ~2830 | `mel` state and `quantise` — Voice's own arrangement controls |
-| ~2862 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
-| ~2897 | `renderAudio` — Voice's lead / chords / bass / drums, cache and normalization |
-| ~3002 | the panel: DOM refs, generated chips, `melSay`/`melButtons`/`melSyncLabels` |
-| ~3070 | `drawRoll` — the piano roll |
-| ~3137 | `melMake`, `melPlay`/`melStop`, two saves and listeners |
+| 2917 | `mel` state and `quantise` — Voice's own arrangement controls |
+| 2949 | `buildScore` — snap, quantise, bar 1 beat 1 = the first note |
+| 2984 | `renderAudio` — Voice's lead / chords / bass / drums, cache and normalization |
+| 3090 | the panel: DOM refs, generated chips, `melSay`/`melButtons`/`melSyncLabels` |
+| 3157 | `drawRoll` — the piano roll |
+| 3224 | `melMake`, `melPlay`/`melStop`, two saves and listeners |
 
-`MEL_MAX` (~2813) caps the source at 180 s — memory, not taste: the mix is
+`MEL_MAX` (2900) caps the source at 180 s — memory, not taste: the mix is
 three Float32Arrays of it at 44100.
 
 **Keeping the sound** (`#keepAudio`, off by default, persisted as

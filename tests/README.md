@@ -31,6 +31,12 @@ and the three `.html` files never reference it.
 Each script is self-contained, prints `PASS`/`FAIL` lines per check, and
 exits non-zero if anything failed.
 
+`teleprompter.js` covers Voice's Subtitrare chapter/draft import, read-only
+source handling, speech alignment (including revised interim results and
+repeated phrases), microphone lifecycle/error recovery, manual controls,
+RO/EN and phone layout. Speech events are stubbed; it does not measure a real
+recognition service's accuracy or latency.
+
 ## Running
 
 ```bash
