@@ -3387,14 +3387,19 @@ section edits (`id`, `name`, `arrangementId`, `repeats`).
 The **Song loop / Buclă melodie** control repeats the full rendered song
 (including its audio tail), one selected section (including all its repeats),
 or a custom start and end. The overview shades the active interval. For a
-custom loop, adjust the two labelled range sliders by touch, pointer or
-keyboard arrows; their time readouts and the overview update immediately.
+custom loop, drag its two overview markers, adjust the labelled range sliders,
+or enter seconds or `mm:ss.mmm` in the time fields. **Set start/end at
+playhead** and the `I`/`O` shortcuts place a boundary at the current playback
+position; shortcuts stay inactive while typing. The optional snap control
+aligns pointer and keyboard adjustments to section and repeat boundaries when
+they are within 12 screen pixels. Markers also support arrow keys (0.01 s,
+or 1 s with Shift), Home and End. All editors share millisecond readouts.
 Playback starts at the loop start when the playhead lies outside it and wraps
 at the end using the same rendered stereo buffer. Changing the loop during
 playback restarts at the current position if it remains inside the new range.
 With section looping selected, **Play from here** selects that section and
 starts its first repeat.
-The loop mode, selected section and custom times are page-only state: they are
+The loop mode, selected section, custom times and snap setting are page-only state: they are
 not written to project JSON or backups, reset on reload or project switch,
 and do not change WAV or MIDI exports. Stop still cancels rendering and closes
 playback resources; the chosen loop remains available until the page resets.
@@ -3424,7 +3429,8 @@ version references; restore remaps both section IDs and version references.
 `tests/song-timeline.js` exercises the file:// UI with two hummed takes,
 section order/duplicate/remove/repeats, proportional overview, pointer and
 keyboard seeking across sections and repeats, full/section/custom looping,
-touch and keyboard range adjustment, loop boundary restart, section playback, playhead and
+typed millisecond times, markers, snapping and playhead buttons/shortcuts on
+desktop and phone, loop boundary restart, section playback, playhead and
 elapsed time, Stop during rendering and playback with audio cleanup, tempo and
 key MIDI joins, WAV timing, playback buffer versus exported PCM, reload,
 backup restore, source WAV bytes, RO/EN and phone width.
