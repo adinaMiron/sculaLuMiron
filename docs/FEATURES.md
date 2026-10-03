@@ -3431,16 +3431,26 @@ chorus, choose any version from any take in the project, set 1–16 repeats, or
 move, duplicate and remove sections. Each section stores an independent ID,
 name, `arrangementId` and `repeats` in `project.timeline`. The ID is a live
 reference to a version: editing that version updates every linked section;
-creating a newer version does not silently switch them. Deleting a recording
-removes its versions and their linked sections. Older projects without
-`timeline` load with an empty timeline. The expanded song is capped at 20
-minutes to bound rendering memory.
+creating a newer version does not silently switch them. Optional `mix` stores
+per-section enabled/volume values for all four parts, initialized from the linked
+arrangement when **Customize section mix** is checked. Unchecking restores live
+inheritance. The override affects that section and all its repeats in playback,
+WAV and MIDI; MIDI writes the effective CC7 volume and omits muted notes. The
+original arrangement and source WAVs are untouched. **Undo song edit** and
+**Redo song edit** keep 40 in-session snapshots for section add/name/version/
+repeats/order/duplicate/remove/mix changes; a new edit clears redo. History is
+per project and is not saved in backups. Deleting a recording clears the affected
+project's history because its linked arrangement versions are removed. Older
+projects without `timeline` load with an empty timeline. The expanded song is
+capped at 20 minutes to bound rendering memory.
 
 The visual overview above the section editors gives each section a width
 proportional to its full duration (`arrangement.duration × repeats`). Divisions
 and a count show repeats. Each block shows the section name, linked version,
 tempo and key; a final audio-tail block accounts for the 1.8 seconds included
-in the WAV. On narrow screens the overview scrolls horizontally while the
+in the WAV. A 4/4 ruler under the blocks draws beat ticks and readable bar
+numbers across tempo changes; the position readout shows bar.beat. On narrow
+screens the overview scrolls horizontally while the
 page stays within the viewport. Click or tap a block to seek within it, use the
 range control with a pointer or keyboard for precise seeking, or choose **Play
 from here / Redă de aici** on a section to begin at its first repeat. The
@@ -3457,9 +3467,11 @@ or a custom start and end. The overview shades the active interval. For a
 custom loop, drag its two overview markers, adjust the labelled range sliders,
 or enter seconds or `mm:ss.mmm` in the time fields. **Set start/end at
 playhead** and the `I`/`O` shortcuts place a boundary at the current playback
-position; shortcuts stay inactive while typing. The optional snap control
-aligns pointer and keyboard adjustments to section and repeat boundaries when
-they are within 12 screen pixels. Markers also support arrow keys (0.01 s,
+position; shortcuts stay inactive while typing. The section/repeat snap control
+aligns pointer and keyboard adjustments to those boundaries when they are within
+12 screen pixels. **Snap to beats** instead chooses the nearest musical beat,
+including the final bar boundary across tempo changes; typed times remain exact.
+Markers also support arrow keys (0.01 s,
 or 1 s with Shift), Home and End. All editors share millisecond readouts.
 Playback starts at the loop start when the playhead lies outside it and wraps
 at the end using the same rendered stereo buffer. Changing the loop during
@@ -3471,8 +3483,11 @@ full-song, section (all repeats), or custom interval. It is disabled with no
 sections or with looping off. The boundaries are rounded to 44.1 kHz sample
 frames, then both channels are sliced from the same complete rendered mix used
 by playback and whole-song WAV export. The resulting 16-bit PCM payload is
-byte-identical to that interval of the full-song WAV, including any overlapping
-tails. The filename identifies the loop mode, selected section name when
+byte-identical to that interval of the full-song WAV by default, including any
+overlapping tails. The optional **Loop WAV edge fade** applies a symmetric 5–100 ms
+linear fade to only the exported slice, capped at half its length; the full-song
+WAV, loop playback and MIDI remain unchanged. Faded filenames include the fade
+duration. The filename identifies the loop mode, selected section name when
 applicable, and start/end frame numbers. `ScuLaFolder.save` places it in the
 project's `exports/` folder. Source WAVs and project data are unchanged.
 **Save loop multitrack MIDI / Salvează bucla ca MIDI cu mai multe piste** exports the
@@ -3483,7 +3498,7 @@ the range follow at their shifted ticks. Notes crossing either boundary are
 clipped. The filename identifies the loop mode, selected section when relevant,
 and start/end milliseconds. It saves through `ScuLaFolder.save` in `exports/`
 and is disabled with no sections or when looping is off.
-The loop mode, selected section, custom times and snap setting are page-only state: they are
+The loop mode, selected section, custom times, snap settings and fade choice are page-only state: they are
 not written to project JSON or backups, reset on reload or project switch,
 and do not change whole-song WAV or MIDI exports. Stop still cancels rendering
 and closes playback resources; the chosen loop remains available until the page resets.

@@ -2,6 +2,11 @@
 (function(root){
 'use strict';
 const A=root.ScuLaArrangement,S=root.ScuLaSynthesis,PARTS=A.PARTS,TPQ=480,TAIL_SECONDS=1.8;
+function partsFor(item){
+ const {arrangement:a,section}=item;
+ if(!section.mix)return a.parts;
+ return Object.fromEntries(PARTS.map(id=>[id,{...a.parts[id],...section.mix[id]}]));
+}
 function resolve(project){
  const sections=project.timeline||[],byId=new Map((project.arrangements||[]).map(a=>[a.id,a]));
  if(!Array.isArray(sections))throw new Error('timelineInvalid');
@@ -9,6 +14,10 @@ function resolve(project){
  for(const section of sections){
   if(!section || typeof section.id!=='string' || !/^[A-Za-z0-9_-]{1,100}$/.test(section.id) || ids.has(section.id) || typeof section.name!=='string' || !section.name.trim() || section.name.length>120 || typeof section.arrangementId!=='string' || !Number.isInteger(section.repeats) || section.repeats<1 || section.repeats>16)throw new Error('timelineInvalid');
   ids.add(section.id);const a=byId.get(section.arrangementId);if(!a)throw new Error('timelineInvalid');A.validate(a);
+  if(section.mix!==undefined){
+   if(!section.mix || typeof section.mix!=='object' || Array.isArray(section.mix) || Object.keys(section.mix).length!==PARTS.length)throw new Error('timelineInvalid');
+   for(const id of PARTS){const p=section.mix[id];if(!p || typeof p!=='object' || Array.isArray(p) || Object.keys(p).length!==2 || typeof p.enabled!=='boolean' || !Number.isFinite(p.volume) || p.volume<0 || p.volume>1)throw new Error('timelineInvalid');}
+  }
   if(!Number.isFinite(a.duration)||a.duration<=0)throw new Error('timelineInvalid');
   for(let i=0;i<section.repeats;i++){
    items.push({section,arrangement:a,seconds,ticks,repeat:i+1});
@@ -23,8 +32,9 @@ async function render(project,{sampleRate=44100,samplesFor=async()=>({}),cancell
  const length=Math.ceil((plan.seconds+TAIL_SECONDS)*sampleRate),L=new Float32Array(length),R=new Float32Array(length),cache=new Map();
  for(const item of plan.items){
   if(cancelled())throw new Error('cancelled');
-  let mix=cache.get(item.arrangement.id);
-  if(!mix){const samples=await samplesFor(item.arrangement);if(cancelled())throw new Error('cancelled');mix=await A.render(item.arrangement,{sampleRate,samples,cancelled,yieldUI});cache.set(item.arrangement.id,mix);}
+  const cacheKey=item.arrangement.id+'|'+JSON.stringify(item.section.mix||null);
+  let mix=cache.get(cacheKey);
+  if(!mix){const a=item.section.mix?{...item.arrangement,parts:partsFor(item)}:item.arrangement;const samples=await samplesFor(a);if(cancelled())throw new Error('cancelled');mix=await A.render(a,{sampleRate,samples,cancelled,yieldUI});cache.set(cacheKey,mix);}
   const start=Math.round(item.seconds*sampleRate);
   for(let i=0;i<mix.L.length && start+i<length;i++){L[start+i]+=mix.L[i];R[start+i]+=mix.R[i];}
   await yieldUI();
@@ -46,7 +56,7 @@ function midi(project,range=null){
  for(const item of plan.items){
   const initial=range&&item===active,inside=!range || item.seconds>=range.start && item.seconds<range.end;
   const emit=initial||inside;
-  const a=item.arrangement,t=range?(initial?0:item.ticks-startTick):item.ticks,us=Math.round(60000000/a.tempoBpm),key=a.key.tonic,minor=a.key.mode==='minor';
+  const a=item.arrangement,parts=partsFor(item),t=range?(initial?0:item.ticks-startTick):item.ticks,us=Math.round(60000000/a.tempoBpm),key=a.key.tonic,minor=a.key.mode==='minor';
   if(emit){
   tempo.push({t,o:0,d:[255,81,3,us>>16&255,us>>8&255,us&255]},{t,o:1,d:[255,88,4,4,2,24,8]});
   // Text at every section start preserves user names for DAWs that show markers.
@@ -57,7 +67,7 @@ function midi(project,range=null){
   tempo.push({t,o:1,d:[255,89,2,signed&255,minor?1:0]});
   }
   PARTS.forEach((id,i)=>{
-   const p=a.parts[id],ch=id==='drums'?9:i,ev=tracks[i];
+   const p=parts[id],ch=id==='drums'?9:i,ev=tracks[i];
    if(emit)ev.push({t,o:0,d:[192|ch,program(id,p)]},{t,o:0,d:[176|ch,7,Math.round(p.volume*127)]});
    if(!p.enabled||!p.volume)return;
    for(const n of p.notes){const on=item.ticks+Math.round(n.start*a.tempoBpm/60*TPQ),off=Math.max(on+1,item.ticks+Math.round((n.start+n.dur)*a.tempoBpm/60*TPQ));
@@ -71,5 +81,12 @@ function midi(project,range=null){
  return new Blob([new Uint8Array(bytes)],{type:'audio/midi'});
 }
 function vlq(value){const out=[value&127];while(value>>=7)out.unshift((value&127)|128);return out;}
-root.ScuLaSongTimeline=Object.freeze({resolve,render,midi,wav:A.wav,tailSeconds:TAIL_SECONDS});
+function edgeFade(mix,milliseconds){
+ if(!Number.isFinite(milliseconds)||milliseconds<0||milliseconds>100)throw new Error('timelineInvalid');
+ if(!milliseconds)return mix;
+ const L=Float32Array.from(mix.L),R=Float32Array.from(mix.R),frames=Math.min(Math.round(milliseconds*mix.sr/1000),Math.floor(L.length/2));
+ for(let i=0;i<frames;i++){const gain=i/frames,j=L.length-1-i;L[i]*=gain;R[i]*=gain;L[j]*=gain;R[j]*=gain;}
+ return {L,R,sr:mix.sr};
+}
+root.ScuLaSongTimeline=Object.freeze({resolve,render,midi,edgeFade,wav:A.wav,tailSeconds:TAIL_SECONDS});
 })(typeof window==='undefined'?globalThis:window);

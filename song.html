@@ -10,8 +10,9 @@
 .song-section{border-top:1px solid var(--border);padding:.8rem 0}.song-section .row{align-items:center}.song-section label{min-width:9rem}.song-section .section-name{flex:1 1 10rem}.song-section .section-version{flex:2 1 15rem}.song-section .section-repeats{flex:0 1 6rem}.song-section button{min-width:2.8rem}.song-section small{display:block;margin:.3rem 0}.song-actions{margin-top:1rem}
 .song-overview-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0;scrollbar-gutter:stable}.song-overview{min-width:max(100%,40rem);position:relative}.song-overview-blocks{display:flex;min-height:7rem;border:1px solid var(--border);border-radius:.5rem;overflow:hidden}.song-overview-block{flex:var(--song-duration) 1 0;min-width:0;min-height:7rem;border:0;border-right:1px solid var(--border);border-radius:0;text-align:left;padding:.45rem;background:var(--surface-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:flex;flex-direction:column;gap:.1rem}.song-overview-block:nth-child(even){background:var(--border)}.song-overview-block:last-child{border-right:0}.song-overview-block span{overflow:hidden;text-overflow:ellipsis}.song-overview-block strong{color:var(--accent)}.song-overview-block small{color:var(--text);line-height:1.25}.song-overview-block .song-repeat-marks{display:flex;gap:0;width:100%;margin-top:auto;height:.45rem;pointer-events:none}.song-overview-block .song-repeat-marks i{flex:1;border-right:1px solid var(--accent)}.song-overview-block .song-repeat-marks i:last-child{border:0}.song-seek{display:block;width:100%;height:2.4rem;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}.song-time{display:flex;justify-content:space-between;gap:.5rem;font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}.song-playhead{position:absolute;top:0;bottom:2.4rem;left:var(--song-playhead);width:2px;background:var(--accent);pointer-events:none;box-shadow:0 0 0 1px var(--bg)}.song-section .song-play-here{min-width:8rem}@media(max-width:38rem){.song-overview{min-width:40rem}.song-section .song-play-here{flex:1 1 100%}.song-actions button{flex:1 1 9rem}}
 .song-overview-block.song-tail{background:var(--surface);color:var(--text-2);font-size:.85rem}
-.song-loop-range{position:absolute;top:0;bottom:2.4rem;left:var(--song-loop-start);width:calc(var(--song-loop-end) - var(--song-loop-start));background:color-mix(in srgb,var(--accent) 22%,transparent);border-left:3px solid var(--accent);border-right:3px solid var(--accent);pointer-events:none;z-index:1}.song-playhead{z-index:2}.song-loop-controls{display:flex;flex-wrap:wrap;gap:.75rem;margin:.8rem 0;align-items:end}.song-loop-controls label{flex:1 1 12rem}.song-loop-controls input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.song-loop-controls output{font: .9rem ui-monospace,monospace;color:var(--text-2)}.song-loop-controls [data-loop-custom]{flex:1 1 100%;display:flex;gap:.75rem;flex-wrap:wrap}.song-loop-controls [data-loop-custom] label{min-width:10rem}
+.song-loop-range{position:absolute;top:0;bottom:4.4rem;left:var(--song-loop-start);width:calc(var(--song-loop-end) - var(--song-loop-start));background:color-mix(in srgb,var(--accent) 22%,transparent);border-left:3px solid var(--accent);border-right:3px solid var(--accent);pointer-events:none;z-index:1}.song-playhead{z-index:2;bottom:4.4rem}.song-beat-ruler{display:block;width:100%;height:2rem;background:var(--surface);pointer-events:none}.song-loop-controls{display:flex;flex-wrap:wrap;gap:.75rem;margin:.8rem 0;align-items:end}.song-loop-controls label{flex:1 1 12rem}.song-loop-controls input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.song-loop-controls output{font: .9rem ui-monospace,monospace;color:var(--text-2)}.song-loop-controls [data-loop-custom]{flex:1 1 100%;display:flex;gap:.75rem;flex-wrap:wrap}.song-loop-controls [data-loop-custom] label{min-width:10rem}
 .song-loop-marker{position:absolute;top:0;width:1.6rem;height:7rem;min-height:0;padding:0;border:0;border-radius:0;background:transparent;transform:translateX(-50%);touch-action:none;cursor:ew-resize;z-index:3}.song-loop-marker::before{content:'';position:absolute;left:calc(50% - 1px);top:0;height:100%;width:2px;background:var(--marker-color)}.song-loop-marker::after{content:'';position:absolute;top:0;left:calc(50% - .45rem);width:.9rem;height:.8rem;border-radius:0 0 .25rem .25rem;background:var(--marker-color)}.song-loop-marker[data-edge=start]{--marker-color:var(--ok)}.song-loop-marker[data-edge=end]{--marker-color:var(--danger)}.song-loop-marker:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.song-loop-actions{display:flex;flex:1 1 100%;gap:.75rem;align-items:center;flex-wrap:wrap}.song-loop-actions button{flex:1 1 12rem}.song-loop-actions label{flex:1 1 12rem;flex-direction:row;align-items:center}.song-loop-actions input{width:1.3rem;height:1.3rem;min-height:0;padding:0}.song-loop-controls [data-loop-custom] .song-loop-time{flex:0 1 10rem}.song-loop-time input{width:100%;font:inherit;font-variant-numeric:tabular-nums}
+.song-section-mix{margin:.65rem 0;border:1px solid var(--border);border-radius:.5rem;padding:.65rem}.song-section-mix legend{padding:0 .35rem}.song-section-mix .mix-switch{display:flex;flex-direction:row;align-items:center;gap:.6rem}.song-section-mix input[type=checkbox]{width:1.3rem;height:1.3rem;min-height:0;padding:0}.song-section-mix .mix-parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-top:.6rem}.song-section-mix .mix-part{border:1px solid var(--border);border-radius:.4rem;padding:.5rem;min-width:0}.song-section-mix .mix-part input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.song-loop-fade{flex:0 1 12rem}@media(max-width:38rem){.song-section-mix .mix-parts{grid-template-columns:1fr}}
 .sample-set-editor{border-top:1px solid var(--border);margin-top:1rem;padding-top:.5rem}.sample-set-editor fieldset{border:1px solid var(--border);border-radius:.5rem;margin:.75rem 0;padding:.75rem;min-width:0}.sample-set-editor legend{padding:0 .4rem}.sample-set-editor .grid{gap:.7rem}.sample-set-editor input[type=checkbox]{width:2.8rem;align-self:start}.sample-set-editor .row{margin-top:.8rem}.sample-wave{position:relative;height:11.2rem;margin:.8rem .7rem 1.8rem;border:1px solid var(--border);border-radius:.4rem;background:var(--surface-2);touch-action:none}.sample-wave canvas{display:block;width:100%;height:100%}.sample-marker{position:absolute;top:var(--marker-top);width:1.5rem;height:2.8rem;min-height:0;padding:0;border:0;border-radius:0;background:transparent;transform:translateX(-50%);touch-action:none;cursor:ew-resize;z-index:1}.sample-marker::before{content:'';display:block;position:absolute;left:calc(50% - 1px);top:calc(-1 * var(--marker-top));height:11.2rem;width:2px;background:var(--marker-color);pointer-events:none}.sample-marker::after{content:'';display:block;position:absolute;top:0;left:calc(50% - .38rem);width:.76rem;height:.76rem;border-radius:0 0 .2rem .2rem;background:var(--marker-color)}.sample-marker:disabled{opacity:.4;cursor:default}.sample-marker:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sample-marker[data-marker=start]{--marker-color:var(--accent);--marker-top:0rem}.sample-marker[data-marker=loopStart]{--marker-color:var(--ok);--marker-top:2.8rem}.sample-marker[data-marker=loopEnd]{--marker-color:var(--danger);--marker-top:5.6rem}.sample-marker[data-marker=crossfade]{--marker-color:var(--text);--marker-top:8.4rem}
 </style></head><body>
 <nav id="site-nav" aria-label="Instrumente">
@@ -1351,7 +1352,7 @@
 <small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
 </section>
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
-<section class="panel" id="songTimelinePanel" aria-labelledby="songTimelineHeading"><h2 id="songTimelineHeading" data-i="songTimeline">Cronologia melodiei</h2><p class="hint" data-i="songTimelineHint">Adaugă versiuni de aranjament în ordine. Fiecare secțiune își păstrează tempo-ul și tonalitatea; următoarea începe la sfârșitul măsurilor, iar reverberația trece peste îmbinare.</p><div id="songOverview"></div><div id="songTimeline"></div><div class="row song-actions"><button id="addSongSection" data-i="addSongSection">Adaugă secțiune</button><button id="playSong" data-i="playSong">Ascultă melodia completă</button><button id="stopSong" data-i="stopSong" data-stop-audio="true">Oprește melodia completă</button><button id="saveSongWav" data-i="saveSongWav">Salvează WAV-ul melodiei</button><button id="saveSongLoopWav" data-i="saveSongLoopWav" disabled>Salvează WAV-ul buclei</button><button id="saveSongMidi" data-i="saveSongMidi">Salvează MIDI-ul melodiei</button><button id="saveSongLoopMidi" data-i="saveSongLoopMidi" disabled>Salvează bucla ca MIDI cu mai multe piste</button></div></section>
+<section class="panel" id="songTimelinePanel" aria-labelledby="songTimelineHeading"><h2 id="songTimelineHeading" data-i="songTimeline">Cronologia melodiei</h2><p class="hint" data-i="songTimelineHint">Adaugă versiuni de aranjament în ordine. Fiecare secțiune își păstrează tempo-ul și tonalitatea; următoarea începe la sfârșitul măsurilor, iar reverberația trece peste îmbinare.</p><div id="songOverview"></div><div id="songTimeline"></div><div class="row song-actions"><button id="addSongSection" data-i="addSongSection">Adaugă secțiune</button><button id="undoSongTimeline" data-i="undoSongTimeline" disabled>Anulează editarea melodiei</button><button id="redoSongTimeline" data-i="redoSongTimeline" disabled>Refă editarea melodiei</button><button id="playSong" data-i="playSong">Ascultă melodia completă</button><button id="stopSong" data-i="stopSong" data-stop-audio="true">Oprește melodia completă</button><button id="saveSongWav" data-i="saveSongWav">Salvează WAV-ul melodiei</button><button id="saveSongLoopWav" data-i="saveSongLoopWav" disabled>Salvează WAV-ul buclei</button><button id="saveSongMidi" data-i="saveSongMidi">Salvează MIDI-ul melodiei</button><button id="saveSongLoopMidi" data-i="saveSongLoopMidi" disabled>Salvează bucla ca MIDI cu mai multe piste</button></div></section>
 <section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
@@ -1401,6 +1402,8 @@ Object.assign(I18N.ro,{songLoopSetStart:'Pune începutul la cursor (I)',songLoop
 Object.assign(I18N.en,{songLoopSetStart:'Set start at playhead (I)',songLoopSetEnd:'Set end at playhead (O)',songLoopStartTime:'Start time (mm:ss.mmm)',songLoopEndTime:'End time (mm:ss.mmm)',songLoopSnap:'Snap to sections and repeats',songLoopTimeInvalid:'Enter a time within the song in seconds or mm:ss.mmm.'});
 Object.assign(I18N.ro,{songLoopStartMarker:'Marcaj început buclă',songLoopEndMarker:'Marcaj sfârșit buclă'});
 Object.assign(I18N.en,{songLoopStartMarker:'Loop start marker',songLoopEndMarker:'Loop end marker'});
+Object.assign(I18N.ro,{sectionMix:'Mix separat pentru secțiune',sectionMixUse:'Personalizează mixul secțiunii',sectionMixEnabled:'Activ',sectionMixVolume:'Volum',undoSongTimeline:'Anulează editarea melodiei',redoSongTimeline:'Refă editarea melodiei',songLoopFade:'Estompare WAV la capete',songLoopFadeNone:'Fără estompare',songBeatRuler:'Rigla măsurilor și bătăilor (4/4)',songLoopBeatSnap:'Aliniază la bătăi',songBeatPosition:'Măsură și bătaie'});
+Object.assign(I18N.en,{sectionMix:'Section mix',sectionMixUse:'Customize section mix',sectionMixEnabled:'Enabled',sectionMixVolume:'Volume',undoSongTimeline:'Undo song edit',redoSongTimeline:'Redo song edit',songLoopFade:'Loop WAV edge fade',songLoopFadeNone:'No fade',songBeatRuler:'Bar and beat ruler (4/4)',songLoopBeatSnap:'Snap to beats',songBeatPosition:'Bar and beat'});
 Object.assign(I18N.ro,{backupImport:'Restaurează un proiect exportat',backupHint:'1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.',backupJsonLabel:'JSON proiect',backupWavsLabel:'WAV-uri sursă exportate',validateBackup:'Verifică copia',restoreBackup:'Importă proiect separat',cancelBackup:'Anulează importul',importing:'Se verifică copia…',backupSelect:'Alege JSON-ul proiectului și WAV-urile sursă.',backupReady:v=>`Copie verificată: ${v.name}\n${v.count} înregistrări. Se vor importa doar WAV-urile enumerate:\n${v.files.join('\n')}\nApasă „Importă proiect separat” pentru restaurare.`,backupJson:'JSON invalid. Alege metadatele exportate ale proiectului.',backupInvalid:p=>`Copie inconsistentă: ${p}. Verifică metadatele și fișierele sursă.`,backupVersion:p=>`Versiune sau date incompatibile: ${p}. Această pagină acceptă schema și helper-ele v1.`,backupFiles:v=>[v.missing.length?'Lipsesc WAV-uri:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Nume WAV ambigue (alege un singur fișier pentru fiecare nume):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`WAV invalid sau incompatibil: ${p}. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.`,backupCancelled:'Import anulat. Proiectele existente au rămas intacte.',backupRestored:'Proiect importat separat. WAV-urile și datele muzicale au fost păstrate.',backupRead:'Fișierele nu pot fi citite. Alege-le din nou.'});
 Object.assign(I18N.en,{backupImport:'Restore an exported project',backupHint:'1. Select the project JSON. 2. Select all source WAVs with their exported names (multiple selection). 3. Validate, then import a separate project. No folder picker is needed.',backupJsonLabel:'Project JSON',backupWavsLabel:'Exported source WAVs',validateBackup:'Validate backup',restoreBackup:'Import separate project',cancelBackup:'Cancel import',importing:'Validating backup…',backupSelect:'Select the project JSON and source WAVs.',backupReady:v=>`Backup validated: ${v.name}\n${v.count} recordings. Only these named WAVs will be imported:\n${v.files.join('\n')}\nPress “Import separate project” to restore.`,backupJson:'Invalid JSON. Select the exported project metadata.',backupInvalid:p=>`Inconsistent backup: ${p}. Check metadata and source files.`,backupVersion:p=>`Unsupported version or data: ${p}. This page supports schema and helpers v1.`,backupFiles:v=>[v.missing.length?'Missing WAVs:\n'+v.missing.join('\n'):'',v.ambiguous.length?'Ambiguous WAV names (select one file for each name):\n'+v.ambiguous.join('\n'):''].filter(Boolean).join('\n'),backupWav:p=>`Invalid or unsupported WAV: ${p}. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.`,backupCancelled:'Import cancelled. Existing projects remain unchanged.',backupRestored:'Separate project imported. WAVs and musical data were preserved.',backupRead:'Cannot read the files. Select them again.'});
 const prefs = {get(k){try{return localStorage.getItem(k);}catch(_){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
@@ -1578,7 +1581,7 @@ async function render(){
     if(r.sample){const meta=document.createElement('p');meta.textContent=Object.entries(r.sample).filter(([,v])=>v!=='' && v!==null).map(([k,v])=>t(k)+': '+v).join(' · ');card.append(meta);}
     const canvas=document.createElement('canvas');canvas.width=600;canvas.height=48;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',r.name);const ctx=canvas.getContext('2d');ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');(r.waveform || []).forEach((v,i,a)=>ctx.fillRect(i*600/a.length,24-v*23,Math.max(1,600/a.length),Math.max(1,v*46)));card.append(canvas);
     const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.onplay=()=>{stopArrangement();stopPreview();};audio.setAttribute('aria-label',r.name);card.append(audio);
-    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);project.arrangements=(project.arrangements||[]).filter(a=>a.sourceRecordingId!==r.id);const existing=new Set(project.arrangements.map(a=>a.id));project.timeline=(project.timeline||[]).filter(s=>existing.has(s.arrangementId));pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));if(r.purpose==='melody'){const analyzeButton=button(r.performance?'reanalyze':'analyze',()=>analyzeTake(r));analyzeButton.onclick=()=>analyzeTake(r);row.append(analyzeButton);}card.append(row);if(r.performance)card.append(performanceEditor(r));if(r.performance || (project.arrangements||[]).some(a=>a.sourceRecordingId===r.id))card.append(arrangementEditor(r));host.append(card);
+    const row=document.createElement('div');row.className='row';row.append(button('save',()=>exportTake(r)),button('rename',async()=>{const name=prompt(t('renameAsk'),r.name);if(name && name.trim()){r.name=name.trim().slice(0,120);touch();await persist();await render();}}),button('remove',async()=>{if(!confirm(t('deleteAsk',r.name)))return;project.recordings=project.recordings.filter(take=>take.id!==r.id);project.arrangements=(project.arrangements||[]).filter(a=>a.sourceRecordingId!==r.id);const existing=new Set(project.arrangements.map(a=>a.id));project.timeline=(project.timeline||[]).filter(s=>existing.has(s.arrangementId));songTimelineHistories.delete(project.id);pendingBlobs.delete(r.id);deleted.add(r.id);touch();await persist();await render();}));if(r.purpose==='melody'){const analyzeButton=button(r.performance?'reanalyze':'analyze',()=>analyzeTake(r));analyzeButton.onclick=()=>analyzeTake(r);row.append(analyzeButton);}card.append(row);if(r.performance)card.append(performanceEditor(r));if(r.performance || (project.arrangements||[]).some(a=>a.sourceRecordingId===r.id))card.append(arrangementEditor(r));host.append(card);
     const blob=await blobFor(r).catch(()=>null);if(gen!==generation)return;
     if(blob){const url=URL.createObjectURL(blob);urls.add(url);audio.src=url;}else{audio.hidden=true;const warning=document.createElement('p');warning.textContent=t('missing');card.append(warning);}
   }
@@ -1705,8 +1708,35 @@ const A=window.ScuLaArrangement,S=window.ScuLaSynthesis;
 const selectedArrangements=new Map();
 let arrangementJob=null;
 let songPosition=0,songDuration=0;
-const songLoop={projectId:null,mode:'off',sectionId:null,start:0,end:0,duration:0,snap:false};
-let songSnapPoints=[];
+const songLoop={projectId:null,mode:'off',sectionId:null,start:0,end:0,duration:0,snap:false,beatSnap:false,fadeMs:0};
+const songTimelineHistories=new Map();
+function songTimelineHistory(){if(!songTimelineHistories.has(project.id))songTimelineHistories.set(project.id,{undo:[],redo:[]});return songTimelineHistories.get(project.id);}
+function songTimelineSnapshot(){return JSON.parse(JSON.stringify(project.timeline||[]));}
+async function editSongTimeline(change){
+  const before=songTimelineSnapshot();
+  try{change();Timeline.resolve(project);}catch(_){project.timeline=before;say('timelineInvalid',true);await render();return;}
+  if(JSON.stringify(project.timeline)===JSON.stringify(before)){await render();return;}
+  const history=songTimelineHistory();history.undo.push(before);if(history.undo.length>40)history.undo.shift();history.redo=[];
+  touch();await persist();await render();
+}
+async function stepSongTimeline(direction){
+  const history=songTimelineHistory(),source=history[direction],target=history[direction==='undo'?'redo':'undo'];if(!source.length)return;
+  const next=source.pop(),current=project.timeline;try{project.timeline=next;Timeline.resolve(project);target.push(current);if(target.length>40)target.shift();}catch(_){project.timeline=current;source.push(next);say('timelineInvalid',true);return;}
+  touch();await persist();await render();
+}
+let songSnapPoints=[],songBeatMarks=[];
+function paintSongBeatRuler(){
+  const canvas=$('songBeatRuler');if(!canvas || !songDuration)return;
+  const width=canvas.clientWidth,height=32,dpr=window.devicePixelRatio||1;if(!width)return;
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);canvas.dataset.beatCount=String(songBeatMarks.length);
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);const style=getComputedStyle(document.documentElement);ctx.font='12px system-ui';ctx.textBaseline='top';
+  let lastTick=-Infinity,lastLabel=-Infinity;
+  for(const mark of songBeatMarks){const x=mark.seconds/songDuration*width,isBar=mark.beat===1;
+    if(x-lastTick>=6 || isBar&&x-lastTick>=3){ctx.fillStyle=style.getPropertyValue(isBar?'--accent':'--text-2');ctx.fillRect(Math.round(x),isBar?15:23,1,isBar?17:9);lastTick=x;}
+    if(isBar && x-lastLabel>=42){ctx.fillStyle=style.getPropertyValue('--text');ctx.fillText(String(mark.bar),Math.round(x)+3,1);lastLabel=x;}
+  }
+}
+window.addEventListener('resize',paintSongBeatRuler);
 function formatSongLoopTime(seconds){const ms=Math.round(seconds*1000);return `${String(Math.floor(ms/60000)).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;}
 function parseSongLoopTime(value){
   const raw=value.trim(),clock=/^(\d+):([0-5]?\d)(?:\.(\d{1,3}))?$/.exec(raw);
@@ -1718,6 +1748,11 @@ function currentSongPosition(){
   return job?.kind==='song'&&job.started?Math.min(songLoopBounds()?.end||songDuration,job.offset+job.ctx.currentTime-job.startedAt):songPosition;
 }
 function snapSongTime(value){
+  if(songLoop.beatSnap && songBeatMarks.length){
+    let nearest=songDuration,distance=Math.abs(songDuration-value);
+    for(const mark of songBeatMarks){const delta=Math.abs(mark.seconds-value);if(delta<distance){nearest=mark.seconds;distance=delta;}}
+    return nearest;
+  }
   if(!songLoop.snap)return value;
   const width=$('songOverviewTrack')?.getBoundingClientRect().width||1,limit=12*songDuration/width;
   let nearest=value,distance=limit;
@@ -1737,7 +1772,7 @@ function setSongLoopEdge(edge,value,snap=false){
   songLoop.mode='custom';changeSongLoop();
 }
 function syncSongLoop(){
-  if(songLoop.projectId!==project?.id){songLoop.projectId=project?.id||null;songLoop.mode='off';songLoop.sectionId=null;songLoop.start=0;songLoop.end=songDuration;songLoop.snap=false;}
+  if(songLoop.projectId!==project?.id){songLoop.projectId=project?.id||null;songLoop.mode='off';songLoop.sectionId=null;songLoop.start=0;songLoop.end=songDuration;songLoop.snap=false;songLoop.beatSnap=false;songLoop.fadeMs=0;}
   else if(songLoop.mode!=='custom' && (songLoop.end<=.01 || Math.abs(songLoop.end-songLoop.duration)<.01))songLoop.end=songDuration;
   songLoop.duration=songDuration;
   songLoop.start=Math.max(0,Math.min(Math.max(0,songDuration-.01),songLoop.start));
@@ -1779,6 +1814,7 @@ function paintSongPosition(){
   const position=Math.max(0,Math.min(songDuration,songPosition));
   seek.value=String(position);seek.setAttribute('aria-valuetext',time(position));
   elapsed.textContent=time(position);total.textContent=time(songDuration);
+  const beat=$('songBeatPosition');if(beat && songBeatMarks.length){let current=songBeatMarks[0];for(const mark of songBeatMarks){if(mark.seconds>position+1e-6)break;current=mark;}beat.textContent=current.bar+'.'+current.beat;}
   if(overview)overview.style.setProperty('--song-playhead',(songDuration?position/songDuration*100:0)+'%');
 }
 function songTick(job){
@@ -2062,6 +2098,9 @@ function renderSongTimeline(){
   const host=$('songTimeline'),overviewHost=$('songOverview');host.replaceChildren();overviewHost.replaceChildren();const sections=project?.timeline||[],versions=project?.arrangements||[];
   if(!sections.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=t('timelineEmpty');host.append(empty);}
   const plan=sections.length?Timeline.resolve(project):{items:[],seconds:0},duration=plan.seconds;songDuration=sections.length?Math.ceil((duration+Timeline.tailSeconds)*44100)/44100:0;songPosition=Math.min(songPosition,songDuration);syncSongLoop();
+  songBeatMarks=[];let beatIndex=0;
+  for(const item of plan.items){const beatSeconds=60/item.arrangement.tempoBpm,count=Math.round(item.arrangement.duration/beatSeconds);for(let k=0;k<count;k++,beatIndex++)songBeatMarks.push({seconds:item.seconds+k*beatSeconds,bar:Math.floor(beatIndex/4)+1,beat:beatIndex%4+1});}
+  if(sections.length)songBeatMarks.push({seconds:duration,bar:Math.floor(beatIndex/4)+1,beat:beatIndex%4+1});
   if(sections.length){
     const label=document.createElement('h3');label.textContent=t('songOverview');overviewHost.append(label);
     const scroll=document.createElement('div');scroll.className='song-overview-scroll';
@@ -2086,7 +2125,7 @@ function renderSongTimeline(){
     const tail=document.createElement('button');tail.type='button';tail.className='song-overview-block song-tail';tail.style.setProperty('--song-duration',Timeline.tailSeconds);tail.textContent=t('songTail');tail.setAttribute('aria-label',t('songTail')+' · '+t('songSeek'));tail.onclick=event=>{const rect=tail.getBoundingClientRect(),fraction=event.detail===0?0:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));seekSong(duration+fraction*Timeline.tailSeconds);};blocks.append(tail);
     songSnapPoints=[...new Set([0,...plan.items.map(item=>item.seconds),duration,songDuration])];
     const loopRange=document.createElement('div');loopRange.id='songLoopRange';loopRange.className='song-loop-range';loopRange.setAttribute('role','img');
-    const playhead=document.createElement('div');playhead.className='song-playhead';playhead.setAttribute('aria-hidden','true');overview.append(blocks,loopRange,playhead);
+    const playhead=document.createElement('div');playhead.className='song-playhead';playhead.setAttribute('aria-hidden','true');const ruler=document.createElement('canvas');ruler.id='songBeatRuler';ruler.className='song-beat-ruler';ruler.setAttribute('role','img');ruler.setAttribute('aria-label',t('songBeatRuler'));overview.append(blocks,loopRange,playhead,ruler);
     for(const [edge,key] of [['start','songLoopStart'],['end','songLoopEnd']]){
       const marker=document.createElement('button');marker.type='button';marker.id='songLoop'+(edge==='start'?'Start':'End')+'Marker';marker.className='song-loop-marker';marker.dataset.edge=edge;marker.setAttribute('role','slider');marker.setAttribute('aria-label',t(key+'Marker'));marker.setAttribute('aria-orientation','horizontal');marker.setAttribute('aria-valuemin','0');
       marker.onpointerdown=event=>{if(marker.disabled)return;event.preventDefault();marker.setPointerCapture(event.pointerId);};
@@ -2095,7 +2134,7 @@ function renderSongTimeline(){
       overview.append(marker);
     }
     const seek=document.createElement('input');seek.type='range';seek.id='songSeek';seek.className='song-seek';seek.min='0';seek.max=String(songDuration);seek.step='0.01';seek.setAttribute('aria-label',t('songSeek'));seek.oninput=()=>seekSong(seek.value);overview.append(seek);
-    const times=document.createElement('div');times.className='song-time';const elapsed=document.createElement('output'),total=document.createElement('output');elapsed.id='songElapsed';total.id='songTotal';elapsed.setAttribute('aria-label',t('songElapsed'));total.setAttribute('aria-label',t('songTotal'));times.append(elapsed,total);
+    const times=document.createElement('div');times.className='song-time';const elapsed=document.createElement('output'),beatPosition=document.createElement('output'),total=document.createElement('output');elapsed.id='songElapsed';beatPosition.id='songBeatPosition';total.id='songTotal';elapsed.setAttribute('aria-label',t('songElapsed'));beatPosition.setAttribute('aria-label',t('songBeatPosition'));total.setAttribute('aria-label',t('songTotal'));times.append(elapsed,beatPosition,total);
     const loopControls=document.createElement('div');loopControls.className='song-loop-controls';
     const loopLabel=(key,input)=>{const label=document.createElement('label'),caption=document.createElement('span');caption.textContent=t(key);label.append(caption,input);return label;};
     const mode=document.createElement('select');mode.id='songLoopMode';mode.setAttribute('aria-label',t('songLoop'));
@@ -2106,7 +2145,14 @@ function renderSongTimeline(){
     picker.onchange=()=>{songLoop.sectionId=picker.value;changeSongLoop();};loopControls.append(loopLabel('songLoopSectionPick',picker));
     const actions=document.createElement('div');actions.className='song-loop-actions';
     for(const [edge,key] of [['start','songLoopSetStart'],['end','songLoopSetEnd']]){const action=document.createElement('button');action.type='button';action.textContent=t(key);action.onclick=()=>setSongLoopEdge(edge,currentSongPosition(),true);action.id=edge==='start'?'songLoopSetStart':'songLoopSetEnd';actions.append(action);}
-    const snap=document.createElement('input');snap.type='checkbox';snap.id='songLoopSnap';snap.checked=songLoop.snap;snap.onchange=()=>{songLoop.snap=snap.checked;};const snapLabel=loopLabel('songLoopSnap',snap);actions.append(snapLabel);loopControls.append(actions);
+    const snap=document.createElement('input');snap.type='checkbox';snap.id='songLoopSnap';snap.checked=songLoop.snap;const snapLabel=loopLabel('songLoopSnap',snap);actions.append(snapLabel);
+    const beatSnap=document.createElement('input');beatSnap.type='checkbox';beatSnap.id='songLoopBeatSnap';beatSnap.checked=songLoop.beatSnap;
+    snap.onchange=()=>{songLoop.snap=snap.checked;if(snap.checked){songLoop.beatSnap=false;beatSnap.checked=false;}};
+    beatSnap.onchange=()=>{songLoop.beatSnap=beatSnap.checked;if(beatSnap.checked){songLoop.snap=false;snap.checked=false;}};
+    actions.append(loopLabel('songLoopBeatSnap',beatSnap));loopControls.append(actions);
+    const fade=document.createElement('select');fade.id='songLoopFade';fade.setAttribute('aria-label',t('songLoopFade'));
+    for(const ms of [0,5,10,25,50,100])fade.add(new Option(ms?t('songLoopFade')+' · '+ms+' ms':t('songLoopFadeNone'),String(ms)));
+    fade.value=String(songLoop.fadeMs);fade.onchange=()=>{songLoop.fadeMs=Number(fade.value);};const fadeLabel=loopLabel('songLoopFade',fade);fadeLabel.className='song-loop-fade';loopControls.append(fadeLabel);
     const custom=document.createElement('div');custom.id='songLoopCustom';custom.dataset.loopCustom='true';
     for(const [kind,key] of [['Start','songLoopStart'],['End','songLoopEnd']]){
       const input=document.createElement('input');input.type='range';input.id='songLoop'+kind;input.min='0';input.max=String(songDuration);input.step='0.001';input.setAttribute('aria-label',t(key));
@@ -2117,33 +2163,40 @@ function renderSongTimeline(){
       timeField.onchange=()=>{const value=parseSongLoopTime(timeField.value);if(!Number.isFinite(value)||value<0||value>songDuration){timeField.setAttribute('aria-invalid','true');say('songLoopTimeInvalid',true);return;}setSongLoopEdge(kind.toLowerCase(),value);};
       custom.append(loopLabel(kind==='Start'?'songLoopStartTime':'songLoopEndTime',timeField));custom.lastChild.classList.add('song-loop-time');
     }
-    loopControls.append(custom);scroll.append(overview);overviewHost.append(scroll,times,loopControls);paintSongPosition();paintSongLoop();
+    loopControls.append(custom);scroll.append(overview);overviewHost.append(scroll,times,loopControls);paintSongBeatRuler();paintSongPosition();paintSongLoop();
   }
   sections.forEach((section,index)=>{
     const a=versions.find(x=>x.id===section.arrangementId),recording=project.recordings.find(r=>r.id===a?.sourceRecordingId);
     const item=document.createElement('article');item.className='song-section';item.dataset.sectionId=section.id;
     const row=document.createElement('div');row.className='row';
     const field=(key,input,cls)=>{const label=document.createElement('label');label.className=cls;const caption=document.createElement('span');caption.textContent=t(key);label.append(caption,input);return label;};
-    const name=document.createElement('input');name.value=section.name;name.maxLength=120;name.setAttribute('aria-label',t('sectionName')+' '+(index+1));name.onchange=()=>run(async()=>{const value=name.value.trim();if(!value){say('timelineInvalid',true);await render();return;}section.name=value;touch();await persist();await render();});
-    const select=document.createElement('select');select.setAttribute('aria-label',t('sectionVersion')+' '+(index+1));versions.forEach(v=>{const r=project.recordings.find(x=>x.id===v.sourceRecordingId);select.add(new Option((r?.name||'')+' · v'+v.version+' · '+v.tempoBpm+' BPM',v.id));});select.value=section.arrangementId;select.onchange=()=>run(async()=>{const old=section.arrangementId;section.arrangementId=select.value;try{Timeline.resolve(project);}catch(_){section.arrangementId=old;say('timelineInvalid',true);await render();return;}touch();await persist();await render();});
-    const repeats=numericInput(section.repeats,1,16,1,t('sectionRepeats')+' '+(index+1));repeats.onchange=()=>run(async()=>{const value=Number(repeats.value),old=section.repeats;section.repeats=value;try{if(!repeats.checkValidity())throw Error();Timeline.resolve(project);}catch(_){section.repeats=old;say('timelineInvalid',true);await render();return;}touch();await persist();await render();});
+    const name=document.createElement('input');name.value=section.name;name.maxLength=120;name.setAttribute('aria-label',t('sectionName')+' '+(index+1));name.onchange=()=>run(()=>editSongTimeline(()=>{section.name=name.value.trim();}));
+    const select=document.createElement('select');select.setAttribute('aria-label',t('sectionVersion')+' '+(index+1));versions.forEach(v=>{const r=project.recordings.find(x=>x.id===v.sourceRecordingId);select.add(new Option((r?.name||'')+' · v'+v.version+' · '+v.tempoBpm+' BPM',v.id));});select.value=section.arrangementId;select.onchange=()=>run(()=>editSongTimeline(()=>{section.arrangementId=select.value;}));
+    const repeats=numericInput(section.repeats,1,16,1,t('sectionRepeats')+' '+(index+1));repeats.onchange=()=>run(()=>editSongTimeline(()=>{if(!repeats.checkValidity())throw Error();section.repeats=Number(repeats.value);}));
     row.append(field('sectionName',name,'section-name'),field('sectionVersion',select,'section-version'),field('sectionRepeats',repeats,'section-repeats'));item.append(row);
     const detail=document.createElement('small');detail.textContent=(recording?.name||'')+' · '+(a?.tempoBpm||'')+' BPM · '+((a&&noteName(a.key.tonic+60).replace(/-?\d+$/,''))||'')+' '+(a?t(a.key.mode):'')+' · '+(a?.duration||0).toFixed(2)+' s × '+section.repeats;item.append(detail);
+    const mixBox=document.createElement('fieldset');mixBox.className='song-section-mix';const mixLegend=document.createElement('legend');mixLegend.textContent=t('sectionMix')+' '+(index+1);mixBox.append(mixLegend);
+    const mixToggle=document.createElement('input');mixToggle.type='checkbox';mixToggle.checked=!!section.mix;mixToggle.setAttribute('aria-label',t('sectionMixUse')+' '+(index+1));mixToggle.onchange=()=>run(()=>editSongTimeline(()=>{if(mixToggle.checked)section.mix=Object.fromEntries(A.PARTS.map(id=>[id,{enabled:a.parts[id].enabled,volume:a.parts[id].volume}]));else delete section.mix;}));
+    const mixLabel=document.createElement('label');mixLabel.className='mix-switch';mixLabel.append(mixToggle,document.createTextNode(t('sectionMixUse')));mixBox.append(mixLabel);
+    if(section.mix){const mixParts=document.createElement('div');mixParts.className='mix-parts';
+      for(const id of A.PARTS){const part=document.createElement('div');part.className='mix-part';const title=document.createElement('strong');title.textContent=t(id);part.append(title);
+        const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=section.mix[id].enabled;enabled.setAttribute('aria-label',t('sectionMixEnabled')+' '+t(id)+' '+(index+1));enabled.onchange=()=>run(()=>editSongTimeline(()=>{section.mix[id].enabled=enabled.checked;}));
+        const enabledLabel=document.createElement('label');enabledLabel.className='mix-switch';enabledLabel.append(enabled,document.createTextNode(t('sectionMixEnabled')));part.append(enabledLabel);
+        const volume=document.createElement('input');volume.type='range';volume.min='0';volume.max='1';volume.step='.01';volume.value=String(section.mix[id].volume);volume.setAttribute('aria-label',t('sectionMixVolume')+' '+t(id)+' '+(index+1));const value=document.createElement('output');value.textContent=Math.round(section.mix[id].volume*100)+'%';volume.oninput=()=>{value.textContent=Math.round(Number(volume.value)*100)+'%';};volume.onchange=()=>run(()=>editSongTimeline(()=>{section.mix[id].volume=Number(volume.value);}));const volumeLabel=document.createElement('label');volumeLabel.append(document.createTextNode(t('sectionMixVolume')),volume,value);part.append(volumeLabel);mixParts.append(part);
+      }mixBox.append(mixParts);
+    }item.append(mixBox);
     const actions=document.createElement('div');actions.className='row';
-    const move=(direction,key)=>{const b=button(key,async()=>{const next=index+direction;[sections[index],sections[next]]=[sections[next],sections[index]];touch();await persist();await render();});b.dataset.empty=String(direction<0?index===0:index===sections.length-1);b.setAttribute('aria-label',t(key)+' '+(index+1));return b;};
-    const dup=button('sectionDuplicate',async()=>{sections.splice(index+1,0,{...section,id:id()});try{Timeline.resolve(project);}catch(_){sections.splice(index+1,1);say('timelineInvalid',true);await render();return;}touch();await persist();await render();});dup.setAttribute('aria-label',t('sectionDuplicate')+' '+(index+1));
-    const remove=button('sectionRemove',async()=>{sections.splice(index,1);touch();await persist();await render();});remove.setAttribute('aria-label',t('sectionRemove')+' '+(index+1));
+    const move=(direction,key)=>{const b=button(key,()=>editSongTimeline(()=>{const next=index+direction;[sections[index],sections[next]]=[sections[next],sections[index]];}));b.dataset.empty=String(direction<0?index===0:index===sections.length-1);b.setAttribute('aria-label',t(key)+' '+(index+1));return b;};
+    const dup=button('sectionDuplicate',()=>editSongTimeline(()=>{sections.splice(index+1,0,{...JSON.parse(JSON.stringify(section)),id:id()});}));dup.setAttribute('aria-label',t('sectionDuplicate')+' '+(index+1));
+    const remove=button('sectionRemove',()=>editSongTimeline(()=>{sections.splice(index,1);}));remove.setAttribute('aria-label',t('sectionRemove')+' '+(index+1));
     const playHere=button('songPlayHere',()=>{if(songLoop.mode==='section'){songLoop.sectionId=section.id;paintSongLoop();}return songAudio(true,Number(plan.items.find(x=>x.section.id===section.id).seconds));});playHere.className='song-play-here';playHere.setAttribute('aria-label',t('songPlayHere')+' · '+section.name);
     actions.append(playHere,move(-1,'sectionUp'),move(1,'sectionDown'),dup,remove);item.append(actions);host.append(item);
   });
-  $('addSongSection').dataset.empty=String(!versions.length);['playSong','saveSongWav','saveSongMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length));['saveSongLoopWav','saveSongLoopMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length || songLoop.mode==='off'));paintState();
+  $('addSongSection').dataset.empty=String(!versions.length);['playSong','saveSongWav','saveSongMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length));['saveSongLoopWav','saveSongLoopMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length || songLoop.mode==='off'));const history=project?songTimelineHistory():{undo:[],redo:[]};$('undoSongTimeline').dataset.empty=String(!history.undo.length);$('redoSongTimeline').dataset.empty=String(!history.redo.length);paintState();
 }
 async function addSongSection(){
   const a=project.arrangements?.at(-1);if(!a)return;
-  if(!project.timeline)project.timeline=[];
-  project.timeline.push({id:id(),name:t('sectionDefault')+' '+(project.timeline.length+1),arrangementId:a.id,repeats:1});
-  try{Timeline.resolve(project);}catch(_){project.timeline.pop();say('timelineInvalid',true);return;}
-  touch();await persist();await render();
+  await editSongTimeline(()=>{if(!project.timeline)project.timeline=[];project.timeline.push({id:id(),name:t('sectionDefault')+' '+(project.timeline.length+1),arrangementId:a.id,repeats:1});});
 }
 async function songAudio(play,from=songPosition,loopOnly=false){
   let plan;try{plan=Timeline.resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');}catch(e){say(e.message==='timelineEmpty'?'timelineEmpty':'timelineInvalid',true);return;}
@@ -2165,8 +2218,8 @@ async function songAudio(play,from=songPosition,loopOnly=false){
         const start=Math.max(0,Math.min(mix.L.length,Math.round(loopBounds.start*mix.sr))),end=Math.max(start+1,Math.min(mix.L.length,Math.round(loopBounds.end*mix.sr)));
         const section=songLoop.mode==='section'?project.timeline.find(s=>s.id===songLoop.sectionId):null;
         const range=songLoop.mode==='section'?'section-'+safeName(section.name):songLoop.mode;
-        filename=projectStem()+'-song-loop-'+range+'-'+start+'f-'+end+'f.wav';
-        exportMix={L:mix.L.subarray(start,end),R:mix.R.subarray(start,end),sr:mix.sr};
+        filename=projectStem()+'-song-loop-'+range+'-'+start+'f-'+end+'f'+(songLoop.fadeMs?'-fade'+songLoop.fadeMs+'ms':'')+'.wav';
+        exportMix=Timeline.edgeFade({L:mix.L.subarray(start,end),R:mix.R.subarray(start,end),sr:mix.sr},songLoop.fadeMs);
       }
       const result=await ScuLaFolder.save(filename,Timeline.wav(exportMix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
     }
@@ -2300,7 +2353,7 @@ async function stop(){
 $('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
 $('backupJson').onchange=backupSelection;$('backupWavs').onchange=backupSelection;
 $('validateBackup').onclick=validateBackup;$('restoreBackup').onclick=()=>run(restoreBackup);$('cancelBackup').onclick=()=>cancelBackup();
-$('addSongSection').onclick=()=>run(addSongSection);$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongLoopWav').onclick=()=>run(()=>songAudio(false,songPosition,true));$('saveSongMidi').onclick=()=>run(exportSongMidi);$('saveSongLoopMidi').onclick=()=>run(exportSongLoopMidi);
+$('addSongSection').onclick=()=>run(addSongSection);$('undoSongTimeline').onclick=()=>run(()=>stepSongTimeline('undo'));$('redoSongTimeline').onclick=()=>run(()=>stepSongTimeline('redo'));$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongLoopWav').onclick=()=>run(()=>songAudio(false,songPosition,true));$('saveSongMidi').onclick=()=>run(exportSongMidi);$('saveSongLoopMidi').onclick=()=>run(exportSongLoopMidi);
 document.addEventListener('keydown',event=>{
   if(event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey||event.repeat||!songDuration||!['i','o'].includes(event.key.toLowerCase()))return;
   const active=document.activeElement,tag=active?.tagName;
