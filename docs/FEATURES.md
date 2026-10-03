@@ -3399,10 +3399,27 @@ at the end using the same rendered stereo buffer. Changing the loop during
 playback restarts at the current position if it remains inside the new range.
 With section looping selected, **Play from here** selects that section and
 starts its first repeat.
+**Save loop stereo WAV / Salvează bucla ca WAV stereo** exports the selected
+full-song, section (all repeats), or custom interval. It is disabled with no
+sections or with looping off. The boundaries are rounded to 44.1 kHz sample
+frames, then both channels are sliced from the same complete rendered mix used
+by playback and whole-song WAV export. The resulting 16-bit PCM payload is
+byte-identical to that interval of the full-song WAV, including any overlapping
+tails. The filename identifies the loop mode, selected section name when
+applicable, and start/end frame numbers. `ScuLaFolder.save` places it in the
+project's `exports/` folder. Source WAVs and project data are unchanged.
+**Save loop multitrack MIDI / Salvează bucla ca MIDI cu mai multe piste** exports the
+same selected full-song, repeated-section or custom interval as format 1 MIDI,
+starting at tick zero. Tempo, key, time signature, each part's program and CC7
+volume at the loop start are written at zero; section and repeat changes within
+the range follow at their shifted ticks. Notes crossing either boundary are
+clipped. The filename identifies the loop mode, selected section when relevant,
+and start/end milliseconds. It saves through `ScuLaFolder.save` in `exports/`
+and is disabled with no sections or when looping is off.
 The loop mode, selected section, custom times and snap setting are page-only state: they are
 not written to project JSON or backups, reset on reload or project switch,
-and do not change WAV or MIDI exports. Stop still cancels rendering and closes
-playback resources; the chosen loop remains available until the page resets.
+and do not change whole-song WAV or MIDI exports. Stop still cancels rendering
+and closes playback resources; the chosen loop remains available until the page resets.
 
 Sections join at each arrangement's musical `duration`, with no inserted gap.
 The preceding stereo reverb/release tail overlaps the next section, including
@@ -3432,7 +3449,9 @@ keyboard seeking across sections and repeats, full/section/custom looping,
 typed millisecond times, markers, snapping and playhead buttons/shortcuts on
 desktop and phone, loop boundary restart, section playback, playhead and
 elapsed time, Stop during rendering and playback with audio cleanup, tempo and
-key MIDI joins, WAV timing, playback buffer versus exported PCM, reload,
+key MIDI joins, loop MIDI zero-time state and boundary-clipped notes, WAV timing,
+exact full/section/custom loop WAV PCM slices and
+duration, playback buffer versus exported PCM, reload,
 backup restore, source WAV bytes, RO/EN and phone width.
 `tests/song-sample-browser.js` also checks that a one-section song matches
 sample-aware arrangement WAVs and follows sample remapping and synthesis fallback.

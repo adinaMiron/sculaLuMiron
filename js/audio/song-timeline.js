@@ -34,11 +34,20 @@ async function render(project,{sampleRate=44100,samplesFor=async()=>({}),cancell
  if(peak>.95){const gain=.95/peak;for(let i=0;i<length;i++){L[i]*=gain;R[i]*=gain;}}
  return {L,R,sr:sampleRate};
 }
-function midi(project){
+function midi(project,range=null){
  const plan=resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');
+ if(range && (!Number.isFinite(range.start)||!Number.isFinite(range.end)||range.start<0||range.end<=range.start||range.end>plan.seconds+TAIL_SECONDS+.001))throw new Error('timelineInvalid');
+ // MIDI time is piecewise musical time: a second on either side of a tempo
+ // change has a different number of ticks. The audio tail uses the last tempo.
+ const atTick=seconds=>{let item=plan.items[0];for(const next of plan.items){if(next.seconds>seconds)break;item=next;}return Math.round(item.ticks+(seconds-item.seconds)*item.arrangement.tempoBpm/60*TPQ);};
+ const startTick=range?atTick(range.start):0,endTick=range?atTick(range.end):Infinity;
+ const active=range?plan.items.reduce((current,item)=>item.seconds<=range.start?item:current,plan.items[0]):null;
  const tempo=[],tracks=PARTS.map(()=>[]),program=(id,p)=>id==='drums'?A.KITS[p.instrument].gm:S.INSTR[p.instrument].gm;
  for(const item of plan.items){
-  const a=item.arrangement,t=item.ticks,us=Math.round(60000000/a.tempoBpm),key=a.key.tonic,minor=a.key.mode==='minor';
+  const initial=range&&item===active,inside=!range || item.seconds>=range.start && item.seconds<range.end;
+  const emit=initial||inside;
+  const a=item.arrangement,t=range?(initial?0:item.ticks-startTick):item.ticks,us=Math.round(60000000/a.tempoBpm),key=a.key.tonic,minor=a.key.mode==='minor';
+  if(emit){
   tempo.push({t,o:0,d:[255,81,3,us>>16&255,us>>8&255,us&255]},{t,o:1,d:[255,88,4,4,2,24,8]});
   // Text at every section start preserves user names for DAWs that show markers.
   const label=item.section.name+(item.section.repeats>1?' '+item.repeat+'/'+item.section.repeats:'');
@@ -46,12 +55,14 @@ function midi(project){
   // The rendered notes already have this key; MIDI marks the local key too.
   const circle=[0,7,2,9,4,11,6,1,8,3,10,5],sf=circle.indexOf((key+(minor?3:0))%12),signed=sf<=6?sf:sf-12;
   tempo.push({t,o:1,d:[255,89,2,signed&255,minor?1:0]});
+  }
   PARTS.forEach((id,i)=>{
    const p=a.parts[id],ch=id==='drums'?9:i,ev=tracks[i];
-   ev.push({t,o:0,d:[192|ch,program(id,p)]},{t,o:0,d:[176|ch,7,Math.round(p.volume*127)]});
+   if(emit)ev.push({t,o:0,d:[192|ch,program(id,p)]},{t,o:0,d:[176|ch,7,Math.round(p.volume*127)]});
    if(!p.enabled||!p.volume)return;
-   for(const n of p.notes){const on=t+Math.round(n.start*a.tempoBpm/60*TPQ),off=Math.max(on+1,t+Math.round((n.start+n.dur)*a.tempoBpm/60*TPQ));
-    ev.push({t:on,o:2,d:[144|ch,n.midi,n.velocity||Math.max(1,Math.round(n.vel*127))]},{t:off,o:1,d:[128|ch,n.midi,0]});}
+   for(const n of p.notes){const on=item.ticks+Math.round(n.start*a.tempoBpm/60*TPQ),off=Math.max(on+1,item.ticks+Math.round((n.start+n.dur)*a.tempoBpm/60*TPQ));
+    if(on>=endTick||off<=startTick)continue;
+    ev.push({t:Math.max(on,startTick)-startTick,o:2,d:[144|ch,n.midi,n.velocity||Math.max(1,Math.round(n.vel*127))]},{t:Math.min(off,endTick)-startTick,o:1,d:[128|ch,n.midi,0]});}
   });
  }
  const bytes=[77,84,104,100,0,0,0,6,0,1,0,5,1,224];

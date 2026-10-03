@@ -1351,7 +1351,7 @@
 <small data-i="captureHint">PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.</small>
 </section>
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
-<section class="panel" id="songTimelinePanel" aria-labelledby="songTimelineHeading"><h2 id="songTimelineHeading" data-i="songTimeline">Cronologia melodiei</h2><p class="hint" data-i="songTimelineHint">Adaugă versiuni de aranjament în ordine. Fiecare secțiune își păstrează tempo-ul și tonalitatea; următoarea începe la sfârșitul măsurilor, iar reverberația trece peste îmbinare.</p><div id="songOverview"></div><div id="songTimeline"></div><div class="row song-actions"><button id="addSongSection" data-i="addSongSection">Adaugă secțiune</button><button id="playSong" data-i="playSong">Ascultă melodia completă</button><button id="stopSong" data-i="stopSong" data-stop-audio="true">Oprește melodia completă</button><button id="saveSongWav" data-i="saveSongWav">Salvează WAV-ul melodiei</button><button id="saveSongMidi" data-i="saveSongMidi">Salvează MIDI-ul melodiei</button></div></section>
+<section class="panel" id="songTimelinePanel" aria-labelledby="songTimelineHeading"><h2 id="songTimelineHeading" data-i="songTimeline">Cronologia melodiei</h2><p class="hint" data-i="songTimelineHint">Adaugă versiuni de aranjament în ordine. Fiecare secțiune își păstrează tempo-ul și tonalitatea; următoarea începe la sfârșitul măsurilor, iar reverberația trece peste îmbinare.</p><div id="songOverview"></div><div id="songTimeline"></div><div class="row song-actions"><button id="addSongSection" data-i="addSongSection">Adaugă secțiune</button><button id="playSong" data-i="playSong">Ascultă melodia completă</button><button id="stopSong" data-i="stopSong" data-stop-audio="true">Oprește melodia completă</button><button id="saveSongWav" data-i="saveSongWav">Salvează WAV-ul melodiei</button><button id="saveSongLoopWav" data-i="saveSongLoopWav" disabled>Salvează WAV-ul buclei</button><button id="saveSongMidi" data-i="saveSongMidi">Salvează MIDI-ul melodiei</button><button id="saveSongLoopMidi" data-i="saveSongLoopMidi" disabled>Salvează bucla ca MIDI cu mai multe piste</button></div></section>
 <section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
@@ -1393,6 +1393,10 @@ Object.assign(I18N.ro,{songOverview:'Privire de ansamblu',songSeek:'Caută în m
 Object.assign(I18N.en,{songOverview:'Song overview',songSeek:'Seek in song',songElapsed:'Elapsed time',songTotal:'Song duration',songPlayHere:'Play from here',songTail:'Audio tail'});
 Object.assign(I18N.ro,{songLoop:'Buclă melodie',songLoopOff:'Fără buclă',songLoopFull:'Melodia completă',songLoopSection:'O secțiune',songLoopCustom:'Interval personalizat',songLoopSectionPick:'Secțiunea buclei',songLoopStart:'Începutul buclei',songLoopEnd:'Sfârșitul buclei',songLoopRange:'Intervalul buclei'});
 Object.assign(I18N.en,{songLoop:'Song loop',songLoopOff:'No loop',songLoopFull:'Full song',songLoopSection:'One section',songLoopCustom:'Custom range',songLoopSectionPick:'Loop section',songLoopStart:'Loop start',songLoopEnd:'Loop end',songLoopRange:'Loop range'});
+Object.assign(I18N.ro,{saveSongLoopWav:'Salvează bucla ca WAV stereo'});
+Object.assign(I18N.en,{saveSongLoopWav:'Save loop stereo WAV'});
+Object.assign(I18N.ro,{saveSongLoopMidi:'Salvează bucla ca MIDI cu mai multe piste'});
+Object.assign(I18N.en,{saveSongLoopMidi:'Save loop multitrack MIDI'});
 Object.assign(I18N.ro,{songLoopSetStart:'Pune începutul la cursor (I)',songLoopSetEnd:'Pune sfârșitul la cursor (O)',songLoopStartTime:'Timp început (mm:ss.mmm)',songLoopEndTime:'Timp sfârșit (mm:ss.mmm)',songLoopSnap:'Aliniază la secțiuni și repetări',songLoopTimeInvalid:'Introdu un timp între 0 și durata melodiei, în secunde sau mm:ss.mmm.'});
 Object.assign(I18N.en,{songLoopSetStart:'Set start at playhead (I)',songLoopSetEnd:'Set end at playhead (O)',songLoopStartTime:'Start time (mm:ss.mmm)',songLoopEndTime:'End time (mm:ss.mmm)',songLoopSnap:'Snap to sections and repeats',songLoopTimeInvalid:'Enter a time within the song in seconds or mm:ss.mmm.'});
 Object.assign(I18N.ro,{songLoopStartMarker:'Marcaj început buclă',songLoopEndMarker:'Marcaj sfârșit buclă'});
@@ -1750,6 +1754,7 @@ function songLoopBounds(){
 }
 function paintSongLoop(){
   const overview=$('songOverviewTrack'),mode=$('songLoopMode'),picker=$('songLoopSection'),custom=$('songLoopCustom'),bounds=songLoopBounds();
+  for(const key of ['saveSongLoopWav','saveSongLoopMidi']){$(key).dataset.empty=String(!bounds || !project?.timeline?.length);$(key).disabled=state!=='idle' || !bounds || !project?.timeline?.length;}
   if(!overview)return;
   overview.style.setProperty('--song-loop-start',((bounds?.start||0)/songDuration*100)+'%');
   overview.style.setProperty('--song-loop-end',((bounds?.end||0)/songDuration*100)+'%');
@@ -2131,7 +2136,7 @@ function renderSongTimeline(){
     const playHere=button('songPlayHere',()=>{if(songLoop.mode==='section'){songLoop.sectionId=section.id;paintSongLoop();}return songAudio(true,Number(plan.items.find(x=>x.section.id===section.id).seconds));});playHere.className='song-play-here';playHere.setAttribute('aria-label',t('songPlayHere')+' · '+section.name);
     actions.append(playHere,move(-1,'sectionUp'),move(1,'sectionDown'),dup,remove);item.append(actions);host.append(item);
   });
-  $('addSongSection').dataset.empty=String(!versions.length);['playSong','saveSongWav','saveSongMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length));paintState();
+  $('addSongSection').dataset.empty=String(!versions.length);['playSong','saveSongWav','saveSongMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length));['saveSongLoopWav','saveSongLoopMidi'].forEach(k=>$(k).dataset.empty=String(!sections.length || songLoop.mode==='off'));paintState();
 }
 async function addSongSection(){
   const a=project.arrangements?.at(-1);if(!a)return;
@@ -2140,8 +2145,10 @@ async function addSongSection(){
   try{Timeline.resolve(project);}catch(_){project.timeline.pop();say('timelineInvalid',true);return;}
   touch();await persist();await render();
 }
-async function songAudio(play,from=songPosition){
+async function songAudio(play,from=songPosition,loopOnly=false){
   let plan;try{plan=Timeline.resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');}catch(e){say(e.message==='timelineEmpty'?'timelineEmpty':'timelineInvalid',true);return;}
+  const loopBounds=loopOnly?songLoopBounds():null;
+  if(loopOnly && !loopBounds)return;
   stopArrangement();stopPreview();document.querySelectorAll('.take audio').forEach(audio=>audio.pause());
   songPosition=Math.max(0,Math.min(songDuration,from));paintSongPosition();
   const job={kind:'song',cancelled:false,ctx:null,decodeCtx:null,node:null,buffer:null,frame:0,started:false};arrangementJob=job;paintState();say('renderingSong');
@@ -2152,11 +2159,30 @@ async function songAudio(play,from=songPosition){
     const mix=await Timeline.render(project,{cancelled:()=>job.cancelled,samplesFor:a=>hasSamples && (job.ctx||job.decodeCtx)?arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled):{}});
     if(job.cancelled)return;
     if(play){const ctx=job.ctx,buffer=ctx.createBuffer(2,mix.L.length,mix.sr);buffer.copyToChannel(mix.L,0);buffer.copyToChannel(mix.R,1);job.buffer=buffer;startSongAt(job,songPosition);say('playingSong');}
-    else{const result=await ScuLaFolder.save(projectStem()+'-song.wav',Timeline.wav(mix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';}
+    else{
+      let filename=projectStem()+'-song.wav',exportMix=mix;
+      if(loopOnly){
+        const start=Math.max(0,Math.min(mix.L.length,Math.round(loopBounds.start*mix.sr))),end=Math.max(start+1,Math.min(mix.L.length,Math.round(loopBounds.end*mix.sr)));
+        const section=songLoop.mode==='section'?project.timeline.find(s=>s.id===songLoop.sectionId):null;
+        const range=songLoop.mode==='section'?'section-'+safeName(section.name):songLoop.mode;
+        filename=projectStem()+'-song-loop-'+range+'-'+start+'f-'+end+'f.wav';
+        exportMix={L:mix.L.subarray(start,end),R:mix.R.subarray(start,end),sr:mix.sr};
+      }
+      const result=await ScuLaFolder.save(filename,Timeline.wav(exportMix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
+    }
   }catch(_){if(!job.cancelled)say('songError',true);}
   finally{if(job.decodeCtx){job.decodeCtx.close().catch(()=>{});job.decodeCtx=null;}if(!play||!job.started){if(arrangementJob===job)stopArrangement();}}
 }
 async function exportSongMidi(){try{const result=await ScuLaFolder.save(projectStem()+'-song.mid',Timeline.midi(project),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';}catch(e){say(e.message==='timelineEmpty'?'timelineEmpty':'timelineInvalid',true);}}
+async function exportSongLoopMidi(){
+  const bounds=songLoopBounds();if(!bounds || !project?.timeline?.length)return;
+  try{
+    const section=songLoop.mode==='section'?project.timeline.find(s=>s.id===songLoop.sectionId):null;
+    const range=songLoop.mode==='section'?'section-'+safeName(section.name):songLoop.mode;
+    const filename=projectStem()+'-song-loop-'+range+'-'+Math.round(bounds.start*1000)+'ms-'+Math.round(bounds.end*1000)+'ms.mid';
+    const result=await ScuLaFolder.save(filename,Timeline.midi(project,bounds),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
+  }catch(e){say(e.message==='timelineEmpty'?'timelineEmpty':'timelineInvalid',true);}
+}
 
 /* Preferred music constraints; getSettings below reports what was granted. */
 function constraints(device=$('microphone').value || prefs.get('scula:song:mic') || ''){return {audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2},...(device?{deviceId:{exact:device}}:{})}};}
@@ -2274,7 +2300,7 @@ async function stop(){
 $('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
 $('backupJson').onchange=backupSelection;$('backupWavs').onchange=backupSelection;
 $('validateBackup').onclick=validateBackup;$('restoreBackup').onclick=()=>run(restoreBackup);$('cancelBackup').onclick=()=>cancelBackup();
-$('addSongSection').onclick=()=>run(addSongSection);$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongMidi').onclick=()=>run(exportSongMidi);
+$('addSongSection').onclick=()=>run(addSongSection);$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongLoopWav').onclick=()=>run(()=>songAudio(false,songPosition,true));$('saveSongMidi').onclick=()=>run(exportSongMidi);$('saveSongLoopMidi').onclick=()=>run(exportSongLoopMidi);
 document.addEventListener('keydown',event=>{
   if(event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey||event.repeat||!songDuration||!['i','o'].includes(event.key.toLowerCase()))return;
   const active=document.activeElement,tag=active?.tagName;

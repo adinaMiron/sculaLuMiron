@@ -215,8 +215,11 @@ sections, order and repeats, proportional overview, pointer/keyboard seeking
 across repeats, full/section/custom loops and overview ranges, typed millisecond
 times, draggable markers, snapping and playhead boundary controls in both
 languages and phone width, section playback, playhead, Stop during rendering and playback
-with audio cleanup, variable-tempo/key MIDI, WAV timing, playback/export PCM
-parity, reload, backup restoration, RO/EN phone layout and byte-identical
+with audio cleanup, variable-tempo/key MIDI, WAV timing, exact loop WAV duration
+and stereo PCM slices for full-song, repeated-section and custom ranges,
+loop MIDI state and repeated-section changes, plus custom-range tempo/key changes
+and notes clipped at both boundaries,
+playback/export PCM parity, reload, backup restoration, RO/EN phone layout and byte-identical
 source WAVs.
 `node tests/song-samples.js` checks nearest recorded pitch, dynamic layers,
 five-semitone shift limit, loop boundaries, release, legacy one-shot defaults,
