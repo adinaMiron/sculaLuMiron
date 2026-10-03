@@ -514,6 +514,17 @@ async function cloudButton() {
   }
 }
 
+// An explicit chapter save also acts like “Sync now” for a remembered
+// connection, including renewing an expired sign-in. Never enroll a new
+// account from Save. If a sync is already running, retain the usual delayed
+// push so edits saved during it still get another turn.
+async function cloudSyncAfterSave() {
+  if (!gsConnected()) return;
+  if (gsBusy) { cloudAutoSync(); return; }
+  clearTimeout(gsTimer);
+  await cloudButton();
+}
+
 // The same gesture the folder button and editor.html's Drive button use.
 function cloudForgetAsk(ev) {
   if (ev) ev.preventDefault();

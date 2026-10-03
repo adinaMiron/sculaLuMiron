@@ -107,7 +107,7 @@ const I18N = {
     workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
     newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
     syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown și din Google Drive, apoi scrie fiecare capitol în dosar",
-    saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet (Ctrl+S)",
+    saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet și sincronizează cu Google Drive dacă ai conectat un cont (Ctrl+S)",
     saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
     wbNoChapters:"niciun capitol încă",
@@ -354,7 +354,7 @@ const I18N = {
       <ul>
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
-        <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus.</li>
+        <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus, apoi sincronizează cu Google Drive dacă ai conectat un cont.</li>
         <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
         <li>„⇩ Sincronizează în dosar”, lângă „☁ Cont Google” în bara de sus, preia caietele și capitolele noi din folderul markdown și din Google Drive, apoi scrie toate capitolele înapoi în acel folder. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
         <li>„☁ Cont Google” conectează și sincronizează capitolele cu Google Drive; apasă din nou pentru sincronizare, iar clic dreapta deconectează contul. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
@@ -557,7 +557,7 @@ const I18N = {
     workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
     newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
     syncFolderTip:"Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder",
-    saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook (Ctrl+S)",
+    saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook and sync with Google Drive if an account is connected (Ctrl+S)",
     saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
     wbNoChapters:"no chapters yet",
@@ -804,7 +804,7 @@ const I18N = {
       <ul>
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
-        <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top.</li>
+        <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top, then syncs with Google Drive if an account is connected.</li>
         <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
         <li>"⇩ Sync to folder", beside "☁ Google account" in the top bar, takes in new workbooks and chapters from the markdown folder and from Google Drive, then writes every chapter back to that folder. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
         <li>"☁ Google account" connects and syncs chapters with Google Drive; click again to sync, or right-click to disconnect. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>

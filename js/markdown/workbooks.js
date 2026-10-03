@@ -1276,11 +1276,12 @@ async function saveToWorkbook() {
   ch.updated = Date.now();
   wbDirty = false;
   if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  // Finish both IndexedDB and the local file before cloud sign-in can open.
   const path = await wbMirrorWrite(book, ch, ch.content);
   await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
   renderWorkbooks();
-  cloudAutoSync();
+  await cloudSyncAfterSave();
 }
 
 /* Save every chapter edited since its last save — write each one's .md
@@ -1420,7 +1421,9 @@ async function confirmSaveToWorkbook() {
   wbPaintAttach();
   closeWorkbookModal();
   renderWorkbooks();
+  // Cancelling the later cloud sign-in must not cancel either local write.
   const path = await wbMirrorWrite(book, ch, ch.content);
   await wbPendingClear(ch.id);
   wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  await cloudSyncAfterSave();
 }

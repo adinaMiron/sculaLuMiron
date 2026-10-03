@@ -371,6 +371,95 @@ if (require.main !== module) return;
     await ctx.close();
   }
 
+  // ---- Save to workbook also runs the cloud button for a known account ----
+  {
+    const drive = fakeDrive();
+    const { ctx, page, errors, hits } = await fresh(browser, drive, { token: false });
+    await page.goto(BASE);
+    await page.waitForFunction(() => wbBooted);
+    await seed(page);
+    await page.evaluate(async () => {
+      await wbSelectChapter('ch_mec');
+      editor.value = '# Mecanica\nlocal save';
+      await saveToWorkbook();
+    });
+    check('Save without a previous connection does not contact Google', hits.length === 0 && drive.files.size === 0, hits);
+    check('Save still persists locally without Drive', await page.evaluate(async () =>
+      (await wbAll(WB_CHAPTERS)).find(ch => ch.id === 'ch_mec').content) === '# Mecanica\nlocal save');
+
+    await page.evaluate(async () => {
+      window.__gsiAnswer = 'grant';
+      await cloudButton();
+      localStorage.setItem('gdrive_token_exp', '0');
+    });
+    await page.reload();
+    await page.waitForFunction(() => wbBooted && gsConnected());
+    check('the previous connection survives reload with an expired token', await page.evaluate(() => !gsLive()));
+    await page.evaluate(async () => {
+      window.__gsiAnswer = 'grant';
+      await wbSelectChapter('ch_mec');
+      editor.value = '# Mecanica\nsaved after reconnect';
+      await saveToWorkbook();
+    });
+    check('Save renews the remembered sign-in and uploads immediately',
+      await page.evaluate(() => gsLive()) && drive.file('mecanica.md').body === '# Mecanica\nsaved after reconnect');
+
+    await page.evaluate(async () => {
+      editor.value = '# Mecanica\nsaved with a live token';
+      await saveToWorkbook();
+    });
+    check('Save with a live connection also uploads before it finishes',
+      drive.file('mecanica.md').body === '# Mecanica\nsaved with a live token');
+
+    await page.evaluate(async () => {
+      detachChapter();
+      editor.value = '# New chapter\nfrom the save dialog';
+      await saveToWorkbook();
+      document.getElementById('wb-select').value = 'wb_fiz';
+      onWorkbookSelectChange();
+      document.getElementById('wb-chapter-title').value = 'New chapter';
+      await confirmSaveToWorkbook();
+    });
+    check('saving a new chapter through the dialog uploads it too',
+      [...drive.files.values()].some(f => f.body === '# New chapter\nfrom the save dialog'));
+
+    await page.evaluate(async () => {
+      // Use real browser file handles for the local mirror, so cancelling
+      // cloud sign-in is checked against file bytes as well as IndexedDB.
+      const root = await navigator.storage.getDirectory();
+      window.__saveFolder = await root.getDirectoryHandle('save-cancel', { create: true });
+      ScuLaFolder.mode = () => 'folder';
+      ScuLaFolder.dir = async () => window.__saveFolder;
+      ScuLaFolder.name = () => 'Local test folder';
+      ScuLaFolder.subdir = () => 'markdown';
+      gsTokenExp = 0;
+      window.__gsiAnswer = 'cancel';
+      await wbSelectChapter('ch_mec');
+      editor.value = '# Mecanica\nsafe after cancelled sign-in';
+      await saveToWorkbook();
+    });
+    check('cancelled cloud sign-in saves the latest text in IndexedDB', await page.evaluate(async () =>
+      (await wbAll(WB_CHAPTERS)).find(ch => ch.id === 'ch_mec').content) === '# Mecanica\nsafe after cancelled sign-in');
+    check('cancelled cloud sign-in saves the latest text in the local file', await page.evaluate(async () => {
+      const bookDir = await window.__saveFolder.getDirectoryHandle('fizica');
+      const handle = await bookDir.getFileHandle('mecanica.md');
+      return (await handle.getFile()).text();
+    }) === '# Mecanica\nsafe after cancelled sign-in');
+    check('cancelled sign-in leaves the remote copy alone',
+      drive.file('mecanica.md').body === '# Mecanica\nsaved with a live token');
+
+    await page.evaluate(async () => {
+      gsForget(false);
+      window.__gsiAnswer = 'grant';
+      editor.value = '# Mecanica\nafter disconnect';
+      await saveToWorkbook();
+    });
+    check('Save respects a deliberately forgotten connection',
+      await page.evaluate(() => !gsConnected()) && drive.file('mecanica.md').body === '# Mecanica\nsaved with a live token');
+    check('no page errors while saving with Drive', errors.length === 0, errors);
+    await ctx.close();
+  }
+
   // ---- 4. the pull: another browser, empty database, same account ----
   {
     const drive = fakeDrive();

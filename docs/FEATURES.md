@@ -1994,6 +1994,18 @@ same gesture the folder button and `editor.html`'s Drive button use. The
 status in that row (`#wb-cloud-where`) always says where the chapters are —
 local only, connected, syncing, synced at a time, or *sign-in expired*.
 
+**Save to workbook / Ctrl+S also syncs a remembered connection.** After
+`saveToWorkbook()` or the new-chapter dialog's `confirmSaveToWorkbook()`
+finishes its local write, `cloudSyncAfterSave()` invokes `cloudButton()`.
+This uses the same full sync and expired-sign-in renewal as **Sync now**.
+`gsConnected()` reads the existing remembered Drive folder/token state from
+localStorage; chapter records remain in IndexedDB. A device with no
+connection, or one explicitly forgotten, saves locally without signing in.
+The IndexedDB write and the file write in the chosen local folder both
+finish before cloud sign-in opens. Cancelling that sign-in still means the
+latest text has been saved in both places.
+Typing still uses the existing silent, delayed background sync.
+
 ### What lands in Drive
 
 The folder mirror, one file per chapter — real `.md` files, readable in
