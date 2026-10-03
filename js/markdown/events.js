@@ -106,13 +106,13 @@ document.addEventListener('keydown', e => {
     navStep(e.code === 'Period' ? 1 : -1);
     return;
   }
-  // Ctrl+Shift+/ copies the caret line's text without a heading prefix,
+  // Ctrl+Shift+/ copies the caret's whole block without its opening heading prefix,
   // task checkbox or task status. e.code survives Shift and keyboard layouts.
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && e.code === 'Slash') {
     const el = document.activeElement;
     if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
     e.preventDefault();
-    selectAndCopyLineText();
+    selectAndCopySectionText();
     return;
   }
   // Ctrl+Alt+I — the idea box. Ctrl+I is italic and Ctrl+Shift+I is the

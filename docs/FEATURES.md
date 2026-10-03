@@ -725,11 +725,16 @@ The other two states (on hold, blocked) stay in the select.
 `taskLineStatus(line)` is the one reading of a line's state (`null` for
 prose); `wbTaskHasStatus` and the panel both go through it.
 
-**Ctrl+Shift+/** (`selectAndCopyLineText()` in `editor.js`) selects the
-caret line's text and copies that selection to the clipboard. A heading's
-`#` prefix and a task's checkbox plus leading `~inwork`, `~onhold`, or
-`~blocked` state are excluded. Ordinary lines are selected without leading
-or trailing whitespace. The source text inside the selection, including
+**Ctrl+Shift+/** (`selectAndCopySectionText()` in `editor.js`) selects the
+block containing the caret and copies that selection to the clipboard. It
+starts at the preceding heading (H1–H6) or task and ends before the next
+heading of any level or task of any state, including an empty task. Blank
+lines, paragraphs and ordinary lists remain inside the block; heading/task
+markers inside fenced code do not split it. Text before the first boundary
+forms an introductory block; the final block extends to the document end.
+A heading's `#` prefix and a task's checkbox plus leading `~inwork`,
+`~onhold`, or `~blocked` state are excluded, as is outer whitespace.
+The source text inside the selection, including
 inline Markdown, is copied as written. An empty body leaves the clipboard
 alone. The shortcut also works after a navigation-panel jump selects a
 heading or task line.

@@ -161,14 +161,14 @@ function check(name, ok, detail) {
   check('another focused field leaves the chapter alone', await source() === 'Plain\n', await source());
   await page.evaluate(() => document.getElementById('tmp-field').remove());
 
-  // Ctrl+Shift+/ selects and copies the current label, without source markers.
-  const copyLine = async (md, needle) => {
+  // Ctrl+Shift+/ selects and copies the full block, without opening markers.
+  const copyBlock = async (md, needle) => {
     await place(md, needle);
     await page.focus('#editor');
     await page.keyboard.press('Control+Shift+Slash');
     const selected = await page.evaluate(() => editor.value.slice(editor.selectionStart, editor.selectionEnd));
     await page.evaluate(() => {
-      const input = document.createElement('input');
+      const input = document.createElement('textarea');
       input.id = 'copy-paste-probe';
       document.body.appendChild(input);
       input.focus();
@@ -187,11 +187,46 @@ function check(name, ok, detail) {
     ['- [ ] ~blocked Repară robinetul', 'Repar', 'Repară robinetul'],
     ['  Text obișnuit  ', 'Text', 'Text obișnuit']
   ]) {
-    const result = await copyLine(md, needle);
+    const result = await copyBlock(md, needle);
     check('Ctrl+Shift+/ selects and copies ' + needle, result.selected === expected && result.pasted === expected, result);
   }
-  const emptyCopy = await copyLine('- [ ] ~blocked   ', '~blocked');
+  const emptyCopy = await copyBlock('- [ ] ~blocked   ', '~blocked');
   check('empty task text leaves the clipboard unchanged', emptyCopy.selected === '' && emptyCopy.pasted === 'Text obișnuit', emptyCopy);
+  for (const [md, needle, expected] of [
+    ['# Plan\nFirst paragraph.\n\nSecond paragraph.\n- ordinary item\n\n## Next\nExcluded', 'Second',
+      'Plan\nFirst paragraph.\n\nSecond paragraph.\n- ordinary item'],
+    ['# Plan\nFirst paragraph.\n\nSecond paragraph.\n## Next', 'Plan',
+      'Plan\nFirst paragraph.\n\nSecond paragraph.'],
+    ['# Plan\nFirst paragraph.\n\nSecond paragraph.\n## Next', '\n\n',
+      'Plan\nFirst paragraph.\n\nSecond paragraph.'],
+    ['# Plan\nIntro\n- [ ] Task\nDetails', 'Intro', 'Plan\nIntro'],
+    ['- [ ] ~inwork Task\nDetails\n\nMore details\n  * [x] Done\nExcluded', 'More',
+      'Task\nDetails\n\nMore details'],
+    ['- [x] Done\nDetails\n### Heading\nExcluded', 'Details', 'Done\nDetails'],
+    ['- [ ] Task\nDetails\n- [ ]\nExcluded', 'Details', 'Task\nDetails'],
+    ['- [ ] ~blocked\n\nDetails\n- [ ] Next', '~blocked', 'Details'],
+    ['Intro\n\nMore intro\n# First heading', 'More', 'Intro\n\nMore intro'],
+    ['# First\nOld\n###### Last\nOne\n\nTwo', 'Two', 'Last\nOne\n\nTwo'],
+    ['One\n\nTwo\n', 'Two', 'One\n\nTwo'],
+    ['# Code\n````md\n# example\n- [ ] example\n```\nStill code\n````\nAfter\n## Next', 'example',
+      'Code\n````md\n# example\n- [ ] example\n```\nStill code\n````\nAfter'],
+    ['# Code\n~~~md\n## example\n- [ ] example\n~~~\nAfter\n# Next', 'After',
+      'Code\n~~~md\n## example\n- [ ] example\n~~~\nAfter'],
+    ['# First\nOld\n## Next\nDetails', '##', 'Next\nDetails']
+  ]) {
+    const result = await copyBlock(md, needle);
+    check('whole block selection and clipboard: ' + JSON.stringify(md),
+      result.selected === expected && result.pasted === expected && await source() === md, result);
+  }
+  for (let level = 1; level <= 6; level++) {
+    const result = await copyBlock('# Start\nBody\n' + '#'.repeat(level) + ' Next\nExcluded', 'Body');
+    check('H' + level + ' ends the preceding block', result.selected === 'Start\nBody' && result.pasted === 'Start\nBody', result);
+  }
+  await page.evaluate(() => { editor.value = '# Start\nBody\n## Next'; editor.focus(); editor.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+Shift+Slash');
+  await page.keyboard.press('Control+Shift+Slash');
+  check('caret at document start and repeated shortcut select the same whole block',
+    await page.evaluate(() => editor.value.slice(editor.selectionStart, editor.selectionEnd)) === 'Start\nBody');
   await place('- [ ] Keep this task', 'Keep');
   await page.evaluate(() => { const input = document.createElement('input'); input.id = 'copy-focus-probe'; document.body.appendChild(input); input.focus(); });
   await page.keyboard.press('Control+Shift+Slash');

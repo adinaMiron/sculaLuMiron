@@ -393,37 +393,48 @@ function selectLineOrParagraph() {
   updateStatus();
 }
 
-/* Ctrl+Shift+/ — copy the words on the caret's line while leaving them
-   selected for another copy or edit. Task boxes and their status markers,
-   and heading hashes, are source syntax rather than part of the label. */
-function selectAndCopyLineText() {
+/* Ctrl+Shift+/ — select and copy the block containing the caret, from its
+   heading or task through the text before the next heading or task.
+   Blank lines do not end a block; markers inside fenced code are content. */
+function selectAndCopySectionText() {
   const val = editor.value;
-  const lineStart = val.lastIndexOf('\n', editor.selectionStart - 1) + 1;
-  const nl = val.indexOf('\n', lineStart);
-  const line = val.slice(lineStart, nl === -1 ? val.length : nl);
-  let bodyStart = 0;
-  const task = line.match(TASK_LINE_RE);
-  if (task) {
-    bodyStart = line.length - task[4].length;
-    const status = task[4].match(TASK_STATUS_LEAD_RE);
-    if (status) bodyStart += status[0].length;
-  } else {
-    const heading = line.match(/^[ \t]*#{1,6}[ \t]+/);
-    if (heading) bodyStart = heading[0].length;
+  const caret = editor.selectionStart;
+  let bodyStart = 0, bodyEnd = val.length, offset = 0, fence = null;
+  for (const line of val.split('\n')) {
+    const fenceMarker = line.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (fenceMarker && fenceMarker[1][0] === fence[0] &&
+          fenceMarker[1].length >= fence.length && !fenceMarker[2].trim()) fence = null;
+    } else if (fenceMarker) {
+      fence = fenceMarker[1];
+    } else {
+      const task = line.match(TASK_LINE_RE);
+      const heading = line.match(/^[ \t]*#{1,6}(?:[ \t]+|$)/);
+      if (task || heading) {
+        if (offset > caret) { bodyEnd = offset; break; }
+        // Keep the existing plain opening label, including task status removal.
+        let prefix = heading ? heading[0].length : line.length - task[4].length;
+        if (task) {
+          const status = task[4].match(TASK_STATUS_LEAD_RE);
+          if (status) prefix += status[0].length;
+        }
+        bodyStart = offset + prefix;
+      }
+    }
+    offset += line.length + 1;
   }
-  while (bodyStart < line.length && /[ \t]/.test(line[bodyStart])) bodyStart++;
-  let bodyEnd = line.length;
-  while (bodyEnd > bodyStart && /[ \t]/.test(line[bodyEnd - 1])) bodyEnd--;
+  while (bodyStart < bodyEnd && /\s/.test(val[bodyStart])) bodyStart++;
+  while (bodyEnd > bodyStart && /\s/.test(val[bodyEnd - 1])) bodyEnd--;
   if (bodyStart === bodyEnd) return false;
   editor.focus();
-  editor.setSelectionRange(lineStart + bodyStart, lineStart + bodyEnd);
+  editor.setSelectionRange(bodyStart, bodyEnd);
   updateStatus();
   // A synchronous copy works when the page is opened from file:// as well.
   // Keep the selection if the browser refuses clipboard access.
   let copied = false;
   try { copied = document.execCommand('copy'); } catch (e) {}
   if (!copied && navigator.clipboard && navigator.clipboard.writeText)
-    navigator.clipboard.writeText(val.slice(lineStart + bodyStart, lineStart + bodyEnd)).catch(() => {});
+    navigator.clipboard.writeText(val.slice(bodyStart, bodyEnd)).catch(() => {});
   return true;
 }
 
