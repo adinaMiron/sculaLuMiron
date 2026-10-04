@@ -3041,15 +3041,71 @@ functions delegate to this helper. Keep script tags usable from `file://`.
 
 ### Persistence and exports
 
-IndexedDB `scula-song` v1 separates `projects` (schemaVersion 1 metadata) from
+IndexedDB `scula-song` v2 separates `projects` (schemaVersion 1 metadata) from
 `audio` (WAV Blobs keyed by recording ID). Project metadata and audio changes are
 atomic. Failed storage retains new Blobs in memory, displays a persistent warning
 and offers retry; users can export the take and metadata without storage working.
 No WAV/base64 lives in localStorage. Small preferences only: active project ID,
 microphone ID and shared UI language. Clearing site storage loses local projects;
-export backups. Active takes are retained at Stop, not crash-journaled while
-recording. Refresh/crash during capture can lose that take. Multiple simultaneous
-Song tabs are not merged; use one editing tab.
+export backups. The v2 upgrade adds only `workspace`, `captures` and
+`captureChunks` stores; existing projects/audio are not rewritten by migration.
+An older connection blocking upgrade produces a translated close-other-tabs message.
+
+`js/audio/song-storage.js` owns the transactions. A database-wide writer token
+and monotonically increasing workspace revision fence every project/audio commit.
+This covers melody/sample edits, arrangements, timelines, imports and recovered
+takes. A transaction checks both before changing any project or audio; a stale
+snapshot never replaces newer storage. Capture append/discard transactions also
+check ownership. There is no automatic merging. The second tab shows a RO/EN
+read-only panel; **Reload and take over editing** atomically replaces ownership
+and loads the latest snapshot. Unsaved local work requires confirmation before
+that reload; cancel to export WAVs and metadata first. Losing writes retain local
+state and pending audio for export, and disable retry against the stale snapshot.
+
+Each page holds a unique Web Lock when supported. A new page can probe the exact
+persisted owner's lock and reclaim a closed owner with an atomic identity check.
+A suspended live owner keeps its lock; no timer establishes exclusivity.
+BroadcastChannel/focus checks update the UI sooner but do not authorize writes.
+Without either API, the persisted fence still applies; an uncleanly closed owner
+may require explicit takeover. An owner without a lock is never presumed dead
+just because a different tab supports Web Locks. Page exit releases ownership on
+a best-effort basis; correctness does not depend on that asynchronous write.
+
+### Interrupted capture recovery
+
+Capture folds PCM into Blobs at approximately five-second frame boundaries and
+serially checkpoints those same Blobs. No second growing PCM array, base64 or
+localStorage audio copy is created. Each `captureChunks` payload and its
+`captures` checkpoint commit in one transaction. Metadata includes a stable
+capture/take ID, project identity/name, capture time, purpose/sample fields,
+PCM24 encoding, actual sample rate/channels, sequence, byte/frame totals, input
+settings, backend, microphone and a bounded waveform. RIFF's size limit still
+bounds the capture. Pending checkpoints are separate from completed projects and
+are excluded from JSON/WAV backups.
+
+On reopening, **Interrupted recordings** lists checkpoints with recover, WAV
+export and confirmed discard controls, including on phone-width layouts.
+Recovery reads one consistent checkpoint, verifies contiguous sequence numbers,
+chunk frame/byte dimensions and aggregate totals, then uses the shared PCM24
+writer to reconstruct the RIFF header/padding. Payload samples are unchanged;
+there is no normalization, decoding or resampling. Missing or inconsistent chunks
+produce an error rather than joining audio on either side of a gap. Preview is
+available through the ordinary take player after recovery.
+
+Normal Stop flushes the worklet and checkpoints the final partial Blob. Publishing
+the full WAV and project and deleting the journal share one atomic transaction.
+Recovery reuses the capture ID as the take ID and checks for an already pending
+take, so failed finalization/repeated retries cannot duplicate it. If project
+creation never committed, recovery reconstructs its identity/name from capture
+metadata. A delayed microphone permission response after page exit or takeover
+stops its tracks without starting a stale capture. A failed
+checkpoint is visible during recording; Stop retains the full received audio for
+export/retry. A failed publication leaves earlier committed checkpoints intact
+and the complete take in memory. Successful retry clears the journal atomically.
+Only successfully committed checkpoints survive abrupt page closure. Audio since
+the last checkpoint, or after a failed checkpoint, can be lost; browser/device
+failure, storage eviction and microphone interruption remain limits. No unload
+handler attempts to flush capture asynchronously.
 
 All exports call `ScuLaFolder.save`. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
@@ -3152,7 +3208,7 @@ It uses the busy state and the same cancellation control (labelled **Cancel SHA-
 check** while exporting), and saves only the finished JSON through `ScuLaFolder.save`.
 Pending reads cannot be forcibly aborted; cancellation discards their result.
 Progress and errors repaint when RO/EN changes. Page exit cancels pending hashing.
-Keep one editing Song tab, as with other workspace actions.
+Backup publication uses the same writer/revision fence as other workspace actions.
 
 ### Phase 2: WAV → performance → editable melody
 
@@ -3539,6 +3595,15 @@ backup restore, source WAV bytes, RO/EN and phone width.
 sample-aware arrangement WAVs and follows sample remapping and synthesis fallback.
 
 ### Testing
+
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+runs the same 20 deterministic checks as CI, including shared Voice/melody.
+`tests/song-recovery.js` uses actual IndexedDB and same-origin pages for upgrade,
+blocked upgrade, real worklet page termination, exact PCM recovery, missing
+sequence, quota/transaction rollback, finalization/retry/discard, duplicate
+prevention and competing writers with/without coordination APIs. See
+[tests README](../tests/README.md#song-ci) for the suite inventory and unexecuted
+real-device procedure.
 
 `/apptest song-backup-import` checks real JSON/WAV export/import round trips,
 PCM24/float32 source bytes with extra RIFF chunks and padding, immutable analysis,

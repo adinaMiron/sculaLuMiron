@@ -22,11 +22,9 @@ checkbox and the melody it can make out of a recording, written the way `HANDOFF
 "Testing approach" describes: plain Node scripts, one per feature area, that
 drive the real app off disk (`file://…/editor.html`) and assert on real
 pixels (`canvas.getContext('2d').getImageData()`) and real geometry
-(`getBoundingClientRect()`) rather than trusting screenshots. There is no
-test framework, runner, or `describe`/`it` — see the root `CLAUDE.md`
-("no build step, no framework, no package manager") for why the three apps
-themselves stay that way. This folder is dev-only tooling; it never ships
-and the three `.html` files never reference it.
+(`getBoundingClientRect()`) rather than trusting screenshots. These ad-hoc checks use no `describe`/`it` harness; Song also has a shared
+local/CI script runner described below. This folder is dev-only tooling: the
+nine applications never reference it and retain their dependency-free runtime.
 
 Each script is self-contained, prints `PASS`/`FAIL` lines per check, and
 exits non-zero if anything failed.
@@ -282,7 +280,61 @@ emulation.
 
 ### Song CI
 
-`.github/workflows/song.yml` runs `/verify`, all Song unit/browser checks and the
-shared Voice/melody regressions for Song pull requests. It uses the root locked
-dev dependencies and Playwright Chromium, explicitly setting `PW_CHROME_PATH`.
-The apps gain no runtime dependencies.
+`.github/workflows/song.yml` runs the same explicit suite list as
+`node tests/song-regressions.js` for scoped pull requests and pushes to `main`
+and the existing `codex/finish-song-analysis-wip` branch. Path filters cover
+Song/Voice, audio helpers, relevant tests, shared runners/fixtures and both locked
+test dependency manifests. Workflow permissions remain `contents: read`.
+It uses root locked dev dependencies and Playwright Chromium, explicitly setting
+`PW_CHROME_PATH`. The apps gain no runtime dependencies. Run locally with:
+
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+
+`node tests/song-regressions.js --list` prints the authoritative 20-suite list.
+The runner executes every listed suite, reports individual exits and exits
+nonzero if any fails. Inventory:
+
+| Kind | Suites |
+| --- | --- |
+| Static verification | `verify` |
+| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-samples`, `song-integrity`, `song-incremental-inspection` |
+| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-timeline`, `song-backup-import`, `voice`, `melody` |
+| External labeled recordings (excluded from CI) | `node tests/song-evaluate.js path/to/manifest.json`; requires a supplied manifest and WAVs. Generated `song-evaluation` is a different check. |
+
+`song-recovery` uses real IndexedDB transactions and same-origin pages sharing
+one browser context/database, plus Chromium's fake microphone on localhost. It
+checks in-place v1 upgrade and a blocking old connection, exact mono/stereo PCM
+recovery after page closure (header/padding/decoded samples included), a real
+worklet checkpoint followed by abrupt closure, normal Stop, quota rollback,
+missing chunks, failed finalization/export/retry, confirmed discard and duplicate
+prevention. It also checks read-only/conflict status, stale project writes,
+local-work export and safe takeover, owner closure and unavailable coordination
+APIs. Phone width, long capture names, RO/EN and the stubbed OS share route are
+automated checks, not hardware tests. Capture takeover, mixed API support,
+page restoration and delayed microphone permission also have regressions.
+
+Milestone A verification on 2026-10-04: the 19 pre-edit deterministic suites passed
+at `616f70d`. The post-change command above exited 0 with all 20 suites passing
+locally in system Chrome. See the status report for review findings and limits;
+GitHub Actions itself was not executed in this session.
+
+### Manual microphone and phone checks (unexecuted)
+
+1. On a real desktop microphone and a phone, record mono/stereo where available
+   for at least 15 seconds. Verify reported rate/channels and ordinary Stop/playback.
+2. During another capture, allow at least two checkpoints, then terminate the
+   browser/tab without Stop. Reopen, export the interrupted WAV and recover it;
+   verify its audible prefix and that reload does not produce a second take.
+   Expect the tail since the last committed checkpoint to be absent.
+3. Exercise microphone unplugging, phone screen locking/background suspension,
+   low available storage and an interrupted final save. Check that warnings remain
+   visible, retained audio exports, and retry does not create duplicates. These
+   interruptions cannot guarantee uninterrupted recording on every browser/device.
+4. Open two same-origin tabs. Confirm the second is read-only; take over, edit,
+   then attempt an edit in the former writer. Confirm newer storage survives and
+   local pending work can be exported before confirmed reload/takeover.
+5. At phone width in RO and EN, use recovery/export/discard through the OS share
+   sheet, cancel discard once, and play the recovered take with headphones.
+
+No real microphones, physical phones, storage-pressure hardware runs or labeled
+human humming corpus were used for Milestone A's automated checks.

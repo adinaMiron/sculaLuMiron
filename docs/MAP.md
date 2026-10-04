@@ -873,7 +873,7 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~2140 lines · Song Creation / Creează melodie
+## song.html — ~2500 lines · Song Creation / Creează melodie
 
 See `docs/FEATURES.md` § V for the authoritative architecture, performance/arrangement schemas and staged backup restoration.
 
@@ -881,12 +881,15 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 |---|---|
 | `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
 | `<nav id="site-nav">` (10) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
-| `<main>` (~1310) | Project, microphone/recording, WAV import, sample metadata, take list and whole-song timeline controls |
-| `#backupHeading`, `#backupJson`, `#backupWavs` (~1320) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
+| `<main>` (~1317) | Project, microphone/recording, WAV import, sample metadata, take list and whole-song timeline controls |
+| `#backupHeading`, `#backupJson`, `#backupWavs` (~1330) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
 | `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
-| `openDB`, `read`, `persist`, `blobFor` | `scula-song` projects/audio stores, atomic commits, in-memory failure recovery |
+| `openDB`, `read`, `persist`, `blobFor` | `scula-song` v2 projects/audio, fenced atomic commits, in-memory failure recovery |
+| `js/audio/song-storage.js` | In-place v2 upgrade; workspace owner/revision checks, consistent snapshots, atomic capture chunks/checkpoints and finalization, recovery sequence/dimension validation |
+| `coordinate`, `checkWriter`, `#writerPanel`, `#takeover` | Unique owner Web Locks, persisted single writer, advisory BroadcastChannel/focus checks, stale-work export and safe reload/takeover |
+| `checkpoint`, `captureMetadata`, `recordingFromCapture`, `paintJournals`, `#journalPanel` | Five-second PCM journaling; translated recover/export/discard and stable capture/take identity |
 | `projectManifest`, `exportTake`, `exportMetadata`, `safeName` | Immutable source references, complete WAV SHA-256 hashes and cancelable ScuLaFolder exports |
-| `paintBackup`, `cancelBackup`, `backupSelection`, `validateBackup`, `restoreBackup` (~1482–1518) | Cancelable staging, reserved audio keys, reviewed publication through atomic persistence and in-memory recovery |
+| `paintBackup`, `cancelBackup`, `backupSelection`, `validateBackup`, `restoreBackup` (locate by symbol) | Cancelable staging, reserved audio keys, reviewed publication through atomic persistence and in-memory recovery |
 | `js/audio/integrity.js` | `ScuLaIntegrity.sha256`: incremental exact-byte SHA-256, 64 KiB Blob slices, progress and timer-yield cancellation; no Web Crypto or secure-origin dependency |
 | `js/audio/backup.js` | `ScuLaSongBackup` v1: `validate`, `occupied`, `stage`; version 1/2 performance and contour validation, relationships, exact filename matching, bounded/cancelable WAV inspection, strict integrity metadata, declared full-byte digest verification/legacy warnings and consistent entity ID remapping without musical changes |
 | `render`, `clearPlayers` | Recording cards, waveform, playback and object URL cleanup |
@@ -912,4 +915,5 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `tests/song-timeline.js` | Two-take file:// sections, mix override playback/MIDI/validation and undo/redo, 4/4 ruler/beat snap, proportional layout, seeking/playhead and full/section/custom loop across repeats, optional loop WAV fade, keyboard/touch range, rendering/playback Stop and cleanup, RO/EN phone transport, whole-song and loop MIDI/WAV timing, clipped notes, parity, backup remapping and source bytes |
 | `tests/song-samples.js`, `tests/song-sample-browser.js` | Sample pitch/dynamic mapping, loop boundaries/release, legacy defaults and fallback; file:// import, waveform/marker dragging, invalid boundaries, mapping changes, unchanged source, audition, played/exported PCM and persistence |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
+| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 20-suite local/CI runner |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |

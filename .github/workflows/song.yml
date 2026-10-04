@@ -1,7 +1,22 @@
 name: Song regression checks
 on:
   push:
-    branches: [codex/finish-song-analysis-wip]
+    branches: [main, codex/finish-song-analysis-wip]
+    paths:
+      - song.html
+      - voice.html
+      - js/audio/**
+      - tests/song*.js
+      - tests/voice.js
+      - tests/melody.js
+      - tests/lib.js
+      - tests/verify.js
+      - tests/fixtures/**
+      - package.json
+      - package-lock.json
+      - tests/package.json
+      - tests/package-lock.json
+      - .github/workflows/song.yml
   pull_request:
     paths:
       - song.html
@@ -10,6 +25,13 @@ on:
       - tests/song*.js
       - tests/voice.js
       - tests/melody.js
+      - tests/lib.js
+      - tests/verify.js
+      - tests/fixtures/**
+      - package.json
+      - package-lock.json
+      - tests/package.json
+      - tests/package-lock.json
       - .github/workflows/song.yml
 permissions:
   contents: read
@@ -29,6 +51,4 @@ jobs:
         shell: bash
         run: |
           export PW_CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
-          for suite in verify song-analysis song-bounded-analysis song-analysis-lifecycle song-synthesis song-instruments song-arrangement-generation song-integrity song-incremental-inspection song song-performance song-arrangement song-backup-import voice melody; do
-            node "tests/$suite.js"
-          done
+          node tests/song-regressions.js

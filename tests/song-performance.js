@@ -10,7 +10,7 @@ function wav({silence=false,seconds=8,channels=2,bits=24}={}){
  return b;
 }
 function readMidi(b){assert.equal(b.toString('ascii',0,4),'MThd');let i=22,tick=0,notes=[];while(i<b.length){let delta=0,v;do{v=b[i++];delta=(delta<<7)|(v&127);}while(v&128);tick+=delta;const status=b[i++];if(status===255){i++;let length=0;do{v=b[i++];length=(length<<7)|(v&127);}while(v&128);i+=length;}else {const midi=b[i++],vel=b[i++];if(status===144 && vel)notes.push({midi,tick,velocity:vel});}}return notes;}
-async function projects(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song',1);r.onsuccess=()=>{const db=r.result,q=db.transaction('projects').objectStore('projects').getAll();q.onsuccess=()=>{db.close();resolve(q.result);};q.onerror=reject;};r.onerror=reject;}));}
+async function projects(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song');r.onsuccess=()=>{const db=r.result,q=db.transaction('projects').objectStore('projects').getAll();q.onsuccess=()=>{db.close();resolve(q.result);};q.onerror=reject;};r.onerror=reject;}));}
 async function download(page,action){const promise=page.waitForEvent('download');await action();return fs.readFileSync(await (await promise).path());}
 async function ready(page){await page.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');}
 async function edit(page,field,value){await page.locator(`.note-table tbody tr:first-child input[data-field="${field}"]`).fill(String(value));await page.locator(`.note-table tbody tr:first-child input[data-field="${field}"]`).press('Tab');await ready(page);}

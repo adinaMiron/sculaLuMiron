@@ -2,9 +2,12 @@
 
 Reviewed: 2026-10-04  
 Repository: [adinaMiron/sculaLuMiron](https://github.com/adinaMiron/sculaLuMiron)  
-Source snapshot: [a3382e37a0d6eb6862a635c6a822eaebead28f14](https://github.com/adinaMiron/sculaLuMiron/commit/a3382e37a0d6eb6862a635c6a822eaebead28f14)
+Original review snapshot: [a3382e37a0d6eb6862a635c6a822eaebead28f14](https://github.com/adinaMiron/sculaLuMiron/commit/a3382e37a0d6eb6862a635c6a822eaebead28f14)
 
-This report summarizes what is present in `song.html` and its audio helpers, checked against the README and the Song section of `docs/FEATURES.md`. It is a source and documentation review; the application and test suites were not executed for this report. Existing tests are evidence of intended regression coverage, not a fresh pass result.
+The original review was documentation/source inspection only. Milestone A was
+implemented from checkout `616f70d17366bb37f42b825a21c9fb9a98798ccb` on branch
+`codex/song-milestone-a`. Its verification results are recorded below separately
+from the original review; hardware checks remain unexecuted.
 
 ## Current scope
 
@@ -37,10 +40,14 @@ The central design is separation of the original source WAV, detected musical ev
 - Classify takes as melody/humming or instrument sample.
 - Store sample instrument, descriptive note, optional MIDI note, articulation, dynamics and free notes.
 - Play original takes, show their duration/audio details and waveform, rename them, delete with confirmation and export their WAV.
-- Persist project metadata and WAV Blobs separately in IndexedDB `scula-song`, database version 1, using `projects` and `audio` stores.
+- Persist project metadata and WAV Blobs separately in IndexedDB `scula-song`, database version 2, using `projects` and `audio` stores plus `workspace`, `captures` and `captureChunks`. The in-place upgrade preserves old projects and source bytes.
 - Commit metadata and audio changes through an atomic transaction.
 - Retain pending audio and edits in memory when storage fails, show a persistent warning and offer **Retry local storage**. Exports remain available when their source audio is available.
 - Keep only small preferences in localStorage, including active project and microphone selection. Audio is not stored there.
+- Checkpoint completed PCM Blobs approximately every five seconds, with atomic chunk/checkpoint publication, contiguous-sequence validation, and RO/EN recovery/export/confirmed discard controls.
+- Complete takes and delete journals in the same atomic transaction. Stable capture/take IDs prevent duplicate recovery/retry. Failed checkpoints and finalization preserve earlier durable chunks and exportable in-page audio.
+- Use a database-wide single writer and atomic ownership/revision checks for project/audio writes; capture append/discard also check ownership. Competing tabs are read-only, stale writes retain local work for export, and explicit takeover reloads latest storage after confirmation when local work is pending.
+- Use Web Locks to detect closed cooperating owners and BroadcastChannel/focus for prompt status. Without these APIs, the persisted fence still rejects stale writes; stale ownership may need explicit takeover. No timer proves exclusive ownership.
 
 Project schema version is 1. Projects contain recordings, optional performances, arrangement versions and a timeline. The reserved `derivedAssets` arrays are currently empty; rendered mixes are temporary or exported files.
 
@@ -206,15 +213,36 @@ Representative files:
 - [song.js](../tests/song.js), [song-performance.js](../tests/song-performance.js), [song-arrangement.js](../tests/song-arrangement.js).
 - [song-sample-browser.js](../tests/song-sample-browser.js), [song-timeline.js](../tests/song-timeline.js), [song-backup-import.js](../tests/song-backup-import.js).
 - [song-bounded-analysis.js](../tests/song-bounded-analysis.js), [song-integrity.js](../tests/song-integrity.js), [song-evaluation.js](../tests/song-evaluation.js).
-- [Song GitHub Actions workflow](../.github/workflows/song.yml): runs a selected Song/shared Voice regression suite for matching pull requests and pushes to `codex/finish-song-analysis-wip`. It does not currently list every Song test, including timeline, sample-browser and evaluation suites.
+- [Song GitHub Actions workflow](../.github/workflows/song.yml): runs the shared `tests/song-regressions.js` entry point for scoped pull requests and pushes to `main` and `codex/finish-song-analysis-wip`, with read-only permissions. Includes all deterministic Song suites, recovery/concurrency, Voice and melody; generated evaluation is distinct from the human-corpus runner.
+
+Milestone A local verification (2026-10-04): all 19 pre-edit baseline checks
+passed. The post-change CI-equivalent command
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+exited 0: **all 20 suites passed**, including `verify`, all deterministic Song
+checks, recovery/concurrency, Voice and melody. The static check confirmed JS
+parsing, synchronized navigation and Romanian diacritics. `git diff --check`
+also passed. After the final review edits, targeted reruns of
+`node tests/verify.js`, `node tests/song-recovery.js` (15 scenarios) and
+`node tests/song-arrangement.js`, with the same browser environment, all exited
+0. These are local Chromium results; GitHub Actions was not run here.
+
+A separate diff review checked ownership/revision races, journal deletion order,
+source preservation, memory bounds, quota handling, resource cleanup and docs.
+Findings fixed include the optional-Web-Crypto fallback, closed-channel cleanup,
+mixed Web Locks support, delayed microphone permission after exit/takeover,
+read-only playback Stop, long recovery names and recovery of a capture whose
+project creation had failed. Existing simulated-page-exit tests now reload before
+performing new edits. No source-audio processing or backup schema was replaced.
+No human-corpus evaluation was run: no input manifest was supplied. Manual real
+microphone/phone checks are listed in [tests README](../tests/README.md#manual-microphone-and-phone-checks-unexecuted).
 
 A labeled-humming evaluator is implemented in [song-evaluate.js](../tests/song-evaluate.js). Documentation reports successful controlled generated-signal cases after version 2 segmentation changes, but no labeled human humming corpus is included. Real-world accuracy has not been established.
 
 ## 9. Current limitations and work not implemented
 
 - No automatic disk mirroring or self-contained backup archive: export JSON and source WAVs separately.
-- No crash journal for active capture; refresh/crash before Stop can lose the current take.
-- No simultaneous-tab merge; use one editing Song tab.
+- Recovery covers committed capture checkpoints only. Audio after the last successful checkpoint can be lost on page/browser/device interruption; storage eviction still removes local data.
+- No simultaneous-tab merge. A single writer is enforced; takeover reloads saved state and pending local work must be exported before confirming its replacement.
 - No persisted rendered derived assets; mixes are generated in memory.
 - No polyphonic/accompanied transcription guarantee; analysis targets a single unaccompanied humming voice and may need manual edits.
 - No continuous cents/expression pitch-bend export in MIDI; those values remain in JSON and, where rendered, audio.

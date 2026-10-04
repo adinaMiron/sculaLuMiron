@@ -9,7 +9,7 @@ function wav(bits=24,encoding=1){
  for(let i=0;i<frames;i++){const t=i/sr,local=t%.5,v=local<.4?.3*Math.sin(2*Math.PI*(t<1?261.6256:329.6276)*t)*Math.min(1,local/.02,(.4-local)/.02):0;if(encoding===3)b.writeFloatLE(v,54+i*align);else b.writeIntLE(Math.round(v*(2**(bits-1)-1)),54+i*align,align);}if(data%2)b[b.length-1]=82;return b;
 }
 async function ready(p){await p.waitForFunction(()=>document.querySelector('#recordState').textContent==='Ready');}
-async function stored(p){return p.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song',1);r.onsuccess=()=>{const db=r.result,tx=db.transaction(['projects','audio']),a=tx.objectStore('projects').getAll(),b=tx.objectStore('audio').getAllKeys();tx.oncomplete=()=>{db.close();resolve({projects:a.result,audio:b.result});};tx.onerror=reject;};r.onerror=reject;}));}
+async function stored(p){return p.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song');r.onsuccess=()=>{const db=r.result,tx=db.transaction(['projects','audio']),a=tx.objectStore('projects').getAll(),b=tx.objectStore('audio').getAllKeys();tx.oncomplete=()=>{db.close();resolve({projects:a.result,audio:b.result});};tx.onerror=reject;};r.onerror=reject;}));}
 async function download(p,action){const wait=p.waitForEvent('download');await action();const d=await wait;return {name:d.suggestedFilename(),bytes:fs.readFileSync(await d.path())};}
 const jsonFile=v=>({name:'project.json',mimeType:'application/json',buffer:Buffer.from(typeof v==='string'?v:JSON.stringify(v))});
 const audioFile=(name,buffer)=>({name,mimeType:'audio/wav',buffer});
@@ -126,6 +126,8 @@ async function begin(browser,{failStorage=false,phone=false}={}){
   // Page exit cancels the read without recreating audio URLs when it resolves.
   await p.evaluate(()=>{Blob.prototype.arrayBuffer=async function(){await new Promise(r=>setTimeout(r,400));return originalArrayBuffer.call(this);};});await select(p,exported,files);await p.click('#validateBackup');await p.waitForFunction(()=>document.querySelector('#recordState').textContent==='Validating backup…');await p.evaluate(()=>{window.urlsAtExit=urlsMade.length;window.dispatchEvent(new PageTransitionEvent('pagehide'));});await ready(p);assert.equal(await p.isEnabled('#restoreBackup'),false);assert.ok(await p.evaluate(()=>urlsMade.length===urlsAtExit));assert.deepEqual(await stored(p),baseline);await p.evaluate(()=>Blob.prototype.arrayBuffer=originalArrayBuffer);
   console.log('PASS  malformed JSON, schema/helper versions, duplicate IDs/versions, relationships, sample/snapshot/analysis structure, missing/ambiguous/renamed files, bad/unsupported WAVs and staged/in-flight cancellation leave workspace/storage unchanged');
+  // Exit released writer ownership; reload before starting new edits.
+  await p.reload();await ready(p);
   // Quota failure aborts both stores; memory retains all imported files for export/retry.
   await p.evaluate(()=>{window.nativePut=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(...a){if(this.name==='audio')throw new DOMException('quota','QuotaExceededError');return nativePut.apply(this,a);};});
   await select(p,exported,files);await validate(p);await restore(p);assert.deepEqual(await stored(p),baseline);assert.equal(await p.isVisible('#recovery'),true);const recovery=await manifest(p);assert.deepEqual(musical(recovery),musical(exported));for(let i=0;i<2;i++)assert.deepEqual((await download(p,()=>p.locator('.take').nth(i).getByRole('button',{name:'Save WAV',exact:true}).click())).bytes,files[i].buffer);

@@ -36,6 +36,11 @@ Do not replace these systems with a new architecture. Keep raw evidence, edited 
 
 ## Milestone A — protect work and close verification gaps
 
+Implementation note (2026-10-04): this milestone is implemented on
+`codex/song-milestone-a`; see the updated status report and tests README for
+behavior, executed results and hardware limits. The requirements below remain
+the acceptance reference. Milestone B is the next separate implementation task.
+
 The goal is to recover captured audio after an unexpected page exit, prevent silent competing-tab overwrites, and make CI accurately cover the current Song functionality.
 
 ### A1. Make the regression baseline explicit

@@ -6,7 +6,7 @@ let URL;
 const server=http.createServer((req,res)=>{const target=path.resolve(__dirname,'..','.'+decodeURIComponent(req.url.split('?')[0]));if(!target.startsWith(path.resolve(__dirname,'..')+path.sep)){res.writeHead(403);res.end();return;}fs.readFile(target,(err,data)=>{if(err){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',target.endsWith('.js')?'text/javascript':'text/html');res.end(data);});});
 let failed=0;
 function check(name,cond,detail=''){console.log((cond?'PASS  ':'FAIL  ')+name+(cond?'':' '+detail));if(!cond)failed++;}
-async function records(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song',1);r.onsuccess=()=>{const db=r.result,req=db.transaction('projects').objectStore('projects').getAll();req.onsuccess=()=>{db.close();resolve(req.result);};req.onerror=reject;};r.onerror=reject;}));}
+async function records(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('scula-song');r.onsuccess=()=>{const db=r.result,req=db.transaction('projects').objectStore('projects').getAll();req.onsuccess=()=>{db.close();resolve(req.result);};req.onerror=reject;};r.onerror=reject;}));}
 async function record(page,name='Hum',purpose='melody'){
  await page.fill('#takeName',name);await page.selectOption('#purpose',purpose);
  await page.click('#recordBtn');await page.waitForFunction(()=>document.querySelector('#recordState').textContent==='Recording');

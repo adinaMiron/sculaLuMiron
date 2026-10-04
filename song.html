@@ -5,6 +5,7 @@
 <style>
 :root{--bg:#14201A;--surface:#1B2A22;--surface-2:#22342A;--border:#2E4739;--text:#F3EEE1;--text-2:#9FB3A5;--accent:#C1BB45;--on-accent:#1A2117;--danger:#C4643C;--ok:#6E9E8A;--radius:.8rem}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem system-ui,sans-serif}main{max-width:64rem;margin:auto;padding:1.5rem 1rem 4rem}h1{margin:0}h2{font-size:1.2rem}p,small{line-height:1.5}small,.hint{color:var(--text-2)}.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-top:1rem}.row{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}label{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:0}input,select,textarea,button{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:.5rem;min-height:2.8rem;padding:.6rem;max-width:100%}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--accent);color:var(--on-accent);font-weight:700}#recordBtn{min-height:4rem;min-width:11rem;font-size:1.2rem}#recordBtn[aria-pressed=true]{background:var(--danger);color:var(--text)}#timer{font:2rem ui-monospace,monospace;min-width:6rem}meter{width:100%;height:1.5rem;accent-color:var(--accent)}#quality{white-space:pre-line;overflow-wrap:anywhere;font-size:.9rem}#status{min-height:1.5rem}#status.error,#backupSummary.error,#recovery{color:var(--danger)}.take{padding:1rem 0;border-top:1px solid var(--border)}.take h3{margin:.3rem 0;overflow-wrap:anywhere}.take audio{width:100%;margin:.6rem 0}.take canvas{width:100%;height:3rem;display:block}.take .row{align-items:center}.badge{color:var(--accent)}[hidden]{display:none!important}@media(max-width:38rem){.grid{grid-template-columns:1fr}main{padding:1rem .75rem 3rem}.panel{padding:.9rem}.row>label{flex-basis:100%}#recordBtn{flex:1}}
+#journals p{overflow-wrap:anywhere}
 .performance{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.performance h4{margin:0 0 .5rem}.performance .row{margin:.8rem 0}.take canvas.melody-roll{height:11rem;margin:.8rem 0}.note-scroll{overflow-x:auto;max-width:100%;margin:.8rem 0}.note-table{border-collapse:collapse;width:100%;font-size:.9rem}.note-table th,.note-table td{padding:.4rem;text-align:left;border-bottom:1px solid var(--border)}.note-table input{width:6.5rem}.note-table td:nth-child(7){min-width:16rem;color:var(--text-2)}
 .arrangement{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)}.arrangement h4{margin:0 0 .5rem}.arrangement .row{margin:.8rem 0}.arrangement-parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.arrangement-parts fieldset{min-width:0;margin:0;border:1px solid var(--border);border-radius:.5rem;padding:.75rem;display:grid;gap:.6rem}.arrangement-parts input[type=checkbox]{align-self:start;width:2.8rem;margin:0}.arrangement-parts input[type=range]{width:100%;padding:0;accent-color:var(--accent)}.take canvas.arrangement-roll{height:16rem;margin:.8rem 0}.arrangement-legend{display:flex;gap:1rem;flex-wrap:wrap}.arrangement-legend [data-part=lead]{color:var(--accent)}.arrangement-legend [data-part=chords]{color:var(--ok)}.arrangement-legend [data-part=bass]{color:var(--text-2)}.arrangement-legend [data-part=drums]{color:var(--danger)}@media(max-width:38rem){.arrangement-parts{grid-template-columns:1fr}.arrangement{padding:.75rem}.arrangement .row>button{flex:1 1 9rem}}
 .song-section{border-top:1px solid var(--border);padding:.8rem 0}.song-section .row{align-items:center}.song-section label{min-width:9rem}.song-section .section-name{flex:1 1 10rem}.song-section .section-version{flex:2 1 15rem}.song-section .section-repeats{flex:0 1 6rem}.song-section button{min-width:2.8rem}.song-section small{display:block;margin:.3rem 0}.song-actions{margin-top:1rem}
@@ -1324,6 +1325,8 @@
 <p><strong id="currentProject"></strong></p><small data-i="storageHint">WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.</small>
 <p id="recovery" role="alert" hidden></p><button id="retry" data-i="retry" hidden>Reîncearcă păstrarea locală</button>
 </section>
+<section id="writerPanel" class="panel" hidden><p id="writerStatus" role="alert"></p><button id="takeover" data-i="takeover">Reîncarcă și preia editarea</button></section>
+<section id="journalPanel" class="panel" hidden aria-labelledby="journalHeading"><h2 id="journalHeading" data-i="journalHeading">Înregistrări întrerupte</h2><p data-i="journalHint"></p><div id="journals"></div></section>
 <section class="panel" aria-labelledby="backupHeading">
 <h2 id="backupHeading" data-i="backupImport">Restaurează un proiect exportat</h2>
 <p class="hint" data-i="backupHint">1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.</p>
@@ -1356,6 +1359,7 @@
 <section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
 </main>
 <script src="js/audio/pcm.js"></script>
+<script src="js/audio/song-storage.js"></script>
 <script src="js/audio/analysis.js"></script>
 <script src="js/audio/performance.js"></script>
 <script src="js/audio/synthesis.js"></script>
@@ -1412,9 +1416,14 @@ Object.assign(I18N.ro,{hashing:'Se verifică SHA-256…',cancelHash:'Anulează v
 Object.assign(I18N.en,{hashing:'Checking SHA-256…',cancelHash:'Cancel SHA-256 check',hashProgress:v=>`SHA-256: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`,backupDigest:p=>`Invalid SHA-256 digest: ${p}. Expected 64 hexadecimal digits.`,backupIntegrityFormat:p=>`Unsupported integrity format: ${p}. Only SHA-256 is supported.`,backupMismatch:name=>`SHA-256 integrity mismatch for “${name}”. The WAV was changed or replaced. Select the intact source copy.`,backupVerified:'All WAV integrity was verified with SHA-256.',backupUnverified:names=>`Warning: audio integrity cannot be verified cryptographically for files without a digest:\n${names.join('\n')}`,hashCancelled:'SHA-256 check cancelled. Export was not saved.'});
 Object.assign(I18N.ro,{inspectProgress:v=>`Se inspectează WAV-ul: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
 Object.assign(I18N.en,{inspectProgress:v=>`Inspecting WAV: ${v.name} · ${Math.floor(v.total?v.done/v.total*100:100)}%`});
+Object.assign(I18N.en,{journalHeading:'Interrupted recordings',journalHint:'Only completed checkpoints can be recovered. Audio since the last checkpoint may be lost after interruption or browser/device failure. Pending captures are not included in project backups.',journalRecover:'Recover interrupted take',journalExport:'Save recovered WAV',journalDiscard:'Discard capture',journalDiscardAsk:'Permanently discard this interrupted capture?',journalInvalid:'Capture checkpoint is inconsistent or has a missing chunk. No audio was joined. Keep it for inspection or discard it.',journalMissing:'This capture has already been recovered or discarded. Reload to refresh.',journalError:'Recording checkpoint failed. Audio remains in this page; Stop, then save WAV or retry local storage. Only earlier committed checkpoints can survive page exit.',writerReadOnly:'Another tab owns editing, or the previous owner did not release it. This tab is read-only. Reload and take over to edit the latest saved projects.',writerConflict:'Editing ownership or saved projects changed. Local work has been kept here. Export your WAVs and metadata before reloading and taking over.',takeover:'Reload and take over editing',takeoverAsk:'Reload the latest saved projects and take over editing? Unsaved local changes will be lost. Cancel to export them first.',storageBlocked:'Storage upgrade is blocked. Close older Song tabs to continue; no data has been removed.'});
+Object.assign(I18N.ro,{journalHeading:'Înregistrări întrerupte',journalHint:'Se pot recupera doar punctele de salvare finalizate. Sunetul de după ultima salvare se poate pierde la întrerupere sau la defectarea browserului/dispozitivului. Capturile în curs nu sunt incluse în copiile proiectului.',journalRecover:'Recuperează înregistrarea întreruptă',journalExport:'Salvează WAV-ul recuperat',journalDiscard:'Elimină captura',journalDiscardAsk:'Elimini definitiv această captură întreruptă?',journalInvalid:'Salvarea capturii este inconsistentă sau lipsește un fragment. Sunetul nu a fost unit. Păstreaz-o pentru verificare sau elimin-o.',journalMissing:'Captura a fost deja recuperată sau eliminată. Reîncarcă pentru actualizare.',journalError:'Salvarea intermediară a capturii a eșuat. Sunetul rămâne în această pagină; oprește, apoi salvează WAV sau reîncearcă păstrarea locală. Doar salvările finalizate anterior pot supraviețui închiderii paginii.',writerReadOnly:'Altă filă deține editarea sau fila anterioară nu a eliberat-o. Această filă permite doar citirea. Reîncarcă și preia editarea ultimelor proiecte salvate.',writerConflict:'Dreptul de editare sau proiectele salvate s-au schimbat. Modificările locale rămân aici. Exportă WAV-urile și metadatele înainte de reîncărcare și preluare.',takeover:'Reîncarcă și preia editarea',takeoverAsk:'Reîncarci ultimele proiecte salvate și preiei editarea? Modificările locale nepăstrate se vor pierde. Anulează pentru a le exporta întâi.',storageBlocked:'Actualizarea stocării este blocată. Închide filele Song mai vechi pentru a continua; datele nu au fost eliminate.'});
 const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
 let state='loading', db=null, projects=[], project=null, dirty=false, generation=0;
 let capture=null, lastQuality=null, statusKey=null;
+const Storage=window.ScuLaSongStorage, owner=window.crypto?.randomUUID?.() || String(Math.random())+Date.now();
+let revision=0, writable=true, conflict=false, journals=[], releaseLock=null, ownerLocked=false, coordinator=null;
+const finishedCaptures=new Set();
 let analysisJob=null,analysisFraction=0,analysisPhase='decoding';
 const pendingBlobs = new Map(), deleted = new Set(), urls = new Set();
 let backupJob=null, stagedBackup=null, backupMessage=null;
@@ -1436,11 +1445,18 @@ function paintState(){
   $('restoreBackup').disabled=!idle || !stagedBackup;
   $('cancelBackup').disabled=!idle && (!backupJob || backupJob.saving);
   $('cancelBackup').textContent=t(backupJob?.kind==='export'?'cancelHash':'cancelBackup');
-  $('recordBtn').disabled=!idle || !supported() || !project;
+  $('recordBtn').disabled=!idle || !writable || !supported() || !project;
   $('recordBtn').setAttribute('aria-pressed',String(state==='recording'));
   $('stopBtn').disabled=state!=='recording';
   $('analysisControls').hidden=state!=='analyzing';$('cancelAnalysis').disabled=!analysisJob || analysisJob.cancelled;
   document.querySelectorAll('.take button,.performance input,.performance select,.arrangement input,.arrangement select,.sample-set-editor button,.sample-set-editor input,#songTimelinePanel button,#songTimelinePanel input,#songTimelinePanel select').forEach(b=>b.disabled=b.dataset.stopAudio==='true'? !arrangementJob : !idle || b.dataset.empty==='true');
+  if(!writable){
+    ['newProject','renameProject','projectName','recordBtn','importWav','restoreBackup','retry','addSongSection','undoSongTimeline','redoSongTimeline'].forEach(k=>$(k).disabled=true);
+    document.querySelectorAll('.take button,.performance input,.performance select,.arrangement input,.arrangement select,.sample-set-editor button,.sample-set-editor input,#songTimeline button,#songTimeline input,#songTimeline select').forEach(b=>{if(!b.dataset.readOnlySafe && b.dataset.stopAudio!=='true')b.disabled=true;});
+  }
+  $('takeover').disabled=!idle;
+  document.querySelectorAll('#journals button').forEach(b=>b.disabled=!idle || !writable && b.dataset.action!=='journalExport');
+  $('writerPanel').hidden=writable;$('writerStatus').textContent=t(conflict?'writerConflict':'writerReadOnly');
 }
 function setState(s){state=s;paintState();}
 function quality(q){
@@ -1458,37 +1474,127 @@ function applyUILang(){
   document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
   if(statusKey)$('status').textContent=t(statusKey);
   paintAnalysisProgress();
-  paintState();paintProjects();paintBackup();quality(lastQuality);render();
+  paintState();paintProjects();paintBackup();paintJournals();quality(lastQuality);render();
 }
 window.addEventListener('scula-ui-lang',ev=>{UI=ev.detail==='en'?'en':'ro';applyUILang();});
 /* Metadata and authoritative WAV blobs live in separate IndexedDB stores.
    Every project change and its new/deleted audio commit in one transaction. */
-function openDB(){return new Promise((resolve,reject)=>{
-  const r=indexedDB.open('scula-song',1);
-  r.onupgradeneeded=()=>{r.result.createObjectStore('projects',{keyPath:'id'});r.result.createObjectStore('audio');};
-  r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();db=null;dirty=true;paintProjects();};resolve(r.result);};
-  r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error('blocked'));
-});}
+async function openDB(){
+  const connection=await Storage.open(()=>say('storageBlocked',true));
+  connection.onversionchange=()=>{connection.close();db=null;dirty=true;paintProjects();say('storageError',true);};
+  return connection;
+}
 function read(store,key){return new Promise((resolve,reject)=>{
   if(!db)return reject(new Error('no storage'));
   const tx=db.transaction(store),r=key===undefined?tx.objectStore(store).getAll():tx.objectStore(store).get(key);
   r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
 });}
+function storageFailure(error){
+  dirty=true;
+  if(error?.message==='writerConflict'){writable=false;conflict=true;say('writerConflict',true);}else say('storageError',true);
+  paintProjects();paintState();
+}
 async function persist(){
   try{
-    if(!db)db=await openDB();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction(['projects','audio'],'readwrite');
-      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
-      try{
-        projects.forEach(p=>tx.objectStore('projects').put(p));
-        pendingBlobs.forEach((blob,key)=>tx.objectStore('audio').put(blob,key));
-        deleted.forEach(key=>tx.objectStore('audio').delete(key));
-      }catch(e){tx.abort();reject(e);}
-    });
-    pendingBlobs.clear();deleted.clear();dirty=false;
-  }catch(_){dirty=true;say('storageError',true);}
+    if(!writable)throw new Error('writerConflict');
+    if(!db){db=await openDB();if(!await Storage.claim(db,owner))throw new Error('writerConflict');}
+    revision=await Storage.commit(db,owner,revision,projects,pendingBlobs,deleted,finishedCaptures);
+    pendingBlobs.clear();deleted.clear();finishedCaptures.clear();dirty=false;
+    journals=await read('captures');
+    coordinator?.postMessage('changed');paintJournals();
+  }catch(error){storageFailure(error);}
   paintProjects();return !dirty;
+}
+async function coordinate(){
+  if(navigator.locks){
+    await new Promise(resolve=>{
+      navigator.locks.request('scula-song-owner:'+owner,lock=>{
+        ownerLocked=true;resolve();return new Promise(done=>{releaseLock=done;});
+      }).catch(()=>resolve());
+    });
+  }
+  const previousWriter=(await Storage.snapshot(db)).writer,previous=previousWriter.owner;
+  if(ownerLocked && previousWriter.locked && previous && previous!==owner){
+    // Probe the exact persisted owner, and compare it again atomically. An
+    // explicit takeover may have installed another live owner in the meantime.
+    writable=await navigator.locks.request('scula-song-owner:'+previous,{ifAvailable:true},lock=>Storage.claim(db,owner,!!lock,previous,ownerLocked));
+  }else writable=await Storage.claim(db,owner,false,undefined,ownerLocked);
+  try{coordinator=new BroadcastChannel('scula-song');coordinator.onmessage=checkWriter;}catch(_){}
+}
+async function checkWriter(){
+  if(!db)return;
+  try{const writer=await read('workspace','writer');
+    if(writable && (writer?.owner!==owner || writer?.revision!==revision)){
+      writable=false;conflict=dirty || state!=='idle';paintState();
+      if(capture){capture.interrupted=true;if(state==='recording')stop();}
+    }
+  }catch(_){}
+}
+window.addEventListener('focus',checkWriter);
+window.addEventListener('pagehide',()=>{
+  coordinator?.close();coordinator=null;writable=false;if(capture)capture.pageHidden=true;paintState();
+  if(db)Storage.release(db,owner).catch(()=>{});
+  if(releaseLock)releaseLock();releaseLock=null;ownerLocked=false;
+});
+// BFCache resumes must verify ownership before allowing another mutation.
+window.addEventListener('pageshow',event=>{if(event.persisted){writable=false;paintState();checkWriter();if(capture && state==='recording'){capture.interrupted=true;stop();}}});
+$('takeover').onclick=()=>run(async()=>{
+  if(dirty && !confirm(t('takeoverAsk')))return;
+  if(!db)db=await openDB();
+  await Storage.claim(db,owner,true,undefined,ownerLocked);
+  // Read the latest snapshot after fencing the old writer; never write the
+  // losing tab's stale in-memory project, even if its revision looks current.
+  const saved=await Storage.snapshot(db);projects=saved.projects;revision=saved.writer.revision;journals=saved.captures;
+  pendingBlobs.clear();deleted.clear();finishedCaptures.clear();dirty=false;conflict=false;writable=saved.writer.owner===owner;
+  project=projects.find(p=>p.id===project?.id)||projects[0];
+  histories.clear();songTimelineHistories.clear();selectedArrangements.clear();
+  if(!project){newProject();await persist();}
+  coordinator?.postMessage('changed');paintProjects();paintJournals();await render();say('idle');
+});
+function paintJournals(){
+  const host=$('journals');host.replaceChildren();$('journalPanel').hidden=!journals.length;
+  for(const meta of journals){
+    const item=document.createElement('article'),name=document.createElement('p'),row=document.createElement('div');row.className='row';
+    name.textContent=meta.name+' · '+meta.projectName+' · '+time(meta.frames/meta.sampleRate);item.append(name,row);
+    for(const key of ['journalRecover','journalExport','journalDiscard']){
+      const b=document.createElement('button');b.textContent=t(key);b.dataset.action=key;b.onclick=()=>run(async()=>{
+        try{
+          if(key==='journalDiscard'){
+            if(!writable || !confirm(t('journalDiscardAsk')))return;
+            await Storage.discard(db,owner,meta.id);
+          }else{
+            const recovered=await Storage.recover(db,meta.id);
+            if(key==='journalExport'){await ScuLaFolder.save(safeName(meta.name)+'-'+meta.id+'.wav',recovered.blob);return;}
+            if(!writable)return;
+            let target=projects.find(p=>p.id===meta.projectId);
+            if(!target){target={schemaVersion:1,id:meta.projectId,name:meta.projectName,createdAt:meta.createdAt,updatedAt:meta.createdAt,recordings:[],derivedAssets:[],arrangements:[],timeline:[]};projects.push(target);}
+            if(!target.recordings.some(r=>r.id===meta.id)){
+              target.recordings.push(recordingFromCapture(meta,recovered.blob,true));pendingBlobs.set(meta.id,recovered.blob);
+            }
+            project=target;touch();finishedCaptures.add(meta.id);if(!await persist()){await render();return;}
+          }
+          journals=(await Storage.snapshot(db)).captures;paintJournals();paintProjects();await render();
+        }catch(e){if(e.message==='writerConflict')storageFailure(e);else say(['journalInvalid','journalMissing'].includes(e.message)?e.message:'storageError',true);}
+      });row.append(b);
+    }
+    host.append(item);
+  }
+  paintState();
+}
+function captureMetadata(c){return {id:c.id,projectId:c.projectId,projectName:c.projectName,name:c.name,purpose:c.purpose,sample:c.sample,createdAt:c.createdAt,sampleRate:c.sr,channels:c.ch,encoding:'PCM24',backend:c.backend,settings:c.settings,label:c.label,peak:c.peak,waveform:c.waveform};}
+function recordingFromCapture(meta,blob,interrupted){return {id:meta.id,name:meta.name,createdAt:meta.createdAt,duration:meta.bytes/(meta.sampleRate*meta.channels*3),mimeType:'audio/wav',sampleRate:meta.sampleRate,channelCount:meta.channels,bitDepth:24,purpose:meta.purpose,...(meta.sample?{sample:meta.sample}:{}),source:{assetId:meta.id,captureId:meta.id,immutable:true,size:blob.size,captureBackend:meta.backend,inputSettings:meta.settings,microphone:meta.label,peak:meta.peak,interrupted:!!interrupted},waveform:meta.waveform||[],derivedAssets:[],performance:null};}
+function checkpoint(c,retry=false){
+  if(c.checkpointWork)return c.checkpointWork;
+  if(c.checkpointFailed && !retry)return Promise.resolve();
+  c.checkpointFailed=false;
+  c.checkpointWork=(async()=>{
+    try{
+      if(!db)throw new Error('storageError');
+      while(c.committed<c.parts.length){
+        await Storage.append(db,owner,captureMetadata(c),c.committed,c.parts[c.committed]);c.committed++;
+      }
+    }catch(e){c.checkpointFailed=true;dirty=true;if(e.message==='writerConflict')storageFailure(e);else{say('journalError',true);paintProjects();}}
+  })().finally(()=>{c.checkpointWork=null;});return c.checkpointWork;
 }
 async function blobFor(r){return pendingBlobs.get(r.id) || await read('audio',r.id);}
 function newProject(){const stamp=now();project={schemaVersion:1,id:id(),name:t('untitled'),createdAt:stamp,updatedAt:stamp,recordings:[],derivedAssets:[],arrangements:[],timeline:[]};projects.push(project);prefs.set('scula:song:project',project.id);paintProjects();}
@@ -1567,7 +1673,7 @@ async function restoreBackup(){
   if(await persist())say('backupRestored');await render();
 }
 function clearPlayers(){document.querySelectorAll('.take audio').forEach(a=>{a.pause();a.removeAttribute('src');a.load();});urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();}
-function button(key,action){const b=document.createElement('button');b.textContent=t(key);b.type='button';b.onclick=()=>run(action);return b;}
+function button(key,action){const b=document.createElement('button');if(/^(save|play|preview|audition|stop)/.test(key))b.dataset.readOnlySafe='true';b.textContent=t(key);b.type='button';b.onclick=()=>run(action);return b;}
 async function render(){
   const gen=++generation;stopArrangement();clearPlayers();const host=$('recordings');host.replaceChildren();
   $('sampleSetEditor').replaceChildren();$('sampleSetPanel').hidden=true;
@@ -2290,18 +2396,19 @@ class Capture extends AudioWorkletProcessor {
   };c.backend='ScriptProcessor';return node;
 }
 function takeBlock(c,block){
-  if(!block.pcm || capture!==c)return;
+  if(!block.pcm || capture!==c || c.closed)return;
   if(block.channels && !c.bytes){c.ch=block.channels;if(lastQuality){lastQuality.channels=c.ch;quality(lastQuality);}}
   // Stay below RIFF's 32-bit size limit and bound long-session memory.
   if(c.bytes+block.pcm.length>0xffffffff-37){c.interrupted=true;if(state==='recording')stop();return;}
   c.pending.push(block.pcm);c.pendingBytes+=block.pcm.length;c.bytes+=block.pcm.length;
-  if(c.pendingBytes>=c.sr*c.ch*3*5){c.parts.push(new Blob(c.pending));c.pending=[];c.pendingBytes=0;}
+  if(c.pendingBytes>=c.sr*c.ch*3*5){c.parts.push(new Blob(c.pending));c.pending=[];c.pendingBytes=0;checkpoint(c);}
   c.peak=Math.max(c.peak,block.peak);c.waveform.push(block.peak);
   if(c.waveform.length>512)c.waveform=Array.from({length:256},(_,i)=>Math.max(c.waveform[2*i],c.waveform[2*i+1]));
   $('level').value=Math.min(1,block.rms*3);$('timer').textContent=time(c.bytes/(c.sr*c.ch*3));
 }
 async function cleanup(c){
   if(!c)return;
+  c.closed=true;
   clearInterval(c.timer);
   if(c.node){c.node.onprocessorerror=null;c.node.onaudioprocess=null;if(c.node.port)c.node.port.onmessage=null;try{c.node.disconnect();}catch(_){}}
   if(c.src)try{c.src.disconnect();}catch(_){}
@@ -2311,20 +2418,22 @@ async function cleanup(c){
   $('level').value=0;
 }
 async function start(){
-  if(state!=='idle' || !supported())return;
+  if(state!=='idle' || !writable || !supported())return;
   const midi=$('midiNote').value;
   if($('purpose').value==='sample' && midi!=='' && (!Number.isInteger(+midi)||+midi<0||+midi>127)){say('badNote',true);return;}
   clearPlayers();setState('requesting');say('requesting');$('timer').textContent='00:00';
-  const c={stream:null,ctx:null,node:null,src:null,parts:[],pending:[],pendingBytes:0,bytes:0,peak:0,waveform:[],projectId:project.id,name:$('takeName').value.trim().slice(0,120) || t('take')+' '+(project.recordings.length+1),purpose:$('purpose').value,createdAt:now()};
+  const c={id:id(),projectName:project.name,committed:0,stream:null,ctx:null,node:null,src:null,parts:[],pending:[],pendingBytes:0,bytes:0,peak:0,waveform:[],projectId:project.id,name:$('takeName').value.trim().slice(0,120) || t('take')+' '+(project.recordings.length+1),purpose:$('purpose').value,createdAt:now()};
   if(c.purpose==='sample')c.sample=Object.fromEntries(['instrument','note','midiNote','articulation','dynamic','notes'].map(k=>[k,k==='midiNote'?(midi===''?null:+midi):$(k).value.trim()]));
   capture=c;
   try{
     c.stream=await openMicrophone();
+    if(c.closed || !writable)throw new Error('captureClosed');
     const track=c.stream.getAudioTracks()[0];c.settings=track.getSettings?track.getSettings():{};c.label=track.label;
     c.ch=c.settings.channelCount===2?2:1;
     try{c.ctx=new AC(c.settings.sampleRate?{sampleRate:c.settings.sampleRate}:{});}catch(_){c.ctx=new AC();}
-    await c.ctx.resume();if(c.ctx.state!=='running')throw new Error('audio suspended');c.sr=c.ctx.sampleRate;
+    await c.ctx.resume();if(c.closed || !writable)throw new Error('captureClosed');if(c.ctx.state!=='running')throw new Error('audio suspended');c.sr=c.ctx.sampleRate;
     c.src=c.ctx.createMediaStreamSource(c.stream);c.node=await makeTap(c);
+    if(c.closed || !writable)throw new Error('captureClosed');
     c.node.onprocessorerror=()=>{c.interrupted=true;if(state==='recording')stop();};
     c.src.connect(c.node);c.node.connect(c.ctx.destination);
     track.onended=()=>{c.interrupted=true;if(state==='recording')stop();};
@@ -2335,7 +2444,7 @@ async function start(){
     c.timer=setInterval(()=>{$('timer').textContent=time(c.bytes/(c.sr*c.ch*3));},250);
     listDevices().catch(()=>{});
     if(navigator.wakeLock)navigator.wakeLock.request('screen').then(lock=>{if(capture===c && state==='recording')c.wake=lock;else lock.release().catch(()=>{});}).catch(()=>{});
-  }catch(e){await cleanup(c);capture=null;setState('idle');micFailure(e);render();}
+  }catch(e){await cleanup(c);capture=null;setState('idle');if(e.message==='captureClosed')say(writable?'interrupted':'writerReadOnly',true);else micFailure(e);if(!c.pageHidden)render();}
 }
 async function stop(){
   if(state!=='recording')return;
@@ -2343,9 +2452,10 @@ async function stop(){
   if(c.node.port && c.ctx.state==='running')await new Promise(resolve=>{let timer=setTimeout(()=>{c.interrupted=true;resolve();},2000);c.resolveStop=()=>{clearTimeout(timer);resolve();};c.node.port.postMessage('stop');});
   await cleanup(c);capture=null;
   if(!c.bytes){setState('idle');say('short',true);await render();return;}
-  if(c.pending.length)c.parts.push(new Blob(c.pending));
-  const blob=ScuLaPCM.wav(c.parts,c.bytes,c.sr,c.ch),duration=c.bytes/(c.sr*c.ch*3),recId=id();
-  const r={id:recId,name:c.name,createdAt:c.createdAt,duration,mimeType:'audio/wav',sampleRate:c.sr,channelCount:c.ch,bitDepth:24,purpose:c.purpose,...(c.sample?{sample:c.sample}:{}),source:{assetId:recId,immutable:true,size:blob.size,captureBackend:c.backend,inputSettings:c.settings,microphone:c.label,peak:c.peak,interrupted:!!c.interrupted},waveform:c.waveform,derivedAssets:[],performance:null};
+  if(c.pending.length){c.parts.push(new Blob(c.pending));c.pending=[];c.pendingBytes=0;}
+  await checkpoint(c,true);
+  const blob=ScuLaPCM.wav(c.parts,c.bytes,c.sr,c.ch),duration=c.bytes/(c.sr*c.ch*3);
+  const r=recordingFromCapture({...captureMetadata(c),bytes:c.bytes},blob,c.interrupted);finishedCaptures.add(c.id);
   project.recordings.push(r);pendingBlobs.set(r.id,blob);touch();
   lastQuality={...lastQuality,size:blob.size,duration};quality(lastQuality);$('timer').textContent=time(duration);
   const ok=await persist();setState('idle');if(ok)say(c.interrupted?'interrupted':c.peak>=1?'clip':'recovered',c.peak>=1);await render();
@@ -2372,10 +2482,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)stopArrange
 window.addEventListener('pagehide',()=>{if(analysisJob){analysisJob.pageHidden=true;analysisJob.cancelled=true;}if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
 async function init(){
   applyUILang();
-  try{db=await openDB();projects=await read('projects');}catch(_){dirty=true;}
+  try{db=await openDB();await coordinate();const saved=await Storage.snapshot(db);projects=saved.projects;revision=saved.writer.revision;journals=saved.captures;writable=saved.writer.owner===owner;}catch(_){dirty=true;}
   project=projects.find(p=>p.id===prefs.get('scula:song:project')) || projects[0];
-  if(!project){newProject();await persist();}
-  await listDevices().catch(()=>{});
+  if(!project){newProject();if(writable)await persist();}
+  paintJournals();await listDevices().catch(()=>{});
   paintProjects();setState('idle');if(!supported())say('unsupported',true);else if(dirty)say('storageError',true);else say('idle');await render();
 }
 init();
