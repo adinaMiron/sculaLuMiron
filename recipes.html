@@ -1130,7 +1130,46 @@
   // The one call pages make. Always resolves. Read `message` to say what
   // happened in the app's own UI (null = say nothing), or leave `quiet` off
   // and the shared toast speaks.
+  // Stream producers are used by large Song WAV exports. Other saves keep the
+  // Blob API. Await every write for backpressure; never buffer a large fallback.
+  async function saveStream(filename, source, opts){
+    var cap = 32 * 1048576, quiet = !!(opts && opts.quiet);
+    if(!Number.isSafeInteger(source.size) || source.size < 0) throw new Error("renderLimit");
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) throw new Error("renderLimit");
+    async function fallback(){
+      if(source.size > cap) throw new Error("exportLimit");
+      var chunks=[], bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size || bytes>cap) throw new Error("exportLimit");
+        chunks.push(new Blob([chunk]));
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      return save(filename,new Blob(chunks,{type:source.type}),opts);
+    }
+    if(currentMode()!=="folder") return fallback();
+    var d=await dir(); if(!d) return fallback();
+    for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
+    var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
+    try{
+      var bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size) throw new Error("renderSize");
+        await w.write(chunk);
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      await w.close();
+    }catch(e){try{await w.abort();}catch(_){} throw e;}
+    var path=root.name+"/"+subdir()+"/"+(folders.length?folders.join("/")+"/":"")+name;
+    return report({saved:true,via:"folder",name:name,path:path,message:tx("saved")(path)},quiet);
+  }
+
   function save(filename, blob, opts){
+    if(blob && !(blob instanceof Blob) && typeof blob.stream === "function") return saveStream(filename,blob,opts);
     var quiet = !!(opts && opts.quiet);
     // Optional directories remain beneath this page's SUBDIR. On mobile,
     // callers include ownership in the filename; share/download stay flat.

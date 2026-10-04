@@ -110,6 +110,11 @@ Completion report: implemented gaps, changed files, recovery/concurrency guarant
 
 ### Milestone B — bounded arrangement/song rendering
 
+Implementation note (2026-10-04): implemented from `c0d29a2`. See
+[rendering budgets and behavior](SONG-RENDERING.md) and the status report for
+verification and the deliberate long-preview/offline-export distinction.
+Milestone C remains a separate task requiring consented human recordings.
+
 The report says bounded source analysis and backup inspection already exist, but full stereo mixes still allocate in memory. Fix this before increasing song lengths or adding large instrument packs.
 
 - Measure the current allocation path. At 44.1 kHz, two Float32 channels for 20 minutes require about 404 MiB for the final buffer alone, before sources, temporary buffers and encoded output.

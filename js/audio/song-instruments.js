@@ -10,9 +10,9 @@ const limit=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 /* Three slightly mistuned strings, with stiff-string inharmonicity, a soft
    hammer at low velocity, a short felt/key transient and per-partial damping.
    High notes decay sooner than low notes, as on a piano. */
-function piano(midi,hold,sr,velocity){
+function* pianoBlocks(midi,hold,sr,velocity,blockSize){
  const f=440*2**((midi-69)/12),v=limit(velocity,0,1),seconds=Math.min(hold+.25,Math.max(1.6,7.5-(midi-45)*.065));
- const out=new Float32Array(Math.ceil(seconds*sr)),random=rng(seedFor(midi,v,1));
+ const total=Math.ceil(seconds*sr),out=new Float32Array(Math.min(total,blockSize)),random=rng(seedFor(midi,v,1));
  const strings=midi<48?2:3,partials=[];
  const stiffness=.00008+Math.max(0,midi-45)*.000008;
  const brightness=limit(.38+v*.78-(midi-72)*.004,.3,1.2);
@@ -25,48 +25,53 @@ function piano(midi,hold,sr,velocity){
    decay:Math.exp(-1/(sr*(Math.max(.11,seconds*(.95-.055*h)))))});
  }
  let noise=0,transient=0;
- for(let i=0;i<out.length;i++){
+ for(let i=0;i<total;i++){
   let sum=0;
   for(const p of partials){sum+=Math.sin(p.phase)*p.amp;p.phase+=p.step;if(p.phase>TAU)p.phase-=TAU;p.amp*=p.decay;}
   noise=noise*.7+random()*.3;
   transient=transient*.94+noise*.06;
   const t=i/sr,attack=1-Math.exp(-t/.0025),damper=t>hold?Math.exp(-(t-hold)/.075):1;
-  out[i]=(sum*.42+transient*Math.exp(-t/.025)*(.015+.04*v))*attack*damper;
+  out[i%blockSize]=(sum*.42+transient*Math.exp(-t/.025)*(.015+.04*v))*attack*damper;
+  if((i+1)%blockSize===0 || i===total-1)yield out.subarray(0,i%blockSize+1);
  }
- return out;
+
 }
 
 /* A pluck excites a damped delay line. A comb in the initial burst models
    the pick position; the body/pickup filters give guitar and bass different
    spectra. Fractional delay interpolation keeps tuning accurate across notes. */
-function string(midi,hold,sr,velocity,bass){
+function* stringBlocks(midi,hold,sr,velocity,bass,blockSize){
  const f=440*2**((midi-69)/12),v=limit(velocity,0,1);
- const seconds=Math.min(hold+.3,bass?5:4.5),out=new Float32Array(Math.ceil(seconds*sr));
+ const seconds=Math.min(hold+.3,bass?5:4.5),total=Math.ceil(seconds*sr),out=new Float32Array(Math.min(total,blockSize));
  const length=Math.max(3,Math.floor(sr/f)),frac=sr/f-length,line=new Float32Array(length),random=rng(seedFor(midi,v,bass?3:2));
  const pick=Math.max(2,Math.round(length*(bass?.21:.16)));
  let smooth=0;
  for(let i=0;i<length;i++){smooth=.62*smooth+.38*random();line[i]=smooth-(i>=pick?line[i-pick]*.65:0);}
  let index=0,previous=0,body=0,pickup=0;
  const loss=Math.exp(-1/(sr*(bass?1.9:1.35))*length),tone=bass?.63:.48;
- for(let i=0;i<out.length;i++){
+ for(let i=0;i<total;i++){
   const older=(index+length-1)%length,current=line[index],sample=current*(1-frac)+line[older]*frac;
   const filtered=(sample+previous)*.5;previous=sample;
   line[index]=loss*(tone*filtered+(1-tone)*current);index=(index+1)%length;
   body+=.025*(sample-body);pickup+=.11*(body-pickup);
   const t=i/sr,release=t>hold?Math.exp(-(t-hold)/(bass?.13:.085)):1;
   const pickNoise=random()*Math.exp(-t/.004)*(bass?.014:.026)*v;
-  out[i]=((bass?.65:.78)*sample+(bass?.45:.22)*pickup+pickNoise)*(.55+.45*v)*release;
+  out[i%blockSize]=((bass?.65:.78)*sample+(bass?.45:.22)*pickup+pickNoise)*(.55+.45*v)*release;
+  if((i+1)%blockSize===0 || i===total-1)yield out.subarray(0,i%blockSize+1);
  }
- return out;
+
 }
 
-function instrument(id,midi,hold,sr,velocity=1){
- if(id==='piano')return piano(midi,hold,sr,velocity);
- if(id==='guitar'||id==='bass')return string(midi,hold,sr,velocity,id==='bass');
- // Voice keeps its default random timbre. Song seeds the shared kernel so
- // separate playback/export renders of the same version produce the same PCM.
+function* instrumentBlocks(id,midi,hold,sr,velocity=1,blockSize=4096){
+ if(id==='piano'){yield* pianoBlocks(midi,hold,sr,velocity,blockSize);return;}
+ if(id==='guitar'||id==='bass'){yield* stringBlocks(midi,hold,sr,velocity,id==='bass',blockSize);return;}
  const next=rng(seedFor(midi,Math.round(hold*1000)+sr+id.length,17));
- return root.ScuLaSynthesis.renderInstrument(id,midi,hold,sr,()=>(next()+1)/2);
+ yield* root.ScuLaSynthesis.instrumentBlocks(id,midi,hold,sr,()=>(next()+1)/2,blockSize);
+}
+function instrument(id,midi,hold,sr,velocity=1){
+ const chunks=[];let size=0;
+ for(const block of instrumentBlocks(id,midi,hold,sr,velocity)){chunks.push(block.slice());size+=block.length;}
+ const out=new Float32Array(size);let at=0;for(const block of chunks){out.set(block,at);at+=block.length;}return out;
 }
 
 /* Drum kits share the MIDI mapping, but have their own resonances, noise
@@ -102,5 +107,5 @@ function drum(type,kit,sr){
  }
  return out;
 }
-root.ScuLaSongInstruments=Object.freeze({instrument,drum});
+root.ScuLaSongInstruments=Object.freeze({instrument,instrumentBlocks,drum});
 })(typeof window==='undefined'?globalThis:window);

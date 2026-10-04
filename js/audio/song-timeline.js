@@ -27,23 +27,8 @@ function resolve(project){
  }
  return {items,seconds,ticks};
 }
-async function render(project,{sampleRate=44100,samplesFor=async()=>({}),cancelled=()=>false,yieldUI=()=>new Promise(r=>setTimeout(r,0))}={}){
- const plan=resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');
- const length=Math.ceil((plan.seconds+TAIL_SECONDS)*sampleRate),L=new Float32Array(length),R=new Float32Array(length),cache=new Map();
- for(const item of plan.items){
-  if(cancelled())throw new Error('cancelled');
-  const cacheKey=item.arrangement.id+'|'+JSON.stringify(item.section.mix||null);
-  let mix=cache.get(cacheKey);
-  if(!mix){const a=item.section.mix?{...item.arrangement,parts:partsFor(item)}:item.arrangement;const samples=await samplesFor(a);if(cancelled())throw new Error('cancelled');mix=await A.render(a,{sampleRate,samples,cancelled,yieldUI});cache.set(cacheKey,mix);}
-  const start=Math.round(item.seconds*sampleRate);
-  for(let i=0;i<mix.L.length && start+i<length;i++){L[start+i]+=mix.L[i];R[start+i]+=mix.R[i];}
-  await yieldUI();
- }
- if(cancelled())throw new Error('cancelled');
- let peak=0;for(let i=0;i<length;i++)peak=Math.max(peak,Math.abs(L[i]),Math.abs(R[i]));
- if(peak>.95){const gain=.95/peak;for(let i=0;i<length;i++){L[i]*=gain;R[i]*=gain;}}
- return {L,R,sr:sampleRate};
-}
+async function render(project,opts){return root.ScuLaSongRenderer.song(project,opts).collect();}
+
 function midi(project,range=null){
  const plan=resolve(project);if(!plan.items.length)throw new Error('timelineEmpty');
  if(range && (!Number.isFinite(range.start)||!Number.isFinite(range.end)||range.start<0||range.end<=range.start||range.end>plan.seconds+TAIL_SECONDS+.001))throw new Error('timelineInvalid');

@@ -7,7 +7,8 @@ Original review snapshot: [a3382e37a0d6eb6862a635c6a822eaebead28f14](https://git
 The original review was documentation/source inspection only. Milestone A was
 implemented from checkout `616f70d17366bb37f42b825a21c9fb9a98798ccb` on branch
 `codex/song-milestone-a`. Its verification results are recorded below separately
-from the original review; hardware checks remain unexecuted.
+from the original review; hardware checks remain unexecuted. Milestone B starts
+from `c0d29a2`; its rendering design and limits are in [SONG-RENDERING.md](SONG-RENDERING.md).
 
 ## Current scope
 
@@ -117,13 +118,13 @@ Implementation: [analysis.js](../js/audio/analysis.js), [performance.js](../js/a
 - Generate duration-weighted diatonic backing chords, instrument-dependent arpeggios/triads, root bass and kick/snare/hat patterns.
 - Transpose the lead by key tonic difference while preserving edited melody relationships and cents.
 - Display the four parts together in a colored roll.
-- Render a 44.1 kHz stereo mix with panning, releases and reverb, seeded sounds and peak attenuation above 0.95.
+- Render 44.1 kHz stereo in bounded blocks with panning, releases, stateful reverb, seeded sounds and measured global peak attenuation above 0.95 for export.
 - Cancel rendering/playback and release audio resources on Stop and relevant workspace/lifecycle changes.
 - Export derived PCM16 stereo WAV and format 1 MIDI containing a metadata track plus four named part tracks, programs and CC7 volumes. Drums use MIDI channel 10.
 
 Song adds acoustic-style piano, guitar, bass and distinct drum models to the shared synthesis kernel. The shared Voice helpers retain their separate behavior. Arrangements use schema/generator version 1. Editing arrangement controls regenerates that version; timeline sections linked to it follow the update.
 
-Implementation: [arrangement.js](../js/audio/arrangement.js), [synthesis.js](../js/audio/synthesis.js), [song-instruments.js](../js/audio/song-instruments.js), and `arrangementEditor` / `arrangementAudio`.
+Implementation: [song-renderer.js](../js/audio/song-renderer.js), [song-playback.js](../js/audio/song-playback.js), [arrangement.js](../js/audio/arrangement.js), [synthesis.js](../js/audio/synthesis.js), [song-instruments.js](../js/audio/song-instruments.js), and `arrangementEditor` / `arrangementAudio`.
 
 ## 5. Recorded instrument sample sets
 
@@ -137,7 +138,7 @@ Implementation: [arrangement.js](../js/audio/arrangement.js), [synthesis.js](../
 - Audition the original recording or edited sample playback.
 - Persist sample playback metadata without changing original WAV bytes.
 
-Loops must fit the source and be at least 30 ms; crossfade is 1–100 ms and at most half the loop length; release is 10 ms–2 s. Missing, invalid, undecodable, distant or oversized samples (>64 MiB or 30 seconds) fall back to synthesis. Old projects use one-shot defaults.
+Loops must fit the source and be at least 30 ms; crossfade is 1–100 ms and at most half the loop length; release is 10 ms–2 s. Missing, invalid, undecodable, distant or oversized samples (>16 MiB or 30 seconds) fall back to synthesis. A 16 MiB aggregate decoded-sample cache is checked before decoding; exceeding it stops rendering with guidance. Old projects use one-shot defaults.
 
 Sample metadata edits affect every arrangement selecting that named set. Arrangement notes and MIDI remain fixed, but the rendered sound can change with sample settings.
 
@@ -238,6 +239,32 @@ microphone/phone checks are listed in [tests README](../tests/README.md#manual-m
 
 A labeled-humming evaluator is implemented in [song-evaluate.js](../tests/song-evaluate.js). Documentation reports successful controlled generated-signal cases after version 2 segmentation changes, but no labeled human humming corpus is included. Real-world accuracy has not been established.
 
+### Milestone B verification (2026-10-04)
+
+The clean starting checkout was `c0d29a2`. The pre-edit command
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+exited 0 with all **20** baseline suites passing. The expanded post-change
+command exited 0 with all **22** suites passing, including bounded-render PCM
+comparison and browser streaming/long-preview tests. After final review edits,
+`node tests/verify.js`, `node tests/song-bounded-render.js` and
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-render-browser.js`
+all exited 0; `git diff --check` passed. GitHub Actions itself was not run here.
+
+Review covered deterministic rounding, two-stage peak attenuation, exact loop
+slices, sample budgets, in-flight seek cancellation, serial sample decoding,
+node cleanup and write abort/commit order. Fixes include releasing completed
+one-shot voices, refusing extreme pitches before an oversized delay-line
+allocation, preserving progress values on language changes and checking
+cancellation before closing streamed output. The old full-buffer renderer now
+lives only in the short test fixture; public render collectors are bounded.
+
+Project, arrangement and backup schemas remain unchanged. No original WAVs are
+modified. The shared stream-save extension is identical across all nine pages.
+[Rendering details](SONG-RENDERING.md) document the 24 MiB synthesis pool,
+16 MiB decoded-sample cache, 32 MiB download/share limit, preview differences
+and unexecuted real-device/memory/disk checks. Milestone C is next and requires
+consented labeled human recordings; synthetic tests do not establish accuracy.
+
 ## 9. Current limitations and work not implemented
 
 - No automatic disk mirroring or self-contained backup archive: export JSON and source WAVs separately.
@@ -246,7 +273,8 @@ A labeled-humming evaluator is implemented in [song-evaluate.js](../tests/song-e
 - No persisted rendered derived assets; mixes are generated in memory.
 - No polyphonic/accompanied transcription guarantee; analysis targets a single unaccompanied humming voice and may need manual edits.
 - No continuous cents/expression pitch-bend export in MIDI; those values remain in JSON and, where rendered, audio.
-- Full arrangement/song rendering still allocates stereo mixes in memory despite bounded source analysis and backup inspection.
+- Short previews (up to 30 seconds) collect a bounded stereo mix. Longer previews schedule blocks with live peak control and may need a cancellable wait on late seeks; their peak handling can differ from WAV export.
+- WAV export uses bounded peak/replay passes. Downloads/shares are limited to 32 MiB; larger WAVs require a selected writable folder. The renderer caps active synthesis, sample decoding and musical event counts; browser native memory is not a measured RSS guarantee.
 - Background/mobile recording, real microphones, long sessions and phone memory limits still need manual validation. ScriptProcessor fallback may drop audio when the UI thread stalls.
 - No new runtime framework, build step or downloaded instrument dependency is required; the page uses ordered plain scripts and browser APIs, including local-file use where supported.
 

@@ -873,7 +873,7 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~2500 lines · Song Creation / Creează melodie
+## song.html — ~2600 lines · Song Creation / Creează melodie
 
 See `docs/FEATURES.md` § V for the authoritative architecture, performance/arrangement schemas and staged backup restoration.
 
@@ -881,8 +881,8 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 |---|---|
 | `:root`, `.panel`, `.take` (head) | Theme tokens and responsive workspace CSS |
 | `<nav id="site-nav">` (10) through `end toolbar nav` | Identical shared nav; Song SUBDIR and optional `save(...,{directories})` |
-| `<main>` (~1317) | Project, microphone/recording, WAV import, sample metadata, take list and whole-song timeline controls |
-| `#backupHeading`, `#backupJson`, `#backupWavs` (~1330) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
+| `<main>` (~1358) | Project, microphone/recording, WAV import, sample metadata, take list and whole-song timeline controls |
+| `#backupHeading`, `#backupJson`, `#backupWavs` (~1370) | RO/EN JSON + multi-file WAV selection, validate/import/cancel and preview; no directory picker |
 | `I18N`, `applyUILang`, `paintState`, `quality` | RO/EN labels, state machine and verified capture information |
 | `openDB`, `read`, `persist`, `blobFor` | `scula-song` v2 projects/audio, fenced atomic commits, in-memory failure recovery |
 | `js/audio/song-storage.js` | In-place v2 upgrade; workspace owner/revision checks, consistent snapshots, atomic capture chunks/checkpoints and finalization, recovery sequence/dimension validation |
@@ -905,15 +905,21 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `createArrangement`, `changeArrangement`, `arrangementEditor`, `drawArrangement`, `sampleSets`, `renderSampleSetEditor`, `sampleWavePeaks`, `drawSampleWave` | Project-level versions/snapshots, independent parts, synth/sample-set and mix/tempo/key/timing controls, piano roll; bounded source WAV peak waveform, draggable timing markers, editable sample mapping, metadata and audition |
 | `arrangementAudio`, `arrangementSamples`, `stopArrangement`, `arrangementFilename`, `exportArrangementMidi` | Project WAV decoding with missing-source fallback, cancelable rendering/playback, node/context cleanup and ScuLaFolder stereo WAV/multitrack MIDI saves |
 | `js/audio/synthesis.js` | Versioned Voice instrument and shared harmony, rendering and export kernels |
-| `js/audio/song-instruments.js` | Song-only struck piano, plucked guitar/bass and distinct acoustic-style drum kit renderers |
+| `js/audio/song-instruments.js` | Song-only piano/plucked-string block generators, compatibility collectors and deterministic drum kits |
+| `js/audio/song-renderer.js`, `js/audio/song-playback.js` | Bounded stateful synthesis/reverb, budget instrumentation, global peak/replay WAV streams and exact loop slices; short collector and long-preview scheduler. See `docs/SONG-RENDERING.md` |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, bounded nearest-note sample mapping, playback start/sustain crossfade/release, MIDI CC7/part tracks, fixed-headroom stereo mix |
-| `renderSongTimeline`, `editSongTimeline`, `stepSongTimeline`, `paintSongBeatRuler`, `songLoopBounds`, `changeSongLoop`, `seekSong`, `startSongAt`, `songAudio`, `stopArrangement`, `exportSongMidi` | Linked section editors with mix overrides and per-project undo/redo, proportional overview/repeat marks, 4/4 beat ruler/snap, temporary full/section/custom loop and optional WAV fades, pointer/keyboard transport, playhead, shared-buffer seeking/looping, Stop/cleanup and whole-song exports |
-| `js/audio/song-timeline.js` | Resolve section references, validate mix overrides and duration cap, expose the 1.8-second WAV tail, cache/overlap effective arrangement renders, optional edge fade, stereo WAV and tempo/key/effective-part-aware whole-song or clipped loop multitrack MIDI |
+| `renderSongTimeline`, `editSongTimeline`, `stepSongTimeline`, `paintSongBeatRuler`, `songLoopBounds`, `changeSongLoop`, `seekSong`, `startSongAt`, `songAudio`, `stopArrangement`, `exportSongMidi` | Linked section editors with mix overrides and per-project undo/redo, proportional overview/repeat marks, 4/4 beat ruler/snap, temporary full/section/custom loop and optional WAV fades, pointer/keyboard transport, playhead, bounded short buffers or scheduled long-preview seeking/looping, Stop/cleanup and whole-song exports |
+| `js/audio/song-timeline.js` | Resolve section references, validate mix overrides and duration cap, expose the 1.8-second WAV tail, delegate bounded audio rendering; retain section/mix resolution, optional edge fade, stereo WAV and tempo/key/effective-part-aware whole-song or clipped loop multitrack MIDI |
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json`, `tests/song-instruments.js` | Pre-extraction Voice accuracy reference and Song-only acoustic-style instrument checks |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
 | `tests/song-timeline.js` | Two-take file:// sections, mix override playback/MIDI/validation and undo/redo, 4/4 ruler/beat snap, proportional layout, seeking/playhead and full/section/custom loop across repeats, optional loop WAV fade, keyboard/touch range, rendering/playback Stop and cleanup, RO/EN phone transport, whole-song and loop MIDI/WAV timing, clipped notes, parity, backup remapping and source bytes |
 | `tests/song-samples.js`, `tests/song-sample-browser.js` | Sample pitch/dynamic mapping, loop boundaries/release, legacy defaults and fallback; file:// import, waveform/marker dragging, invalid boundaries, mapping changes, unchanged source, audition, played/exported PCM and persistence |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
-| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 20-suite local/CI runner |
+| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 22-suite local/CI runner |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |
+
+Song Milestone B checks: `tests/song-bounded-render.js` compares to the isolated
+`tests/fixtures/song-render-v1.js`; `tests/song-render-browser.js` covers streaming
+saves/failures and long-preview scheduling/seek/loops. Shared `saveStream` is
+inside the synchronized nav block in all nine pages.

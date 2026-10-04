@@ -622,7 +622,46 @@
   // The one call pages make. Always resolves. Read `message` to say what
   // happened in the app's own UI (null = say nothing), or leave `quiet` off
   // and the shared toast speaks.
+  // Stream producers are used by large Song WAV exports. Other saves keep the
+  // Blob API. Await every write for backpressure; never buffer a large fallback.
+  async function saveStream(filename, source, opts){
+    var cap = 32 * 1048576, quiet = !!(opts && opts.quiet);
+    if(!Number.isSafeInteger(source.size) || source.size < 0) throw new Error("renderLimit");
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) throw new Error("renderLimit");
+    async function fallback(){
+      if(source.size > cap) throw new Error("exportLimit");
+      var chunks=[], bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size || bytes>cap) throw new Error("exportLimit");
+        chunks.push(new Blob([chunk]));
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      return save(filename,new Blob(chunks,{type:source.type}),opts);
+    }
+    if(currentMode()!=="folder") return fallback();
+    var d=await dir(); if(!d) return fallback();
+    for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
+    var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
+    try{
+      var bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size) throw new Error("renderSize");
+        await w.write(chunk);
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      await w.close();
+    }catch(e){try{await w.abort();}catch(_){} throw e;}
+    var path=root.name+"/"+subdir()+"/"+(folders.length?folders.join("/")+"/":"")+name;
+    return report({saved:true,via:"folder",name:name,path:path,message:tx("saved")(path)},quiet);
+  }
+
   function save(filename, blob, opts){
+    if(blob && !(blob instanceof Blob) && typeof blob.stream === "function") return saveStream(filename,blob,opts);
     var quiet = !!(opts && opts.quiet);
     // Optional directories remain beneath this page's SUBDIR. On mobile,
     // callers include ownership in the filename; share/download stay flat.
@@ -1366,6 +1405,8 @@
 <script src="js/audio/song-instruments.js"></script>
 <script src="js/audio/arrangement.js"></script>
 <script src="js/audio/song-timeline.js"></script>
+<script src="js/audio/song-renderer.js"></script>
+<script src="js/audio/song-playback.js"></script>
 <script src="js/audio/integrity.js"></script>
 <script src="js/audio/backup.js"></script>
 <script>
@@ -1420,7 +1461,7 @@ Object.assign(I18N.en,{journalHeading:'Interrupted recordings',journalHint:'Only
 Object.assign(I18N.ro,{journalHeading:'Înregistrări întrerupte',journalHint:'Se pot recupera doar punctele de salvare finalizate. Sunetul de după ultima salvare se poate pierde la întrerupere sau la defectarea browserului/dispozitivului. Capturile în curs nu sunt incluse în copiile proiectului.',journalRecover:'Recuperează înregistrarea întreruptă',journalExport:'Salvează WAV-ul recuperat',journalDiscard:'Elimină captura',journalDiscardAsk:'Elimini definitiv această captură întreruptă?',journalInvalid:'Salvarea capturii este inconsistentă sau lipsește un fragment. Sunetul nu a fost unit. Păstreaz-o pentru verificare sau elimin-o.',journalMissing:'Captura a fost deja recuperată sau eliminată. Reîncarcă pentru actualizare.',journalError:'Salvarea intermediară a capturii a eșuat. Sunetul rămâne în această pagină; oprește, apoi salvează WAV sau reîncearcă păstrarea locală. Doar salvările finalizate anterior pot supraviețui închiderii paginii.',writerReadOnly:'Altă filă deține editarea sau fila anterioară nu a eliberat-o. Această filă permite doar citirea. Reîncarcă și preia editarea ultimelor proiecte salvate.',writerConflict:'Dreptul de editare sau proiectele salvate s-au schimbat. Modificările locale rămân aici. Exportă WAV-urile și metadatele înainte de reîncărcare și preluare.',takeover:'Reîncarcă și preia editarea',takeoverAsk:'Reîncarci ultimele proiecte salvate și preiei editarea? Modificările locale nepăstrate se vor pierde. Anulează pentru a le exporta întâi.',storageBlocked:'Actualizarea stocării este blocată. Închide filele Song mai vechi pentru a continua; datele nu au fost eliminate.'});
 const t = (k,a) => typeof I18N[UI][k] === 'function' ? I18N[UI][k](a) : I18N[UI][k];
 let state='loading', db=null, projects=[], project=null, dirty=false, generation=0;
-let capture=null, lastQuality=null, statusKey=null;
+let capture=null, lastQuality=null, statusKey=null, statusValue;
 const Storage=window.ScuLaSongStorage, owner=window.crypto?.randomUUID?.() || String(Math.random())+Date.now();
 let revision=0, writable=true, conflict=false, journals=[], releaseLock=null, ownerLocked=false, coordinator=null;
 const finishedCaptures=new Set();
@@ -1432,7 +1473,7 @@ const supported = () => !!(AC && navigator.mediaDevices && navigator.mediaDevice
 const id = () => 's' + (window.crypto?.randomUUID ? window.crypto.randomUUID().replace(/-/g,'') : Date.now().toString(36)+Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
 const time = seconds => `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
-function say(k,error=false){statusKey=k; $('status').textContent=t(k);$('status').classList.toggle('error',error);}
+function say(k,error=false,value){statusKey=k;statusValue=value; $('status').textContent=t(k,value);$('status').classList.toggle('error',error);}
 function paintAnalysisProgress(){
   if(state!=='analyzing' || !analysisJob || analysisJob.cancelled)return;
   const pct=Math.max(0,Math.min(100,Math.floor(analysisFraction*100)));
@@ -1472,7 +1513,7 @@ function paintProjects(){
 function applyUILang(){
   document.documentElement.lang=UI;document.title=t('title')+' — Scula lu Miron';
   document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
-  if(statusKey)$('status').textContent=t(statusKey);
+  if(statusKey)$('status').textContent=t(statusKey,statusValue);
   paintAnalysisProgress();
   paintState();paintProjects();paintBackup();paintJournals();quality(lastQuality);render();
 }
@@ -1812,7 +1853,32 @@ function performanceEditor(r){
 /* Arrangement versions are project metadata, separate from each performance. */
 const A=window.ScuLaArrangement,S=window.ScuLaSynthesis;
 const selectedArrangements=new Map();
+const Renderer=window.ScuLaSongRenderer;
 let arrangementJob=null;
+Object.assign(I18N.en,{renderPeaks:n=>`Measuring audio peaks… ${n}%`,renderBlocks:n=>`Rendering WAV… ${n}%`,exportLimit:'This WAV exceeds the 32 MiB download/share limit. Choose a writable folder or export a shorter loop.',renderLimit:'This arrangement exceeds the audio memory or polyphony budget. Reduce overlapping notes or sample sets.',sampleBudget:'Selected samples exceed the 16 MiB decoded-audio budget. Use fewer or shorter samples.',previewStreaming:'Playing preview with live peak control. WAV exports use measured peak attenuation.',previewUnderrun:'Preview could not keep up. Try fewer parts or export WAV.',renderHint:'Long previews use live peak control. Large WAV exports need a writable folder; download/share is limited to 32 MiB.'});
+Object.assign(I18N.ro,{renderPeaks:n=>`Se măsoară vârfurile audio… ${n}%`,renderBlocks:n=>`Se generează WAV-ul… ${n}%`,exportLimit:'Acest WAV depășește limita de 32 MiB pentru descărcare/distribuire. Alege un dosar în care poți scrie sau exportă o buclă mai scurtă.',renderLimit:'Aranjamentul depășește bugetul de memorie audio sau de polifonie. Redu notele suprapuse sau seturile de mostre.',sampleBudget:'Mostrele selectate depășesc bugetul de 16 MiB pentru sunet decodat. Folosește mostre mai puține sau mai scurte.',previewStreaming:'Se redă previzualizarea cu limitarea vârfurilor în timp real. Exportul WAV folosește atenuarea măsurată.',previewUnderrun:'Previzualizarea nu a ținut pasul. Încearcă mai puține părți sau exportă WAV.',renderHint:'Previzualizările lungi limitează vârfurile în timp real. Exporturile WAV mari necesită un dosar în care poți scrie; descărcarea/distribuirea este limitată la 32 MiB.'});
+function renderOptions(job){return {cancelled:()=>job.cancelled,progress:(phase,value)=>{if(!job.cancelled)say(phase==='peaks'?'renderPeaks':'renderBlocks',false,Math.round(value*100));}};}
+function renderError(e,fallback){say(['exportLimit','renderLimit','sampleBudget','previewUnderrun'].includes(e.message)?e.message:fallback,true);}
+async function saveRendered(filename,source,job){
+  // Small saves remain Blobs for existing save integrations. Larger producers
+  // go straight to ScuLaFolder's backpressured writable-folder route.
+  let output=source;
+  if(source.size<=Renderer.limits.downloadBytes){const chunks=[];for await(const chunk of source.stream())chunks.push(new Blob([chunk]));source.check();output=new Blob(chunks,{type:source.type});}
+  if(job.cancelled)throw Error('cancelled');
+  return ScuLaFolder.save(filename,output,{directories:[projectStem(),'exports']});
+}
+async function startStreamingAt(job,position){
+  job.playback?.stop();say(job.kind==='song'?'renderingSong':'renderingArrangement');const token={};job.streamToken=token;job.started=false;
+  const bounds=job.kind==='song'?songLoopBounds():null,duration=job.session.length/job.session.sampleRate;
+  let offset=Math.max(0,Math.min(duration,position));if(bounds&&(offset<bounds.start||offset>=bounds.end))offset=bounds.start;if(offset>=duration)offset=0;
+  const session=job.session,sr=session.sampleRate;
+  const playback=window.ScuLaSongPlayback.play(session,job.ctx,{start:Math.round(offset*sr),end:Math.min(session.length,Math.round((bounds?.end||duration)*sr)),loop:!!bounds,loopStart:Math.round((bounds?.start||0)*sr),cancelled:()=>job.cancelled||job.streamToken!==token,
+    onPosition:value=>{if(job.kind==='song'&&arrangementJob===job&&job.streamToken===token){songPosition=value;paintSongPosition();}},
+    onEnded:()=>{if(arrangementJob!==job||job.streamToken!==token)return;if(job.kind==='song'&&songLoopBounds())startStreamingAt(job,songLoopBounds().start).catch(e=>{if(!job.cancelled){stopArrangement();renderError(e,'songError');}});else stopArrangement();},
+    onError:e=>{if(arrangementJob===job&&job.streamToken===token){stopArrangement();renderError(e,'songError');}}});
+  job.playback=playback;await playback.ready;if(job.cancelled||job.streamToken!==token)return;
+  job.started=true;if(job.kind==='song'){songPosition=offset;paintSongPosition();}say('previewStreaming');
+}
 let songPosition=0,songDuration=0;
 const songLoop={projectId:null,mode:'off',sectionId:null,start:0,end:0,duration:0,snap:false,beatSnap:false,fadeMs:0};
 const songTimelineHistories=new Map();
@@ -1851,6 +1917,7 @@ function parseSongLoopTime(value){
 }
 function currentSongPosition(){
   const job=arrangementJob;
+  if(job?.playback)return songPosition;
   return job?.kind==='song'&&job.started?Math.min(songLoopBounds()?.end||songDuration,job.offset+job.ctx.currentTime-job.startedAt):songPosition;
 }
 function snapSongTime(value){
@@ -1911,7 +1978,7 @@ function paintSongLoop(){
 }
 function changeSongLoop(){
   paintSongLoop();const job=arrangementJob;
-  if(job?.kind==='song' && job.started)startSongAt(job,songPosition);
+  if(job?.kind==='song' && (job.started||job.session))startSongAt(job,songPosition);
   else if(job?.kind==='song'){const bounds=songLoopBounds();if(bounds && (songPosition<bounds.start||songPosition>=bounds.end))songPosition=bounds.start;paintSongPosition();}
 }
 function paintSongPosition(){
@@ -1929,6 +1996,7 @@ function songTick(job){
   paintSongPosition();job.frame=requestAnimationFrame(()=>songTick(job));
 }
 function startSongAt(job,position){
+  if(job.session){startStreamingAt(job,position).catch(e=>{if(!job.cancelled){stopArrangement();renderError(e,'songError');}});return;}
   if(job.node){job.node.onended=null;try{job.node.stop();}catch(_){}job.node.disconnect();job.node.buffer=null;}
   cancelAnimationFrame(job.frame);
   const node=job.ctx.createBufferSource();job.node=node;node.buffer=job.buffer;node.connect(job.ctx.destination);
@@ -1947,7 +2015,7 @@ function seekSong(position){
 }
 function stopArrangement(){
   const job=arrangementJob;if(!job)return;
-  arrangementJob=null;job.cancelled=true;
+  arrangementJob=null;job.cancelled=true;job.playback?.stop();job.session=null;job.sampleCache?.clear();
   if(job.frame)cancelAnimationFrame(job.frame);
   if(job.node){job.node.onended=null;try{job.node.stop();}catch(_){}job.node.disconnect();job.node.buffer=null;job.node=null;}
   if(job.ctx){job.ctx.onstatechange=null;job.ctx.close().catch(()=>{});job.ctx=null;}
@@ -2087,18 +2155,31 @@ async function auditionEditedSample(r){
   const parts={lead:{instrument:'piano',sampleSet:name,enabled:true,volume:1,notes:[note]},chords:{instrument:'strings',enabled:false,volume:1,notes:[]},bass:{instrument:'bass',enabled:false,volume:1,notes:[]},drums:{instrument:'standard',enabled:false,volume:1,notes:[]}};
   await arrangementAudio({tempoBpm:120,timingMode:'original',key:{tonic:0,mode:'major'},duration:2,parts},true,r.id);
 }
-async function arrangementSamples(a,ctx,cancelled,onlyId){
+function arrangementSamples(a,ctx,cancelled,onlyId,job){
+  if(!job)return readArrangementSamples(a,ctx,cancelled,onlyId,job);
+  const next=(job.sampleLoading||Promise.resolve()).then(()=>readArrangementSamples(a,ctx,cancelled,onlyId,job));
+  job.sampleLoading=next.catch(()=>{});return next;
+}
+async function readArrangementSamples(a,ctx,cancelled,onlyId,job){
+  const cache=job?(job.sampleCache||(job.sampleCache=new Map())):new Map();
   const available=sampleSets(),selected=new Set(['lead','chords','bass'].filter(id=>a.parts[id].enabled && a.parts[id].volume).map(id=>a.parts[id].sampleSet).filter(Boolean)),result=Object.create(null);
   for(const name of selected){result[name]=[];
     for(const r of available.get(name)||[]){
       if(onlyId && r.id!==onlyId)continue;
       if(cancelled())throw new Error('cancelled');
       try{
-        const blob=await blobFor(r);if(!blob || blob.size>64*1048576)continue;
+        if(cache.has(r.id)){const prior=cache.get(r.id);if(prior)result[name].push(prior);continue;}
+        const blob=await blobFor(r);if(cancelled())throw Error('cancelled');if(!blob || blob.size>16*1048576){cache.set(r.id,null);continue;}
+        const info=await P.inspectWav(blob,{cancelled});if(info.duration>30){cache.set(r.id,null);continue;}
+        const estimate=Math.ceil(info.duration*ctx.sampleRate)*info.channelCount*4;
+        if((job?.sampleBytes||0)+estimate>Renderer.limits.sampleBytes)throw Error('sampleBudget');
         const decoded=await ctx.decodeAudioData(await blob.arrayBuffer());if(cancelled())throw new Error('cancelled');
-        if(decoded.duration>30 || ![1,2].includes(decoded.numberOfChannels))continue;
-        result[name].push({midiNote:r.sample.midiNote,dynamic:r.sample.dynamic,playback:r.sample.playback,channels:Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i)),sampleRate:decoded.sampleRate});
-      }catch(e){if(cancelled())throw new Error('cancelled');}
+        if(decoded.duration>30 || ![1,2].includes(decoded.numberOfChannels)){cache.set(r.id,null);continue;}
+        const bytes=decoded.length*decoded.numberOfChannels*4;
+        if((job?.sampleBytes||0)+bytes>Renderer.limits.sampleBytes)throw Error('sampleBudget');
+        if(job)job.sampleBytes=(job.sampleBytes||0)+bytes;
+        const sample={midiNote:r.sample.midiNote,dynamic:r.sample.dynamic,playback:r.sample.playback,channels:Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i)),sampleRate:decoded.sampleRate};cache.set(r.id,sample);result[name].push(sample);
+      }catch(e){if(cancelled())throw new Error('cancelled');if(e.message==='sampleBudget')throw e;cache.set(r.id,null);}
     }
   }
   if(onlyId && !Object.values(result).some(group=>group.some(s=>A.mapSample([s],s.midiNote,80))))throw new Error('sampleUnavailable');
@@ -2109,22 +2190,24 @@ async function arrangementAudio(a,play,onlyId){
   const job={cancelled:false,ctx:null,decodeCtx:null,node:null,started:false};arrangementJob=job;paintState();say('renderingArrangement');
   try{
     // Open/resume in the user's gesture, before asynchronous synthesis.
-    if(play){if(!AC)throw new Error('audio');job.ctx=new AC();await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');
+    if(play){if(!AC)throw new Error('audio');job.ctx=new AC({sampleRate:44100});await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');
       job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
     const needsSamples=['lead','chords','bass'].some(id=>a.parts[id].enabled && a.parts[id].volume && a.parts[id].sampleSet);
-    if(needsSamples && !job.ctx && AC)try{job.decodeCtx=new AC();}catch(_){}
-    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,onlyId):{};
+    if(needsSamples && !job.ctx && AC)try{job.decodeCtx=new AC({sampleRate:44100});}catch(_){}
+    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,onlyId,job):{};
     if(job.decodeCtx){await job.decodeCtx.close();job.decodeCtx=null;}
-    const mix=await A.render(a,{samples,cancelled:()=>job.cancelled});
+    const session=Renderer.arrangement(a,{...renderOptions(job),samples});
+    if(play && session.length/session.sampleRate>Renderer.limits.previewSeconds){job.session=session;await startStreamingAt(job,0);return;}
+    const mix=play?await session.collect():null;
     if(job.cancelled)return;
     if(play){
       const ctx=job.ctx,buffer=ctx.createBuffer(2,mix.L.length,mix.sr);buffer.copyToChannel(mix.L,0);buffer.copyToChannel(mix.R,1);
       const node=ctx.createBufferSource();job.node=node;node.buffer=buffer;node.connect(ctx.destination);
       node.onended=()=>{if(arrangementJob===job)stopArrangement();};node.start();job.started=true;say('playingArrangement');
     }else {
-      const result=await ScuLaFolder.save(arrangementFilename(a,'wav'),A.wav(mix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
+      const result=await saveRendered(arrangementFilename(a,'wav'),session.wav(),job);statusKey=null;$('status').textContent=result.message||'';
     }
-  }catch(e){if(!job.cancelled)say(onlyId?'sampleUnavailable':'arrangementError',true);}
+  }catch(e){if(!job.cancelled)renderError(e,onlyId?'sampleUnavailable':'arrangementError');}
   finally{if(job.decodeCtx){job.decodeCtx.close().catch(()=>{});job.decodeCtx=null;}if(!play || !job.started){if(arrangementJob===job)stopArrangement();}}
 }
 function arrangementFilename(a,ext){return projectStem()+'-arrangement-v'+a.version+'-'+a.id+'.'+ext;}
@@ -2152,7 +2235,7 @@ function drawArrangement(canvas,a){
 function arrangementEditor(r){
   const section=document.createElement('section');section.className='arrangement';section.setAttribute('aria-label',t('arrangement'));
   const heading=document.createElement('h4');heading.textContent=t('arrangement');section.append(heading);
-  const hint=document.createElement('small');hint.textContent=t('arrangementHint');section.append(hint);
+  const hint=document.createElement('small');hint.textContent=t('arrangementHint')+' '+t('renderHint');section.append(hint);
   const versions=(project.arrangements||[]).filter(a=>a.sourceRecordingId===r.id);
   const actions=document.createElement('div');actions.className='row';
   if(r.performance){const create=button('createArrangement',()=>createArrangement(r));create.dataset.empty=String(!r.performance.notes.length);actions.append(create);}
@@ -2312,24 +2395,26 @@ async function songAudio(play,from=songPosition,loopOnly=false){
   songPosition=Math.max(0,Math.min(songDuration,from));paintSongPosition();
   const job={kind:'song',cancelled:false,ctx:null,decodeCtx:null,node:null,buffer:null,frame:0,started:false};arrangementJob=job;paintState();say('renderingSong');
   try{
-    if(play){if(!AC)throw new Error('audio');job.ctx=new AC();await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
+    if(play){if(!AC)throw new Error('audio');job.ctx=new AC({sampleRate:44100});await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
     const hasSamples=plan.items.some(({arrangement:a})=>['lead','chords','bass'].some(id=>a.parts[id].enabled&&a.parts[id].volume&&a.parts[id].sampleSet));
-    if(hasSamples && !job.ctx && AC)try{job.decodeCtx=new AC();}catch(_){}
-    const mix=await Timeline.render(project,{cancelled:()=>job.cancelled,samplesFor:a=>hasSamples && (job.ctx||job.decodeCtx)?arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled):{}});
+    if(hasSamples && !job.ctx && AC)try{job.decodeCtx=new AC({sampleRate:44100});}catch(_){}
+    const session=Renderer.song(project,{...renderOptions(job),samplesFor:a=>hasSamples && (job.ctx||job.decodeCtx)?arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,null,job):{}});
+    if(play && session.length/session.sampleRate>Renderer.limits.previewSeconds){job.session=session;await startStreamingAt(job,songPosition);return;}
+    const mix=play?await session.collect():null;
     if(job.cancelled)return;
     if(play){const ctx=job.ctx,buffer=ctx.createBuffer(2,mix.L.length,mix.sr);buffer.copyToChannel(mix.L,0);buffer.copyToChannel(mix.R,1);job.buffer=buffer;startSongAt(job,songPosition);say('playingSong');}
     else{
-      let filename=projectStem()+'-song.wav',exportMix=mix;
+      let filename=projectStem()+'-song.wav',range={};
       if(loopOnly){
-        const start=Math.max(0,Math.min(mix.L.length,Math.round(loopBounds.start*mix.sr))),end=Math.max(start+1,Math.min(mix.L.length,Math.round(loopBounds.end*mix.sr)));
+        const start=Math.max(0,Math.min(session.length,Math.round(loopBounds.start*session.sampleRate))),end=Math.max(start+1,Math.min(session.length,Math.round(loopBounds.end*session.sampleRate)));
         const section=songLoop.mode==='section'?project.timeline.find(s=>s.id===songLoop.sectionId):null;
-        const range=songLoop.mode==='section'?'section-'+safeName(section.name):songLoop.mode;
-        filename=projectStem()+'-song-loop-'+range+'-'+start+'f-'+end+'f'+(songLoop.fadeMs?'-fade'+songLoop.fadeMs+'ms':'')+'.wav';
-        exportMix=Timeline.edgeFade({L:mix.L.subarray(start,end),R:mix.R.subarray(start,end),sr:mix.sr},songLoop.fadeMs);
+        const rangeName=songLoop.mode==='section'?'section-'+safeName(section.name):songLoop.mode;
+        filename=projectStem()+'-song-loop-'+rangeName+'-'+start+'f-'+end+'f'+(songLoop.fadeMs?'-fade'+songLoop.fadeMs+'ms':'')+'.wav';
+        range={start,end,fadeMs:songLoop.fadeMs};
       }
-      const result=await ScuLaFolder.save(filename,Timeline.wav(exportMix),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';
+      const result=await saveRendered(filename,session.wav(range),job);statusKey=null;$('status').textContent=result.message||'';
     }
-  }catch(_){if(!job.cancelled)say('songError',true);}
+  }catch(e){if(!job.cancelled)renderError(e,'songError');}
   finally{if(job.decodeCtx){job.decodeCtx.close().catch(()=>{});job.decodeCtx=null;}if(!play||!job.started){if(arrangementJob===job)stopArrangement();}}
 }
 async function exportSongMidi(){try{const result=await ScuLaFolder.save(projectStem()+'-song.mid',Timeline.midi(project),{directories:[projectStem(),'exports']});statusKey=null;$('status').textContent=result.message||'';}catch(e){say(e.message==='timelineEmpty'?'timelineEmpty':'timelineInvalid',true);}}

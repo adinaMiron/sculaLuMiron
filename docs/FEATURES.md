@@ -3107,7 +3107,9 @@ the last checkpoint, or after a failed checkpoint, can be lost; browser/device
 failure, storage eviction and microphone interruption remain limits. No unload
 handler attempts to flush capture asynchronously.
 
-All exports call `ScuLaFolder.save`. Its optional `directories` array creates
+All exports call `ScuLaFolder.save`. It also accepts a bounded stream producer
+for large WAVs, awaiting folder writes and aborting failed/canceled output;
+download/share fallback is capped at 32 MiB. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
 same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
 `Song Creation/<safe-project-name>-<id>/recordings/` or `samples/`. Project JSON
@@ -3189,8 +3191,8 @@ This bound applies to backup inspection and SHA-256 hashing. Song melody analysi
 also reads source audio in at most 64 KiB overlapping slices, decodes channels
 directly into a capped 22.05 kHz mono buffer, and skips non-audio chunks. Its
 normalization, onset and pitch work uses additional derived buffers proportional
-to that capped result. Arrangement playback/export may still render a full stereo
-mix in memory.
+to that capped result. Arrangement/song WAV export now uses bounded peak/replay passes; previews
+over 30 seconds schedule blocks. See [rendering budgets](SONG-RENDERING.md).
 
 `js/audio/integrity.js` exposes `ScuLaIntegrity.sha256(blob,{cancelled,progress})`.
 It implements incremental SHA-256 using FIPS 180-4 integer rounds in plain JavaScript,
@@ -3446,7 +3448,8 @@ semitones is pitch shifted by its note difference plus edited cents. Equal-pitch
 recordings can carry dynamics (`pp` through `ff`, soft/loud, or MIDI velocity
 1–127); the closest dynamic layer is chosen. Note velocity also scales loudness.
 Mono and stereo sources keep their channels, with a short attack, note-off fade
-and source-end fade. Invalid, missing, oversized (>64 MiB or 30 s) or distant
+and source-end fade. Decoded samples share a 16 MiB per-job cache, checked before
+decoding; an aggregate budget failure stops rendering with guidance. Invalid, missing, oversized (>16 MiB or 30 s) or distant
 samples use the part's synth instrument. No modules, network requests or app
 dependencies are added; scripts load from `file://`.
 
@@ -3498,7 +3501,7 @@ repeats/order/duplicate/remove/mix changes; a new edit clears redo. History is
 per project and is not saved in backups. Deleting a recording clears the affected
 project's history because its linked arrangement versions are removed. Older
 projects without `timeline` load with an empty timeline. The expanded song is
-capped at 20 minutes to bound rendering memory.
+capped at 20 minutes; Milestone B keeps this limit while bounding rendering audio memory.
 
 The visual overview above the section editors gives each section a width
 proportional to its full duration (`arrangement.duration × repeats`). Divisions
@@ -3510,10 +3513,11 @@ screens the overview scrolls horizontally while the
 page stays within the viewport. Click or tap a block to seek within it, use the
 range control with a pointer or keyboard for precise seeking, or choose **Play
 from here / Redă de aici** on a section to begin at its first repeat. The
-playhead and elapsed/total time follow the complete WAV-length buffer. Stop cancels an in-progress
+playhead and elapsed/total time follow the complete WAV duration. Stop cancels an in-progress
 render or stops playback and resets the playhead; audio nodes and contexts are
-cleaned up. Seeking during playback restarts the same rendered buffer at the
-chosen offset, so it follows the same mix as WAV export. Playback position
+cleaned up. Short-preview seeking restarts a bounded buffer. Long previews render the
+contributing section state and schedule short buffers at the chosen offset;
+they use live peak control, while export uses measured global attenuation. Playback position
 exists only in page memory and resets on reload; the project stores only the
 section edits (`id`, `name`, `arrangementId`, `repeats`).
 
@@ -3530,15 +3534,15 @@ including the final bar boundary across tempo changes; typed times remain exact.
 Markers also support arrow keys (0.01 s,
 or 1 s with Shift), Home and End. All editors share millisecond readouts.
 Playback starts at the loop start when the playhead lies outside it and wraps
-at the end using the same rendered stereo buffer. Changing the loop during
+at the end using the short-preview buffer or continuously scheduled long-preview blocks. Changing the loop during
 playback restarts at the current position if it remains inside the new range.
 With section looping selected, **Play from here** selects that section and
 starts its first repeat.
 **Save loop stereo WAV / Salvează bucla ca WAV stereo** exports the selected
 full-song, section (all repeats), or custom interval. It is disabled with no
 sections or with looping off. The boundaries are rounded to 44.1 kHz sample
-frames, then both channels are sliced from the same complete rendered mix used
-by playback and whole-song WAV export. The resulting 16-bit PCM payload is
+frames, then bounded blocks emit the selected interval using the same measured
+gains as whole-song WAV export. The resulting 16-bit PCM payload is
 byte-identical to that interval of the full-song WAV by default, including any
 overlapping tails. The optional **Loop WAV edge fade** applies a symmetric 5–100 ms
 linear fade to only the exported slice, capped at half its length; the full-song
@@ -3562,15 +3566,14 @@ and closes playback resources; the chosen loop remains available until the page 
 Sections join at each arrangement's musical `duration`, with no inserted gap.
 The preceding stereo reverb/release tail overlaps the next section, including
 repeats. Each section keeps its own tempo and key: there is no tempo averaging,
-time stretch at a join, or forced transposition. `js/audio/song-timeline.js`
-calls the existing sample-aware `ScuLaArrangement.render` for each distinct
-version and places its stereo buffer at each section start. Whole-song playback
-and stereo WAV export use that same assembled mix at 44.1 kHz; a global limiter
-only reduces peaks that exceed 0.95. Sample mapping and synthesis fallback work
-as in individual arrangements. Rendering produces derived audio and never
-changes a source WAV. Song seeds random phases/noise when calling the shared
-synth kernel, so separate playback and WAV renders of an unchanged version
-match; Voice keeps its existing synth defaults.
+time stretch at a join, or forced transposition. `js/audio/song-renderer.js`
+uses stateful synthesis/reverb blocks, measures effective arrangement peaks and
+assembled-song peaks, then replays with global attenuation only above 0.95.
+WAV output remains deterministic at 44.1 kHz; sample mapping and synthesis
+fallback work as in individual arrangements. `song-playback.js` schedules long
+previews without a whole-song peak scan, using live peak control instead.
+Voice keeps its existing synth defaults. See [SONG-RENDERING.md](SONG-RENDERING.md)
+for memory/sample limits, cancellation, preview differences and streaming saves.
 
 **Save song multitrack MIDI** writes format 1 with a tempo/time-signature/key
 and section-marker track plus the four named part tracks. Tempo and key events

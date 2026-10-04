@@ -2,7 +2,7 @@
 const assert=require('assert/strict'),fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.resolve(__dirname,'..');
 const c=vm.createContext({Math,Blob,Float32Array,Float64Array,Uint8Array,ArrayBuffer,DataView,setTimeout});
-for(const f of ['analysis','performance','synthesis','song-instruments','arrangement'])vm.runInContext(fs.readFileSync(path.join(root,'js/audio',f+'.js'),'utf8'),c);
+for(const f of ['analysis','performance','synthesis','song-instruments','arrangement','song-timeline','song-renderer'])vm.runInContext(fs.readFileSync(path.join(root,'js/audio',f+'.js'),'utf8'),c);
 const A=c.ScuLaArrangement,rate=22050;
 const tone=(midi,dynamic,amplitude=.5)=>({midiNote:midi,dynamic,sampleRate:rate,channels:[Float32Array.from({length:rate},(_,i)=>amplitude*Math.sin(i*2*Math.PI*220/rate))]});
 const low=tone(60,'pp'),high=tone(67,'ff');

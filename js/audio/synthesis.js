@@ -93,9 +93,9 @@ function chordsFor(notes, origin, barLen, bars, tonic, mode){
    held tone into a struck one, vibrato, and a breath/bow noise layer.
    The guitar gets its own kernel — a plucked string is a delay line,
    not a sum of sines. */
-function renderTone(sp, freq, hold, sr, random=Math.random){
+function* toneBlocks(sp, freq, hold, sr, random, blockSize){
   const n = Math.ceil((hold + 0.03) * sr) + 2;
-  const out = new Float32Array(n);
+  const out = new Float32Array(Math.min(n, blockSize));
   const nyq = sr * 0.45;
   const inc = [], amp = [], gain = [], dk = [];
   const damp = sp.damp || 0, dampP = sp.dampP || 1;
@@ -108,7 +108,7 @@ function renderTone(sp, freq, hold, sr, random=Math.random){
     dk.push(damp ? Math.exp(-damp * Math.pow(p, dampP) / sr) : 1);
   }
   const K = inc.length;
-  if(!K) return out;
+  if(!K){for(let i=0;i<n;i+=blockSize)yield out.subarray(0,Math.min(blockSize,n-i));return;}
   const ph = new Float32Array(K);
   for(let k = 0; k < K; k++) ph[k] = random();
   const atk = Math.max(0.001, sp.atk || 0.005);
@@ -140,16 +140,17 @@ function renderTone(sp, freq, hold, sr, random=Math.random){
       lp += 0.28 * ((random()*2 - 1) - lp);
       s += lp * nzAmp * (norm * 0.5);
     }
-    out[i] = s * env * scale;
+    out[i % blockSize] = s * env * scale;
+    if((i+1)%blockSize===0 || i===n-1)yield out.subarray(0,(i%blockSize)+1);
   }
-  return out;
+
 }
 /* Karplus-Strong: a burst of noise round a lowpassed delay line. The
    per-pass decay is derived from the loop length so a high string does
    not die faster than a low one. */
-function renderString(sp, freq, hold, sr, random=Math.random){
+function* stringBlocks(sp, freq, hold, sr, random, blockSize){
   const n = Math.ceil((hold + 0.03) * sr) + 2;
-  const out = new Float32Array(n);
+  const out = new Float32Array(Math.min(n, blockSize));
   const L = Math.max(2, Math.round(sr / freq));
   const line = new Float32Array(L);
   let lp = 0;
@@ -166,14 +167,19 @@ function renderString(sp, freq, hold, sr, random=Math.random){
     prev = cur;
     line[idx] = v;
     if(++idx >= L) idx = 0;
-    out[i] = v * (sp.gain || 1) * (i < atkN ? i / atkN : 1);
+    out[i % blockSize] = v * (sp.gain || 1) * (i < atkN ? i / atkN : 1);
+    if((i+1)%blockSize===0 || i===n-1)yield out.subarray(0,(i%blockSize)+1);
   }
-  return out;
+
 }
-function renderInstrument(id, midi, hold, sr, random=Math.random){
-  const sp = INSTR[id] || INSTR.piano;
-  const freq = 440 * Math.pow(2, (midi - 69) / 12);
-  return sp.ks ? renderString(sp, freq, hold, sr, random) : renderTone(sp, freq, hold, sr, random);
+function* instrumentBlocks(id, midi, hold, sr, random=Math.random, blockSize=4096){
+  const sp=INSTR[id]||INSTR.piano,freq=440*Math.pow(2,(midi-69)/12);
+  yield* (sp.ks?stringBlocks:toneBlocks)(sp,freq,hold,sr,random,blockSize);
+}
+function renderInstrument(id,midi,hold,sr,random=Math.random){
+  const out=new Float32Array(Math.ceil((hold+.03)*sr)+2);let at=0;
+  for(const block of instrumentBlocks(id,midi,hold,sr,random)){out.set(block,at);at+=block.length;}
+  return out;
 }
 
 /* --- drums: three one-shots, no samples --------------------------- */
@@ -369,5 +375,5 @@ function chordVoicing(c){
   return QUAL[c.q].map(iv => root + iv);
 }
 
-root.ScuLaSynthesis=Object.freeze({version:1,reverbTail,midiTrack,INSTR,LEAD_ORDER,CHORD_ORDER,NOTE_RO,NOTE_EN,SCALES,snapMidi,chordsFor,fitRange,chordVoicing,renderInstrument,renderKick,renderSnare,renderHat,place,finishMix,wavBlob,midiBlob});
+root.ScuLaSynthesis=Object.freeze({version:1,instrumentBlocks,reverbTail,midiTrack,INSTR,LEAD_ORDER,CHORD_ORDER,NOTE_RO,NOTE_EN,SCALES,snapMidi,chordsFor,fitRange,chordVoicing,renderInstrument,renderKick,renderSnare,renderHat,place,finishMix,wavBlob,midiBlob});
 })(typeof window==='undefined'?globalThis:window);

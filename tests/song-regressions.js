@@ -5,7 +5,7 @@ const path=require('path');
 const suites=[
   'verify','song-analysis','song-evaluation','song-bounded-analysis',
   'song-analysis-lifecycle','song-synthesis','song-instruments',
-  'song-arrangement-generation','song-samples','song-integrity',
+  'song-arrangement-generation','song-bounded-render','song-render-browser','song-samples','song-integrity',
   'song-incremental-inspection','song','song-recovery','song-performance',
   'song-arrangement','song-sample-browser','song-timeline','song-backup-import',
   'voice','melody'

@@ -35,16 +35,16 @@ function mapSample(samples,pitch,velocity){
  }
  return best;
 }
-function placeSample(L,R,s,n,volume,pan,sr){
+function placeSample(L,R,s,n,volume,pan,sr,offset=0){
  const pitch=n.midi+(n.cents||0)/100,rate=2**((pitch-s.midiNote)/12)*s.sampleRate/sr;
  const settings=samplePlayback(s.playback,s.channels[0].length/s.sampleRate),start=Math.round(n.start*sr),hold=Math.max(1,Math.round(n.dur*sr)),release=Math.max(1,Math.round(settings.releaseSeconds*sr)),attack=Math.max(1,Math.round(.003*sr));
  const source=s.channels,stereo=source.length===2,gain=volume*Math.pow(Math.max(0,n.vel),.8);
  const gl=gain*Math.cos((pan+1)*Math.PI/4),gr=gain*Math.sin((pan+1)*Math.PI/4);
  const sourceStart=settings.startSeconds*s.sampleRate,loop=settings.loopStartSeconds!==null;
  const loopA=settings.loopStartSeconds*s.sampleRate,loopB=settings.loopEndSeconds*s.sampleRate,fade=settings.crossfadeSeconds*s.sampleRate;
- const count=Math.max(0,Math.min(L.length-start,hold+release,loop?Infinity:Math.floor((source[0].length-1-sourceStart)/rate)));
+ const count=Math.max(0,Math.min(L.length+offset-start,hold+release,loop?Infinity:Math.floor((source[0].length-1-sourceStart)/rate)));
  const read=(channel,at)=>{const j=Math.floor(at),f=at-j;return source[channel][j]*(1-f)+source[channel][Math.min(j+1,source[channel].length-1)]*f;};
- for(let i=0;i<count;i++){
+ for(let i=Math.max(0,offset-start);i<count;i++){
   let at=sourceStart+i*rate;
   if(loop && at>=loopB)at=loopA+fade+(at-loopB)%(loopB-loopA-fade);
   const blend=loop&&at>=loopB-fade?Math.min(1,(at-(loopB-fade))/fade):0;
@@ -52,7 +52,7 @@ function placeSample(L,R,s,n,volume,pan,sr){
   const en=envelope*(loop?1:Math.min(1,(source[0].length-1-at)/(sr*.01*rate)));
   const left=(read(0,at)*(1-blend)+(blend?read(0,loopA+at-(loopB-fade))*blend:0))*en;
   const right=stereo?(read(1,at)*(1-blend)+(blend?read(1,loopA+at-(loopB-fade))*blend:0))*en:left;
-  L[start+i]+=left*gl;R[start+i]+=right*gr;
+  L[start+i-offset]+=left*gl;R[start+i-offset]+=right*gr;
  }
 }
 function create(recording,meta){
@@ -106,37 +106,8 @@ function midi(a){
  });
  return new Blob([new Uint8Array(bytes)],{type:'audio/midi'});
 }
-async function render(a,{sampleRate=44100,samples={},cancelled=()=>false,yieldUI=()=>new Promise(r=>setTimeout(r,0))}={}){
- validate(a);
- const check=()=>{if(cancelled())throw new Error('cancelled');};check();
- const sr=sampleRate,L=new Float32Array(Math.ceil((a.duration+1.8)*sr)),R=new Float32Array(L.length),cache=new Map();
- const drumTypes={36:'kick',38:'snare',42:'hat',46:'hato'},pan={lead:0,chords:-.22,bass:.05,drums:.1};
- let count=0;
- for(const id of PARTS){const p=a.parts[id];if(!p.enabled||!p.volume)continue;
-  const kit=id==='drums'?{kick:I.drum('kick',p.instrument,sr),snare:I.drum('snare',p.instrument,sr),hat:I.drum('hat',p.instrument,sr),hato:I.drum('hato',p.instrument,sr)}:null;
-  for(const n of p.notes){
-   check();let buf,hold=n.dur,rel=.005,gain=.28;
-   if(kit){buf=kit[drumTypes[n.midi]];hold=buf.length/sr;gain=({36:.4,38:.25,42:.13,46:.12})[n.midi];
-   }else {
-    const group=p.sampleSet&&Object.hasOwn(samples,p.sampleSet)?samples[p.sampleSet]:[];
-    const selected=p.sampleSet?mapSample(Array.isArray(group)?group:[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
-    if(selected){placeSample(L,R,selected,n,(id==='chords'?.2:.28)*p.volume,pan[id],sr);if((++count&7)===0){await yieldUI();check();}continue;}
-    const pitch=n.midi+(n.cents||0)/100,key=p.instrument+'|'+pitch+'|'+hold+'|'+Math.round(n.vel*8);
-    if(!cache.has(key))cache.set(key,I.instrument(p.instrument,pitch,hold+S.INSTR[p.instrument].rel,sr,Math.round(n.vel*8)/8));
-    buf=cache.get(key);rel=S.INSTR[p.instrument].rel;gain=id==='chords'?.2:.28;
-   }
-   S.place(L,R,buf,n.start,hold,rel,gain*p.volume*n.vel,pan[id],sr);
-   if((++count&7)===0){await yieldUI();check();}
-  }
-  await yieldUI();check();
- }
- cache.clear();await yieldUI();check();
- // Fixed headroom, no upward normalization: lowering a part stays quieter.
- const wl=S.reverbTail(L,sr,0);await yieldUI();check();
- const wr=S.reverbTail(R,sr,23);await yieldUI();check();let peak=0;
- for(let i=0;i<L.length;i++){L[i]+=wl[i]*.16;R[i]+=wr[i]*.16;peak=Math.max(peak,Math.abs(L[i]),Math.abs(R[i]));}
- if(peak>.95)for(let i=0;i<L.length;i++){L[i]*=.95/peak;R[i]*=.95/peak;}
- check();return {L,R,sr};
-}
+// Compatibility collector is limited to short clips; exports use the stream API.
+async function render(a,opts){return root.ScuLaSongRenderer.arrangement(a,opts).collect();}
+
 root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,DEFAULT_PLAYBACK,samplePlayback,sampleVelocity,mapSample,placeSample,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
 })(typeof window==='undefined'?globalThis:window);

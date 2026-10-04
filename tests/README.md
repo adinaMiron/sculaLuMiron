@@ -290,15 +290,15 @@ It uses root locked dev dependencies and Playwright Chromium, explicitly setting
 
 `PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
 
-`node tests/song-regressions.js --list` prints the authoritative 20-suite list.
+`node tests/song-regressions.js --list` prints the authoritative 22-suite list.
 The runner executes every listed suite, reports individual exits and exits
 nonzero if any fails. Inventory:
 
 | Kind | Suites |
 | --- | --- |
 | Static verification | `verify` |
-| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-samples`, `song-integrity`, `song-incremental-inspection` |
-| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-timeline`, `song-backup-import`, `voice`, `melody` |
+| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render` |
+| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
 | External labeled recordings (excluded from CI) | `node tests/song-evaluate.js path/to/manifest.json`; requires a supplied manifest and WAVs. Generated `song-evaluation` is a different check. |
 
 `song-recovery` uses real IndexedDB transactions and same-origin pages sharing
@@ -317,6 +317,20 @@ Milestone A verification on 2026-10-04: the 19 pre-edit deterministic suites pas
 at `616f70d`. The post-change command above exited 0 with all 20 suites passing
 locally in system Chrome. See the status report for review findings and limits;
 GitHub Actions itself was not executed in this session.
+
+Milestone B adds `song-bounded-render` (short PCM parity against the isolated
+v1 renderer, instrument/sample/reverb/tail/loop behavior, global attenuation,
+budget instrumentation and cancellation) and `song-render-browser` (streaming
+folder backpressure/abort/quota, bounded long-preview buffers, seeking/loops/Stop
+and large-download refusal in RO/EN at phone width). The pre-edit 20-suite
+baseline at `c0d29a2` passed locally. The expanded CI-equivalent command above
+then exited 0 with **all 22 suites passing** in system Chrome. Final targeted
+`verify`, `song-bounded-render` and `song-render-browser` reruns also exited 0;
+`git diff --check` passed. GitHub Actions and physical hardware checks were not
+run in this session.
+
+The additional physical-device rendering procedure and budget caveats are in
+[SONG-RENDERING.md](../docs/SONG-RENDERING.md#verification-and-manual-gaps).
 
 ### Manual microphone and phone checks (unexecuted)
 
