@@ -3137,8 +3137,8 @@ file reads are pending. Changing either selection invalidates the preview.
 Validation and cancellation leave existing project metadata and storage intact.
 
 The ordered plain helper `js/audio/backup.js` exposes `ScuLaSongBackup` v1.
-It parses and validates project schema v1, performance schema/analyzer v1 and
-arrangement schema/generator v1 before publication. It checks IDs, timestamps,
+It parses and validates project schema v1, performance schema v1/analyzers v1–2 and
+arrangement schema v1/generators v1–2 before publication. It checks IDs, timestamps,
 recording/sample metadata, analysis and edited note structure, source relationships,
 version uniqueness, snapshots and generated part references. Performance analyzer
 versions 1 and 2 are accepted; version 2 requires a frame-aligned interpreted
@@ -3382,7 +3382,7 @@ Phase 1/2 projects need no IndexedDB migration (`arrangements` defaults to empty
 Deleting a recording also deletes its arrangements from the project.
 
 `project.arrangements` stores `InstrumentalArrangement` records with
-`schemaVersion:1`, `generatorVersion:1`, ID, version, edit revision and timestamps;
+`schemaVersion:1`, `generatorVersion:1` (legacy) or `2` (composition), ID, version, edit revision and timestamps;
 `sourceRecordingId`, `sourceAssetId`, `sourcePerformanceId` and the performance's
 snapshot timestamp identify provenance. `performanceSnapshot` keeps edited
 notes, original and quantized timing, source tempo/key and quantization settings.
@@ -3391,17 +3391,31 @@ metadata. Each part stores instrument, enable flag, volume (0–1) and generated
 notes. Settings validate and regenerate a copy before updating the saved version.
 Master Blobs, detected evidence and the editable performance stay separate.
 
-`js/audio/arrangement.js` exposes frozen `ScuLaArrangement` v1 as an ordered plain
-script. Lead preserves the edited melody, cents and velocity; selected timing
+`js/audio/arrangement.js` exposes frozen `ScuLaArrangement` v2 as an ordered plain
+script with both generator versions. Lead preserves the edited melody, cents and velocity; selected timing
 preserves leading silence. Quantized timing is taken from the snapshot, or derived
 on a copy using its source grid/phase when no snapped timing was saved. Times are
 converted to beats at the source performance tempo and scaled at the arrangement
 tempo (40–220 BPM). Key transposes the lead by the tonic difference; major/minor
 controls backing harmony without resnapping edited lead pitches. MIDI pitches
-remain within 0–127. Duration-weighted diatonic chords use Voice's existing
+remain within 0–127. In generator 1, duration-weighted diatonic chords use Voice's existing
 harmony, with a tonic final bar. Plucked chord instruments arpeggiate; sustained
 ones play triads. Bass plays roots twice per bar; drums use a four-beat kick/snare
 and eighth-note hat pattern, including open hats on alternating bars.
+
+Milestone E adds **Compose a new copy**, **New copy with edited melody** and
+**Develop section independently**. Copies use generator 2 with editable
+one/two-per-bar diatonic chord slots and duration-weighted melody-match scores;
+2/4, 3/4, 4/4 and 6/8; close/open voicings, held/beat/half-beat density;
+root/fifth/chord-tone bass patterns; sparse/backbeat/driving drums and final or
+fourth-bar fills. Ballad, Folk and Pulse presets replace accompaniment and
+instrument/sample selections while preserving melody, timing and explicit
+harmony. See [composition contract](SONG-COMPOSITION.md) for exact musical rules,
+version/section semantics, sample live-link disclosure, MIDI duration and tests.
+Existing versions and source WAVs are preserved. Project samples remain live
+by-name links across copies; packs retain pinned references. Backups accept
+both generators and validate new composition settings/chord dimensions without
+regenerating musical values. No database or project-schema migration is needed.
 
 Each of **Lead / Chords / Bass / Drums** has its own instrument, enable and volume
 controls. Pitched parts offer the fourteen synthesized instruments; drums offer
@@ -3526,9 +3540,9 @@ capped at 20 minutes; Milestone B keeps this limit while bounding rendering audi
 The visual overview above the section editors gives each section a width
 proportional to its full duration (`arrangement.duration × repeats`). Divisions
 and a count show repeats. Each block shows the section name, linked version,
-tempo and key; a final audio-tail block accounts for the 1.8 seconds included
-in the WAV. A 4/4 ruler under the blocks draws beat ticks and readable bar
-numbers across tempo changes; the position readout shows bar.beat. On narrow
+tempo, key and meter; a final audio-tail block accounts for the 1.8 seconds included
+in the WAV. A meter-aware ruler under the blocks draws denominator-beat ticks and readable bar
+numbers across tempo/meter changes; legacy versions use 4/4. The position readout shows bar.beat. On narrow
 screens the overview scrolls horizontally while the
 page stays within the viewport. Click or tap a block to seek within it, use the
 range control with a pointer or keyboard for precise seeking, or choose **Play

@@ -122,7 +122,7 @@ Implementation: [analysis.js](../js/audio/analysis.js), [performance.js](../js/a
 - Cancel rendering/playback and release audio resources on Stop and relevant workspace/lifecycle changes.
 - Export derived PCM16 stereo WAV and format 1 MIDI containing a metadata track plus four named part tracks, programs and CC7 volumes. Drums use MIDI channel 10.
 
-Song adds acoustic-style piano, guitar, bass and distinct drum models to the shared synthesis kernel. The shared Voice helpers retain their separate behavior. Arrangements use schema/generator version 1. Editing arrangement controls regenerates that version; timeline sections linked to it follow the update.
+Song adds acoustic-style piano, guitar, bass and distinct drum models to the shared synthesis kernel. The shared Voice helpers retain their separate behavior. Arrangements use schema 1, with legacy generator 1 and opt-in composition generator 2. Editing arrangement controls regenerates that version; timeline sections linked to it follow the update. Composition copies add editable chord slots and match scores, meter, three style presets, voicing/density, bass/drum patterns, fills and octave. Independent section copies and new snapshots of edited melodies preserve earlier versions; see [composition contract](SONG-COMPOSITION.md).
 
 Implementation: [song-renderer.js](../js/audio/song-renderer.js), [song-playback.js](../js/audio/song-playback.js), [arrangement.js](../js/audio/arrangement.js), [synthesis.js](../js/audio/synthesis.js), [song-instruments.js](../js/audio/song-instruments.js), and `arrangementEditor` / `arrangementAudio`.
 
@@ -152,7 +152,7 @@ Implementation: [arrangement.js](../js/audio/arrangement.js), `renderSampleSetEd
 - Choose 1–16 repeats; reorder, duplicate and remove sections.
 - Optionally override the four parts' enabled/volume values per section; otherwise inherit the linked arrangement's live mix.
 - Keep 40 in-session timeline undo/redo snapshots per project.
-- Show proportional section/repeat blocks, tempo/key, a 4/4 beat/bar ruler, playhead and elapsed/total time.
+- Show proportional section/repeat blocks, tempo/key/meter, a meter-aware beat/bar ruler (legacy 4/4), playhead and elapsed/total time.
 - Seek by overview click/tap, range control or **Play from here**.
 - Join sections at musical duration and overlap preceding release/reverb tails.
 - Preserve each section's tempo and key without stretching or forced transposition.
@@ -344,8 +344,55 @@ Physical microphone/phone checks and independent listening acceptance remain
 unexecuted. The single-layer compact pack is deliberately limited; no claim of
 full piano realism, human preference, complete SFZ or other-family interpretation
 is made. Finish that listening review before expanding families. Milestone C
-still needs consented human recordings and independent labels; Milestone E is
-the next separate composition/control implementation task.
+still needs consented human recordings and independent labels; Milestone E's
+subsequent composition/control implementation is recorded below.
+
+### Milestone E — composition and arrangement control (2026-10-05)
+
+Implemented from `a49bdb1`. [Composition contract](SONG-COMPOSITION.md) records
+musical rules, compatibility and live-link decisions, tests and manual checks.
+
+- Composition generator 2, enabled on an explicit new copy, retains the legacy
+  melody snapshot/chord choices and exposes editable diatonic chords, one/two
+  changes per bar and duration-weighted melody compatibility alternatives.
+- 2/4, 3/4, 4/4 and 6/8 control generation, duration, piano pedal, timeline
+  ruler/playhead/snap and arrangement/song/loop MIDI time signatures. Quarter-note
+  BPM and denominator-beat ticks are explained in the UI. Composition MIDI
+  preserves silent bar endings; WAV retains the separate audio tail.
+- Ballad/Folk/Pulse change instrumentation, voicing, density and rhythms.
+  Independent bass/drum/fill controls and lead octave retain composition choices
+  and original timing. Quantization remains an explicit separate choice.
+- Independent section versions and alternate edited-melody snapshots preserve
+  earlier versions. Normal duplicate sections retain their live arrangement link;
+  undoing an independent copy restores the link while keeping its new version.
+  Project sample sets remain explicitly disclosed live links; packs remain pinned.
+- Project/database/backup schemas remain unchanged. Backups accept both generator
+  versions and validate composition/chord dimensions, preserve musical values and
+  remap references without regeneration. Original WAV bytes remain unchanged.
+- The shared runner includes two new suites and twelve deterministic meter/style
+  fixtures, covering musical rules, audible differences, exact block rendering,
+  mixed-meter timeline/MIDI/loop WAV, version isolation, restoration and RO/EN
+  phone layout. Existing writer/persistence safeguards apply to new controls.
+
+Review fixed silent MIDI bar endings, carried legacy chords into composition
+copies, bounded floating-point compatibility scores to 0–1, validated imported
+chord slot dimensions, removed stale 4/4-only labels and limited chord editing
+to 16 visible slots per page. New alternate melodies and invalid pitch changes
+are validated before replacing any saved metadata.
+
+Physical microphones/phones, DAW import and independent listening acceptance
+remain unexecuted; no human quality or accuracy claim is made. Milestone C still
+needs consented recordings/labels. F is the next separate implementation task.
+
+Verification: the initial `node tests/song-regressions.js` run invoked the 23
+existing suites and passed, but overlapped the first implementation edits and is
+not claimed as a wholly pre-edit baseline. After the implementation and review
+fixes, the final `node tests/song-regressions.js` exited 0: **all 25 suites passed**,
+including static parsing/nav/diacritics, new composition rules and browser flows,
+legacy Song recovery/analysis/render/sample/backup tests, and shared Voice/melody.
+A separate complete rerun of the composition browser suite with additional
+quota/retry and read-only-tab assertions also exited 0. `git diff --check` passed. These runs
+used Node v26.8.1 and local Playwright Chromium 1243, without a GitHub Actions run.
 
 ## 9. Current limitations and work not implemented
 

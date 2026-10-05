@@ -298,15 +298,15 @@ It uses root locked dev dependencies and Playwright Chromium, explicitly setting
 
 `PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
 
-`node tests/song-regressions.js --list` prints the authoritative 23-suite list.
+`node tests/song-regressions.js --list` prints the authoritative 25-suite list.
 The runner executes every listed suite, reports individual exits and exits
 nonzero if any fails. Inventory:
 
 | Kind | Suites |
 | --- | --- |
 | Static verification | `verify` |
-| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render` |
-| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-packs`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
+| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-composition`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render` |
+| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-composition-browser`, `song-sample-browser`, `song-packs`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
 | External labeled recordings (excluded from CI) | `node tests/song-evaluate.js path/to/manifest.json`; requires a supplied manifest and WAVs. Generated `song-evaluation` is a different check. |
 
 `song-recovery` uses real IndexedDB transactions and same-origin pages sharing
@@ -374,3 +374,23 @@ corruption/cancellation/size/quota failures, offline playback, decoded memory
 preflight, exact block-size repeatability, pedal decay, fallback, source bytes,
 backup restore and RO/EN phone UI. See
 [the pack contract and manual audition procedure](../docs/SONG-INSTRUMENT-PACKS.md).
+
+Milestone E adds `node tests/song-composition.js` and
+`node tests/song-composition-browser.js` to the shared runner (25 suites).
+The Node suite checks major/minor harmony, compatibility, meter/pattern/fill
+constraints, preserved human timing, MIDI bar/loop durations, exact PCM across
+block sizes and twelve fixed meter/preset fingerprints in
+`fixtures/song-composition-v2.json`. Presets produce distinct non-silent audio.
+The browser suite exercises the actual composition controls and independent
+section/alternate-melody copies, undo/redo links, mixed-meter ruler and beat snap,
+exact loop WAV bytes, MIDI events, reload, invalid-edit rollback, backup validation
+and remapping, quota-failure export/retry, read-only controls, original WAV bytes
+and Romanian/English phone layouts. See the
+[composition contract and unexecuted listening/device checks](../docs/SONG-COMPOSITION.md).
+
+Milestone E verification (2026-10-05): the final
+`node tests/song-regressions.js` exited 0 with all **25** suites passing using
+Node v26.8.1 and bundled Playwright Chromium 1243. The extended composition browser
+suite's separate rerun, including quota/retry and read-only-tab assertions, also
+exited 0; `git diff --check` passed. GitHub Actions and the manual physical-device,
+DAW and independent listening checks were not run.

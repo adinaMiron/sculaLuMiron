@@ -908,7 +908,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `js/audio/song-instruments.js` | Song-only piano/plucked-string block generators, compatibility collectors and deterministic drum kits |
 | `js/audio/song-renderer.js`, `js/audio/song-playback.js` | Bounded stateful synthesis/reverb, budget instrumentation, global peak/replay WAV streams and exact loop slices; short collector and long-preview scheduler. See `docs/SONG-RENDERING.md` |
 | `js/audio/arrangement.js` | Versioned snapshot/generation/validation, bounded nearest-note sample mapping, playback start/sustain crossfade/release, MIDI CC7/part tracks, fixed-headroom stereo mix |
-| `renderSongTimeline`, `editSongTimeline`, `stepSongTimeline`, `paintSongBeatRuler`, `songLoopBounds`, `changeSongLoop`, `seekSong`, `startSongAt`, `songAudio`, `stopArrangement`, `exportSongMidi` | Linked section editors with mix overrides and per-project undo/redo, proportional overview/repeat marks, 4/4 beat ruler/snap, temporary full/section/custom loop and optional WAV fades, pointer/keyboard transport, playhead, bounded short buffers or scheduled long-preview seeking/looping, Stop/cleanup and whole-song exports |
+| `renderSongTimeline`, `editSongTimeline`, `stepSongTimeline`, `paintSongBeatRuler`, `songLoopBounds`, `changeSongLoop`, `seekSong`, `startSongAt`, `songAudio`, `stopArrangement`, `exportSongMidi` | Linked section editors with mix overrides and per-project undo/redo, proportional overview/repeat marks, meter-aware beat ruler/snap, temporary full/section/custom loop and optional WAV fades, pointer/keyboard transport, playhead, bounded short buffers or scheduled long-preview seeking/looping, Stop/cleanup and whole-song exports |
 | `js/audio/song-timeline.js` | Resolve section references, validate mix overrides and duration cap, expose the 1.8-second WAV tail, delegate bounded audio rendering; retain section/mix resolution, optional edge fade, stereo WAV and tempo/key/effective-part-aware whole-song or clipped loop multitrack MIDI |
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
 | `tests/song-evaluate.js`, `tests/song-evaluation.js` | External labeled-WAV evaluator: legacy/human manifests, provenance/hash/split validation, source fingerprints, analysis timing and weighted split reports; generated metric/contract regressions |
@@ -917,7 +917,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `tests/song-timeline.js` | Two-take file:// sections, mix override playback/MIDI/validation and undo/redo, 4/4 ruler/beat snap, proportional layout, seeking/playhead and full/section/custom loop across repeats, optional loop WAV fade, keyboard/touch range, rendering/playback Stop and cleanup, RO/EN phone transport, whole-song and loop MIDI/WAV timing, clipped notes, parity, backup remapping and source bytes |
 | `tests/song-samples.js`, `tests/song-sample-browser.js` | Sample pitch/dynamic mapping, loop boundaries/release, legacy defaults and fallback; file:// import, waveform/marker dragging, invalid boundaries, mapping changes, unchanged source, audition, played/exported PCM and persistence |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
-| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 23-suite local/CI runner |
+| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 25-suite local/CI runner |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |
 
 Song Milestone B checks: `tests/song-bounded-render.js` compares to the isolated
@@ -938,3 +938,14 @@ full license live in `assets/song-packs/salamander-compact-v1/`.
 `arrangement.js:performanceNotes` applies the opt-in piano profile to both
 `song-renderer.js` and `song-timeline.js`/arrangement MIDI.
 `tests/song-packs.js` covers actual pack bytes, lifecycle, budgets and UI.
+
+Song Milestone E: [SONG-COMPOSITION.md](SONG-COMPOSITION.md).
+`copyComposition` / `compositionEditor` in `song.html` expose independent version
+and section copies, alternate melody snapshots, harmony/meter/style/pattern
+controls and shared-sample notices. `arrangement.js:enableComposition`,
+`generateComposition`, `chordAlternatives`, `applyStyle`, `meterEvent` preserve
+generator 1 while adding generator 2. `song-timeline.js:beatMarks` feeds the ruler
+and snap; MIDI uses section meters and preserves composition bar endings through
+the optional `synthesis.js:midiTrack` end tick. `backup.js` validates composition
+settings/chord dimensions. `tests/song-composition.js`, its v2 fixture and
+`tests/song-composition-browser.js` cover the musical rules and shipped workflow.

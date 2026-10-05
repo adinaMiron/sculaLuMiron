@@ -43,7 +43,7 @@ function midi(project,range=null){
   const emit=initial||inside;
   const a=item.arrangement,parts=partsFor(item),t=range?(initial?0:item.ticks-startTick):item.ticks,us=Math.round(60000000/a.tempoBpm),key=a.key.tonic,minor=a.key.mode==='minor';
   if(emit){
-  tempo.push({t,o:0,d:[255,81,3,us>>16&255,us>>8&255,us&255]},{t,o:1,d:[255,88,4,4,2,24,8]});
+  tempo.push({t,o:0,d:[255,81,3,us>>16&255,us>>8&255,us&255]},{t,o:1,d:A.meterEvent(a)});
   // Text at every section start preserves user names for DAWs that show markers.
   const label=item.section.name+(item.section.repeats>1?' '+item.repeat+'/'+item.section.repeats:'');
   const chars=Array.from(new TextEncoder().encode(label));tempo.push({t,o:2,d:[255,6,...vlq(chars.length),...chars]});
@@ -61,11 +61,23 @@ function midi(project,range=null){
   });
  }
  const bytes=[77,84,104,100,0,0,0,6,0,1,0,5,1,224];
- for(const b of S.midiTrack(tempo,'Song Creation'))bytes.push(b);
- tracks.forEach((events,i)=>{for(const b of S.midiTrack(events,PARTS[i][0].toUpperCase()+PARTS[i].slice(1)))bytes.push(b);});
+ // Composition MIDI retains silent bar endings, including all-muted sections.
+ // The final audio reverb tail is not part of the musical MIDI duration.
+ const lastTick=plan.items.some(item=>item.arrangement.generatorVersion===2)?Math.max(0,Math.min(endTick,plan.ticks)-startTick):0;
+ for(const b of S.midiTrack(tempo,'Song Creation',lastTick))bytes.push(b);
+ tracks.forEach((events,i)=>{for(const b of S.midiTrack(events,PARTS[i][0].toUpperCase()+PARTS[i].slice(1),lastTick))bytes.push(b);});
  return new Blob([new Uint8Array(bytes)],{type:'audio/midi'});
 }
 function vlq(value){const out=[value&127];while(value>>=7)out.unshift((value&127)|128);return out;}
+function beatMarks(project){
+ const plan=resolve(project),marks=[];let bar=1;
+ for(const item of plan.items){const m=A.meter(item.arrangement),unit=60/item.arrangement.tempoBpm*4/m.denominator,count=Math.round(item.arrangement.duration/unit);
+  for(let k=0;k<count;k++)marks.push({seconds:item.seconds+k*unit,bar:bar+Math.floor(k/m.numerator),beat:k%m.numerator+1});
+  bar+=Math.ceil(count/m.numerator);
+ }
+ if(plan.items.length)marks.push({seconds:plan.seconds,bar,beat:1});
+ return marks;
+}
 function edgeFade(mix,milliseconds){
  if(!Number.isFinite(milliseconds)||milliseconds<0||milliseconds>100)throw new Error('timelineInvalid');
  if(!milliseconds)return mix;
@@ -73,5 +85,5 @@ function edgeFade(mix,milliseconds){
  for(let i=0;i<frames;i++){const gain=i/frames,j=L.length-1-i;L[i]*=gain;R[i]*=gain;L[j]*=gain;R[j]*=gain;}
  return {L,R,sr:mix.sr};
 }
-root.ScuLaSongTimeline=Object.freeze({resolve,render,midi,edgeFade,wav:A.wav,tailSeconds:TAIL_SECONDS});
+root.ScuLaSongTimeline=Object.freeze({resolve,beatMarks,render,midi,edgeFade,wav:A.wav,tailSeconds:TAIL_SECONDS});
 })(typeof window==='undefined'?globalThis:window);

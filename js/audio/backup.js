@@ -82,7 +82,7 @@ function validate(project){
   });
   if(project.arrangements!==undefined)array(project.arrangements,'arrangements');
   (project.arrangements||[]).forEach((a,i)=>{
-    const p='arrangements['+i+']';object(a,p);version(a.schemaVersion,1,p+'.schemaVersion');version(a.generatorVersion,root.ScuLaArrangement.version,p+'.generatorVersion');check(a.type==='InstrumentalArrangement',p+'.type');entity(a.id,p+'.id');
+    const p='arrangements['+i+']';object(a,p);version(a.schemaVersion,1,p+'.schemaVersion');if(![1,2].includes(a.generatorVersion))fail('backupVersion',p+'.generatorVersion');check(a.type==='InstrumentalArrangement',p+'.type');entity(a.id,p+'.id');
     integer(a.version,p+'.version',1);integer(a.revision,p+'.revision',1);stamp(a.createdAt,p+'.createdAt');stamp(a.updatedAt,p+'.updatedAt');stamp(a.sourcePerformanceUpdatedAt,p+'.sourcePerformanceUpdatedAt');
     const r=recordings.get(a.sourceRecordingId);check(!!r,p+'.sourceRecordingId');check(a.sourceAssetId===r.source.assetId,p+'.sourceAssetId');
     // Reanalysis replaces the current performance; old arrangement provenance is valid.
@@ -96,6 +96,12 @@ function validate(project){
       if(part==='lead'){check(snapshotIds.has(n.id) && !leadIds.has(n.id),p+'.lead.note.id');leadIds.add(n.id);check(n.sourceNoteId===s.notes.find(x=>x.id===n.id).sourceNoteId,p+'.lead.note.sourceNoteId');}
     });});check(leadIds.size===snapshotIds.size,p+'.lead / snapshot notes');
     array(a.chords,p+'.chords');a.chords.forEach(c=>{object(c,p+'.chord');integer(c.bar,p+'.chord.bar',0);integer(c.root,p+'.chord.root',0,11);check(['maj','min','dim'].includes(c.q),p+'.chord.q');array(c.tones,p+'.chord.tones');c.tones.forEach(n=>integer(n,p+'.chord.tones',0,11));});
+    if(a.generatorVersion===2){
+      const bar=root.ScuLaArrangement.meter(a).quarters*60/a.tempoBpm,slot=bar/a.composition.harmonicRhythm;
+      check(Math.abs(a.duration/bar-Math.round(a.duration/bar))<1e-6,p+'.meter duration');
+      check(a.chords.length===Math.round(a.duration/slot),p+'.chord slots');
+      a.chords.forEach((c,i)=>{check(c.slot===i&&c.bar===Math.floor(i/a.composition.harmonicRhythm),p+'.chord slot');integer(c.degree,p+'.chord degree',1,7);number(c.start,p+'.chord start',0,a.duration);number(c.dur,p+'.chord duration',.000001,a.duration);check(Math.abs(c.start-i*slot)<1e-6&&Math.abs(c.dur-slot)<1e-6,p+'.chord timing');if(c.compatibility!==null)number(c.compatibility,p+'.chord compatibility',0,1);});
+    }
   });
   if(project.timeline!==undefined){
     array(project.timeline,'timeline');

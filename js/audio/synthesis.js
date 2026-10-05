@@ -324,7 +324,7 @@ function vlq(v){
   while(v > 0){ b.unshift((v & 0x7f) | 0x80); v >>>= 7; }
   return b;
 }
-function midiTrack(events, name){
+function midiTrack(events, name, endTick=0){
   const data = [];
   const push = a => { for(const v of a) data.push(v); };
   push(vlq(0)); push([0xFF, 0x03, name.length]);
@@ -336,7 +336,7 @@ function midiTrack(events, name){
     push(e.d);
     last = e.t;
   }
-  push(vlq(0)); push([0xFF, 0x2F, 0x00]);
+  push(vlq(Math.max(0, endTick - last))); push([0xFF, 0x2F, 0x00]);
   const head = [0x4D, 0x54, 0x72, 0x6B,
     (data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255];
   return head.concat(data);

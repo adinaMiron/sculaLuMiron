@@ -10,7 +10,7 @@ This document is a ready-to-use implementation prompt plus a sequenced roadmap. 
 
 You are working on the existing `adinaMiron/sculaLuMiron` repository using Codex/Astra.
 
-Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. The original task below authorized **Milestone A only**, now completed along with the separately implemented B. On a continuation, inspect the implementation notes and current checkout: **C is partially prepared and awaiting human recordings; D now has its first piano implementation**. Do not treat the later roadmap as authorization to implement every milestone in one session.
+Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. The original task below authorized **Milestone A only**, now completed along with the separately implemented B. On a continuation, inspect the implementation notes and current checkout: **C is partially prepared and awaiting human recordings; D has its first piano implementation; E adds composition controls**. Do not treat the later roadmap as authorization to implement every milestone in one session.
 
 ### 1. Inspect and establish the actual baseline
 
@@ -170,6 +170,13 @@ Existing project sample playback is implemented; reuse it as the starting point.
 Acceptance: one genuinely improved instrument with documented provenance, repeatable rendering, sane download/memory behavior, source immutability and convincing audition comparisons. Expand families only after this vertical slice works.
 
 ### Milestone E — composition and arrangement control
+
+Implementation note (2026-10-05): implemented from `a49bdb1`. See
+[composition controls and semantics](SONG-COMPOSITION.md) for generator 2,
+editable harmony/patterns/styles, supported meters, independent section/alternate
+melody copies and explicit sample live links. Generator 1 and original WAVs remain
+preserved. Executed verification is recorded in the status report; physical-device,
+DAW and independent listening checks remain unexecuted. F is a separate next task.
 
 The current engine already generates diatonic chords, bass, drums and four parts. Add control and musical development, not another generic arrangement button.
 
