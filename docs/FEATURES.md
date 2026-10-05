@@ -153,7 +153,11 @@ Behaviour forks on `forExport` in two places. `resolveImageSrc()`
 (L4020): export rewrites relative image paths to `public/images/…` and
 turns a bare image-path line into a standalone `<img>`, because exported
 HTML ships without the app's working-folder image tree. And
-`renderCodeBlock()`: the preview emits a plain `<pre><code>`, the export
+`renderCodeBlock()`: the preview emits a plain `<pre><code>`. A single click
+on preview code (inline or fenced, including code inserted with Ctrl+Shift+K)
+copies its text with indentation and line breaks intact. The delegated
+`copyPreviewCode()` handler uses the Clipboard API with a legacy-copy fallback
+and a localized success/failure toast. The export
 wraps each fenced block in `.code-block` with a "Copiază" button (styled
 and wired by the template's own `<style>` and trailing inline script —
 that script tag is string-split `<scr`+`ipt>` so it survives being inside

@@ -1065,9 +1065,44 @@ function updatePreview() {
   mapRefresh();         // and the 🗺 button only exists while a "^@" does
 }
 
+// Copy the rendered text so escaped HTML, indentation and line breaks survive.
+async function copyPreviewCode(code) {
+  const text = code.textContent;
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    copied = true;
+  } catch (e) {
+    // Also support file:// and browsers that deny the Clipboard API.
+    const active = document.activeElement;
+    const selection = window.getSelection();
+    const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, i) => selection.getRangeAt(i).cloneRange()) : [];
+    const input = document.createElement('textarea');
+    input.value = text;
+    input.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(input);
+    input.select();
+    try { copied = document.execCommand('copy'); } catch (err) {}
+    input.remove();
+    if (active) active.focus({ preventScroll: true });
+    if (selection) {
+      selection.removeAllRanges();
+      ranges.forEach(range => selection.addRange(range));
+    }
+  }
+  ScuLaFolder.toast(t(copied ? 'codeCopied' : 'codeCopyFailed'));
+}
+
 /* Following a [[wikilink]] or a #tag from the preview. Delegated, because
    the preview is rebuilt from scratch on every keystroke. */
 preview.addEventListener('click', e => {
+  const pre = e.target.closest('pre');
+  const code = e.target.closest('code') || (pre && pre.querySelector('code'));
+  if (code) {
+    e.preventDefault();
+    copyPreviewCode(code);
+    return;
+  }
   const cb = e.target.closest('.task-checkbox');
   if (cb && cb.dataset.line !== undefined) {
     const previewLineIdx = Number(cb.dataset.line);
