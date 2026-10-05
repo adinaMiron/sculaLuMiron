@@ -3284,8 +3284,13 @@ Tempo and divisions per beat are editable without changing detected evidence.
 
 #### Labeled humming evaluation
 
+Milestone C's [capture/annotation protocol](SONG-HUMMING-EVALUATION.md) defines
+collection, independent review, consent/licensing provenance and participant
+separation for tuning versus held-out recordings. Human data is still missing;
+the analyzer remains version 2 and real-world accuracy is unmeasured.
+
 Run `node tests/song-evaluate.js path/to/manifest.json` to evaluate version 2
-against original, unaccompanied WAV takes. The UTF-8 JSON manifest has this form:
+against original, unaccompanied WAV takes. The legacy UTF-8 JSON manifest remains supported:
 
 ```json
 {
@@ -3315,6 +3320,17 @@ matched notes 12 semitones away. Mean absolute onset/offset errors are over
 matched pairs; both are `null` if there are no pairs. The result also lists
 signed timing and pitch errors for each match. Empty reference takes are
 allowed, with accuracy 1 only if Song also emits no notes.
+
+Human-corpus manifest schema 2 additionally requires corpus identity/version,
+participant/split, original WAV SHA-256, microphone/environment/tags, declared
+evaluation/redistribution consent, license text/attribution and independent
+annotation with a separate reviewer. The runner rejects participant or identical
+WAV overlap across splits and mismatched hashes. These checks validate declarations,
+not their truth. Reports now use schema 2 with per-recording metrics, source/input
+fingerprints, runtime and analysis time, note-weighted totals and separate split
+summaries; absent splits are `null`. Legacy inputs report `unspecified` evidence.
+Nothing uploads or modifies the WAVs. See the protocol for limits and the baseline
+versus candidate procedure; reports are not a claim of verified consent or accuracy.
 
 No labeled human humming corpus is in this repository. On five seeded,
 generated WAV cases (14 reference notes), the initial version 2 detector scored

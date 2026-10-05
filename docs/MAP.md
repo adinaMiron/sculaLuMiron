@@ -911,6 +911,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `renderSongTimeline`, `editSongTimeline`, `stepSongTimeline`, `paintSongBeatRuler`, `songLoopBounds`, `changeSongLoop`, `seekSong`, `startSongAt`, `songAudio`, `stopArrangement`, `exportSongMidi` | Linked section editors with mix overrides and per-project undo/redo, proportional overview/repeat marks, 4/4 beat ruler/snap, temporary full/section/custom loop and optional WAV fades, pointer/keyboard transport, playhead, bounded short buffers or scheduled long-preview seeking/looping, Stop/cleanup and whole-song exports |
 | `js/audio/song-timeline.js` | Resolve section references, validate mix overrides and duration cap, expose the 1.8-second WAV tail, delegate bounded audio rendering; retain section/mix resolution, optional edge fade, stereo WAV and tempo/key/effective-part-aware whole-song or clipped loop multitrack MIDI |
 | `tests/song.js`, `tests/song-analysis.js`, `tests/song-bounded-analysis.js`, `tests/song-analysis-lifecycle.js`, `tests/song-performance.js` | Capture regressions, analysis accuracy, bounded source reads/formats/cancellation, editing/exports/immutable masters, old decoder musical comparison and RO/EN phone/file checks |
+| `tests/song-evaluate.js`, `tests/song-evaluation.js` | External labeled-WAV evaluator: legacy/human manifests, provenance/hash/split validation, source fingerprints, analysis timing and weighted split reports; generated metric/contract regressions |
 | `tests/song-synthesis.js`, `tests/fixtures/voice-synthesis-v1.json`, `tests/song-instruments.js` | Pre-extraction Voice accuracy reference and Song-only acoustic-style instrument checks |
 | `tests/song-arrangement-generation.js`, `tests/song-arrangement.js`, `tests/verify.js` | Arrangement model/controls/audio/exports, browser lifecycle/persistence/recovery/phone/i18n and `/verify` |
 | `tests/song-timeline.js` | Two-take file:// sections, mix override playback/MIDI/validation and undo/redo, 4/4 ruler/beat snap, proportional layout, seeking/playhead and full/section/custom loop across repeats, optional loop WAV fade, keyboard/touch range, rendering/playback Stop and cleanup, RO/EN phone transport, whole-song and loop MIDI/WAV timing, clipped notes, parity, backup remapping and source bytes |
@@ -923,3 +924,7 @@ Song Milestone B checks: `tests/song-bounded-render.js` compares to the isolated
 `tests/fixtures/song-render-v1.js`; `tests/song-render-browser.js` covers streaming
 saves/failures and long-preview scheduling/seek/loops. Shared `saveStream` is
 inside the synchronized nav block in all nine pages.
+
+Song continuation roadmap: [SONG-NEXT-IMPLEMENTATION.md](SONG-NEXT-IMPLEMENTATION.md).
+Milestone C preparation and missing-data boundary:
+[SONG-HUMMING-EVALUATION.md](SONG-HUMMING-EVALUATION.md).

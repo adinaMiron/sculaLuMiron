@@ -1,6 +1,6 @@
 # Song Creation — implementation status
 
-Reviewed: 2026-10-04  
+Reviewed: 2026-10-05
 Repository: [adinaMiron/sculaLuMiron](https://github.com/adinaMiron/sculaLuMiron)  
 Original review snapshot: [a3382e37a0d6eb6862a635c6a822eaebead28f14](https://github.com/adinaMiron/sculaLuMiron/commit/a3382e37a0d6eb6862a635c6a822eaebead28f14)
 
@@ -265,6 +265,39 @@ modified. The shared stream-save extension is identical across all nine pages.
 and unexecuted real-device/memory/disk checks. Milestone C is next and requires
 consented labeled human recordings; synthetic tests do not establish accuracy.
 
+### Milestone C preparation (2026-10-05)
+
+Started from clean `main` at `2aa5c8e`. The
+[capture/annotation protocol](SONG-HUMMING-EVALUATION.md) defines a pilot,
+independent review, consent/licensing records, frozen participant splits and a
+baseline/candidate procedure. The existing evaluator now accepts a stricter
+human-corpus schema 2 alongside legacy schema 1: required provenance declarations,
+SHA-256 checks and participant/identical-WAV separation across splits. Report
+schema 2 adds input/source fingerprints, runtime, analysis time, correct-note
+counts and weighted aggregate/separate split metrics. Missing splits report
+`null`; legacy evidence is `unspecified`. Declarations cannot prove human origin,
+consent or reviewer independence.
+
+No human recordings or independent labels were supplied or found in the repository.
+**Milestone C remains partial and human evaluation is blocked by missing data.**
+No human baseline, held-out result, baseline-derived acceptance threshold or
+segmentation/confidence improvement is claimed. Analyzer version 2 and all
+application/project/backup schemas remain unchanged; no source WAV is modified
+or published. Generated regression fixtures test the evaluator contract only.
+
+Verification: the baseline command
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+exited 0 with all 22 suites passing. The runner started before edits; its evaluator
+check used the original code. After the evaluator changes, targeted
+`node tests/song-evaluation.js` and `node tests/verify.js` exited 0, and
+`git diff --check` passed. No application runtime files changed, so browser
+suites were not repeated after the tooling edits. Review checked legacy input
+compatibility, report-version changes, split leakage checks, absent-split handling,
+weighted denominators, source immutability and truthful documentation. The
+protocol explicitly records that split checks only cover the supplied manifest
+and declarations do not establish consent or human origin. GitHub Actions, real
+human-corpus evaluation and physical microphone/phone checks were not run.
+
 ## 9. Current limitations and work not implemented
 
 - No automatic disk mirroring or self-contained backup archive: export JSON and source WAVs separately.
@@ -272,6 +305,7 @@ consented labeled human recordings; synthetic tests do not establish accuracy.
 - No simultaneous-tab merge. A single writer is enforced; takeover reloads saved state and pending local work must be exported before confirming its replacement.
 - No persisted rendered derived assets; mixes are generated in memory.
 - No polyphonic/accompanied transcription guarantee; analysis targets a single unaccompanied humming voice and may need manual edits.
+- Human humming accuracy, baseline-derived acceptance thresholds and held-out comparison remain unmeasured; Milestone C needs consented original WAVs and independent labels.
 - No continuous cents/expression pitch-bend export in MIDI; those values remain in JSON and, where rendered, audio.
 - Short previews (up to 30 seconds) collect a bounded stereo mix. Longer previews schedule blocks with live peak control and may need a cancellable wait on late seeks; their peak handling can differ from WAV export.
 - WAV export uses bounded peak/replay passes. Downloads/shares are limited to 32 MiB; larger WAVs require a selected writable folder. The renderer caps active synthesis, sample decoding and musical event counts; browser native memory is not a measured RSS guarantee.

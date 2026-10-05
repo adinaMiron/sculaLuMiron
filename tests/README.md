@@ -198,10 +198,18 @@ Master exports are compared byte for byte with the imported WAV, including its
 extra RIFF chunk. Version 2 contour evidence is checked through export/reload;
 `song-backup-import` covers version 1 restoration and version 2 round trips.
 `node tests/song-evaluate.js path/to/manifest.json` reports per-recording note
-and pitch accuracy, octave errors, missed/extra notes, and onset/offset error
-against independently labeled WAV takes. The manifest format and measured
-generated-case results are in `docs/FEATURES.md` under “Labeled humming
-evaluation.” Labeled human humming remains to be evaluated.
+and pitch accuracy, octave errors, missed/extra notes, onset/offset error and
+analysis time against independently labeled WAV takes. Legacy schema 1 manifests
+remain accepted; human-corpus schema 2 validates provenance declarations, hashes
+and participant/WAV separation across tuning and held-out splits. Report schema 2
+adds source/input fingerprints, runtime and weighted totals/split summaries.
+The [collection and annotation protocol](../docs/SONG-HUMMING-EVALUATION.md)
+defines both the contract and baseline/candidate procedure. `song-evaluation`
+tests these contracts with generated files and dummy provenance, including
+invalid input, source immutability and the CLI. It is already in the shared CI
+runner. The manifest's declarations do not prove consent or human origin.
+Generated-case results remain in `docs/FEATURES.md` under “Labeled humming
+evaluation.” Human baseline and held-out evaluation remain blocked by missing data.
 Run `song`, `voice`,
 `melody` and `/verify` alongside these after changes to the shared analyzer.
 
@@ -331,6 +339,13 @@ run in this session.
 
 The additional physical-device rendering procedure and budget caveats are in
 [SONG-RENDERING.md](../docs/SONG-RENDERING.md#verification-and-manual-gaps).
+
+Milestone C preparation on 2026-10-05 started from `2aa5c8e`. The 22-suite
+baseline command passed. After extending the evaluator, `node tests/song-evaluation.js`
+and `node tests/verify.js` passed, as did `git diff --check`. The expanded evaluator
+regressions use generated audio only; no human-corpus results or physical-device
+measurements were produced. Runtime files did not change; browser suites were not
+repeated after the tooling edits. See the status report for remaining Milestone C work.
 
 ### Manual microphone and phone checks (unexecuted)
 

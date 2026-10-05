@@ -10,7 +10,7 @@ This document is a ready-to-use implementation prompt plus a sequenced roadmap. 
 
 You are working on the existing `adinaMiron/sculaLuMiron` repository using Codex/Astra.
 
-Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. Execute **Milestone A only** in this task. The later milestones below are the roadmap, not authorization to implement them all in one session.
+Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. The original task below authorized **Milestone A only**, now completed along with the separately implemented B. On a continuation, inspect the implementation notes and current checkout: **C is partially prepared and awaiting human recordings**. Do not treat the later roadmap as authorization to implement every milestone in one session.
 
 ### 1. Inspect and establish the actual baseline
 
@@ -113,7 +113,7 @@ Completion report: implemented gaps, changed files, recovery/concurrency guarant
 Implementation note (2026-10-04): implemented from `c0d29a2`. See
 [rendering budgets and behavior](SONG-RENDERING.md) and the status report for
 verification and the deliberate long-preview/offline-export distinction.
-Milestone C remains a separate task requiring consented human recordings.
+Milestone C requires consented human recordings; its preparation is documented below.
 
 The report says bounded source analysis and backup inspection already exist, but full stereo mixes still allocate in memory. Fix this before increasing song lengths or adding large instrument packs.
 
@@ -127,6 +127,15 @@ The report says bounded source analysis and backup inspection already exist, but
 Acceptance: documented peak working-memory limits, responsive cancellation, no boundary discontinuities, preserved mix/loop behavior, and graceful unsupported/oversized export handling.
 
 ### Milestone C — establish accuracy on real humming
+
+Implementation note (2026-10-05): preparation from `2aa5c8e` adds the
+[capture/annotation protocol and manifest contract](SONG-HUMMING-EVALUATION.md)
+and extends the existing evaluator with provenance validation, input/source
+hashes, participant/byte-identical split checks, split summaries and analysis
+timing. Legacy manifests remain accepted. **C is not complete:** no consented
+human WAVs or independent labels were supplied. Human baseline/held-out
+measurements, baseline-derived thresholds and targeted analyzer changes remain
+blocked by missing data. Do not substitute the generated regression fixtures.
 
 The report documents generated-signal checks, but no labeled human humming corpus. Improve measured real-world accuracy before adding an ML dependency.
 
