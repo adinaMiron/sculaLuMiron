@@ -335,3 +335,85 @@ Completed reviews provide useful historical information about:
 - prior verification.
 
 Do not reuse an old review file for an unrelated later review simply because all its checkboxes are already complete.
+
+# Automatic review finding authoring
+
+When an agent performs a review and discovers a concrete issue requiring correction, every independently actionable finding must be written as an unchecked Markdown task:
+
+```text
+- [ ] Finding.
+```
+
+Do not leave actionable defects only in review prose.
+
+For example, instead of:
+
+```text
+The mobile layout has several problems. The primary button wraps and the
+result table overflows.
+```
+
+write:
+
+```text
+## Findings
+
+- [ ] The primary action button wraps onto two lines at 320 px viewport width.
+
+- [ ] The result table overflows the viewport on screens narrower than 400 px.
+```
+
+Each finding should describe one concrete problem that can independently be:
+
+1. reproduced or verified;
+2. corrected;
+3. tested;
+4. marked complete;
+5. committed.
+
+## Non-actionable review observations
+
+Do not use checkboxes for observations that require no corrective action.
+
+For example:
+
+```text
+## Notes
+
+- The calculator module still uses the original naming convention.
+- Existing test organization differs from newer modules.
+```
+
+These are observations, not review-fix tasks.
+
+## New features discovered during review
+
+A review agent must distinguish defects from new product requirements.
+
+If expected behavior was already required but is missing or incorrect:
+
+```text
+docs/reviews/
+```
+
+and create:
+
+```text
+- [ ] Concrete review finding.
+```
+
+If the behavior was never part of the accepted requirements, do not create it as a review finding merely because it would improve the product.
+
+Instead create a new implementation requirement under:
+
+```text
+docs/tasks/<module>/
+```
+
+using:
+
+```text
+- [ ] [ID:new-requirement] New required behavior.
+```
+
+This prevents feature expansion from being hidden inside review-fix work.
