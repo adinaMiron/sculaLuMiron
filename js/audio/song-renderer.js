@@ -32,8 +32,11 @@ function voice(p,id,n,samples,o){
  const pitch=n.midi+(n.cents||0)/100;
  if(pitch< -12||pitch>139)throw Error('renderLimit');
  const sr=o.sr,start=Math.round(n.start*sr),hold=Math.max(1,Math.round(n.dur*sr)),pan=pans[id];
- const group=p.sampleSet&&Object.hasOwn(samples,p.sampleSet)?samples[p.sampleSet]:[];
- const selected=p.sampleSet?A.mapSample(Array.isArray(group)?group:[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
+ const sampleKey=p.samplePack?'pack:'+p.samplePack.sha256:p.sampleSet;
+ const groups=p.samplePack?(samples[Symbol.for('ScuLaSongPacks')]||{}):samples;
+ const group=sampleKey&&Object.hasOwn(groups,sampleKey)?groups[sampleKey]:[];
+ const selected=sampleKey?A.mapSample(Array.isArray(group)?group:[],n.midi+(n.cents||0)/100,n.velocity||Math.round(n.vel*127)):null;
+ if(sampleKey&&!selected)o.fallback?.(p);
  const release=o.budget.reserve(192*1024,'voice');
  try{
  if(selected){const settings=A.samplePlayback(selected.playback,selected.channels[0].length/selected.sampleRate),rel=Math.round(settings.releaseSeconds*sr),rate=2**((n.midi+(n.cents||0)/100-selected.midiNote)/12)*selected.sampleRate/sr;const frames=Math.max(0,Math.min(hold+rel,settings.loopStartSeconds!==null?Infinity:Math.floor((selected.channels[0].length-1-settings.startSeconds*selected.sampleRate)/rate)));return {start,end:start+frames,release,place:(L,R,offset)=>A.placeSample(L,R,selected,n,(id==='chords'?.2:.28)*p.volume,pan,sr,offset)};}
@@ -57,7 +60,7 @@ function voice(p,id,n,samples,o){
 function eventsFor(a,o){
  const events=[];
  let order=0;
- for(const id of A.PARTS){const p=a.parts[id];if(!p.enabled||!p.volume)continue;for(const n of p.notes){
+ for(const id of A.PARTS){const p=a.parts[id];if(!p.enabled||!p.volume)continue;for(const n of A.performanceNotes(p,a)){
   if(!Number.isFinite(n.start)||n.start<0||!Number.isFinite(n.dur)||n.dur<=0||!Number.isFinite(n.midi)||n.midi<0||n.midi>127||!Number.isFinite(n.vel)||n.vel<0||n.vel>1||n.cents!==undefined&&!Number.isFinite(n.cents))throw Error('invalidEdit');
   events.push({p,id,n,start:Math.round(n.start*o.sr),order:order++});if(events.length>20000)throw Error('renderLimit');
  }}
@@ -65,7 +68,7 @@ function eventsFor(a,o){
 }
 async function* raw(a,samples,o,events){
  A.validate(a);if(!Number.isFinite(a.duration)||a.duration<=0||a.duration>1200)throw Error('renderLimit');
- let sampleBytes=0;const arrays=new Set();for(const group of Object.values(samples)){if(!Array.isArray(group))continue;for(const sample of group){if(!Array.isArray(sample?.channels))continue;for(const channel of sample.channels){if(!arrays.has(channel)&&Number.isFinite(channel?.byteLength)){arrays.add(channel);sampleBytes+=channel.byteLength;}}}}
+ let sampleBytes=0;const arrays=new Set();for(const group of [...Object.values(samples),...Object.values(samples[Symbol.for('ScuLaSongPacks')]||{})]){if(!Array.isArray(group))continue;for(const sample of group){if(!Array.isArray(sample?.channels))continue;for(const channel of sample.channels){if(!arrays.has(channel)&&Number.isFinite(channel?.byteLength)){arrays.add(channel);sampleBytes+=channel.byteLength;}}}}
  if(sampleBytes>LIMITS.sampleBytes)throw Error('sampleBudget');
  const release=o.budget.reserve(128*1024,'arrangement'),active=[];
  try{
@@ -158,5 +161,5 @@ function session(items,seconds,opts){
 }
 function arrangement(a,opts={}){return session([{a,seconds:0}],a.duration,opts);}
 function song(project,opts={}){const plan=T.resolve(project);if(!plan.items.length)throw Error('timelineEmpty');return session(plan.items.map(item=>({seconds:item.seconds,a:item.section.mix?{...item.arrangement,parts:Object.fromEntries(A.PARTS.map(id=>[id,{...item.arrangement.parts[id],...item.section.mix[id]}]))}:item.arrangement})),plan.seconds,opts);}
-root.ScuLaSongRenderer=Object.freeze({limits:LIMITS,arrangement,song});
+root.ScuLaSongRenderer=Object.freeze({version:2,limits:LIMITS,arrangement,song});
 })(typeof window==='undefined'?globalThis:window);

@@ -298,6 +298,55 @@ protocol explicitly records that split checks only cover the supplied manifest
 and declarations do not establish consent or human origin. GitHub Actions, real
 human-corpus evaluation and physical microphone/phone checks were not run.
 
+### Milestone D — first recorded piano (2026-10-05)
+
+Implemented from `f726484`. The [instrument-pack contract](SONG-INSTRUMENT-PACKS.md)
+records the inspected legacy mapping/loop/release behavior and the new piano
+profile, full provenance/license, explicit installation/import, separate offline
+storage, budgets, backups and repeatable paired audition procedure.
+
+- Optional 1.77 MiB Salamander piano: seven real recorded roots, one dynamic
+  layer, bounded three-semitone shifts, MIDI 45–87, natural decay and smooth
+  note-off damping. Bar pedal and fixed keyboard pitch are opt-in per part.
+- Native manifest v1 pins original URLs/version/hashes, adapted WAV hashes,
+  exact CC BY 3.0 text/attribution and transformation provenance. No engine,
+  third-party runtime code, SFZ implementation or model weights were added.
+- Sequential bounded/cancelable install and offline JSON/WAV import verify
+  before one atomic transaction. Packs use `scula-song-packs` v1, separate from
+  project `scula-song` v2; no project schema/database migration.
+- Arrangement generator/schema v1 remain compatible. Optional renderer v2 /
+  performance v1 settings and immutable pack references travel in backups;
+  metadata exports include license/attribution. Missing packs restore safely
+  and use visible synthesis fallback. Source WAVs remain byte-identical.
+- Decoded pack PCM uses 3.53 MiB within the existing 16 MiB sample budget, checked
+  before allocation. Existing bounded rendering/streaming limits remain.
+- Paired recorded/synthesized auditions use identical notes and mix; automatic
+  tests verify signal differences, pedal energy, exact block-size repeatability,
+  baked MIDI note-offs including repeated sections/clipped loops, and persistence.
+
+Verification: `node tests/song-regressions.js` executed all 23 suites. Its initial
+run passed 22 and exposed an ambiguous duplicate “Stop arrangement” label in
+`song-arrangement`. The audition control was renamed “Stop audition”; the
+complete `node tests/song-arrangement.js` rerun passed. Final affected reruns of
+`node tests/song-packs.js`, `node tests/song-bounded-render.js`,
+`node tests/song-backup-import.js`, `node tests/song-samples.js`,
+`node tests/song-arrangement-generation.js` and `node tests/verify.js` also
+passed. Thus every shared Song/Voice suite has a passing result after its
+relevant fixes; this is local Chromium/Node verification, not a GitHub Actions run.
+
+Review fixes: decoded-budget enforcement before allocation; separate symbol-keyed
+pack lookup so project sample names cannot shadow pinned audio; distinct audition
+Stop label; full license/attribution in project metadata; persistent fallback
+notice independent of rendering progress. Failure tests cover tampering, cancel,
+response-size limits, quota rollback/retry and restoration without pack assets.
+
+Physical microphone/phone checks and independent listening acceptance remain
+unexecuted. The single-layer compact pack is deliberately limited; no claim of
+full piano realism, human preference, complete SFZ or other-family interpretation
+is made. Finish that listening review before expanding families. Milestone C
+still needs consented human recordings and independent labels; Milestone E is
+the next separate composition/control implementation task.
+
 ## 9. Current limitations and work not implemented
 
 - No automatic disk mirroring or self-contained backup archive: export JSON and source WAVs separately.

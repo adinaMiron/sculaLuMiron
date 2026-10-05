@@ -6,6 +6,7 @@ on:
       - song.html
       - voice.html
       - js/audio/**
+      - assets/song-packs/**
       - tests/song*.js
       - tests/voice.js
       - tests/melody.js
@@ -22,6 +23,7 @@ on:
       - song.html
       - voice.html
       - js/audio/**
+      - assets/song-packs/**
       - tests/song*.js
       - tests/voice.js
       - tests/melody.js

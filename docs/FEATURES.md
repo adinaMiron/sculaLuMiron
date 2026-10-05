@@ -3697,3 +3697,14 @@ and reload, and navigation synchronization. `/apptest voice` and
 `/apptest melody` cover existing behavior. `/verify` parses all nine pages and
 shared scripts, diffs navigation and checks diacritics. Real phone/hardware and
 long recording behavior need manual testing beyond Chromium emulation.
+
+### Milestone D: optional recorded piano
+
+Song adds a 1.77 MiB, hash-pinned Salamander piano pack with explicit download or
+offline JSON/WAV import, separate atomic storage, transfer/removal and paired
+recorded/synthesized auditions. Piano parts opt into renderer v2/performance v1
+(fixed keyboard pitch, natural decay, note-off damping or bar pedal); legacy
+parts preserve their sound. Project backups carry a pinned reference, with a
+visible synthesized fallback if samples are unavailable or out of range. See
+[SONG-INSTRUMENT-PACKS.md](SONG-INSTRUMENT-PACKS.md) for license/provenance,
+budgets, native-map contract, MIDI behavior and unexecuted listening checks.

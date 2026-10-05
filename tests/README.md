@@ -298,7 +298,7 @@ It uses root locked dev dependencies and Playwright Chromium, explicitly setting
 
 `PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
 
-`node tests/song-regressions.js --list` prints the authoritative 22-suite list.
+`node tests/song-regressions.js --list` prints the authoritative 23-suite list.
 The runner executes every listed suite, reports individual exits and exits
 nonzero if any fails. Inventory:
 
@@ -306,7 +306,7 @@ nonzero if any fails. Inventory:
 | --- | --- |
 | Static verification | `verify` |
 | Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render` |
-| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
+| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-sample-browser`, `song-packs`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
 | External labeled recordings (excluded from CI) | `node tests/song-evaluate.js path/to/manifest.json`; requires a supplied manifest and WAVs. Generated `song-evaluation` is a different check. |
 
 `song-recovery` uses real IndexedDB transactions and same-origin pages sharing
@@ -367,3 +367,10 @@ repeated after the tooling edits. See the status report for remaining Milestone 
 
 No real microphones, physical phones, storage-pressure hardware runs or labeled
 human humming corpus were used for Milestone A's automated checks.
+
+Milestone D adds `node tests/song-packs.js` to the shared runner. It verifies
+the actual licensed piano assets and catalog hashes, atomic optional installation,
+corruption/cancellation/size/quota failures, offline playback, decoded memory
+preflight, exact block-size repeatability, pedal decay, fallback, source bytes,
+backup restore and RO/EN phone UI. See
+[the pack contract and manual audition procedure](../docs/SONG-INSTRUMENT-PACKS.md).

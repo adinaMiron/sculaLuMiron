@@ -55,7 +55,7 @@ function midi(project,range=null){
    const p=parts[id],ch=id==='drums'?9:i,ev=tracks[i];
    if(emit)ev.push({t,o:0,d:[192|ch,program(id,p)]},{t,o:0,d:[176|ch,7,Math.round(p.volume*127)]});
    if(!p.enabled||!p.volume)return;
-   for(const n of p.notes){const on=item.ticks+Math.round(n.start*a.tempoBpm/60*TPQ),off=Math.max(on+1,item.ticks+Math.round((n.start+n.dur)*a.tempoBpm/60*TPQ));
+   for(const n of A.performanceNotes(p,a)){const on=item.ticks+Math.round(n.start*a.tempoBpm/60*TPQ),off=Math.max(on+1,item.ticks+Math.round((n.start+n.dur)*a.tempoBpm/60*TPQ));
     if(on>=endTick||off<=startTick)continue;
     ev.push({t:Math.max(on,startTick)-startTick,o:2,d:[144|ch,n.midi,n.velocity||Math.max(1,Math.round(n.vel*127))]},{t:Math.min(off,endTick)-startTick,o:1,d:[128|ch,n.midi,0]});}
   });

@@ -10,7 +10,7 @@ This document is a ready-to-use implementation prompt plus a sequenced roadmap. 
 
 You are working on the existing `adinaMiron/sculaLuMiron` repository using Codex/Astra.
 
-Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. The original task below authorized **Milestone A only**, now completed along with the separately implemented B. On a continuation, inspect the implementation notes and current checkout: **C is partially prepared and awaiting human recordings**. Do not treat the later roadmap as authorization to implement every milestone in one session.
+Evolve the existing Song Creation / Creează melodie page. Do not recreate it or repeat the initial Song-page implementation. The original task below authorized **Milestone A only**, now completed along with the separately implemented B. On a continuation, inspect the implementation notes and current checkout: **C is partially prepared and awaiting human recordings; D now has its first piano implementation**. Do not treat the later roadmap as authorization to implement every milestone in one session.
 
 ### 1. Inspect and establish the actual baseline
 
@@ -149,6 +149,12 @@ The report documents generated-signal checks, but no labeled human humming corpu
 Acceptance: reproducible human-corpus results with labels/licensing provenance, baseline versus new measurements, held-out outcomes and honest remaining failure cases.
 
 ### Milestone D — realistic sample instruments and performance interpretation
+
+Implementation note (2026-10-05): the first piano pack, installation/offline
+storage, pinned provenance, pedal/decay interpretation and audition comparison
+controls are implemented from `f726484`. See [instrument-pack contract and
+verification](SONG-INSTRUMENT-PACKS.md). Physical-device and independent listening
+acceptance are still unexecuted; other families remain future work.
 
 Existing project sample playback is implemented; reuse it as the starting point. Four-part synthesis alone does not establish realistic piano, guitar, strings or winds.
 

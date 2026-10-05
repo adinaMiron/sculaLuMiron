@@ -29,7 +29,7 @@ function mapSample(samples,pitch,velocity){
  let best=null,score=Infinity;
  for(const s of samples){
   if(!s||!Number.isInteger(s.midiNote)||s.midiNote<0||s.midiNote>127||!Array.isArray(s.channels)||![1,2].includes(s.channels.length)||!s.channels[0]||s.channels.length===2&&s.channels[1]?.length!==s.channels[0].length||!Number.isFinite(s.sampleRate)||s.sampleRate<=0||s.channels[0].length<s.sampleRate*.03||!samplePlayback(s.playback,s.channels[0].length/s.sampleRate))continue;
-  const distance=Math.abs(pitch-s.midiNote);if(distance>MAX_SHIFT)continue;
+  const distance=Math.abs(pitch-s.midiNote);if(distance>(s.maxShift??MAX_SHIFT)||pitch<(s.minMidi??0)||pitch>(s.maxMidi??127))continue;
   const rank=distance*128+Math.abs(sampleVelocity(s.dynamic)-velocity);
   if(rank<score){best=s;score=rank;}
  }
@@ -48,12 +48,23 @@ function placeSample(L,R,s,n,volume,pan,sr,offset=0){
   let at=sourceStart+i*rate;
   if(loop && at>=loopB)at=loopA+fade+(at-loopB)%(loopB-loopA-fade);
   const blend=loop&&at>=loopB-fade?Math.min(1,(at-(loopB-fade))/fade):0;
-  const envelope=Math.min(1,i/attack)*(loop?(i<hold?1:(1+Math.cos(Math.PI*Math.min(1,(i-hold)/release)))/2):Math.min(1,(hold+release-i)/release));
+  const envelope=Math.min(1,i/attack)*(loop||s.piano?(i<hold?1:(1+Math.cos(Math.PI*Math.min(1,(i-hold)/release)))/2):Math.min(1,(hold+release-i)/release));
   const en=envelope*(loop?1:Math.min(1,(source[0].length-1-at)/(sr*.01*rate)));
   const left=(read(0,at)*(1-blend)+(blend?read(0,loopA+at-(loopB-fade))*blend:0))*en;
   const right=stereo?(read(1,at)*(1-blend)+(blend?read(1,loopA+at-(loopB-fade))*blend:0))*en:left;
   L[start+i-offset]+=left*gl;R[start+i-offset]+=right*gr;
  }
+}
+// Piano interpretation v1: fixed keyboard pitch, natural decay, optional
+// bar pedal. Bake held durations into MIDI as well as audio; never edit evidence.
+function performanceNotes(p,a){
+ if(p.performanceVersion!==1)return p.notes;
+ const bar=240/a.tempoBpm;
+ return p.notes.map(n=>{
+  let end=n.start+n.dur;
+  if(p.pianoPedal==='bar')end=Math.min(a.duration,Math.ceil((end-1e-9)/bar)*bar);
+  return {...n,cents:0,dur:end-n.start};
+ });
 }
 function create(recording,meta){
  const p=recording.performance;
@@ -63,6 +74,12 @@ function create(recording,meta){
  generate(a);return a;
 }
 function validate(a){
+ if(a.rendererVersion!==undefined&&a.rendererVersion!==1&&a.rendererVersion!==2)throw Error('invalidEdit');
+ for(const id of PARTS){const p=a.parts?.[id];if(!p)throw Error('invalidEdit');
+  if(p.samplePack!==undefined){const r=p.samplePack;if(id==='drums'||p.instrument!=='piano'||p.sampleSet||a.rendererVersion!==2||p.performanceVersion!==1||!r||r.id!=='salamander-compact'||r.version!==1||typeof r.sha256!=='string'||!/^[a-f0-9]{64}$/.test(r.sha256)||Object.keys(r).length!==3)throw Error('invalidEdit');}
+  if(p.performanceVersion!==undefined&&(p.performanceVersion!==1||p.instrument!=='piano'||a.rendererVersion!==2||!['off','bar'].includes(p.pianoPedal)))throw Error('invalidEdit');
+  if(p.pianoPedal!==undefined&&p.performanceVersion!==1)throw Error('invalidEdit');
+ }
  if(!Number.isInteger(a.tempoBpm)||a.tempoBpm<40||a.tempoBpm>220||!Number.isInteger(a.key.tonic)||a.key.tonic<0||a.key.tonic>11||!['major','minor'].includes(a.key.mode)||!['original','quantized'].includes(a.timingMode))throw new Error('invalidEdit');
  for(const id of PARTS){const p=a.parts[id];if(!p||typeof p.enabled!=='boolean'||!Number.isFinite(p.volume)||p.volume<0||p.volume>1||!(id==='drums'?Object.hasOwn(KITS,p.instrument):Object.hasOwn(S.INSTR,p.instrument))||p.sampleSet!==undefined&&(id==='drums'||typeof p.sampleSet!=='string'||p.sampleSet.length>120))throw new Error('invalidEdit');}
 }
@@ -94,7 +111,7 @@ function generate(a){
 function midi(a){
  validate(a);
  // Keep four named part tracks even when muted; silence/CC7 describes controls.
- const tracks=PARTS.map((id,i)=>{const p=a.parts[id];return {ch:id==='drums'?9:i,name:id[0].toUpperCase()+id.slice(1),gm:id==='drums'?KITS[p.instrument].gm:S.INSTR[p.instrument].gm,notes:p.enabled&&p.volume>0?p.notes:[]};});
+ const tracks=PARTS.map((id,i)=>{const p=a.parts[id];return {ch:id==='drums'?9:i,name:id[0].toUpperCase()+id.slice(1),gm:id==='drums'?KITS[p.instrument].gm:S.INSTR[p.instrument].gm,notes:p.enabled&&p.volume>0?performanceNotes(p,a):[]};});
  // Use Voice's MIDI container, with exact edited velocity and track volume.
  const TPQ=480,us=Math.round(60000000/a.tempoBpm),tempo=[{t:0,o:0,d:[255,81,3,us>>16&255,us>>8&255,us&255]},{t:0,o:1,d:[255,88,4,4,2,24,8]}];
  const bytes=[77,84,104,100,0,0,0,6,0,1,0,5,1,224];
@@ -109,5 +126,5 @@ function midi(a){
 // Compatibility collector is limited to short clips; exports use the stream API.
 async function render(a,opts){return root.ScuLaSongRenderer.arrangement(a,opts).collect();}
 
-root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,DEFAULT_PLAYBACK,samplePlayback,sampleVelocity,mapSample,placeSample,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
+root.ScuLaArrangement=Object.freeze({version:1,PARTS:Object.freeze(PARTS),KITS:Object.freeze(KITS),MAX_SHIFT,DEFAULT_PLAYBACK,samplePlayback,sampleVelocity,mapSample,placeSample,performanceNotes,create,generate,validate,midi,render,wav:mix=>S.wavBlob(mix.L,mix.R,mix.sr)});
 })(typeof window==='undefined'?globalThis:window);

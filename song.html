@@ -1396,6 +1396,16 @@
 <section class="panel" aria-labelledby="takesHeading"><h2 id="takesHeading" data-i="recordings">Înregistrările proiectului</h2><div id="recordings"></div></section>
 <section class="panel" id="songTimelinePanel" aria-labelledby="songTimelineHeading"><h2 id="songTimelineHeading" data-i="songTimeline">Cronologia melodiei</h2><p class="hint" data-i="songTimelineHint">Adaugă versiuni de aranjament în ordine. Fiecare secțiune își păstrează tempo-ul și tonalitatea; următoarea începe la sfârșitul măsurilor, iar reverberația trece peste îmbinare.</p><div id="songOverview"></div><div id="songTimeline"></div><div class="row song-actions"><button id="addSongSection" data-i="addSongSection">Adaugă secțiune</button><button id="undoSongTimeline" data-i="undoSongTimeline" disabled>Anulează editarea melodiei</button><button id="redoSongTimeline" data-i="redoSongTimeline" disabled>Refă editarea melodiei</button><button id="playSong" data-i="playSong">Ascultă melodia completă</button><button id="stopSong" data-i="stopSong" data-stop-audio="true">Oprește melodia completă</button><button id="saveSongWav" data-i="saveSongWav">Salvează WAV-ul melodiei</button><button id="saveSongLoopWav" data-i="saveSongLoopWav" disabled>Salvează WAV-ul buclei</button><button id="saveSongMidi" data-i="saveSongMidi">Salvează MIDI-ul melodiei</button><button id="saveSongLoopMidi" data-i="saveSongLoopMidi" disabled>Salvează bucla ca MIDI cu mai multe piste</button></div></section>
 <section class="panel" id="sampleSetPanel" aria-labelledby="sampleSetHeading" hidden><h2 id="sampleSetHeading" data-i="sampleSetEditor">Editor de seturi de mostre</h2><p class="hint" data-i="sampleSetHint">Reglează timpii și asocierea mostrelor. WAV-urile sursă rămân neschimbate.</p><div id="sampleSetEditor"></div></section>
+<section class="panel" id="packPanel" aria-labelledby="packHeading">
+<h2 id="packHeading" data-i="packHeading">Pian opțional</h2>
+<p data-i="packHint">Pian acustic înregistrat: 1,77 MiB, șapte mostre, MIDI 45–87. Se instalează doar la cerere. Copiile proiectului păstrează referința; reinstalează pachetul pe alt dispozitiv.</p>
+<p id="packAttribution"></p><a href="assets/song-packs/salamander-compact-v1/LICENSE.txt" target="_blank" rel="noopener" data-i="packLicense">Licență completă</a>
+<div class="row"><button id="downloadPack" data-i="downloadPack">Instalează pianul (1,77 MiB)</button><button id="exportPack" data-i="exportPack">Salvează pachetul pentru transfer</button><button id="removePack" data-i="removePack">Elimină pachetul local</button><button id="cancelPack" data-i="cancelPack" disabled>Anulează instalarea</button></div>
+<div class="grid"><label><span data-i="packManifest">Manifestul pachetului (JSON)</span><input id="packManifest" type="file" accept=".json"></label><label><span data-i="packAssets">Cele șapte WAV-uri ale pachetului</span><input id="packAssets" type="file" accept=".wav" multiple></label></div>
+<button id="importPack" data-i="importPack">Verifică și instalează fișierele</button>
+<div class="row"><button id="auditionPack" data-i="auditionPack">Ascultă pianul înregistrat</button><button id="auditionSynth" data-i="auditionSynth">Compară pianul sintetizat</button><button id="stopPackAudition" data-i="stopPackAudition">Oprește audiția</button></div>
+<p id="packStatus" role="status" aria-live="polite"></p><p id="packFallback" role="status" aria-live="polite"></p>
+</section>
 </main>
 <script src="js/audio/pcm.js"></script>
 <script src="js/audio/song-storage.js"></script>
@@ -1409,6 +1419,8 @@
 <script src="js/audio/song-playback.js"></script>
 <script src="js/audio/integrity.js"></script>
 <script src="js/audio/backup.js"></script>
+<script src="js/audio/song-pack-catalog.js"></script>
+<script src="js/audio/song-packs.js"></script>
 <script>
 (function(){
 'use strict';
@@ -1480,6 +1492,7 @@ function paintAnalysisProgress(){
   $('analysisProgress').value=pct;$('status').textContent=t(analysisPhase==='decoding'?'decodingProgress':'analysisProgress',pct);
 }
 function paintState(){
+  paintPack();
   $('recordState').textContent=t(state);
   const idle=state==='idle';
   ['newProject','renameProject','projects','projectName','exportProject','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry','importWav','backupJson','backupWavs','validateBackup'].forEach(k=>$(k).disabled=!idle);
@@ -1515,7 +1528,7 @@ function applyUILang(){
   document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
   if(statusKey)$('status').textContent=t(statusKey,statusValue);
   paintAnalysisProgress();
-  paintState();paintProjects();paintBackup();paintJournals();quality(lastQuality);render();
+  paintPack();paintState();paintProjects();paintBackup();paintJournals();quality(lastQuality);render();
 }
 window.addEventListener('scula-ui-lang',ev=>{UI=ev.detail==='en'?'en':'ro';applyUILang();});
 /* Metadata and authoritative WAV blobs live in separate IndexedDB stores.
@@ -1656,7 +1669,10 @@ async function exportTake(r){
   const result=await ScuLaFolder.save(takeFilename(r),blob,{directories:[projectStem(),r.purpose==='sample'?'samples':'recordings']});
   statusKey=null;$('status').textContent=result.message || '';
 }
-function projectManifest(){return {...project,recordings:project.recordings.map(r=>({...r,source:{...r.source,filename:takeFilename(r),relativePath:(r.purpose==='sample'?'samples/':'recordings/')+takeFilename(r)}}))};}
+function projectManifest(){
+  const refs=new Map();for(const a of project.arrangements||[])for(const p of Object.values(a.parts))if(p.samplePack)refs.set(p.samplePack.sha256,p.samplePack);
+  const instrumentPacks=Array.from(refs.values(),ref=>Packs.validReference(ref)?{...ref,name:packCatalog.manifest.name,source:packCatalog.manifest.source,license:packCatalog.manifest.license}:ref);
+  return {...project,...(instrumentPacks.length?{instrumentPacks}:{}),recordings:project.recordings.map(r=>({...r,source:{...r.source,filename:takeFilename(r),relativePath:(r.purpose==='sample'?'samples/':'recordings/')+takeFilename(r)}}))};}
 async function exportMetadata(){
   const job={cancelled:false,kind:'export'};backupJob=job;setState('hashing');
   stagedBackup=null;const manifest=projectManifest();
@@ -1857,7 +1873,46 @@ const Renderer=window.ScuLaSongRenderer;
 let arrangementJob=null;
 Object.assign(I18N.en,{renderPeaks:n=>`Measuring audio peaks… ${n}%`,renderBlocks:n=>`Rendering WAV… ${n}%`,exportLimit:'This WAV exceeds the 32 MiB download/share limit. Choose a writable folder or export a shorter loop.',renderLimit:'This arrangement exceeds the audio memory or polyphony budget. Reduce overlapping notes or sample sets.',sampleBudget:'Selected samples exceed the 16 MiB decoded-audio budget. Use fewer or shorter samples.',previewStreaming:'Playing preview with live peak control. WAV exports use measured peak attenuation.',previewUnderrun:'Preview could not keep up. Try fewer parts or export WAV.',renderHint:'Long previews use live peak control. Large WAV exports need a writable folder; download/share is limited to 32 MiB.'});
 Object.assign(I18N.ro,{renderPeaks:n=>`Se măsoară vârfurile audio… ${n}%`,renderBlocks:n=>`Se generează WAV-ul… ${n}%`,exportLimit:'Acest WAV depășește limita de 32 MiB pentru descărcare/distribuire. Alege un dosar în care poți scrie sau exportă o buclă mai scurtă.',renderLimit:'Aranjamentul depășește bugetul de memorie audio sau de polifonie. Redu notele suprapuse sau seturile de mostre.',sampleBudget:'Mostrele selectate depășesc bugetul de 16 MiB pentru sunet decodat. Folosește mostre mai puține sau mai scurte.',previewStreaming:'Se redă previzualizarea cu limitarea vârfurilor în timp real. Exportul WAV folosește atenuarea măsurată.',previewUnderrun:'Previzualizarea nu a ținut pasul. Încearcă mai puține părți sau exportă WAV.',renderHint:'Previzualizările lungi limitează vârfurile în timp real. Exporturile WAV mari necesită un dosar în care poți scrie; descărcarea/distribuirea este limitată la 32 MiB.'});
-function renderOptions(job){return {cancelled:()=>job.cancelled,progress:(phase,value)=>{if(!job.cancelled)say(phase==='peaks'?'renderPeaks':'renderBlocks',false,Math.round(value*100));}};}
+Object.assign(I18N.en,{stopPackAudition:'Stop audition',packHeading:'Optional piano',packHint:'Recorded acoustic piano: 1.77 MiB, seven samples, MIDI 45–87, one dynamic layer. Installs only on request. Project backups retain a reference; reinstall the pack on another device. On file://, import manifest.json and the seven WAVs from assets/song-packs/salamander-compact-v1.',packLicense:'Full license',downloadPack:'Install piano (1.77 MiB)',exportPack:'Save pack for transfer',removePack:'Remove local pack',cancelPack:'Cancel installation',packManifest:'Pack manifest (JSON)',packAssets:'Seven pack WAV files',importPack:'Verify and install files',auditionPack:'Audition recorded piano',auditionSynth:'Compare synthesized piano',packReady:'Piano installed for offline use.',packMissing:'Piano is not installed. Selected parts will use synthesized piano.',packBusy:n=>`Installing piano… ${n}%`,packInvalid:'Pack validation failed. Choose the original manifest and all seven unchanged WAVs.',packDownload:'Download failed. For file:// or offline use, import the supplied manifest and WAV files.',packStorage:'Pack storage failed. Nothing was installed; free space and retry.',packCancelled:'Installation cancelled.',packFallback:'Some notes use synthesis: the selected samples are missing, damaged, unsupported, or outside their mapped range.',pianoPedal:'Piano pedal',pedalOff:'Note-off damping',pedalBar:'Hold to bar end',packSaving:'Saving pack files…'});
+Object.assign(I18N.ro,{stopPackAudition:'Oprește audiția',packHeading:'Pian opțional',packHint:'Pian acustic înregistrat: 1,77 MiB, șapte mostre, MIDI 45–87, un nivel dinamic. Se instalează doar la cerere. Copiile proiectului păstrează referința; reinstalează pachetul pe alt dispozitiv. Pe file://, importă manifest.json și cele șapte WAV-uri din assets/song-packs/salamander-compact-v1.',packLicense:'Licență completă',downloadPack:'Instalează pianul (1,77 MiB)',exportPack:'Salvează pachetul pentru transfer',removePack:'Elimină pachetul local',cancelPack:'Anulează instalarea',packManifest:'Manifestul pachetului (JSON)',packAssets:'Cele șapte WAV-uri ale pachetului',importPack:'Verifică și instalează fișierele',auditionPack:'Ascultă pianul înregistrat',auditionSynth:'Compară pianul sintetizat',packReady:'Pian instalat pentru utilizare offline.',packMissing:'Pianul nu este instalat. Părțile selectate vor folosi pianul sintetizat.',packBusy:n=>`Se instalează pianul… ${n}%`,packInvalid:'Verificarea pachetului a eșuat. Alege manifestul original și toate cele șapte WAV-uri neschimbate.',packDownload:'Descărcarea a eșuat. Pe file:// sau offline, importă manifestul și fișierele WAV incluse.',packStorage:'Stocarea pachetului a eșuat. Nu s-a instalat nimic; eliberează spațiu și reîncearcă.',packCancelled:'Instalare anulată.',packFallback:'Unele note folosesc sinteză: mostrele selectate lipsesc, sunt deteriorate, incompatibile sau în afara intervalului asociat.',pianoPedal:'Pedală pian',pedalOff:'Amortizare la eliberare',pedalBar:'Susținere până la sfârșitul măsurii',packSaving:'Se salvează fișierele pachetului…'});
+const Packs=ScuLaSongPacks,packCatalog=ScuLaSongPackCatalog;
+let packJob=null,packInstalled=false,packMessage='',packProgress=0;
+function paintPack(){
+ $('packAttribution').textContent=packCatalog.manifest.license.attribution;
+ $('packStatus').textContent=t(packMessage||(packInstalled?'packReady':'packMissing'),packProgress);
+ for(const id of ['downloadPack','importPack','packManifest','packAssets','exportPack','removePack','auditionPack','auditionSynth'])$(id).disabled=!!packJob||state!=='idle'||(['exportPack','removePack','auditionPack'].includes(id)&&!packInstalled);
+ $('cancelPack').disabled=!packJob||packJob.saving;$('stopPackAudition').disabled=!arrangementJob;
+ if($('packFallback').textContent)$('packFallback').textContent=t('packFallback');
+}
+async function refreshPack(){try{packInstalled=!!await Packs.stored();}catch(_){packInstalled=false;}paintPack();}
+async function installPack(fromFiles){
+ if(packJob||state!=='idle')return;stopArrangement();
+ const job={controller:new AbortController()};packJob=job;packMessage='packBusy';packProgress=0;setState('saving');
+ try{
+  const options={signal:job.controller.signal,progress:v=>{packProgress=Math.round(v*100);paintPack();}};
+  if(fromFiles)await Packs.installFiles($('packManifest').files[0],$('packAssets').files,options);else await Packs.download(options);
+  packMessage='packReady';
+ }catch(e){packMessage=job.controller.signal.aborted||e.message==='cancelled'?'packCancelled':['packInvalid','packStorage'].includes(e.message)?e.message:'packDownload';}
+ finally{packJob=null;setState('idle');await refreshPack();}
+}
+async function exportPackFiles(){
+ if(packJob||state!=='idle')return;packJob={saving:true};packMessage='packSaving';setState('saving');
+ try{const record=await Packs.stored();if(!record)throw Error('packInvalid');await Packs.verify(record.manifest,record.assets);
+  const files=[['manifest.json',new Blob([JSON.stringify(record.manifest,null,2)],{type:'application/json'})],...record.manifest.samples.map((s,i)=>[s.file,record.assets[i]]),['LICENSE.txt',new Blob([record.manifest.license.text],{type:'text/plain'})]];
+  for(const [name,blob] of files){const result=await ScuLaFolder.save(name,blob,{directories:['song-packs','salamander-compact-v1']});if(result?.cancelled)break;}packMessage='';
+ }catch(_){packMessage='packStorage';}finally{packJob=null;setState('idle');await refreshPack();}
+}
+function auditionPiano(sampled){
+ const notes=[48,60,64,67,72,76,84].map((midi,i)=>({start:i*.42,dur:i===6?1.5:.28,midi,cents:0,vel:i%2?.45:.8}));
+ const a={id:'piano-audition',rendererVersion:2,tempoBpm:120,key:{tonic:0,mode:'major'},timingMode:'original',duration:4.5,parts:{lead:{instrument:'piano',enabled:true,volume:1,performanceVersion:1,pianoPedal:'off',...(sampled?{samplePack:Packs.reference()}:{}),notes},chords:{instrument:'strings',enabled:false,volume:0,notes:[]},bass:{instrument:'bass',enabled:false,volume:0,notes:[]},drums:{instrument:'standard',enabled:false,volume:0,notes:[]}}};
+ return arrangementAudio(a,true);
+}
+window.addEventListener('pagehide',()=>packJob?.controller?.abort());
+$('downloadPack').onclick=()=>installPack(false);$('importPack').onclick=()=>installPack(true);
+$('cancelPack').onclick=()=>packJob?.controller?.abort();$('exportPack').onclick=exportPackFiles;
+$('removePack').onclick=async()=>{if(packJob||state!=='idle')return;stopArrangement();try{await Packs.remove();packMessage='';}catch(_){packMessage='packStorage';}await refreshPack();};
+$('auditionPack').onclick=()=>auditionPiano(true);$('auditionSynth').onclick=()=>auditionPiano(false);$('stopPackAudition').onclick=()=>stopArrangement();
+function renderOptions(job){$('packFallback').textContent='';return {fallback:()=>{$('packFallback').textContent=t('packFallback');},cancelled:()=>job.cancelled,progress:(phase,value)=>{if(!job.cancelled)say(phase==='peaks'?'renderPeaks':'renderBlocks',false,Math.round(value*100));}};}
 function renderError(e,fallback){say(['exportLimit','renderLimit','sampleBudget','previewUnderrun'].includes(e.message)?e.message:fallback,true);}
 async function saveRendered(filename,source,job){
   // Small saves remain Blobs for existing save integrations. Larger producers
@@ -2163,12 +2218,23 @@ function arrangementSamples(a,ctx,cancelled,onlyId,job){
 async function readArrangementSamples(a,ctx,cancelled,onlyId,job){
   const cache=job?(job.sampleCache||(job.sampleCache=new Map())):new Map();
   const available=sampleSets(),selected=new Set(['lead','chords','bass'].filter(id=>a.parts[id].enabled && a.parts[id].volume).map(id=>a.parts[id].sampleSet).filter(Boolean)),result=Object.create(null);
+  for(const p of Object.values(a.parts))if(p.enabled&&p.volume&&p.samplePack){
+    const key='pack:'+p.samplePack.sha256;
+    if(!cache.has(key)){
+      let group=[];try{group=await Packs.decode(p.samplePack,{cancelled,remainingBytes:Renderer.limits.sampleBytes-(job?.sampleBytes||0)});}catch(e){if(cancelled())throw Error('cancelled');if(e.message==='sampleBudget')throw e;}
+      const bytes=group.reduce((v,s)=>v+s.channels[0].byteLength,0);
+      if((job?.sampleBytes||0)+bytes>Renderer.limits.sampleBytes)throw Error('sampleBudget');
+      if(job)job.sampleBytes=(job.sampleBytes||0)+bytes;cache.set(key,group);
+    }
+    (result[Symbol.for('ScuLaSongPacks')]||(result[Symbol.for('ScuLaSongPacks')]=Object.create(null)))[key]=cache.get(key);
+  }
   for(const name of selected){result[name]=[];
     for(const r of available.get(name)||[]){
       if(onlyId && r.id!==onlyId)continue;
       if(cancelled())throw new Error('cancelled');
       try{
         if(cache.has(r.id)){const prior=cache.get(r.id);if(prior)result[name].push(prior);continue;}
+        if(!ctx){cache.set(r.id,null);continue;}
         const blob=await blobFor(r);if(cancelled())throw Error('cancelled');if(!blob || blob.size>16*1048576){cache.set(r.id,null);continue;}
         const info=await P.inspectWav(blob,{cancelled});if(info.duration>30){cache.set(r.id,null);continue;}
         const estimate=Math.ceil(info.duration*ctx.sampleRate)*info.channelCount*4;
@@ -2192,9 +2258,9 @@ async function arrangementAudio(a,play,onlyId){
     // Open/resume in the user's gesture, before asynchronous synthesis.
     if(play){if(!AC)throw new Error('audio');job.ctx=new AC({sampleRate:44100});await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');
       job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
-    const needsSamples=['lead','chords','bass'].some(id=>a.parts[id].enabled && a.parts[id].volume && a.parts[id].sampleSet);
+    const needsSamples=['lead','chords','bass'].some(id=>a.parts[id].enabled && a.parts[id].volume && (a.parts[id].sampleSet||a.parts[id].samplePack));
     if(needsSamples && !job.ctx && AC)try{job.decodeCtx=new AC({sampleRate:44100});}catch(_){}
-    const samples=needsSamples && (job.ctx||job.decodeCtx)?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,onlyId,job):{};
+    const samples=needsSamples?await arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,onlyId,job):{};
     if(job.decodeCtx){await job.decodeCtx.close();job.decodeCtx=null;}
     const session=Renderer.arrangement(a,{...renderOptions(job),samples});
     if(play && session.length/session.sampleRate>Renderer.limits.previewSeconds){job.session=session;await startStreamingAt(job,0);return;}
@@ -2260,12 +2326,17 @@ function arrangementEditor(r){
     enabled.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].enabled=enabled.checked;}));
     const inst=document.createElement('select');inst.setAttribute('aria-label',t(id)+' '+t('instrument'));
     (id==='drums'?Object.keys(A.KITS):Object.keys(S.INSTR)).forEach(key=>inst.add(new Option(t(id==='drums'?key:S.INSTR[key].k),key)));inst.value=p.instrument;
-    inst.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].instrument=inst.value;}));
+    inst.onchange=()=>run(()=>changeArrangement(a,next=>{const part=next.parts[id];part.instrument=inst.value;delete part.samplePack;delete part.performanceVersion;delete part.pianoPedal;}));
     if(id!=='drums'){
       const set=document.createElement('select');set.setAttribute('aria-label',t(id)+' '+t('sampleSet'));
-      set.add(new Option(t('synthOnly'),''));for(const name of sampleSets().keys())set.add(new Option(name,name));
+      set.add(new Option(t('synthOnly'),''));const packOption=new Option(packCatalog.manifest.name,'pack:'+packCatalog.sha256);packOption.dataset.pack='true';set.add(packOption);for(const name of sampleSets().keys())set.add(new Option(name,name));
       if(p.sampleSet && !Array.from(set.options).some(o=>o.value===p.sampleSet))set.add(new Option(p.sampleSet+' ('+t('missing')+')',p.sampleSet));
-      set.value=p.sampleSet||'';set.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].sampleSet=set.value;}));
+      set.selectedIndex=Array.from(set.options).findIndex(o=>o.value===(p.samplePack?'pack:'+p.samplePack.sha256:p.sampleSet||'')&&!!o.dataset.pack===!!p.samplePack);
+      if(p.samplePack && !Array.from(set.options).some(o=>o.value==='pack:'+p.samplePack.sha256)){set.add(new Option(p.samplePack.id+' ('+t('missing')+')','pack:'+p.samplePack.sha256));set.value='pack:'+p.samplePack.sha256;}
+      set.onchange=()=>run(()=>changeArrangement(a,next=>{const part=next.parts[id];delete part.samplePack;delete part.performanceVersion;delete part.pianoPedal;
+        if(set.selectedOptions[0]?.dataset.pack==='true'){delete part.sampleSet;part.samplePack=Packs.reference();part.instrument='piano';part.performanceVersion=1;part.pianoPedal='off';next.rendererVersion=2;}else part.sampleSet=set.value;
+      }));
+      if(p.performanceVersion===1){const pedal=document.createElement('select');pedal.setAttribute('aria-label',t(id)+' '+t('pianoPedal'));pedal.add(new Option(t('pedalOff'),'off'));pedal.add(new Option(t('pedalBar'),'bar'));pedal.value=p.pianoPedal;pedal.onchange=()=>run(()=>changeArrangement(a,next=>{next.parts[id].pianoPedal=pedal.value;}));fieldset.append(label('pianoPedal',pedal));}
       fieldset.append(label('sampleSet',set));
     }
     const volume=document.createElement('input');volume.type='range';volume.min=0;volume.max=1;volume.step=.01;volume.value=p.volume;volume.setAttribute('aria-label',t(id)+' '+t('partVolume'));
@@ -2396,9 +2467,9 @@ async function songAudio(play,from=songPosition,loopOnly=false){
   const job={kind:'song',cancelled:false,ctx:null,decodeCtx:null,node:null,buffer:null,frame:0,started:false};arrangementJob=job;paintState();say('renderingSong');
   try{
     if(play){if(!AC)throw new Error('audio');job.ctx=new AC({sampleRate:44100});await job.ctx.resume();if(job.ctx.state!=='running')throw new Error('suspended');job.ctx.onstatechange=()=>{if(job.ctx && job.ctx.state!=='running')stopArrangement();};}
-    const hasSamples=plan.items.some(({arrangement:a})=>['lead','chords','bass'].some(id=>a.parts[id].enabled&&a.parts[id].volume&&a.parts[id].sampleSet));
+    const hasSamples=plan.items.some(({arrangement:a})=>['lead','chords','bass'].some(id=>a.parts[id].enabled&&a.parts[id].volume&&(a.parts[id].sampleSet||a.parts[id].samplePack)));
     if(hasSamples && !job.ctx && AC)try{job.decodeCtx=new AC({sampleRate:44100});}catch(_){}
-    const session=Renderer.song(project,{...renderOptions(job),samplesFor:a=>hasSamples && (job.ctx||job.decodeCtx)?arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,null,job):{}});
+    const session=Renderer.song(project,{...renderOptions(job),samplesFor:a=>hasSamples?arrangementSamples(a,job.ctx||job.decodeCtx,()=>job.cancelled,null,job):{}});
     if(play && session.length/session.sampleRate>Renderer.limits.previewSeconds){job.session=session;await startStreamingAt(job,songPosition);return;}
     const mix=play?await session.collect():null;
     if(job.cancelled)return;
@@ -2573,7 +2644,7 @@ async function init(){
   paintJournals();await listDevices().catch(()=>{});
   paintProjects();setState('idle');if(!supported())say('unsupported',true);else if(dirty)say('storageError',true);else say('idle');await render();
 }
-init();
+init();refreshPack();
 })();
 </script>
 </body></html>

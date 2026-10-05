@@ -873,7 +873,7 @@ grep -n "placeholder=\"\|title=\"\|aria-label=\"" index.html
 /verify
 ```
 
-## song.html — ~2600 lines · Song Creation / Creează melodie
+## song.html — ~2700 lines · Song Creation / Creează melodie
 
 See `docs/FEATURES.md` § V for the authoritative architecture, performance/arrangement schemas and staged backup restoration.
 
@@ -917,7 +917,7 @@ See `docs/FEATURES.md` § V for the authoritative architecture, performance/arra
 | `tests/song-timeline.js` | Two-take file:// sections, mix override playback/MIDI/validation and undo/redo, 4/4 ruler/beat snap, proportional layout, seeking/playhead and full/section/custom loop across repeats, optional loop WAV fade, keyboard/touch range, rendering/playback Stop and cleanup, RO/EN phone transport, whole-song and loop MIDI/WAV timing, clipped notes, parity, backup remapping and source bytes |
 | `tests/song-samples.js`, `tests/song-sample-browser.js` | Sample pitch/dynamic mapping, loop boundaries/release, legacy defaults and fallback; file:// import, waveform/marker dragging, invalid boundaries, mapping changes, unchanged source, audition, played/exported PCM and persistence |
 | `tests/song-backup-import.js` | Real export/import/reload, immutable bytes/data/snapshots, historic provenance, repeated imports/collisions, legacy/sample metadata, rejection/cancellation, storage/export/retry, audio cleanup, digest/tampering/legacy/hash-cancellation and file/phone/RO/EN checks |
-| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 22-suite local/CI runner |
+| `tests/song-recovery.js`, `tests/song-regressions.js` | Actual IndexedDB upgrade/blocked upgrade, interrupted capture/PCM/quota/finalization/discard and competing-tab checks; shared 23-suite local/CI runner |
 | `tests/song-integrity.js`, `tests/song-incremental-inspection.js` | Published SHA-256 vectors/exact-byte checks plus sparse 128 MiB header-only inspection, malformed chunk/dimension cases and cooperative cancellation |
 
 Song Milestone B checks: `tests/song-bounded-render.js` compares to the isolated
@@ -928,3 +928,13 @@ inside the synchronized nav block in all nine pages.
 Song continuation roadmap: [SONG-NEXT-IMPLEMENTATION.md](SONG-NEXT-IMPLEMENTATION.md).
 Milestone C preparation and missing-data boundary:
 [SONG-HUMMING-EVALUATION.md](SONG-HUMMING-EVALUATION.md).
+
+Song Milestone D: [SONG-INSTRUMENT-PACKS.md](SONG-INSTRUMENT-PACKS.md).
+`#packPanel`, `installPack`, `exportPackFiles`, `auditionPiano`, `paintPack` in
+`song.html` provide optional installation/import/transfer and paired auditions.
+`js/audio/song-pack-catalog.js` holds the pinned manifest; `song-packs.js`
+validates, atomically stores and decodes it separately from projects. Assets and
+full license live in `assets/song-packs/salamander-compact-v1/`.
+`arrangement.js:performanceNotes` applies the opt-in piano profile to both
+`song-renderer.js` and `song-timeline.js`/arrangement MIDI.
+`tests/song-packs.js` covers actual pack bytes, lifecycle, budgets and UI.
