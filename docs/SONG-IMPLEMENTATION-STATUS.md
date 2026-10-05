@@ -19,7 +19,7 @@ Song Creation / Creează melodie implements the complete workflow from original 
 3. Create separate instrumental arrangement versions.
 4. Assemble arrangement versions into a whole-song timeline.
 5. Play and export sources, melodies, arrangements, songs and loops.
-6. Export and restore project metadata plus its original WAV files.
+6. Export and restore portable ZIP backups or separate metadata/original WAV files.
 
 The central design is separation of the original source WAV, detected musical evidence, editable notes, arrangement snapshots and timeline sections. Derived processing does not overwrite the original recording.
 
@@ -32,7 +32,7 @@ The central design is separation of the original source WAV, detected musical ev
 | Samples | Instrument sets, pitch/dynamic mapping, waveform timing editor, sustain loops and audition |
 | Whole song | Linked sections, repeats, order, mix overrides, seekable playback and WAV/MIDI |
 | Song loops | Full/section/custom loops, editable boundaries, snapping and loop WAV/MIDI |
-| Backups | JSON/WAV validation, SHA-256 verification, independent restored projects and storage recovery |
+| Backups | Portable ZIP or loose JSON/WAV validation, SHA-256 verification, independent restored projects, folder snapshots and storage recovery |
 | UI | Romanian/English controls, shared navigation, dark styling and responsive phone layouts |
 
 ## 1. Project workspace and storage
@@ -188,6 +188,11 @@ Song Creation/<safe-project-name>-<project-id>/
 Filenames include IDs; name components have a 60-byte UTF-8 budget. Phone share/download uses identifying filenames because nested folders cannot be enforced.
 
 **Save metadata** exports source filenames/relative paths, analysis, edits, snapshots, arrangement controls, sample settings and timeline. WAVs are saved separately, not embedded in JSON. It recomputes SHA-256 for every complete source WAV and saves only a finished manifest; missing/unreadable audio blocks incomplete export.
+
+**Save ZIP backup** packages this metadata, original WAVs and referenced pinned
+pack assets/license together. ZIP selection uses the same staged restoration
+and project/audio transaction after archive path/header/CRC validation. See
+[portability bounds and failure behavior](SONG-PORTABILITY.md).
 
 Restoration implements:
 
@@ -394,9 +399,56 @@ A separate complete rerun of the composition browser suite with additional
 quota/retry and read-only-tab assertions also exited 0. `git diff --check` passed. These runs
 used Node v26.8.1 and local Playwright Chromium 1243, without a GitHub Actions run.
 
+### Milestone F — portable projects (2026-10-05)
+
+Implemented from `3b7bf0a`. [Portability contract](SONG-PORTABILITY.md) describes
+the archive format, limits, restoration and expressive interchange boundaries.
+
+- Self-contained store-only ZIP includes metadata, original WAVs and any
+  referenced pinned instrument pack with its license. Loose JSON/WAV backups
+  remain supported, including legacy backups with missing-digest warnings.
+- Archive headers, paths, counts, sizes, CRCs and WAV SHA-256 are validated
+  before staging. Existing validation/remapping preserves musical values and
+  exact source bytes, then publishes project/audio in one fenced transaction.
+- Bounded 64 KiB payload reads/writes, 512 MiB archive, 256 entries and 16 MiB
+  JSON limits. Download/share retains its 32 MiB cap; larger ZIPs stream to folders.
+- Explicit folder snapshots use shared save routing, distinct filenames and
+  permission/failure handling. They do not synchronize in the background.
+- Pack installation uses its separate verified cache on Import. Failed pack
+  writes leave staging retryable; failed project commits retain exportable audio
+  and can leave a valid pack cached. No cross-database atomicity is claimed.
+- Project/database/backup schemas are unchanged. Integer-note MIDI limits are
+  visible; separate pitch-bend MIDI and MusicXML contracts are proposed in the
+  portability document, with no new expressive exporter shipped.
+
+Review covered archive layout/path validation, bounded payload processing,
+cancellation/close order, pack-cache publication, source preservation and
+compatibility. The resumed review added a browser regression for pack quota
+failure: existing projects/cache stay unchanged and staged import can be retried.
+Physical phones, OS sharing, disk-full hardware and memory at the archive limit
+remain untested. GitHub Actions was not run locally.
+
+Resumed verification (2026-10-05):
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
+exited 1: **26 of 27 suites passed**; `song-recovery` stopped after its first
+three passing scenarios without an assertion diagnostic. Standalone reruns with
+system Chrome 142 and installed Playwright Chromium 1243 both exited **137** at
+the same real-worklet recovery scenario. A temporary baseline using
+`git show 3b7bf0a:song.html`, the unchanged recovery test and unchanged shared
+helpers also exited 137 after those three scenarios. This reproduces without
+the ZIP changes; the kill's underlying cause is undiagnosed and a complete green
+regression run remains blocked in this environment. No recovery code was changed.
+
+The extended `song-archive-browser` suite separately exited 0, including pack
+quota failure/retry. `song-archive` passed in the full runner; final
+`node tests/verify.js` and `git diff --check` passed. Logs from this resumption
+are `/tmp/song-milestone-f-resumed.log`,
+`/tmp/song-milestone-f-archive-review.log` and
+`/tmp/song-milestone-f-recovery-{rerun,chromium,baseline}.log`.
+
 ## 9. Current limitations and work not implemented
 
-- No automatic disk mirroring or self-contained backup archive: export JSON and source WAVs separately.
+- No automatic disk synchronization: ZIP folder copies are explicit snapshots. ZIP archives accept Song's narrow stored format; compressed/ZIP64/third-party re-zipped archives are unsupported.
 - Recovery covers committed capture checkpoints only. Audio after the last successful checkpoint can be lost on page/browser/device interruption; storage eviction still removes local data.
 - No simultaneous-tab merge. A single writer is enforced; takeover reloads saved state and pending local work must be exported before confirming its replacement.
 - No persisted rendered derived assets; mixes are generated in memory.

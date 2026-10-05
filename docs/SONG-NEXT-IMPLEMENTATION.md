@@ -191,6 +191,12 @@ Acceptance: editable, reproducible musical decisions with audible differences an
 
 ### Milestone F — portable projects and expressive interchange
 
+Implementation note (2026-10-05): portable ZIP backups, staged restoration and
+explicit folder snapshots are implemented from `3b7bf0a`. The
+[portability contract](SONG-PORTABILITY.md) records bounds, compatibility,
+failure behavior and the proposed contracts for separately gated pitch-bend
+MIDI and MusicXML exporters. Those expressive exporters are not shipped.
+
 - Add a self-contained backup archive after memory-bounded export is available. Inspect and reuse the existing `transfer.html` store-only ZIP implementation if suitable; do not duplicate it blindly or claim ZIP64/large-file support it lacks.
 - Keep existing JSON plus WAV import/export supported. Validate archive paths, counts, byte limits and integrity; stage validation before atomically publishing the restored project.
 - Consider continuous pitch-bend MIDI as a separate task. Specify bend range, reset behavior and channel allocation for overlapping notes; one channel-wide bend cannot represent unrelated simultaneous contours. Document integer-note fallback.

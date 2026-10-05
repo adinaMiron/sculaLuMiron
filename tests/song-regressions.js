@@ -6,7 +6,7 @@ const suites=[
   'verify','song-analysis','song-evaluation','song-bounded-analysis',
   'song-analysis-lifecycle','song-synthesis','song-instruments',
   'song-arrangement-generation','song-composition','song-composition-browser','song-bounded-render','song-render-browser','song-samples','song-integrity',
-  'song-incremental-inspection','song','song-recovery','song-performance',
+  'song-incremental-inspection','song-archive','song-archive-browser','song','song-recovery','song-performance',
   'song-arrangement','song-packs','song-sample-browser','song-timeline','song-backup-import',
   'voice','melody'
 ];

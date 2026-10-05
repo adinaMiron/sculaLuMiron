@@ -643,8 +643,11 @@
       if(source.check) source.check();
       return save(filename,new Blob(chunks,{type:source.type}),opts);
     }
+    if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
     if(currentMode()!=="folder") return fallback();
-    var d=await dir(); if(!d) return fallback();
+    var d=await dir();
+    if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
+    if(!d) return fallback();
     for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
     var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
     try{
@@ -1361,8 +1364,9 @@
 <section class="panel" aria-labelledby="projectHeading">
 <h2 id="projectHeading" data-i="project">Proiect muzical</h2>
 <div class="row"><label><span data-i="openProject">Deschide proiect</span><select id="projects"></select></label><button id="newProject" data-i="newProject">Proiect nou</button></div>
-<div class="row" style="margin-top:1rem"><label><span data-i="projectName">Numele proiectului</span><input id="projectName" maxlength="120"></label><button id="renameProject" data-i="rename">Redenumește</button><button id="exportProject" data-i="exportProject">Salvează metadatele</button></div>
-<p><strong id="currentProject"></strong></p><small data-i="storageHint">WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.</small>
+<div class="row" style="margin-top:1rem"><label><span data-i="projectName">Numele proiectului</span><input id="projectName" maxlength="120"></label><button id="renameProject" data-i="rename">Redenumește</button><button id="exportProject" data-i="exportProject">Salvează metadatele</button><button id="exportArchive" data-i="exportArchive">Salvează copia ZIP</button><button id="mirrorArchive" data-i="mirrorArchive">Copie ZIP în dosarul ales</button></div>
+<p><strong id="currentProject"></strong></p><small data-i="storageHint">WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, salvează o copie ZIP sau partajează/descarcă fișierele separat.</small>
+<p class="hint" data-i="archiveHint"></p><p class="hint" data-i="mirrorHint"></p><p class="hint" data-i="interchangeHint"></p>
 <p id="recovery" role="alert" hidden></p><button id="retry" data-i="retry" hidden>Reîncearcă păstrarea locală</button>
 </section>
 <section id="writerPanel" class="panel" hidden><p id="writerStatus" role="alert"></p><button id="takeover" data-i="takeover">Reîncarcă și preia editarea</button></section>
@@ -1370,6 +1374,7 @@
 <section class="panel" aria-labelledby="backupHeading">
 <h2 id="backupHeading" data-i="backupImport">Restaurează un proiect exportat</h2>
 <p class="hint" data-i="backupHint">1. Alege JSON-ul proiectului. 2. Alege toate WAV-urile sursă cu numele exportate (selecție multiplă). 3. Verifică, apoi importă un proiect separat. Nu este necesară alegerea unui dosar.</p>
+<label><span data-i="backupArchiveLabel">Copie ZIP (alternativă la JSON + WAV)</span><input id="backupArchive" type="file" accept=".zip,application/zip"></label>
 <div class="grid"><label><span data-i="backupJsonLabel">JSON proiect</span><input id="backupJson" type="file" accept=".json,application/json"></label><label><span data-i="backupWavsLabel">WAV-uri sursă exportate</span><input id="backupWavs" type="file" accept=".wav,audio/wav,audio/x-wav" multiple></label></div>
 <div class="row" style="margin-top:1rem"><button id="validateBackup" data-i="validateBackup">Verifică copia</button><button id="restoreBackup" class="primary" data-i="restoreBackup" disabled>Importă proiect separat</button><button id="cancelBackup" data-i="cancelBackup">Anulează importul</button></div>
 <p id="backupSummary" role="status" aria-live="polite" style="white-space:pre-line;overflow-wrap:anywhere"></p>
@@ -1420,6 +1425,7 @@
 <script src="js/audio/song-playback.js"></script>
 <script src="js/audio/integrity.js"></script>
 <script src="js/audio/backup.js"></script>
+<script src="js/audio/song-archive.js"></script>
 <script src="js/audio/song-pack-catalog.js"></script>
 <script src="js/audio/song-packs.js"></script>
 <script>
@@ -1427,8 +1433,8 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const I18N = {
-ro:{title:'Creează melodie',intro:'Proiecte muzicale din voce, fredonat și propriile instrumente. Înregistrarea WAV originală rămâne sursa.',project:'Proiect muzical',openProject:'Deschide proiect',newProject:'Proiect nou',projectName:'Numele proiectului',rename:'Redenumește',exportProject:'Salvează metadatele',storageHint:'WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, fiecare fișier se partajează/descarcă separat.',retry:'Reîncearcă păstrarea locală',source:'Înregistrare sursă',microphone:'Microfon',defaultMic:'Microfon implicit',enableMic:'Permite / actualizează microfoanele',takeName:'Numele înregistrării',purpose:'Scop',melody:'Melodie / fredonat',sample:'Mostră de instrument',sampleDetails:'Detalii opționale ale mostrei',instrument:'Instrument',note:'Notă (ex. C4 / Do4)',midiNote:'Notă MIDI (0–127)',articulation:'Articulație',dynamic:'Dinamică / intensitate',notes:'Observații',level:'Nivel de intrare',record:'● Înregistrează',stop:'Oprește',recordings:'Înregistrările proiectului',captureHint:'PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.',idle:'Pregătit',loading:'Se încarcă…',requesting:'Se deschide microfonul…',recording:'Se înregistrează',stopping:'Se finalizează WAV…',saving:'Se păstrează…',empty:'Nicio înregistrare încă.',untitled:'Proiect nou',take:'Înregistrare',save:'Salvează WAV',remove:'Șterge',deleteAsk:n=>`Ștergi „${n}” din browser? Copiile exportate rămân.`,renameAsk:'Numele înregistrării:',unsupported:'Înregistrarea necesită getUserMedia și Web Audio. Folosește un browser compatibil pe HTTPS sau localhost.',denied:'Accesul la microfon a fost refuzat. Permite microfonul în setările browserului și reîncearcă.',micError:'Microfonul nu poate fi deschis. Verifică dispozitivul și permisiunile.',storageError:'Păstrarea locală a eșuat. Datele noi rămân doar în această pagină: salvează WAV și metadatele înainte de reîncărcare sau reîncearcă.',recovered:'Datele sunt păstrate local.',missing:'WAV local lipsește. Folosește copia exportată; metadatele rămân disponibile.',short:'Nu au sosit eșantioane audio. Reîncearcă o înregistrare mai lungă.',unknown:'necunoscut',off:'oprit',on:'activ',processing:'Procesare raportată (ecou / zgomot / câștig)',rate:'Rată microfon',wavRate:'Rată WAV',channels:'Canale WAV',backend:'Captură',clip:'Vârf la limita PCM: redu nivelul microfonului pentru următoarea înregistrare.',interrupted:'Captura a fost întreruptă; partea primită a fost păstrată.',badNote:'Nota MIDI trebuie să fie un număr întreg între 0 și 127.',leave:'Înregistrarea sau datele nepăstrate se vor pierde.',fallback:'Compatibilitate ScriptProcessor; pot apărea întreruperi dacă pagina este ocupată.',noDevices:'Selecția microfonului nu este disponibilă.',failed:'Operația a eșuat.',size:'Dimensiune WAV',unverifiedChannels:'Canalele microfonului nu sunt raportate; sunt afișate canalele capturate de Web Audio (mono în modul de compatibilitate).',duration:'Durată'},
-en:{title:'Song Creation',intro:'Music projects from voice, humming and your own instruments. The original WAV recording remains the source.',project:'Song project',openProject:'Open project',newProject:'New project',projectName:'Project name',rename:'Rename',exportProject:'Save metadata',storageHint:'WAV and metadata stay in this browser. Export backup copies; clearing browser data removes them. On phones, each file is shared/downloaded separately.',retry:'Retry local storage',source:'Source recording',microphone:'Microphone',defaultMic:'Default microphone',enableMic:'Allow / refresh microphones',takeName:'Recording name',purpose:'Purpose',melody:'Melody / humming',sample:'Instrument sample',sampleDetails:'Optional sample details',instrument:'Instrument',note:'Note (e.g. C4)',midiNote:'MIDI note (0–127)',articulation:'Articulation',dynamic:'Velocity / dynamics',notes:'Notes',level:'Input level',record:'● Record',stop:'Stop',recordings:'Project recordings',captureHint:'24-bit PCM WAV; microphone target 48 kHz, effective rate shown. No normalization or effects. Use headphones and keep this page open in the foreground while recording.',idle:'Ready',loading:'Loading…',requesting:'Opening microphone…',recording:'Recording',stopping:'Finalizing WAV…',saving:'Storing…',empty:'No recordings yet.',untitled:'New project',take:'Recording',save:'Save WAV',remove:'Delete',deleteAsk:n=>`Delete “${n}” from this browser? Exported copies remain.`,renameAsk:'Recording name:',unsupported:'Recording needs getUserMedia and Web Audio. Use a compatible browser on HTTPS or localhost.',denied:'Microphone access was denied. Allow the microphone in browser settings and try again.',micError:'Cannot open the microphone. Check the device and permissions.',storageError:'Local storage failed. New data remains only in this page: save WAV and metadata before reloading, or retry.',recovered:'Data stored locally.',missing:'Local WAV is missing. Use the exported copy; metadata is still available.',short:'No audio samples arrived. Try a longer recording.',unknown:'unknown',off:'off',on:'on',processing:'Reported processing (echo / noise / gain)',rate:'Microphone rate',wavRate:'WAV rate',channels:'WAV channels',backend:'Capture',clip:'Peak reached the PCM limit: reduce microphone level for the next recording.',interrupted:'Capture was interrupted; the received portion was retained.',badNote:'MIDI note must be an integer between 0 and 127.',leave:'Recording or unstored data will be lost.',fallback:'ScriptProcessor compatibility mode; a busy page may interrupt capture.',noDevices:'Microphone selection is unavailable.',failed:'Operation failed.',size:'WAV size',unverifiedChannels:'Microphone channels are unreported; captured Web Audio channels are shown (mono in compatibility mode).',duration:'Duration'}
+ro:{title:'Creează melodie',intro:'Proiecte muzicale din voce, fredonat și propriile instrumente. Înregistrarea WAV originală rămâne sursa.',project:'Proiect muzical',openProject:'Deschide proiect',newProject:'Proiect nou',projectName:'Numele proiectului',rename:'Redenumește',exportProject:'Salvează metadatele',storageHint:'WAV și metadatele se păstrează în acest browser. Exportă copii pentru siguranță; ștergerea datelor browserului le elimină. Pe telefon, salvează o copie ZIP sau partajează/descarcă fișierele separat.',retry:'Reîncearcă păstrarea locală',source:'Înregistrare sursă',microphone:'Microfon',defaultMic:'Microfon implicit',enableMic:'Permite / actualizează microfoanele',takeName:'Numele înregistrării',purpose:'Scop',melody:'Melodie / fredonat',sample:'Mostră de instrument',sampleDetails:'Detalii opționale ale mostrei',instrument:'Instrument',note:'Notă (ex. C4 / Do4)',midiNote:'Notă MIDI (0–127)',articulation:'Articulație',dynamic:'Dinamică / intensitate',notes:'Observații',level:'Nivel de intrare',record:'● Înregistrează',stop:'Oprește',recordings:'Înregistrările proiectului',captureHint:'PCM WAV 24 biți; țintă microfon 48 kHz, rata efectivă este afișată. Fără normalizare sau efecte. Folosește căști și ține pagina deschisă în prim-plan în timpul înregistrării.',idle:'Pregătit',loading:'Se încarcă…',requesting:'Se deschide microfonul…',recording:'Se înregistrează',stopping:'Se finalizează WAV…',saving:'Se păstrează…',empty:'Nicio înregistrare încă.',untitled:'Proiect nou',take:'Înregistrare',save:'Salvează WAV',remove:'Șterge',deleteAsk:n=>`Ștergi „${n}” din browser? Copiile exportate rămân.`,renameAsk:'Numele înregistrării:',unsupported:'Înregistrarea necesită getUserMedia și Web Audio. Folosește un browser compatibil pe HTTPS sau localhost.',denied:'Accesul la microfon a fost refuzat. Permite microfonul în setările browserului și reîncearcă.',micError:'Microfonul nu poate fi deschis. Verifică dispozitivul și permisiunile.',storageError:'Păstrarea locală a eșuat. Datele noi rămân doar în această pagină: salvează WAV și metadatele înainte de reîncărcare sau reîncearcă.',recovered:'Datele sunt păstrate local.',missing:'WAV local lipsește. Folosește copia exportată; metadatele rămân disponibile.',short:'Nu au sosit eșantioane audio. Reîncearcă o înregistrare mai lungă.',unknown:'necunoscut',off:'oprit',on:'activ',processing:'Procesare raportată (ecou / zgomot / câștig)',rate:'Rată microfon',wavRate:'Rată WAV',channels:'Canale WAV',backend:'Captură',clip:'Vârf la limita PCM: redu nivelul microfonului pentru următoarea înregistrare.',interrupted:'Captura a fost întreruptă; partea primită a fost păstrată.',badNote:'Nota MIDI trebuie să fie un număr întreg între 0 și 127.',leave:'Înregistrarea sau datele nepăstrate se vor pierde.',fallback:'Compatibilitate ScriptProcessor; pot apărea întreruperi dacă pagina este ocupată.',noDevices:'Selecția microfonului nu este disponibilă.',failed:'Operația a eșuat.',size:'Dimensiune WAV',unverifiedChannels:'Canalele microfonului nu sunt raportate; sunt afișate canalele capturate de Web Audio (mono în modul de compatibilitate).',duration:'Durată'},
+en:{title:'Song Creation',intro:'Music projects from voice, humming and your own instruments. The original WAV recording remains the source.',project:'Song project',openProject:'Open project',newProject:'New project',projectName:'Project name',rename:'Rename',exportProject:'Save metadata',storageHint:'WAV and metadata stay in this browser. Export backup copies; clearing browser data removes them. On phones, save a ZIP backup or share/download files separately.',retry:'Retry local storage',source:'Source recording',microphone:'Microphone',defaultMic:'Default microphone',enableMic:'Allow / refresh microphones',takeName:'Recording name',purpose:'Purpose',melody:'Melody / humming',sample:'Instrument sample',sampleDetails:'Optional sample details',instrument:'Instrument',note:'Note (e.g. C4)',midiNote:'MIDI note (0–127)',articulation:'Articulation',dynamic:'Velocity / dynamics',notes:'Notes',level:'Input level',record:'● Record',stop:'Stop',recordings:'Project recordings',captureHint:'24-bit PCM WAV; microphone target 48 kHz, effective rate shown. No normalization or effects. Use headphones and keep this page open in the foreground while recording.',idle:'Ready',loading:'Loading…',requesting:'Opening microphone…',recording:'Recording',stopping:'Finalizing WAV…',saving:'Storing…',empty:'No recordings yet.',untitled:'New project',take:'Recording',save:'Save WAV',remove:'Delete',deleteAsk:n=>`Delete “${n}” from this browser? Exported copies remain.`,renameAsk:'Recording name:',unsupported:'Recording needs getUserMedia and Web Audio. Use a compatible browser on HTTPS or localhost.',denied:'Microphone access was denied. Allow the microphone in browser settings and try again.',micError:'Cannot open the microphone. Check the device and permissions.',storageError:'Local storage failed. New data remains only in this page: save WAV and metadata before reloading, or retry.',recovered:'Data stored locally.',missing:'Local WAV is missing. Use the exported copy; metadata is still available.',short:'No audio samples arrived. Try a longer recording.',unknown:'unknown',off:'off',on:'on',processing:'Reported processing (echo / noise / gain)',rate:'Microphone rate',wavRate:'WAV rate',channels:'WAV channels',backend:'Capture',clip:'Peak reached the PCM limit: reduce microphone level for the next recording.',interrupted:'Capture was interrupted; the received portion was retained.',badNote:'MIDI note must be an integer between 0 and 127.',leave:'Recording or unstored data will be lost.',fallback:'ScriptProcessor compatibility mode; a busy page may interrupt capture.',noDevices:'Microphone selection is unavailable.',failed:'Operation failed.',size:'WAV size',unverifiedChannels:'Microphone channels are unreported; captured Web Audio channels are shown (mono in compatibility mode).',duration:'Duration'}
 };
 Object.assign(I18N.ro,{"importWav": "Importă WAV fredonat", "importHint": "WAV PCM 16/24/32 biți sau float 32 biți, mono/stereo. Fișierul original este păstrat fără modificări.", "imported": "WAV importat. Extrage melodia din înregistrare.", "badWav": "WAV invalid sau incompatibil. Folosește PCM 16/24/32 biți ori float 32 biți, mono/stereo, 8–192 kHz.", "analyze": "Extrage melodia", "reanalyze": "Reanalizează", "reanalyzeAsk": "Reanalizarea înlocuiește melodia editată. Continui?", "analyzing": "Se analizează înregistrarea…", "analyzed": "Melodie extrasă. Poți edita notele.", "noPitch": "Nu au fost găsite note clare. Poți adăuga note sau folosi o înregistrare mai clară.", "analysisError": "Analiza nu a reușit. Verifică fișierul WAV și suportul Web Audio.", "tooLong": "Analiza acceptă cel mult 180 de secunde. WAV-ul sursă rămâne complet.", "editableMelody": "Melodie editabilă", "melodyHint": "Barele arată notele editabile; linia arată vocea detectată. Timpii sunt în secunde de la începutul WAV-ului. Previzualizarea folosește un ton sintetic. WAV-ul sursă și analiza inițială rămân intacte. MIDI păstrează nota, timpii și intensitatea; JSON păstrează expresia completă.", "noteCount": "note", "detectedInfo": "Estimări pentru voce monofonică; verifică notele și tempo-ul.", "major": "major", "minor": "minor", "roll": "Note editabile, începuturi detectate și contur vocal", "tempo": "Tempo (BPM)", "grid": "Diviziuni pe bătaie", "timing": "Timpi folosiți", "original": "Originali / editați", "quantized": "Cuantizați", "preview": "Ascultă melodia", "stopPreview": "Oprește melodia", "saveMidi": "Salvează MIDI", "undo": "Anulează", "redo": "Refă", "resetMelody": "Restaurează notele detectate", "resetAsk": "Înlocuiești notele editate cu cele detectate inițial?", "onset": "Început (s)", "offset": "Sfârșit (s)", "cents": "Abatere (cenți)", "velocity": "Intensitate MIDI", "expression": "Expresie detectată", "confidence": "Încredere", "dynamics": "Dinamică", "vibrato": "Vibrato", "legato": "Legato", "attack": "Atac", "release": "Eliberare", "manualNote": "Notă adăugată manual", "addNote": "Adaugă notă", "invalidEdit": "Valori invalide. Sfârșitul trebuie să fie după început; nota și intensitatea MIDI trebuie să fie întregi."});
 Object.assign(I18N.en,{"importWav": "Import hummed WAV", "importHint": "16/24/32-bit PCM or 32-bit float WAV, mono/stereo. The original file is retained unchanged.", "imported": "WAV imported. Extract the melody from the recording.", "badWav": "Invalid or unsupported WAV. Use 16/24/32-bit PCM or 32-bit float, mono/stereo, 8–192 kHz.", "analyze": "Extract melody", "reanalyze": "Analyze again", "reanalyzeAsk": "Analyzing again replaces the edited melody. Continue?", "analyzing": "Analyzing recording…", "analyzed": "Melody extracted. You can edit the notes.", "noPitch": "No clear notes found. Add notes or use a clearer recording.", "analysisError": "Analysis failed. Check the WAV file and Web Audio support.", "tooLong": "Analysis accepts up to 180 seconds. The source WAV remains complete.", "editableMelody": "Editable melody", "melodyHint": "Bars show editable notes; the line shows the detected voice. Times are seconds from the start of the WAV. Preview uses a synthetic tone. The source WAV and initial analysis remain intact. MIDI saves note pitch, timing and velocity; JSON retains the full expression.", "noteCount": "notes", "detectedInfo": "Estimates for a monophonic voice; check the notes and tempo.", "major": "major", "minor": "minor", "roll": "Editable notes, detected onsets and voice contour", "tempo": "Tempo (BPM)", "grid": "Divisions per beat", "timing": "Timing used", "original": "Original / edited", "quantized": "Quantized", "preview": "Play melody", "stopPreview": "Stop melody", "saveMidi": "Save MIDI", "undo": "Undo", "redo": "Redo", "resetMelody": "Restore detected notes", "resetAsk": "Replace edited notes with the originally detected notes?", "onset": "Onset (s)", "offset": "Offset (s)", "cents": "Deviation (cents)", "velocity": "MIDI velocity", "expression": "Detected expression", "confidence": "Confidence", "dynamics": "Dynamics", "vibrato": "Vibrato", "legato": "Legato", "attack": "Attack", "release": "Release", "manualNote": "Manually added note", "addNote": "Add note", "invalidEdit": "Invalid values. Offset must follow onset; MIDI note and velocity must be integers."});
@@ -1480,6 +1486,8 @@ let revision=0, writable=true, conflict=false, journals=[], releaseLock=null, ow
 const finishedCaptures=new Set();
 let analysisJob=null,analysisFraction=0,analysisPhase='decoding';
 const pendingBlobs = new Map(), deleted = new Set(), urls = new Set();
+Object.assign(I18N.ro,{interchangeHint:'MIDI păstrează notele întregi, timpii și intensitățile, dar nu contururile continue de înălțime sau sunetul mostrelor. Păstrează copia ZIP sau JSON + WAV pentru toate detaliile interpretării.',mirrorArchive:'Copie ZIP în dosarul ales',mirrorHint:'Opțional: păstrează o copie ZIP în dosarul ales din meniul de salvare. Fiecare apăsare creează o copie nouă; fișierele existente rămân intacte. Nu se sincronizează automat. Necesită acces la un dosar, indisponibil în majoritatea browserelor mobile.',folderRequired:'Alege un dosar din meniul de salvare și permite scrierea. Copia în dosar nu a fost salvată.',backupArchiveLabel:'Copie ZIP (alternativă la JSON + WAV)',exportArchive:'Salvează copia ZIP',archiveHint:'Copia ZIP include proiectul, WAV-urile sursă și pachetele folosite. Maximum 512 MiB, 256 fișiere și 16 MiB JSON. Peste 32 MiB, alege un dosar din meniul de salvare; pe telefon folosește JSON + WAV pentru proiecte mai mari.',archiveLimit:'Copia depășește limitele ZIP: 512 MiB, 256 fișiere sau 16 MiB JSON.',archiveInvalid:'Arhivă ZIP invalidă sau incompatibilă. Alege o copie ZIP exportată din Song.',archivePackMissing:'Instalează pachetul de instrumente folosit înainte de a crea copia completă ZIP.',archiveProgress:v=>`Se verifică ZIP: ${v.name} · ${Math.floor(v.done/Math.max(1,v.total)*100)}%`});
+Object.assign(I18N.en,{interchangeHint:'MIDI preserves integer notes, timing and velocities, but not continuous pitch contours or sample sounds. Keep ZIP or JSON + WAV backups for the full performance evidence.',mirrorArchive:'Save ZIP to chosen folder',mirrorHint:'Optional: keep a ZIP snapshot in the folder chosen from the save menu. Each click creates a new copy and preserves existing files. No automatic synchronization. Requires folder access, unavailable in most mobile browsers.',folderRequired:'Choose a folder from the save menu and allow write access. The folder copy was not saved.',backupArchiveLabel:'ZIP backup (alternative to JSON + WAV)',exportArchive:'Save ZIP backup',archiveHint:'ZIP includes the project, source WAVs and used instrument packs. Maximum 512 MiB, 256 files and 16 MiB JSON. Above 32 MiB, choose a folder from the save menu; on phones use JSON + WAV for larger projects.',archiveLimit:'Backup exceeds ZIP limits: 512 MiB, 256 files or 16 MiB JSON.',archiveInvalid:'Invalid or unsupported ZIP archive. Select a ZIP backup exported by Song.',archivePackMissing:'Install the instrument pack used by this project before creating its complete ZIP backup.',archiveProgress:v=>`Checking ZIP: ${v.name} · ${Math.floor(v.done/Math.max(1,v.total)*100)}%`});
 let backupJob=null, stagedBackup=null, backupMessage=null;
 const AC = window.AudioContext || window.webkitAudioContext;
 const supported = () => !!(AC && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.ScuLaPCM);
@@ -1496,7 +1504,7 @@ function paintState(){
   paintPack();
   $('recordState').textContent=t(state);
   const idle=state==='idle';
-  ['newProject','renameProject','projects','projectName','exportProject','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry','importWav','backupJson','backupWavs','validateBackup'].forEach(k=>$(k).disabled=!idle);
+  ['newProject','renameProject','projects','projectName','exportProject','exportArchive','mirrorArchive','enableMic','microphone','purpose','takeName','instrument','note','midiNote','articulation','dynamic','notes','retry','importWav','backupJson','backupWavs','backupArchive','validateBackup'].forEach(k=>$(k).disabled=!idle);
   $('restoreBackup').disabled=!idle || !stagedBackup;
   $('cancelBackup').disabled=!idle && (!backupJob || backupJob.saving);
   $('cancelBackup').textContent=t(backupJob?.kind==='export'?'cancelHash':'cancelBackup');
@@ -1674,10 +1682,11 @@ function projectManifest(){
   const refs=new Map();for(const a of project.arrangements||[])for(const p of Object.values(a.parts))if(p.samplePack)refs.set(p.samplePack.sha256,p.samplePack);
   const instrumentPacks=Array.from(refs.values(),ref=>Packs.validReference(ref)?{...ref,name:packCatalog.manifest.name,source:packCatalog.manifest.source,license:packCatalog.manifest.license}:ref);
   return {...project,...(instrumentPacks.length?{instrumentPacks}:{}),recordings:project.recordings.map(r=>({...r,source:{...r.source,filename:takeFilename(r),relativePath:(r.purpose==='sample'?'samples/':'recordings/')+takeFilename(r)}}))};}
-async function exportMetadata(){
+async function exportMetadata(archive=false,folderOnly=false){
   const job={cancelled:false,kind:'export'};backupJob=job;setState('hashing');
-  stagedBackup=null;const manifest=projectManifest();
+  stagedBackup=null;const manifest=projectManifest(),entries=[];
   try{
+    if(folderOnly && (ScuLaFolder.mode()!=='folder' || !await ScuLaFolder.dir()))throw Error('folderRequired');
     for(let i=0;i<manifest.recordings.length;i++){
       if(job.cancelled)return;
       const blob=await blobFor(project.recordings[i]).catch(()=>null);
@@ -1686,12 +1695,28 @@ async function exportMetadata(){
       const source=manifest.recordings[i].source;
       const digest=await ScuLaIntegrity.sha256(blob,{cancelled:()=>job.cancelled,progress:(done,total)=>{if(!job.cancelled)backupSay('hashProgress',{name:source.filename,done,total});}});
       source.integrity={algorithm:'SHA-256',digest};
+      if(archive)entries.push({path:source.relativePath,blob});
     }
     if(job.cancelled)return;
-    job.saving=true;setState('saving');
-    const result=await ScuLaFolder.save(projectStem()+'-project.json',new Blob([JSON.stringify(manifest,null,2)],{type:'application/json'}),{directories:[projectStem()]});
+    let output=new Blob([JSON.stringify(manifest,null,2)],{type:'application/json'});
+    if(archive){
+      if(output.size>ScuLaSongArchive.limits.jsonBytes)throw Error('archiveLimit');
+      entries.unshift({path:'project.json',blob:output});
+      if(manifest.arrangements?.some(a=>Object.values(a.parts).some(p=>p.samplePack))){
+        const pack=await Packs.stored().catch(()=>null);if(!pack)throw Error('archivePackMissing');
+        await Packs.verify(pack.manifest,pack.assets,{signal:{get aborted(){return job.cancelled;}}});
+        entries.push({path:'pack/manifest.json',blob:new Blob([JSON.stringify(pack.manifest)])},{path:'pack/LICENSE.txt',blob:new Blob([pack.manifest.license.text])});
+        pack.manifest.samples.forEach((s,i)=>entries.push({path:'pack/'+s.file,blob:pack.assets[i]}));
+      }
+      output=await ScuLaSongArchive.write(entries,{cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay('archiveProgress',v);}});
+      const check=output.check;output.check=()=>{check();job.saving=true;paintState();};
+    }
+    if(job.cancelled)return;
+    // The stream checks cancellation between every bounded read/write.
+    job.saving=!archive;setState('saving');
+    const result=await ScuLaFolder.save(projectStem()+(archive?'-backup.zip':'-project.json'),output,{directories:folderOnly?[projectStem(),'mirrors']:[projectStem()],requireFolder:folderOnly});
     statusKey=null;$('status').textContent=result.message || '';if(!job.cancelled){backupMessage=null;paintBackup();}
-  }catch(e){if(!job.cancelled){say('failed',true);backupSay('failed',null,true);}}
+  }catch(e){if(!job.cancelled){const key=['archiveLimit','archiveInvalid','archivePackMissing','exportLimit','folderRequired'].includes(e.message)?e.message:'failed';say(key,true);backupSay(key,null,true);}}
   finally{backupJob=null;}
 }
 function paintBackup(){
@@ -1702,20 +1727,21 @@ function paintBackup(){
 function backupSay(key,detail,error=false){backupMessage={key,detail,error};paintBackup();}
 function cancelBackup(message=true){
   if(backupJob)backupJob.cancelled=true;
-  stagedBackup=null;$('backupJson').value='';$('backupWavs').value='';
+  stagedBackup=null;$('backupJson').value='';$('backupWavs').value='';$('backupArchive').value='';
   if(message)backupSay(backupJob?.kind==='export'?'hashCancelled':'backupCancelled');else{backupMessage=null;paintBackup();}paintState();
 }
 function backupSelection(){stagedBackup=null;backupMessage=null;paintBackup();paintState();}
 async function validateBackup(){
   if(state!=='idle')return;
-  const json=$('backupJson').files[0],files=Array.from($('backupWavs').files);
-  if(!json){backupSay('backupSelect',null,true);return;}
+  const archive=$('backupArchive').files[0],json=$('backupJson').files[0],files=Array.from($('backupWavs').files);
+  if(!json && !archive){backupSay('backupSelect',null,true);return;}
   stopPreview();stopArrangement();++generation;clearPlayers();stagedBackup=null;
   const job={cancelled:false};backupJob=job;setState('importing');backupSay('importing');
   try{
     // Include orphan audio keys too; validation itself never writes storage.
     const keys=db?await new Promise((resolve,reject)=>{const tx=db.transaction('audio'),r=tx.objectStore('audio').getAllKeys();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}):[];
-    const staged=await ScuLaSongBackup.stage(await json.text(),files,{used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay(v.phase==='inspection'?'inspectProgress':'hashProgress',v);}});
+    const options={used:ScuLaSongBackup.occupied(projects,[...keys,...pendingBlobs.keys(),...deleted]),newId:id,cancelled:()=>job.cancelled,progress:v=>{if(!job.cancelled)backupSay(v.phase==='archive'?'archiveProgress':v.phase==='inspection'?'inspectProgress':'hashProgress',v);}};
+    const staged=archive?await ScuLaSongArchive.stage(archive,options):await ScuLaSongBackup.stage(await json.text(),files,options);
     if(job.cancelled)return;
     stagedBackup=staged;backupSay('backupReady',{name:staged.project.name,count:staged.project.recordings.length,files:staged.project.recordings.map(r=>r.source.filename||r.source.relativePath.split('/').pop())});
   }catch(e){if(!job.cancelled)backupSay(typeof e.code==='string' && Object.hasOwn(I18N[UI],e.code)?e.code:'backupRead',e.detail,true);}
@@ -1723,11 +1749,17 @@ async function validateBackup(){
 }
 async function restoreBackup(){
   const staged=stagedBackup;if(!staged)return;
+  // Optional pack cache is independent, content-addressed and verified. Failure
+  // leaves the staged project available; no project/audio writes have begun.
+  if(staged.pack){
+    try{await Packs.installFiles(staged.pack.manifest,staged.pack.files);await refreshPack();}
+    catch(_){backupSay('packStorage',null,true);return;}
+  }
   // All validation and cancellation finish before the project is published.
   clearPlayers();stagedBackup=null;project=staged.project;projects.push(project);
   staged.audio.forEach((blob,key)=>pendingBlobs.set(key,blob));
   prefs.set('scula:song:project',project.id);
-  $('backupJson').value='';$('backupWavs').value='';backupSay('backupRestored');
+  $('backupJson').value='';$('backupWavs').value='';$('backupArchive').value='';backupSay('backupRestored');
   if(await persist())say('backupRestored');await render();
 }
 function clearPlayers(){document.querySelectorAll('.take audio').forEach(a=>{a.pause();a.removeAttribute('src');a.load();});urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();}
@@ -2668,7 +2700,7 @@ async function stop(){
   const ok=await persist();setState('idle');if(ok)say(c.interrupted?'interrupted':c.peak>=1?'clip':'recovered',c.peak>=1);await render();
 }
 $('importWav').onchange=()=>{const file=$('importWav').files[0];$('importWav').value='';if(file)run(()=>importWav(file));};
-$('backupJson').onchange=backupSelection;$('backupWavs').onchange=backupSelection;
+$('backupJson').onchange=$('backupWavs').onchange=()=>{$('backupArchive').value='';backupSelection();};$('backupArchive').onchange=()=>{$('backupJson').value='';$('backupWavs').value='';backupSelection();};
 $('validateBackup').onclick=validateBackup;$('restoreBackup').onclick=()=>run(restoreBackup);$('cancelBackup').onclick=()=>cancelBackup();
 $('addSongSection').onclick=()=>run(addSongSection);$('undoSongTimeline').onclick=()=>run(()=>stepSongTimeline('undo'));$('redoSongTimeline').onclick=()=>run(()=>stepSongTimeline('redo'));$('playSong').onclick=()=>{if(state==='idle')songAudio(true);};$('stopSong').onclick=()=>{stopArrangement();say('idle');};$('saveSongWav').onclick=()=>run(()=>songAudio(false));$('saveSongLoopWav').onclick=()=>run(()=>songAudio(false,songPosition,true));$('saveSongMidi').onclick=()=>run(exportSongMidi);$('saveSongLoopMidi').onclick=()=>run(exportSongLoopMidi);
 document.addEventListener('keydown',event=>{
@@ -2682,9 +2714,9 @@ $('recordBtn').onclick=()=>{stopPreview();stopArrangement();start();};$('stopBtn
 $('newProject').onclick=()=>run(async()=>{newProject();await persist();await render();});
 $('projects').onchange=()=>run(async()=>{project=projects.find(p=>p.id===$('projects').value);prefs.set('scula:song:project',project.id);paintProjects();await render();});
 $('renameProject').onclick=()=>run(async()=>{const name=$('projectName').value.trim();if(name){project.name=name.slice(0,120);touch();await persist();}});
-$('exportProject').onclick=()=>run(exportMetadata);
+$('exportProject').onclick=()=>run(()=>exportMetadata());$('exportArchive').onclick=()=>run(()=>exportMetadata(true));$('mirrorArchive').onclick=()=>run(()=>exportMetadata(true,true));
 $('retry').onclick=()=>run(async()=>{if(await persist())say('recovered');});
-window.addEventListener('beforeunload',ev=>{if(dirty || ['requesting','recording','stopping','analyzing','importing','hashing'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
+window.addEventListener('beforeunload',ev=>{if(dirty || backupJob || ['requesting','recording','stopping','analyzing','importing','hashing'].includes(state)){ev.preventDefault();ev.returnValue=t('leave');}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopArrangement();});
 window.addEventListener('pagehide',()=>{if(analysisJob){analysisJob.pageHidden=true;analysisJob.cancelled=true;}if(backupJob)backupJob.pageHidden=true;cancelBackup(false);++generation;stopPreview();stopArrangement();clearPlayers();if(capture)cleanup(capture);});
 async function init(){

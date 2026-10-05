@@ -445,7 +445,13 @@ noise components. These sounds are generated locally; recordings saved as instru
 samples remain source takes and are not used automatically in arrangements.
 
 Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
-browser storage removes them. Desktop folder saves use `Song Creation/<project>/`
+browser storage removes them. **Save ZIP backup** includes project metadata,
+original WAVs and any used instrument pack in one file. Restore it through the
+ZIP input, **Validate backup**, then **Import separate project**. Optional
+**Save ZIP to chosen folder** creates a new snapshot; it does not synchronize
+automatically. ZIP supports up to 512 MiB, with a 32 MiB share/download limit;
+larger exports require folder access. See [portability details](docs/SONG-PORTABILITY.md).
+Desktop folder saves use `Song Creation/<project>/`
 with `recordings/`, `samples/` and derived `exports/`; phones use the existing share/download route
 with ownership in filenames. Metadata export references the WAVs, without
 embedding audio. To restore, select the JSON and all referenced source WAVs in

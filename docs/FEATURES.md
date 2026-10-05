@@ -3112,7 +3112,7 @@ failure, storage eviction and microphone interruption remain limits. No unload
 handler attempts to flush capture asynchronously.
 
 All exports call `ScuLaFolder.save`. It also accepts a bounded stream producer
-for large WAVs, awaiting folder writes and aborting failed/canceled output;
+for large WAVs and ZIP backups, awaiting folder writes and aborting failed/canceled output;
 download/share fallback is capped at 32 MiB. Its optional `directories` array creates
 validated components **beneath the calling page's SUBDIR**; old callers keep the
 same behavior. Song's SUBDIR is `Song Creation`; desktop paths are
@@ -3122,16 +3122,30 @@ Nothing is overwritten. Mobile share/download cannot enforce nested folders;
 filenames include project and recording IDs and purpose. JSON references each
 WAV filename/path and does not embed it. Name components are limited to 60 UTF-8
 bytes, preserving complete Unicode characters, so filenames retain both IDs
-within common filesystem limits. Save WAVs and JSON separately. Exported
-project import is described below; automatic disk mirroring is not implemented.
+within common filesystem limits. Save WAVs and JSON separately or use **Save ZIP
+backup** for a complete portable project. **Save ZIP to chosen folder** writes a
+new snapshot under `mirrors/`; the stream saver's `requireFolder` option refuses
+download/share fallback when folder permission is unavailable. Automatic disk
+mirroring is not implemented.
+
+The bounded `js/audio/song-archive.js` helper packages project JSON, exact source
+WAVs and referenced pinned pack assets/license. ZIP restoration validates paths,
+headers, CRCs, source SHA-256 and pack contents before staging through the existing
+backup helper. No files or projects publish during validation. Import installs a
+bundled pack in its separate cache before the fenced project/audio transaction;
+pack failure leaves staging retryable, while project failure retains exportable
+audio and may leave the verified pack cached. Limits and interchange contracts:
+[Song portability](SONG-PORTABILITY.md).
 
 ### Restore an exported project
 
 **Restore an exported project** / **Restaurează un proiect exportat** uses two
-ordinary file inputs: select the project JSON and multi-select its source WAVs,
-then **Validate backup**. Desktop and phone browsers need no directory picker.
+ordinary file inputs for loose backups: select the project JSON and multi-select
+its source WAVs, or select one **ZIP backup**, then **Validate backup**. Selecting
+ZIP clears the loose inputs and vice versa. Desktop and phone browsers need no directory picker.
 The preview lists the project name and the exact WAV filenames that will be
-used; extra selected files are ignored. **Import separate project** publishes
+used; extra selected loose WAV files are ignored, while undeclared ZIP entries
+are rejected. **Import separate project** publishes
 the validated copy. **Cancel import** discards the staged copy, including while
 file reads are pending. Changing either selection invalidates the preview.
 Validation and cancellation leave existing project metadata and storage intact.

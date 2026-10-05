@@ -5,6 +5,8 @@ manager.** The apps open directly in a browser. `index.html` keeps its CSS and
 markup in the page and loads its editor JavaScript from `js/markdown/`;
 Song keeps its workspace logic inline; Voice and Song share `js/audio/pcm.js` and the versioned `js/audio/analysis.js` and `js/audio/synthesis.js`;
 Song adds `js/audio/song-storage.js` for capture journals and fenced persistence, plus `js/audio/song-renderer.js` and `js/audio/song-playback.js` for bounded WAV export and scheduled previews, and `js/audio/performance.js`, `js/audio/arrangement.js`, `js/audio/integrity.js` and `js/audio/backup.js` for staged project restoration. Rendering budgets and long-preview/export differences are documented in `docs/SONG-RENDERING.md`. Song also loads `song-pack-catalog.js` and `song-packs.js` for the optional, licensed piano pack; see `docs/SONG-INSTRUMENT-PACKS.md`.
+Song's `js/audio/song-archive.js` adds bounded ZIP backups and explicit folder
+snapshots; see `docs/SONG-PORTABILITY.md` for limits and restore behavior.
 Voice also loads `js/voice/teleprompter.js` for the Subtitrare chapter reader
 and speech following. The other apps keep their JavaScript inline. There is no build step.
 

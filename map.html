@@ -861,8 +861,11 @@
       if(source.check) source.check();
       return save(filename,new Blob(chunks,{type:source.type}),opts);
     }
+    if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
     if(currentMode()!=="folder") return fallback();
-    var d=await dir(); if(!d) return fallback();
+    var d=await dir();
+    if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
+    if(!d) return fallback();
     for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
     var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
     try{

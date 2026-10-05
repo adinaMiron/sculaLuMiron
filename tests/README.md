@@ -298,16 +298,40 @@ It uses root locked dev dependencies and Playwright Chromium, explicitly setting
 
 `PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/song-regressions.js`
 
-`node tests/song-regressions.js --list` prints the authoritative 25-suite list.
+`node tests/song-regressions.js --list` prints the authoritative 27-suite list.
 The runner executes every listed suite, reports individual exits and exits
 nonzero if any fails. Inventory:
 
 | Kind | Suites |
 | --- | --- |
 | Static verification | `verify` |
-| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-composition`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render` |
-| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-composition-browser`, `song-sample-browser`, `song-packs`, `song-timeline`, `song-backup-import`, `song-render-browser`, `voice`, `melody` |
+| Deterministic Node/helper or handler checks | `song-analysis`, `song-evaluation`, `song-bounded-analysis`, `song-analysis-lifecycle`, `song-synthesis`, `song-instruments`, `song-arrangement-generation`, `song-composition`, `song-samples`, `song-integrity`, `song-incremental-inspection`, `song-bounded-render`, `song-archive` (also needs Python 3's standard-library ZIP reader) |
+| Chromium browser checks | `song`, `song-recovery`, `song-performance`, `song-arrangement`, `song-composition-browser`, `song-sample-browser`, `song-packs`, `song-timeline`, `song-backup-import`, `song-render-browser`, `song-archive-browser`, `voice`, `melody` |
 | External labeled recordings (excluded from CI) | `node tests/song-evaluate.js path/to/manifest.json`; requires a supplied manifest and WAVs. Generated `song-evaluation` is a different check. |
+
+Milestone F adds `song-archive` and `song-archive-browser`. The first checks
+independent Python `zipfile` interoperability, exact Unicode/payload bytes,
+bounded reads/writes, hostile archive structures/paths, CRCs and cancellation.
+The browser suite covers shipped ZIP controls, source/composition/timeline
+round trips, staged publication, SHA-256 tampering, loose-file compatibility,
+project and pack quota failures/retry, offline pack bundling, folder permission,
+backpressure/abort, distinct snapshot names and RO/EN phone layout without storage.
+See [the portability contract](../docs/SONG-PORTABILITY.md).
+
+Milestone F resumed verification (2026-10-05): the shared runner passed 26/27
+suites; `song-recovery` was killed without an assertion diagnostic. Standalone
+system Chrome and Playwright Chromium reruns exited 137, as did the unchanged
+committed Song page at `3b7bf0a`, after the same first three scenarios. The cause
+is undiagnosed; a full green run remains blocked. The extended archive browser
+suite separately passed, including pack quota/retry; static verification and
+diff whitespace checks passed. Detailed evidence is in the
+[implementation status](../docs/SONG-IMPLEMENTATION-STATUS.md#milestone-f--portable-projects-2026-10-05).
+
+Manual archive checks (unexecuted): move a ZIP to a second physical device and
+restore/play its sources and arrangement; try real mobile sharing and cancel;
+exercise denied/revoked folder access and disk-full behavior; measure browser
+memory during a near-limit archive save/restore. Automated folder/share stubs
+and bounded JavaScript reads do not establish those device results.
 
 `song-recovery` uses real IndexedDB transactions and same-origin pages sharing
 one browser context/database, plus Chromium's fake microphone on localhost. It
