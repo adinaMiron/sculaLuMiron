@@ -99,7 +99,18 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   deletions, and moves in both trees before staging or publication, while allowing
   explanatory notes and fenced examples outside the assigned document.
 
-- [ ] [ID:metadata-validation] **P2 — Duplicate metadata tags and empty trailing dependencies are accepted.** `implement-tasks.sh:54-61,145-204` extracts the last matching tag and relies on Bash comma splitting. Local probes accepted both `- [ ] [ID:a] [ID:b] Duplicate metadata.` and a task with `[DEPENDS:a,]` when `a` existed. Reject repeated ID/DEPENDS tags and malformed dependency lists before selecting work. Preserve the existing successful duplicate-ID-across-tasks, unknown-reference, and cycle checks.
+- [x] [ID:metadata-validation] **P2 — Duplicate metadata tags and empty trailing dependencies are accepted.** `implement-tasks.sh:54-61,145-204` extracts the last matching tag and relies on Bash comma splitting. Local probes accepted both `- [ ] [ID:a] [ID:b] Duplicate metadata.` and a task with `[DEPENDS:a,]` when `a` existed. Reject repeated ID/DEPENDS tags and malformed dependency lists before selecting work. Preserve the existing successful duplicate-ID-across-tasks, unknown-reference, and cycle checks.
+
+  Fixed by validating tag multiplicity and raw dependency-list syntax before
+  extraction or comma splitting, across both pending and completed tasks.
+  Whitespace around dependency IDs remains supported; empty entries and
+  whitespace inside IDs are rejected. Both reported probes reproduced against
+  the original runner and failed against the fix. Verified with
+  `node tests/runner-control-plane.js` (104 offline cases, including 22 new
+  metadata cases), preserving duplicate-ID, unknown-reference, and cycle checks
+  and rejecting invalid metadata before agent invocation or Git mutation.
+  Markdown parser, CLI preflight, shell/JavaScript syntax, `node tests/verify.js`,
+  and diff whitespace checks passed.
 
 - [ ] [ID:input-errors-fail-closed] **P1 — Input read failures can be interpreted as completion.** `fix-review.sh:41` suppresses every grep error with `|| true`; `implement-tasks.sh:76-78` suppresses grep errors and does not propagate failure from the `find` process substitution. In addition, inputs are checked before branch switching rather than reliably revalidated on the selected branch. A missing/unreadable review file or missing module directory can yield an empty/zero count, leading to completion and push/PR logic. Distinguish zero matches from errors and validate selected-branch inputs before processing. Test deletion, unreadable input, and a module absent on an existing target branch.
 

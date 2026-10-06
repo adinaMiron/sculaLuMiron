@@ -9,6 +9,29 @@ const source = path.resolve(__dirname, '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-control-'));
 const realGit = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
 const bin = path.join(tmp, 'bin');
+const metadataFailures = {
+    'repeated-id': ['[ID:probe] [ID:second]', /Repeated \[ID:/],
+    'identical-id': ['[ID:probe] [ID:probe]', /Repeated \[ID:/],
+    'malformed-first-id': ['[ID:bad id] [ID:probe]', /Repeated \[ID:/],
+    'malformed-last-id': ['[ID:probe] [ID:]', /Repeated \[ID:/],
+    'repeated-depends': ['[ID:probe] [DEPENDS:missing] [DEPENDS:other]', /Repeated \[DEPENDS:/],
+    'identical-depends': ['[ID:probe] [DEPENDS:other] [DEPENDS:other]', /Repeated \[DEPENDS:/],
+    'empty-first-depends': ['[ID:probe] [DEPENDS:] [DEPENDS:other]', /Repeated \[DEPENDS:/],
+    'empty-last-depends': ['[ID:probe] [DEPENDS:other] [DEPENDS:]', /Repeated \[DEPENDS:/],
+    'trailing-comma': ['[ID:probe] [DEPENDS:other,]', /Malformed or empty \[DEPENDS:/],
+    'leading-comma': ['[ID:probe] [DEPENDS:,other]', /Malformed or empty \[DEPENDS:/],
+    'middle-empty': ['[ID:probe] [DEPENDS:other,,done]', /Malformed or empty \[DEPENDS:/],
+    'trailing-space': ['[ID:probe] [DEPENDS:other, \t]', /Malformed or empty \[DEPENDS:/],
+    'middle-space': ['[ID:probe] [DEPENDS:other, \t,done]', /Malformed or empty \[DEPENDS:/],
+    'embedded-space': ['[ID:probe] [DEPENDS:ot her]', /Malformed or empty \[DEPENDS:/],
+    'empty-list': ['[ID:probe] [DEPENDS:]', /Malformed or empty \[DEPENDS:/],
+    'unclosed-list': ['[ID:probe] [DEPENDS:other', /Malformed or empty \[DEPENDS:/],
+    'invalid-character': ['[ID:probe] [DEPENDS:other;done]', /Malformed or empty \[DEPENDS:/],
+    'duplicate-task-id': ['[ID:other]', /Duplicate task ID 'other'/],
+    'unknown-reference': ['[ID:probe] [DEPENDS:missing]', /unknown task ID 'missing'/],
+    'duplicate-dependency': ['[ID:probe] [DEPENDS:other,other]', /lists dependency 'other' more than once/],
+    'self-dependency': ['[ID:probe] [DEPENDS:probe]', /depends on itself/],
+};
 function write(file, data, mode) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, data, { mode });
@@ -207,6 +230,7 @@ if mode == 'agent-failure':
         const modes = ['normal', 'markdown', 'two-items', 'empty-manifest', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
             'symlink', 'directory-symlink', 'ignored-addition', 'workflow', 'agent-failure'];
         if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest');
+        if (runner === 'implement-tasks.sh') modes.push('metadata-valid', ...Object.keys(metadataFailures).map(name => `metadata-${name}`));
         for (const kind of ['task', 'review']) {
             for (const change of ['complete', 'reopen', 'append', 'new', 'new-complete', 'delete', 'move', 'delete-tree', 'notes']) {
                 modes.push(`scope-${kind}-${change}`);
@@ -259,6 +283,16 @@ if mode == 'agent-failure':
                 write(path.join(repo, 'docs/tasks/probe/01-requirements.md'),
                     ' - [ ] [ID:a] [DEPENDS:b] A.\n   - [ ] [ID:b] [DEPENDS:a] B.\n');
             }
+            const metadataFailure = metadataFailures[mode.slice('metadata-'.length)];
+            if (mode === 'metadata-valid' || metadataFailure) {
+                write(path.join(repo, 'docs/tasks/probe/02-other.md'),
+                    '- [x] [ID:other] Other task.\n- [X] [ID:Done_2.0] Completed prerequisite.\n- [x] [ID:done] Done.\n');
+                write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), mode === 'metadata-valid'
+                    ? '- [ ] [ID:probe] [DEPENDS: other , \tDone_2.0 ] Probe task.\n'
+                    // An earlier ready task must not bypass invalid metadata,
+                    // including metadata on a completed task.
+                    : '- [ ] Ready independent task.\n- [x] ' + metadataFailure[0] + ' Invalid task.\n');
+            }
             write(path.join(repo, '.github/workflows/existing.yml'), 'name: existing\n');
             write(path.join(repo, '.gitignore'), 'scripts/ignored.sh\n');
             write(path.join(repo, 'innocent.txt'), 'initial\n');
@@ -297,11 +331,13 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 `, path.join(repo, 'scripts/trusted-runner.py'), ...runnerArgs], repo, env)
                 : run('bash', runnerArgs, repo, env);
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
-            if (mode.startsWith('graph-')) {
+            if (mode.startsWith('graph-') || metadataFailure) {
                 assert.equal(result.status, 1, result.stdout + result.stderr);
-                assert.match(result.stderr, mode === 'graph-fenced-ref' ? /unknown task ID 'example'/ : /Dependency cycle/);
+                assert.match(result.stderr, metadataFailure ? metadataFailure[1]
+                    : mode === 'graph-fenced-ref' ? /unknown task ID 'example'/ : /Dependency cycle/);
+                if (metadataFailure) assert.match(result.stderr, /docs\/tasks\/probe\/01-requirements\.md:2/);
                 assert(!history.some(c => c.tool === 'agent'));
-                assert(!history.some(c => c.tool === 'git' && ['fetch', 'add', 'commit', 'push'].includes(c.args[0])));
+                assert(!history.some(c => c.tool === 'gh' || (c.tool === 'git' && ['fetch', 'switch', 'merge', 'add', 'commit', 'push'].includes(c.args[0]))));
                 count++;
                 continue;
             }
@@ -321,7 +357,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             }
             assert(history.some(c => c.tool === 'agent'), result.stdout + result.stderr);
             assert(!fs.existsSync(marker), 'Mutable wrapper code executed');
-            if (['normal', 'markdown', 'two-items', 'empty-manifest'].includes(mode) || mode.endsWith('-notes')) {
+            if (['normal', 'markdown', 'two-items', 'empty-manifest', 'metadata-valid'].includes(mode) || mode.endsWith('-notes')) {
                 assert.equal(result.status, 0, result.stdout + result.stderr);
                 assert.equal(git(repo, 'rev-list', '--count', 'HEAD'), mode === 'two-items' ? '3' : '2');
                 assert.equal(history.filter(c => c.tool === 'evidence').length, mode === 'two-items' ? 2 : 1);

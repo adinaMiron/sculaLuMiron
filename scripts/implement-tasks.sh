@@ -115,6 +115,7 @@ visit_dependency_node() {
 
 validate_task_graph() {
     local file line line_number state id deps dep location
+    local deps_pattern='\[DEPENDS:[[:space:]]*[A-Za-z0-9._-]+[[:space:]]*(,[[:space:]]*[A-Za-z0-9._-]+[[:space:]]*)*\]'
     local -a dep_array=()
     local -A local_seen=()
 
@@ -131,9 +132,21 @@ validate_task_graph() {
     while IFS=$'\t' read -r file line_number state line; do
         [[ -n "$file" ]] || continue
 
+        location="$file:$line_number"
+        # Check tag multiplicity and raw list syntax before extraction can hide
+        # repeated tags, embedded whitespace, or a trailing empty CSV field.
+        if [[ "$line" == *"[ID:"*"[ID:"* ]]; then
+            die "Repeated [ID:...] metadata at $location"
+        fi
+        if [[ "$line" == *"[DEPENDS:"*"[DEPENDS:"* ]]; then
+            die "Repeated [DEPENDS:...] metadata at $location"
+        fi
+        if [[ "$line" == *"[DEPENDS:"* && ! "$line" =~ $deps_pattern ]]; then
+            die "Malformed or empty [DEPENDS:...] metadata at $location; expected comma-separated task IDs"
+        fi
+
         id="$(extract_id "$line")"
         deps="$(extract_deps "$line")"
-        location="$file:$line_number"
 
         if [[ "$line" == *"[ID:"* && -z "$id" ]]; then
             die "Malformed [ID:...] metadata at $location"

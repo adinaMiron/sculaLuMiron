@@ -68,6 +68,12 @@ and maintenance procedure.
 It also checks that both runners select real indented tasks after fenced
 examples, that example edits do not enter other-document manifests, and that
 dependency validation rejects references to example IDs and indented cycles.
+Metadata cases reject repeated ID/DEPENDS tags, malformed dependency lists,
+duplicate task IDs, unknown references, duplicate dependencies, and
+self-dependencies before agent invocation or Git mutation. Completed tasks are
+validated even when an earlier pending task is ready. Valid lists with whitespace
+around entries and IDs containing letters, digits, dots, underscores, and hyphens
+remain accepted.
 
 The same suite verifies sealed per-item expected documents and checkbox
 manifests. Same-UID probes attempt chmod followed by writes, truncation, growth,

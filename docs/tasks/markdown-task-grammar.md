@@ -37,6 +37,15 @@ example. Existing metadata rules in the [task convention](README.md#5-requiremen
 still apply; the review runner processes findings in document order without
 interpreting dependency metadata.
 
+Before selecting work, the implementation runner validates metadata on every
+pending and completed task in the module. Each task may have at most one
+`[ID:...]` and one `[DEPENDS:...]` tag. IDs use letters, digits, `.`, `_`, or `-`.
+A dependency tag requires an ID tag and a nonempty comma-separated list of IDs;
+whitespace around entries is allowed, but whitespace inside an ID and empty
+entries (including a trailing comma) are rejected. Module-wide duplicate IDs,
+unknown references, duplicate dependencies, self-dependencies, and cycles are
+also rejected. Omit `DEPENDS` when there are no prerequisites.
+
 The implementation runner recursively reads `.md` files in path order, then
 physical line order within each file; the review runner reads its configured
 document. Parser manifests contain tab-separated path, one-based line number,
