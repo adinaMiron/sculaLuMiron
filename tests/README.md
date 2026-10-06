@@ -50,6 +50,16 @@ upgrade changing this contract needs investigation before running automation.
 Neither test mode performs real Git mutations or launches a model session; these
 checks establish CLI compatibility, not operating-system confinement.
 
+`node tests/runner-lock.js` (or `npm run test:runner-lock` from `tests/`) checks
+the shared exclusive repository lock with concurrent task/review invocations
+in every pairing, including linked worktrees. It pauses the owning runner at
+preflight, fetch, agent work, staging, push, final review, and PR creation and
+verifies that contenders exit without changing the branch, working tree, or
+index. It also checks release after success/failure, lock acquisition errors,
+and continued exclusion when the launcher is terminated but its wrapper is
+still running. It uses Linux/Python, Node, Bash, real disposable local Git
+repositories, and fake model/publication adapters; no remote is contacted.
+
 `node tests/runner-markdown-tasks.js` checks the shared automation task grammar,
 including backtick/tilde fences, indentation, line numbers, completed states,
 directory ordering, manifests, and documentation examples. Input cases cover

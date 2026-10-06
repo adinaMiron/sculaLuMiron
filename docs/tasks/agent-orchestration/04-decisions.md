@@ -32,7 +32,8 @@ trusted source for a new bootstrap. The immutable snapshot lasts for one run,
 not as a persistent installation or attestation of arbitrary future checkouts.
 
 This fixes `protect-wrapper-code`; it does not complete the separate findings
-for process confinement, concurrent runners, or resource/process lifetime limits.
+for process confinement or resource/process lifetime limits. Concurrent runner
+locking is recorded below.
 Checkbox evidence protection is recorded below. These integrity checks do not
 establish isolation from an unsandboxed hostile process that can change
 files concurrently, modify host tools/Git metadata, or interfere with the host
@@ -86,3 +87,30 @@ The offline runner tests cover unrelated completion/reopening, new pending and
 completed items, document/directory creation and deletion, moves, allowed notes,
 and normal completion. Rejections leave changes unstaged and block commit, push,
 and PR creation for the iteration.
+
+## 2026-10-06 — Exclusive repository runner lock
+
+The shared trusted launcher acquires a nonblocking exclusive `flock` on
+`codex-runner.lock` in `git rev-parse --git-common-dir` before taking its
+control-plane snapshot or starting the Bash wrapper. Task and review runners,
+including invocations from linked worktrees, therefore share one lock. A busy
+lock reports an error and exits without validation, agent invocation, branch
+preparation, or publication. Lock creation/acquisition errors fail closed.
+
+The launcher and Bash wrapper retain the descriptor through the entire run,
+including final review, push, and PR creation. Inheriting the descriptor keeps
+the lock held if the launcher exits while the wrapper or its descendants still
+run. The kernel releases the lock when all holders exit, including on failure;
+the file is intentionally never removed, avoiding a replacement-inode race.
+Its presence alone does not indicate an active run, and it must not be deleted
+to bypass contention. A surviving descendant may continue to hold the lock.
+
+This is cooperative exclusion between runners, not confinement of arbitrary
+processes or protection against manual Git operations. The separate process
+confinement and lifetime requirements still apply.
+
+Verification: `node tests/runner-lock.js` exercises all task/review pairings at
+preflight, fetch, agent, staging, push, final review, and PR gates, checks linked
+worktree contention, and verifies release after success, failures, and launcher
+termination. Disposable repositories use fake model/GitHub adapters and inert
+fetch/push commands; no remote service or model session is contacted.

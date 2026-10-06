@@ -98,6 +98,23 @@ def launch(runner, args):
     if script.parent != root / "scripts":
         raise RuntimeError("Runner must be in the repository scripts directory")
 
+    common_dir = Path(subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "--git-common-dir"],
+        text=True).strip())
+    lock_path = (root / common_dir).resolve() / "codex-runner.lock"
+    # Keep the inode in place: unlinking it would let a new runner lock a
+    # different file while the previous holder still owns this one.
+    with lock_path.open("a+b") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError(
+                f"Another task/review runner holds the repository lock: {lock_path}") from None
+        return launch_locked(root, script, args, lock.fileno())
+
+
+def launch_locked(root, script, args, lock_fd):
+    # Acquire before snapshots, input checks, preflight, or branch preparation.
     baseline = inventory(root)
     script_bytes = script.read_bytes()
     body = script_bytes.split(BODY_MARKER, 1)[1]
@@ -136,7 +153,10 @@ assert_control_plane
     try:
         return subprocess.call(
             ["bash", "--noprofile", "--norc", f"/proc/self/fd/{runner_fd}", *args],
-            pass_fds=(checker_fd, baseline_fd, helper_fd, parser_fd, runner_fd), env=env)
+            # Bash also holds the lock if the launcher is terminated while the
+            # wrapper continues. Close descriptors; never explicitly LOCK_UN
+            # the shared open file description while descendants may use it.
+            pass_fds=(checker_fd, baseline_fd, helper_fd, parser_fd, runner_fd, lock_fd), env=env)
     finally:
         for fd in (checker_fd, baseline_fd, helper_fd, parser_fd, runner_fd):
             os.close(fd)

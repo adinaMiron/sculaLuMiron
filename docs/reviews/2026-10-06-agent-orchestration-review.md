@@ -140,7 +140,20 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   JavaScript syntax checks, and diff whitespace checks passed. No real remote
   or model session was used.
 
-- [ ] [ID:exclusive-runner-lock] **P1 — Concurrent runners can race over one working tree and index.** Neither script takes a repository-wide lock before selecting a branch or invoking an agent. Clean-tree checks are snapshots, so two processes can pass them together, change branches underneath each other, or stage each other's output via `git add -A`. Hold a common exclusive lock for the full run, including branch preparation and publishing, and test concurrent task/review invocations without contacting a remote service.
+- [x] [ID:exclusive-runner-lock] **P1 — Concurrent runners can race over one working tree and index.** Neither script takes a repository-wide lock before selecting a branch or invoking an agent. Clean-tree checks are snapshots, so two processes can pass them together, change branches underneath each other, or stage each other's output via `git add -A`. Hold a common exclusive lock for the full run, including branch preparation and publishing, and test concurrent task/review invocations without contacting a remote service.
+
+  Fixed in the shared trusted launcher with a nonblocking exclusive `flock` in
+  Git's common directory, acquired before snapshots/preflight and inherited by
+  the Bash wrapper through final review and publication. Contenders fail before
+  agent invocation or Git mutation; the persistent lock file also covers linked
+  worktrees. Verified with `node tests/runner-lock.js` (30 concurrent probes,
+  all task/review pairings, release after success/failure/launcher termination,
+  and lock errors). The previous launcher fails the new concurrency regression.
+  CLI preflight, Markdown parser, all 124 control-plane cases, Python/JavaScript/
+  shell syntax checks, and diff whitespace checks passed. All integration tests
+  used disposable repositories and fake model/publication adapters, with no
+  remote service contacted. Lock lifetime and cooperative scope are documented
+  in `docs/tasks/agent-orchestration/04-decisions.md`.
 
 - [ ] [ID:final-review-worktree-path] **P2 — Final review output assumes `.git` is a directory.** `implement-tasks.sh:585,619` writes to `$REPO_ROOT/.git/codex-task-final-review-$MODULE.txt`. In a linked Git worktree, `.git` is a file, so `tee` fails and final review cannot complete after task commits have already been pushed. Resolve a suitable Git administrative path or use trusted private output storage; cover an ordinary checkout and linked worktree.
 

@@ -29,6 +29,7 @@ function calls() {
     return fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
 }
 try {
+    fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
     for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
         write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)));
     }
@@ -41,6 +42,7 @@ fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({tool: require('node:pat
 `;
     write(path.join(bin, 'git'), '#!/usr/bin/env node\n' + recorder + `
 if (args.includes('--show-toplevel')) console.log(process.env.PROBE_REPO);
+else if (args.includes('--git-common-dir')) console.log('.git');
 else if (args[0] === 'status' || args[0] === 'ls-files') process.exit(0);
 else if (args[0] === 'check-ref-format') {
     const result = require('node:child_process').spawnSync(${JSON.stringify(realGit)}, args);
@@ -70,7 +72,8 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
         PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false',
         BASE: 'main', TASK_BRANCH: 'feat/probe' };
     const gitMutations = history => history.filter(c => c.tool === 'git' &&
-        !c.args.includes('--show-toplevel') && !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
+        !c.args.includes('--show-toplevel') && !c.args.includes('--git-common-dir') &&
+        !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
     const invalidBranches = [
         ['main', 'main', /TASK_BRANCH must differ from BASE/],
         ['release/stable', 'release/stable', /TASK_BRANCH must differ from BASE/],
