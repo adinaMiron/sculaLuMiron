@@ -59,6 +59,7 @@ for (const feature of ${JSON.stringify(features)}) assert(args.some((a, i) => a 
 if (args.at(-1) !== '-') process.exit(74); // Fake model launch, never real.
 assert.equal(fs.readFileSync(0, 'utf8'), '', 'preflight must not read caller input');
 switch (process.env.PROBE_MODE) {
+case 'output-unsupported': assert(args.includes('--output-last-message')); console.error("unexpected argument '--output-last-message'"); process.exit(2);
 case 'syntax': console.error("unexpected argument '--ignore-rules'"); process.exit(2);
 case 'feature': console.error('Unknown feature flag: remote_plugin'); process.exit(1);
 case 'config': console.error('Error loading config.toml: unknown configuration field'); process.exit(1);
@@ -141,6 +142,17 @@ run_codex_safely 'fixture prompt'
     assert.deepEqual(invocations[0].args.slice(0, -1), invocations[1].args.slice(0, -1));
     console.log('PASS both runners: argument placement, fail-closed preflight before Git, shared launch arguments');
 
+    for (const mode of ['valid', 'output-unsupported']) {
+        write(log, '');
+        const result = run('bash', [path.join(repo, 'scripts/implement-tasks.sh'), 'probe'],
+            { ...env, FINAL_REVIEW: 'true', PROBE_MODE: mode });
+        const history = calls();
+        const args = history.find(c => c.tool === 'codex').args;
+        assert.equal(args[args.indexOf('--output-last-message') + 1], '/dev/null');
+        assert.equal(result.status, mode === 'valid' ? 73 : 1, result.stderr);
+        assert.deepEqual(gitMutations(history).map(c => c.args[0]), mode === 'valid' ? ['fetch'] : []);
+    }
+
     if (process.argv.includes('--real-codex')) {
         const home = path.join(tmp, 'codex-home');
         fs.mkdirSync(home);
@@ -159,6 +171,8 @@ preflight_codex
         assert.equal(version.status, 0, version.stderr);
         const valid = run('bash', ['-c', probe, 'probe', helper], realEnv);
         assert.equal(valid.status, 0, valid.stderr);
+        const review = run('bash', ['-c', probe, 'probe', helper, '--output-last-message', '/dev/null'], realEnv);
+        assert.equal(review.status, 0, review.stderr);
         for (const override of [
             ['--unknown-runner-option'],
             ['--disable', 'unknown_runner_feature'],

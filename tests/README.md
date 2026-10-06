@@ -84,6 +84,13 @@ Final-review output checks cover an ordinary checkout and a linked worktree
 (both with spaces in their paths). They verify that the review log is saved in
 the worktree's Git administrative directory, stays out of the working tree,
 and permits the successful run to reach the fake PR adapter.
+The verdict contract cases use the CLI's `--output-last-message` file separately
+from console output. They cover missing/empty/stale output, FAIL, contradictory
+and duplicate markers, quoted/fenced examples, non-final and malformed verdicts,
+and nonzero reviewer exits. Rejections block final push and PR operations;
+valid final PASS messages allow trailing blank lines and CRLF. The CLI preflight
+suite also checks support for the output flag before Git mutations.
+Run just the verdict cases with `node tests/runner-control-plane.js --final-verdict`.
 
 Input regressions cover missing/wrong-type/invalid input on an existing target
 branch, deletion during fast-forward or agent work, unreadable input at startup

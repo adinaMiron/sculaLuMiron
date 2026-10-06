@@ -114,3 +114,17 @@ preflight, fetch, agent, staging, push, final review, and PR gates, checks linke
 worktree contention, and verifies release after success, failures, and launcher
 termination. Disposable repositories use fake model/GitHub adapters and inert
 fetch/push commands; no remote service or model session is contacted.
+
+## 2026-10-06 — Final review message and verdict contract
+
+The task runner uses Codex's `--output-last-message` file in the worktree's Git
+administrative directory as the final review evidence. Console output is not
+parsed for verdicts. Startup preflight checks the output option with empty
+stdin; each review clears the previous file before invoking the reviewer.
+
+The final message must contain exactly one `VERDICT:` marker, on its last
+nonblank line, exactly `VERDICT: PASS` or `VERDICT: FAIL`, outside Markdown
+fences. Quoted examples and additional markers are rejected conservatively.
+Trailing blank lines and CRLF are allowed. Missing/unreadable output, invalid
+verdicts, FAIL, and reviewer errors stop the final push and PR path. This gate
+does not retroactively validate per-task pushes that occurred before review.

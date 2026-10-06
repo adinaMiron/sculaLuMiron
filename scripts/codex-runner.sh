@@ -89,7 +89,7 @@ preflight_codex() {
     # Unlike --help, this exercises the complete launch contract. Strict config
     # rejects unknown keys instead of silently ignoring safety overrides.
     # Use the same argv, working directory and environment as the real launch.
-    output="$(run_codex_safely - </dev/null 2>&1)" || status=$?
+    output="$(run_codex_safely "$@" - </dev/null 2>&1)" || status=$?
     if [[ "$status" != 1 || "${output##*$'\n'}" != 'No prompt provided via stdin.' ]]; then
         printf '%s\n' "$output" >&2
         die "Codex CLI/configuration preflight failed (exit $status); no Git changes were made. The installed CLI must support the runner's strict configuration and empty-stdin validation contract (verified with codex-cli 0.160.0)."

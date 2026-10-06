@@ -167,7 +167,17 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   parser, shell/JavaScript syntax, and diff whitespace checks passed. No remote
   service or model session was used.
 
-- [ ] [ID:final-verdict-contract] **P2 — Final review accepts a PASS line that is not the final verdict.** `implement-tasks.sh:610-630` requests a verdict at the very end, but accepts any exact `VERDICT: PASS` line anywhere in captured stdout unless an exact FAIL line also appears. An answer quoting PASS as an example and ending without a valid verdict passes this check. Capture the final assistant message through the supported CLI output mechanism and validate one unambiguous final verdict. Test missing, contradictory, quoted, and non-final verdicts.
+- [x] [ID:final-verdict-contract] **P2 — Final review accepts a PASS line that is not the final verdict.** `implement-tasks.sh:610-630` requests a verdict at the very end, but accepts any exact `VERDICT: PASS` line anywhere in captured stdout unless an exact FAIL line also appears. An answer quoting PASS as an example and ending without a valid verdict passes this check. Capture the final assistant message through the supported CLI output mechanism and validate one unambiguous final verdict. Test missing, contradictory, quoted, and non-final verdicts.
+
+  Fixed by capturing the final assistant message with `--output-last-message`,
+  preflighting that option before Git mutations, and clearing previous output
+  before review. Exactly one verdict marker must appear on the last nonblank
+  line outside Markdown fences. Invalid/missing output and reviewer errors
+  block final publication regardless of console PASS lines. Verified with
+  23 verdict cases within all 148 offline control-plane cases, 30 locking
+  probes, CLI preflight against installed `codex-cli 0.160.1` without a model
+  session, Markdown parser tests, repository JavaScript checks, shell syntax,
+  and diff whitespace checks. No real remote or model session was used.
 
 - [ ] [ID:mandatory-final-review] **P2 — PR creation can bypass the documented final review gate.** `implement-tasks.sh:294,301,582,639` permits `FINAL_REVIEW=false` together with `CREATE_PR=true`, despite `docs/tasks/README.md:379` requiring a successful final review before PR creation. Its PR body also claims an independent review ran even when skipped. Make bypass behavior agree with the documented gate and ensure generated PR text describes actual verification.
 

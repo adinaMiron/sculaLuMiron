@@ -9,6 +9,31 @@ const source = path.resolve(__dirname, '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-control-'));
 const realGit = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
 const bin = path.join(tmp, 'bin');
+const verdictCases = {
+    'pass': { message: 'Tests passed.\nVERDICT: PASS\n', pass: true },
+    'pass-no-newline': { message: 'VERDICT: PASS', pass: true },
+    'pass-blank-tail': { message: 'Tests passed.\r\nVERDICT: PASS\r\n \t\r\n', pass: true },
+    'pass-stdout-fail': { message: 'VERDICT: PASS\n', stdout: 'VERDICT: FAIL', pass: true },
+    'pass-closed-fence': { message: '```text\nTest results\n```\nVERDICT: PASS\n', pass: true },
+    'fail': { message: 'A regression remains.\nVERDICT: FAIL\n' },
+    'missing': { message: 'Review complete.\n' },
+    'empty': { message: '' },
+    'no-file': { message: null },
+    'deleted-file': { message: null, remove: true },
+    'contradictory': { message: 'VERDICT: FAIL\nVERDICT: PASS\n' },
+    'contradictory-reverse': { message: 'VERDICT: PASS\nVERDICT: FAIL\n' },
+    'duplicate': { message: 'VERDICT: PASS\nVERDICT: PASS\n' },
+    'quoted-block': { message: '> VERDICT: PASS\n' },
+    'quoted-inline': { message: '`VERDICT: PASS`\n' },
+    'quoted-fence': { message: 'Example:\n```\nVERDICT: PASS\n```\nNo verdict.\n' },
+    'unclosed-fence': { message: '```text\nVERDICT: PASS\n' },
+    'unclosed-tilde': { message: '  ~~~~text\n~~~\nVERDICT: PASS\n' },
+    'quoted-and-final': { message: '> VERDICT: FAIL\nVERDICT: PASS\n' },
+    'non-final': { message: 'VERDICT: PASS\nFurther review is needed.\n' },
+    'indented': { message: '    VERDICT: PASS\n' },
+    'malformed': { message: 'VERDICT: PASS (probably)\n' },
+    'agent-error': { message: 'VERDICT: PASS\n', status: 42 },
+};
 const metadataFailures = {
     'repeated-id': ['[ID:probe] [ID:second]', /Repeated \[ID:/],
     'identical-id': ['[ID:probe] [ID:probe]', /Repeated \[ID:/],
@@ -183,6 +208,18 @@ if not mode.startswith('scope-') and mode not in ('normal', 'evidence-document',
     record(tool='attack', mode=mode)
 
 if reviewer:
+    output = pathlib.Path(sys.argv[sys.argv.index('--output-last-message') + 1])
+    if mode.startswith('verdict-'):
+        record(tool='final-message', output=str(output))
+        cases = json.loads(${JSON.stringify(JSON.stringify(verdictCases))})
+        case = cases[mode[len('verdict-'):]]
+        if case.get('remove'):
+            output.unlink()
+        elif case['message'] is not None:
+            output.write_text(case['message'])
+        print(case.get('stdout', 'VERDICT: PASS'))
+        sys.exit(case.get('status', 0))
+    output.write_text('VERDICT: PASS\\n')
     print('VERDICT: PASS')
 else:
     doc = root / ('docs/tasks/probe/01-requirements.md' if os.environ['PROBE_RUNNER'] == 'implement-tasks.sh'
@@ -249,12 +286,13 @@ if mode == 'agent-failure':
         }
         if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'final-review-linked', 'evidence-manifest');
         if (runner === 'implement-tasks.sh') modes.push('metadata-valid', ...Object.keys(metadataFailures).map(name => `metadata-${name}`));
+        if (runner === 'implement-tasks.sh') modes.push(...Object.keys(verdictCases).map(name => `verdict-${name}`));
         for (const kind of ['task', 'review']) {
             for (const change of ['complete', 'reopen', 'append', 'new', 'new-complete', 'delete', 'move', 'delete-tree', 'notes']) {
                 modes.push(`scope-${kind}-${change}`);
             }
         }
-        for (const mode of modes) {
+        for (const mode of modes.filter(mode => !process.argv.includes('--final-verdict') || mode.startsWith('verdict-'))) {
             const repo = path.join(tmp, `${runner}-${mode} with spaces`);
             fs.mkdirSync(repo);
             for (const name of ['fix-review.sh', 'implement-tasks.sh', 'codex-runner.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
@@ -277,6 +315,7 @@ if mode == 'agent-failure':
                 fs.rmSync(path.join(repo, runner === 'implement-tasks.sh' ? 'docs/reviews' : 'docs/tasks'), { recursive: true });
             }
             if (mode === 'input-zero') fs.writeFileSync(inputFile, '~~~md\n- [ ] Example\n~~~\n- [x] Done.\n');
+            if (mode.startsWith('verdict-')) fs.writeFileSync(inputFile, '- [x] [ID:probe] Probe task.\n');
             if (mode.startsWith('scope-')) {
                 const directory = mode.startsWith('scope-task-') ? 'docs/tasks/other-module' : 'docs/reviews/other-review';
                 write(path.join(repo, directory, 'checklist.md'), '- [ ] Pending unrelated item.\n- [x] Completed unrelated item.\n');
@@ -327,6 +366,11 @@ if mode == 'agent-failure':
             git(repo, 'commit', '-m', 'fixture');
             git(repo, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
             const initial = git(repo, 'rev-parse', 'HEAD');
+            if (mode.startsWith('verdict-')) {
+                // Every case begins with an old PASS; a missing CLI output must
+                // not reuse it, even when console output also contains PASS.
+                write(path.join(repo, '.git/codex-task-final-review-probe.txt'), 'VERDICT: PASS\n');
+            }
             if (mode === 'branch-drift') {
                 git(repo, 'switch', '-c', runner === 'implement-tasks.sh' ? 'feat/probe' : 'fix/review-2026-10-04');
                 fs.appendFileSync(path.join(repo, 'scripts/codex-runner.sh'), '\n# Different branch version\n');
@@ -383,6 +427,26 @@ runpy.run_path(sys.argv[0], run_name='__main__')
                 if (mode.endsWith('-directory')) fs.chmodSync(path.join(input, 'nested'), 0o755);
             }
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+            if (mode.startsWith('verdict-')) {
+                const testCase = verdictCases[mode.slice('verdict-'.length)];
+                assert.equal(result.status, testCase.pass ? 0 : 1, mode + result.stdout + result.stderr);
+                assert.equal(history.filter(c => c.tool === 'final-message').length, 1);
+                assert.equal(history.filter(c => c.tool === 'agent').length, 1);
+                assert.equal(git(repo, 'rev-parse', 'HEAD'), initial);
+                assert.equal(git(repo, 'status', '--porcelain'), '');
+                if (testCase.pass) {
+                    assert(history.some(c => c.tool === 'git' && c.args[0] === 'push'));
+                    // No task commit is needed, so the PR gate reaches the
+                    // existing-PR query and then correctly finds no new commits.
+                    assert(history.some(c => c.tool === 'gh' && c.args[0] === 'pr'));
+                } else {
+                    assert.match(result.stderr, /Final review failed|unambiguous final verdict|Final reviewer exited with an error/);
+                    assert(!history.some(c => c.tool === 'gh' ||
+                        (c.tool === 'git' && ['add', 'commit', 'push'].includes(c.args[0]))));
+                }
+                count++;
+                continue;
+            }
             if (mode.startsWith('input-')) {
                 if (mode === 'input-zero') {
                     assert.equal(result.status, 0, result.stdout + result.stderr);

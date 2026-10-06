@@ -125,6 +125,7 @@ if args[-1] == '-':
     sys.exit(1)
 if 'You are the FINAL REVIEWER' in args[-1]:
     gate('final-review')
+    pathlib.Path(args[args.index('--output-last-message') + 1]).write_text('VERDICT: PASS\\n')
     print('VERDICT: PASS')
 else:
     gate('agent')

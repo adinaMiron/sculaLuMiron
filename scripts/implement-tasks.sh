@@ -293,7 +293,7 @@ FINAL_REVIEW="${FINAL_REVIEW:-true}"
 [[ "$CREATE_PR" == "true" || "$CREATE_PR" == "false" ]] || die "CREATE_PR must be true or false"
 [[ "$FINAL_REVIEW" == "true" || "$FINAL_REVIEW" == "false" ]] || die "FINAL_REVIEW must be true or false"
 
-for cmd in git grep sed find sort awk cmp diff codex tr tee; do
+for cmd in git grep sed find sort awk cmp diff codex tr; do
     require_command "$cmd"
 done
 
@@ -329,7 +329,11 @@ esac
 # provider unless you intentionally run it with a fully local model/provider.
 
 source "/proc/self/fd/$WRAPPER_HELPER_FD"
-preflight_codex
+if [[ "$FINAL_REVIEW" == "true" ]]; then
+    preflight_codex --output-last-message /dev/null
+else
+    preflight_codex
+fi
 
 validate_task_graph
 
@@ -589,11 +593,18 @@ VERDICT: PASS
 or
 VERDICT: FAIL
 
+The verdict must be the last nonblank line of your final assistant message,
+without indentation, quotation, or Markdown formatting. Use the marker VERDICT:
+exactly once in that message; do not quote verdict examples or alternate verdicts.
+
 Use PASS only if the module satisfies the documented requirements and relevant tests pass. Explain specific failures before a FAIL verdict.
 PROMPT
 )"
 
-    if ! run_codex_safely "$review_prompt" | tee "$REVIEW_OUTPUT"; then
+    # Clear any previous run's verdict before asking the CLI to save only its
+    # final assistant message. Console output is diagnostic, never evidence.
+    : > "$REVIEW_OUTPUT" || die "Cannot initialize final review output: $REVIEW_OUTPUT"
+    if ! run_codex_safely --output-last-message "$REVIEW_OUTPUT" "$review_prompt"; then
         die "Final reviewer exited with an error; no PR will be created. Review output: $REVIEW_OUTPUT"
     fi
 
@@ -601,10 +612,42 @@ PROMPT
     [[ "$(git rev-parse HEAD)" == "$reviewer_head_before" ]] || die "Final reviewer changed Git history"
     [[ -z "$(git status --porcelain)" ]] || die "Final reviewer modified the working tree"
 
-    if grep -qx 'VERDICT: FAIL' "$REVIEW_OUTPUT"; then
+    review_verdict="$(python3 -I - "$REVIEW_OUTPUT" <<'PY'
+import pathlib
+import re
+import sys
+
+try:
+    message = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+except (OSError, UnicodeError) as error:
+    sys.exit(f"Cannot read final assistant message: {error}")
+
+lines = message.splitlines()
+while lines and not lines[-1].strip():
+    lines.pop()
+if (not lines or lines[-1] not in ("VERDICT: PASS", "VERDICT: FAIL")
+        or message.count("VERDICT:") != 1):
+    sys.exit("Expected exactly one unquoted verdict on the last nonblank line")
+
+# A final-looking line inside an unclosed Markdown fence is still a quotation.
+fence = None
+for line in lines[:-1]:
+    if fence:
+        if re.fullmatch(r" {0,3}" + re.escape(fence[0]) +
+                        "{" + str(len(fence)) + r",}[ \t]*", line):
+            fence = None
+    else:
+        match = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", line)
+        if match and not (match[1][0] == "`" and "`" in match[2]):
+            fence = match[1]
+if fence:
+    sys.exit("Final verdict must be outside Markdown fences")
+print(lines[-1])
+PY
+)" || die "Final reviewer did not emit one unambiguous final verdict. Review output: $REVIEW_OUTPUT"
+    if [[ "$review_verdict" == 'VERDICT: FAIL' ]]; then
         die "Final review failed; feature branch remains pushed and no PR was created. Review output: $REVIEW_OUTPUT"
     fi
-    grep -qx 'VERDICT: PASS' "$REVIEW_OUTPUT" || die "Final reviewer did not emit VERDICT: PASS or VERDICT: FAIL"
 fi
 
 git push -u origin "$BRANCH"
