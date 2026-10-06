@@ -29,6 +29,14 @@ nine applications never reference it and retain their dependency-free runtime.
 Each script is self-contained, prints `PASS`/`FAIL` lines per check, and
 exits non-zero if anything failed.
 
+`node tests/runner-usage-limits.js` (or `npm run test:runner-usage` from `tests/`)
+checks automatic usage-limit recovery in both runners and the final reviewer.
+It covers structured error detection, reset-time parsing, fallback waits,
+repeated limits, preserved partial work and checkbox evidence, unrelated
+failures, tampering, stale review verdicts, lock retention, and cancellation.
+It uses disposable local repositories, fake Codex/remotes, and simulated sleeps;
+the cancellation case interrupts a real sleeper. No model or remote is contacted.
+
 `node tests/runner-cli-preflight.js` (from the repository root) checks both
 automation runners using disposable directories and fake Git/Codex executables.
 It verifies that rejected arguments, configuration, and feature flags stop the

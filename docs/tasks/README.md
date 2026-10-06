@@ -398,6 +398,22 @@ still permits the normal task commits and pushes, but cannot create a PR.
 Generated PR text records the passing review verdict and reviewed commit from
 the current run, and distinguishes that evidence from agent-required testing.
 
+When Codex reports a usage-limit failure, the runner automatically waits and
+retries the same requirement or final review. It uses a recognized reset time
+plus five seconds; if the time is missing, stale, or unrecognized, it retries
+every five minutes. Set `CODEX_USAGE_RETRY_SECONDS` to a positive integer of up
+to six digits to change that fallback interval. Repeated usage limits keep
+waiting until an attempt succeeds or you cancel with Ctrl+C. Other failures
+still stop the run.
+
+Keep the process running: recovery retains the repository lock, original
+validation evidence, and partial working-tree changes in the current run.
+Each retry uses a fresh ephemeral Codex invocation instructed to inspect the
+preserved files and continue the same assignment. Retries do not consume another
+`MAX_TASKS` slot. The final reviewer starts again with an empty verdict file.
+Cancellation preserves partial edits; restarting a stopped runner still requires
+a clean working tree. See the [recovery design](agent-orchestration/04-decisions.md).
+
 ---
 
 # 14. Task completion

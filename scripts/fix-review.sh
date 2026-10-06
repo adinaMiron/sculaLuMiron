@@ -92,6 +92,9 @@ cd "$REPO_ROOT"
 # offline run requires a local model/provider as well.
 
 source "/proc/self/fd/$WRAPPER_HELPER_FD"
+assert_finding_retry_state() {
+    assert_item_retry_state "$REVIEW" "$target_line"
+}
 preflight_codex
 
 # ==============================================================================
@@ -230,7 +233,7 @@ Leave implementation/tests/documentation changes unstaged, leave exactly this fi
 PROMPT
 )"
 
-    if ! run_codex_safely "$prompt"; then
+    if ! run_codex_with_usage_retry assert_finding_retry_state "$prompt"; then
         die "Codex failed; working tree preserved for inspection"
     fi
 

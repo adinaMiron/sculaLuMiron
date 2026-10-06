@@ -8,12 +8,16 @@ immutable even when the agent runs as the same user. No model is started here.
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
+import re
 import shlex
 import stat
 import subprocess
 import sys
+import time
+from datetime import datetime, timedelta
 
 
 CONTROL_PATHS = ("scripts", ".github", ".githooks", ".gitattributes", ".gitmodules")
@@ -86,6 +90,108 @@ def hold_evidence(files):
     finally:
         for fd in fds:
             os.close(fd)
+
+
+def usage_retry_delay(error, fallback, now=None):
+    """Recognize only explicit usage exhaustion, never arbitrary HTTP 429s.
+
+    Exec currently exposes a message in turn.failed.error. Accept structured
+    reset fields too, but keep unfamiliar message/date formats on a slow poll.
+    Naive human reset times use the CLI process's local timezone.
+    """
+    if not isinstance(error, dict):
+        return 0
+    message = error.get("message", "")
+    if not isinstance(message, str):
+        message = ""
+    if error.get("code") != "usage_limit_reached" and not re.search(
+            r"\b(?:you['’]ve hit your usage limit|usage limit (?:has been )?"
+            r"(?:reached|exceeded)|usage_limit_reached)\b", message, re.I):
+        return 0
+    now = time.time() if now is None else now
+
+    def seconds(value):
+        # Reset fields are data, never shell expressions or commands.
+        if isinstance(value, bool):
+            return None
+        try:
+            value = float(value)
+            return value if math.isfinite(value) else None
+        except (TypeError, ValueError):
+            return None
+
+    reset = seconds(error.get("resets_at"))
+    if reset is not None and reset > now:
+        return math.ceil(reset - now) + 5
+    for field in ("retry_after_seconds", "retry_after"):
+        delay = seconds(error.get(field))
+        if delay is not None and delay > 0:
+            return math.ceil(delay) + 5
+
+    relative = re.search(r"try again in ((?:\d+\s*(?:days?|hours?|minutes?|seconds?|[dhms])\s*)+)",
+                         message, re.I)
+    if relative:
+        units = {"d": 86400, "h": 3600, "m": 60, "s": 1}
+        delay = sum(int(value) * units[unit.lower()[0]] for value, unit in re.findall(
+            r"(\d+)\s*(days?|hours?|minutes?|seconds?|[dhms])", relative[1], re.I))
+        return delay + 5 if delay > 0 else fallback
+
+    absolute = re.search(r"try again at (.+?)(?:\.\s|\.$|$)", message, re.I)
+    if absolute:
+        stamp = re.sub(r"(\d)(?:st|nd|rd|th)\b", r"\1", absolute[1], flags=re.I).strip()
+        # ISO timestamps may carry an offset; human-formatted CLI times are local.
+        try:
+            parsed = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+        if parsed is None:
+            for fmt in ("%I:%M %p on %b %d, %Y", "%b %d, %Y %I:%M %p",
+                        "%b %d, %Y, %I:%M %p", "%b %d, %Y at %I:%M %p",
+                        "%b %d at %I:%M %p", "%b %d %I:%M %p", "%I:%M %p", "%H:%M"):
+                try:
+                    parsed = datetime.strptime(stamp, fmt)
+                    if fmt in ("%I:%M %p", "%H:%M"):
+                        local = datetime.fromtimestamp(now)
+                        parsed = local.replace(hour=parsed.hour, minute=parsed.minute,
+                                               second=0, microsecond=0)
+                        if parsed.timestamp() < now - 60:
+                            parsed += timedelta(days=1)
+                    elif "%Y" not in fmt:
+                        local = datetime.fromtimestamp(now)
+                        year = local.year + (local.month == 12 and parsed.month == 1)
+                        parsed = parsed.replace(year=year)
+                    break
+                except ValueError:
+                    continue
+        if parsed is not None and parsed.timestamp() > now:
+            return math.ceil(parsed.timestamp() - now) + 5
+    return fallback
+
+
+def watch_codex_events(fallback):
+    """Stream diagnostics live; return only a terminal usage failure's delay.
+
+    Tool output and assistant messages can quote errors, so only top-level
+    failure events participate. Keep state in this process, not writable logs.
+    A subsequent success or different error replaces an earlier usage error.
+    """
+    failure = None
+    for line in sys.stdin:
+        print(line, end="", file=sys.stderr, flush=True)
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind == "turn.failed":
+            failure = event.get("error")
+        elif kind == "error":
+            failure = event
+        elif kind in ("turn.started", "turn.completed"):
+            failure = None
+    print(usage_retry_delay(failure, fallback), flush=True)
 
 
 def launch(runner, args):
@@ -168,6 +274,8 @@ if __name__ == "__main__":
             check(Path(sys.argv[2]), sys.argv[3])
         elif sys.argv[1] == "--hold-evidence":
             hold_evidence(sys.argv[2:])
+        elif sys.argv[1] == "--codex-events":
+            watch_codex_events(int(sys.argv[2]))
         else:
             sys.exit(launch(sys.argv[1], sys.argv[2:]))
     except (OSError, ValueError, RuntimeError, IndexError, AttributeError) as error:

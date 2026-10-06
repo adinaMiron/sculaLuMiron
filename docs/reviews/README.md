@@ -243,6 +243,16 @@ boundary and startup trust requirements](../tasks/agent-orchestration/04-decisio
 
 The script should be configured for the review document and branch it is processing.
 
+Usage-limit failures automatically wait and retry the same finding, retaining
+partial work, the original validation evidence, and the repository lock.
+Recognized reset times receive a five-second buffer; missing, stale, or unknown
+times use `CODEX_USAGE_RETRY_SECONDS` (default `300`, a positive integer of up
+to six digits). Repeated limits keep waiting; other errors still stop the run.
+Retries use fresh ephemeral invocations and do not consume another
+`MAX_FINDINGS` slot. Leave the runner running to recover automatically, or use
+Ctrl+C to cancel and preserve partial edits. A manual restart still requires a
+clean working tree. See [recovery details](../tasks/agent-orchestration/04-decisions.md).
+
 Typical mapping:
 
 ```text

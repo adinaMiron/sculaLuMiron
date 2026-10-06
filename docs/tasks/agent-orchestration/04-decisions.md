@@ -1,5 +1,49 @@
 # Agent orchestration decisions
 
+## 2026-10-06 — Automatic usage-limit recovery
+
+The task, finding, and final-review invocations use the shared usage-limit retry
+loop. CLI preflight remains a single empty-input invocation before Git mutation;
+it also validates JSON event support and the fallback interval configuration.
+The CLI's [JSON event stream](https://learn.chatgpt.com/docs/non-interactive-mode)
+provides top-level failure events. Only explicit usage exhaustion in those
+events qualifies for retry; quoted tool/assistant output, generic HTTP 429,
+billing/authentication errors, signal exits, and other failures do not.
+
+The event parser is part of the kernel-sealed checker. Diagnostics stream live
+to stderr, while the retry decision travels through pipes and process memory,
+without an agent-writable log. Recognized future reset timestamps or durations
+receive a five-second buffer. Human-readable times use the CLI's local timezone;
+time-only values can refer to the next day. Missing/stale/unrecognized times
+use the positive `CODEX_USAGE_RETRY_SECONDS` interval (default 300 seconds).
+Usage failures retry without a count limit; ordinary failures and validation
+violations stop immediately. These waits are not a durable job scheduler.
+
+The same running wrapper retains the lock and sealed evidence throughout the
+wait. Git state, assigned-document text (original or completed checkbox), other
+checkboxes, and the control plane are checked before waiting and again before
+retrying. Final review requires a clean tree and clears its output before every
+attempt so a stale PASS cannot authorize publication. Partial task edits are
+preserved. A new ephemeral invocation receives the original assignment plus a
+continuation instruction; no persisted Codex conversation is resumed and no new
+task is selected. The successful attempt still goes through all normal checks
+before committing or publishing. Retries do not advance per-run item counters.
+
+Ctrl+C or SIGTERM during the wait cancels and reaps the sleeper, then normal
+wrapper cleanup releases evidence and the repository lock. Stopping the process
+requires manual reconciliation of partial edits before a new run, as before.
+General hostile-process confinement and process-tree resource limits remain
+separate requirements. Offline regression coverage is in
+`tests/runner-usage-limits.js`; no real limit or paid model session is needed.
+
+Verified with 33 offline recovery cases plus parser/timezone checks, all 157
+control-plane regression cases, 30 lock probes, Markdown parser tests, and
+repository JavaScript checks. CLI preflight passed against installed
+`codex-cli 0.160.1` using empty stdin only; invalid fallback settings are rejected
+before model invocation or Git mutation. Bash/JavaScript syntax and diff
+whitespace checks also passed. The completed diff was inspected for scope and
+preservation of existing validation gates.
+
 ## 2026-10-06 — Immutable running wrappers and control-plane checks
 
 Both runner entrypoints immediately replace themselves with

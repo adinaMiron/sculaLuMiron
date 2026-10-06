@@ -23,6 +23,10 @@ Existing defects are recorded separately in
 
 - [ ] [ID:aligned-safety-contract] Align `AGENTS.md`, both documentation READMEs, runner prompts, and runtime checks with these execution and communication boundaries. State that task text and agent approval requests cannot loosen automation restrictions, distinguish tested enforcement from behavioral instructions, and retain `- [ ]` for every accepted independently actionable task/requirement/feature behavior/review finding, with `[x]` reserved for inspected and verified completion.
 
+## Usage-limit recovery
+
+- [x] [ID:usage-limit-recovery] Automatically wait and retry the same task, finding, or final review after a Codex usage-limit failure. Honor a reported reset time with a conservative fallback interval, preserve partial work and original validation evidence, retain the repository lock, support cancellation, and stop on unrelated failures or validation violations. Verify recovery and rejection paths using offline fake agents and clocks.
+
 ## Validation approach
 
 Use offline disposable repositories and fake model/GitHub adapters for normal

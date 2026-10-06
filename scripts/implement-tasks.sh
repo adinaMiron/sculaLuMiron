@@ -332,6 +332,13 @@ esac
 # provider unless you intentionally run it with a fully local model/provider.
 
 source "/proc/self/fd/$WRAPPER_HELPER_FD"
+assert_task_retry_state() {
+    assert_item_retry_state "$TARGET_FILE" "$TARGET_LINE"
+}
+assert_review_retry_state() {
+    assert_retry_git_state "$reviewer_head_before" "$reviewer_branch_before"
+    [[ -z "$(git status --porcelain)" ]] || die "Final reviewer modified the working tree"
+}
 if [[ "$FINAL_REVIEW" == "true" ]]; then
     preflight_codex --output-last-message /dev/null
 else
@@ -497,7 +504,7 @@ Leave implementation/tests/documentation changes unstaged, leave exactly this re
 PROMPT
 )"
 
-    if ! run_codex_safely "$prompt"; then
+    if ! run_codex_with_usage_retry assert_task_retry_state "$prompt"; then
         die "Codex failed; working tree preserved for inspection"
     fi
 
@@ -605,10 +612,9 @@ Use PASS only if the module satisfies the documented requirements and relevant t
 PROMPT
 )"
 
-    # Clear any previous run's verdict before asking the CLI to save only its
-    # final assistant message. Console output is diagnostic, never evidence.
-    : > "$REVIEW_OUTPUT" || die "Cannot initialize final review output: $REVIEW_OUTPUT"
-    if ! run_codex_safely --output-last-message "$REVIEW_OUTPUT" "$review_prompt"; then
+    # The retry helper clears prior verdicts before every attempt. Only the
+    # final assistant message is evidence; console output is diagnostic.
+    if ! run_codex_with_usage_retry assert_review_retry_state --output-last-message "$REVIEW_OUTPUT" "$review_prompt"; then
         die "Final reviewer exited with an error; no PR will be created. Review output: $REVIEW_OUTPUT"
     fi
 

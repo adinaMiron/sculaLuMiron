@@ -53,7 +53,7 @@ else { console.error('Git mutation sentinel'); process.exit(73); }
     write(path.join(bin, 'codex'), '#!/usr/bin/env node\n' + recorder + `
 const assert = require('node:assert/strict');
 assert.deepEqual(args.slice(0, 3), ['--ask-for-approval', 'never', 'exec']);
-for (const flag of ['--strict-config', '--ephemeral', '--ignore-user-config', '--ignore-rules']) assert(args.includes(flag));
+for (const flag of ['--json', '--strict-config', '--ephemeral', '--ignore-user-config', '--ignore-rules']) assert(args.includes(flag));
 assert.equal(args[args.indexOf('--sandbox') + 1], 'workspace-write');
 for (const feature of ${JSON.stringify(features)}) assert(args.some((a, i) => a === '--disable' && args[i + 1] === feature));
 if (args.at(-1) !== '-') process.exit(74); // Fake model launch, never real.
@@ -71,10 +71,23 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
 `, 0o755);
     const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
         PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false',
-        BASE: 'main', TASK_BRANCH: 'feat/probe' };
+        BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '300' };
     const gitMutations = history => history.filter(c => c.tool === 'git' &&
         !c.args.includes('--show-toplevel') && !c.args.includes('--git-common-dir') &&
         !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
+    for (const runner of ['implement-tasks.sh', 'fix-review.sh']) {
+        for (const interval of ['0', '-1', '1.5', '01', '1000000', '$(false)', 'abc']) {
+            write(log, '');
+            const result = run('bash', [path.join(repo, 'scripts', runner),
+                ...(runner === 'implement-tasks.sh' ? ['probe'] : [])],
+                { ...env, CODEX_USAGE_RETRY_SECONDS: interval });
+            assert.equal(result.status, 1, result.stderr);
+            assert.match(result.stderr, /CODEX_USAGE_RETRY_SECONDS must be/);
+            assert.deepEqual(gitMutations(calls()), []);
+            assert(!calls().some(c => c.tool === 'codex'));
+        }
+    }
+    console.log('PASS retry configuration rejected before model invocation or Git mutation');
     for (const createPR of ['true', 'false']) {
         for (const finalReview of ['true', 'false']) {
             write(log, '');
