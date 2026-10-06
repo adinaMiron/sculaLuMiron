@@ -192,7 +192,18 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   and JavaScript syntax checks, `node tests/verify.js`, and diff whitespace
   checks passed. No real remote or model session was used.
 
-- [ ] [ID:review-finding-text] **P3 — Review finding extraction does not remove the checkbox prefix.** In `fix-review.sh:181`, `${original_line#- [ ] }` treats brackets as a shell pattern, rather than literal Markdown. The local probe returned `- [ ] Fix an issue.` unchanged. Use literal prefix removal, reject empty finding text, and verify that generated commit subjects contain the finding text without its checkbox marker.
+- [x] [ID:review-finding-text] **P3 — Review finding extraction does not remove the checkbox prefix.** In `fix-review.sh:181`, `${original_line#- [ ] }` treats brackets as a shell pattern, rather than literal Markdown. The local probe returned `- [ ] Fix an issue.` unchanged. Use literal prefix removal, reject empty finding text, and verify that generated commit subjects contain the finding text without its checkbox marker.
+
+  The earlier Markdown parser change (`87f76da`) already replaced the shell
+  pattern with escaped literal brackets in `sed` and retained the empty-text
+  guard. Verified without rewriting that implementation. Added seven offline
+  cases in `node tests/runner-control-plane.js --finding-text` checking actual
+  `fix:` and `docs:` commit subjects, indentation/tab handling, preservation of
+  bracketed text and metadata, and rejection of empty/whitespace-only findings
+  before agent invocation, staging, commit, or publication. All seven cases and
+  the shared Markdown parser suite passed, as did the full 157-case runner
+  suite, Bash/JavaScript syntax checks, and diff whitespace checks. Fixtures
+  use fake agents/remotes.
 
 - [x] [ID:defect-scope-wording] **P3 — The review README reversed its new-scope condition.** `docs/reviews/README.md:148-150` asked “Was this behavior never required?” and then said “If no, it is new scope.” Changed the answer to yes and inspected it against section 5 and `AGENTS.md` section 13. This documentation-only correction requires no runtime test.
 

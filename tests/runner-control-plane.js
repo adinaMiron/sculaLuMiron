@@ -9,6 +9,15 @@ const source = path.resolve(__dirname, '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-control-'));
 const realGit = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
 const bin = path.join(tmp, 'bin');
+const findingCases = {
+    plain: { line: '- [ ] Fix an issue.', subject: 'fix: Fix an issue.' },
+    indented: { line: '   - [ ]\t  Fix [brackets] and *patterns*.', subject: 'fix: Fix [brackets] and *patterns*.' },
+    metadata: { line: ' - [ ] [ID:probe] Fix an issue.', subject: 'fix: [ID:probe] Fix an issue.' },
+    docs: { line: '- [ ] Fix an issue.', subject: 'docs: Fix an issue.' },
+    empty: { line: '- [ ]' },
+    space: { line: '- [ ] ' },
+    whitespace: { line: '  - [ ] \t  \t' },
+};
 const verdictCases = {
     'pass': { message: 'Tests passed.\nVERDICT: PASS\n', pass: true },
     'pass-no-newline': { message: 'VERDICT: PASS', pass: true },
@@ -231,7 +240,8 @@ else:
     if mode == 'markdown' and os.environ['PROBE_RUNNER'] == 'implement-tasks.sh':
         other = root / 'docs/tasks/probe/02-other.md'
         other.write_text(other.read_text().replace('Example wording', 'Updated example'))
-    (root / 'implementation.txt').write_text('implemented\\n')
+    if mode != 'finding-docs':
+        (root / 'implementation.txt').write_text('implemented\\n')
     if mode == 'evidence-document':
         doc.write_text(doc.read_text().replace('Probe', 'Forged'))
     elif mode == 'evidence-manifest':
@@ -278,6 +288,7 @@ if mode == 'agent-failure':
     for (const runner of ['fix-review.sh', 'implement-tasks.sh']) {
         const modes = ['normal', 'markdown', 'two-items', 'empty-manifest', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
             'symlink', 'directory-symlink', 'ignored-addition', 'workflow', 'agent-failure'];
+        if (runner === 'fix-review.sh') modes.push(...Object.keys(findingCases).map(name => `finding-${name}`));
         modes.push('input-branch-missing', 'input-ff-missing', 'input-branch-wrong-type', 'input-branch-invalid-utf8', 'input-agent-delete', 'input-zero');
         // chmod(000) cannot deny reads to root; do not claim that coverage there.
         if (process.getuid() !== 0) {
@@ -294,6 +305,7 @@ if mode == 'agent-failure':
             }
         }
         for (const mode of modes.filter(mode => !process.argv.includes('--final-verdict') || mode.startsWith('verdict-'))) {
+            if (process.argv.includes('--finding-text') && !mode.startsWith('finding-')) continue;
             const repo = path.join(tmp, `${runner}-${mode} with spaces`);
             fs.mkdirSync(repo);
             for (const name of ['fix-review.sh', 'implement-tasks.sh', 'codex-runner.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
@@ -308,6 +320,7 @@ if mode == 'agent-failure':
             write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), '- [ ] Probe finding.\n');
             const input = path.join(repo, runner === 'implement-tasks.sh' ? 'docs/tasks/probe' : 'docs/reviews/2026-10-04-solar-calcule-review.md');
             const inputFile = runner === 'implement-tasks.sh' ? path.join(input, '01-requirements.md') : input;
+            if (mode.startsWith('finding-')) fs.writeFileSync(inputFile, findingCases[mode.slice(8)].line + '\n');
             if (mode.endsWith('unreadable-directory')) write(path.join(input, 'nested/hidden.md'), '- [x] Completed nested task.\n');
             if (mode !== 'empty-manifest') write(path.join(repo, 'docs/tasks/probe/02-other.md'), '- [x] [ID:other] Other task.\n');
             if (mode === 'empty-manifest') {
@@ -432,6 +445,28 @@ runpy.run_path(sys.argv[0], run_name='__main__')
                 if (mode.endsWith('-directory')) fs.chmodSync(path.join(input, 'nested'), 0o755);
             }
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+            if (mode.startsWith('finding-')) {
+                const { line, subject } = findingCases[mode.slice(8)];
+                if (subject) {
+                    assert.equal(result.status, 0, result.stdout + result.stderr);
+                    assert.equal(git(runRoot, 'log', '-1', '--format=%s'), subject);
+                    const commits = history.filter(c => c.tool === 'git' && c.args[0] === 'commit');
+                    assert.deepEqual(commits.map(c => c.args), [['commit', '-m', subject]]);
+                    assert.equal(history.filter(c => c.tool === 'agent').length, 1);
+                    assert.equal(fs.readFileSync(inputFile, 'utf8'), line.replace('- [ ]', '- [x]') + '\n');
+                    assert.equal(git(runRoot, 'status', '--porcelain'), '');
+                } else {
+                    assert.equal(result.status, 1, result.stdout + result.stderr);
+                    assert.match(result.stderr, /Could not extract review finding from line 1/);
+                    assert(!history.some(c => c.tool === 'agent' || c.tool === 'gh' ||
+                        (c.tool === 'git' && ['add', 'commit', 'push'].includes(c.args[0]))));
+                    assert.equal(git(runRoot, 'rev-parse', 'HEAD'), initial);
+                    assert.equal(fs.readFileSync(inputFile, 'utf8'), line + '\n');
+                    assert.equal(git(runRoot, 'status', '--porcelain'), '');
+                }
+                count++;
+                continue;
+            }
             if (mode.startsWith('no-pr-')) {
                 assert.equal(result.status, 0, result.stdout + result.stderr);
                 assert.equal(git(runRoot, 'rev-list', '--count', 'HEAD'), '2');

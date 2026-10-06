@@ -98,6 +98,12 @@ valid final PASS messages allow trailing blank lines and CRLF. The CLI preflight
 suite also checks support for the output flag before Git mutations.
 Run just the verdict cases with `node tests/runner-control-plane.js --final-verdict`.
 
+Review finding text cases verify literal checkbox removal in generated `fix:`
+and `docs:` commit subjects, including indentation, tabs, bracketed text, and
+metadata. Empty and whitespace-only findings must fail before agent invocation,
+staging, commit, or publication. Run these cases with
+`node tests/runner-control-plane.js --finding-text`.
+
 Input regressions cover missing/wrong-type/invalid input on an existing target
 branch, deletion during fast-forward or agent work, unreadable input at startup
 and after branch selection/agent work, and genuine zero-match completion. Failed
