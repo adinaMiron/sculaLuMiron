@@ -147,7 +147,7 @@ Record it as a review finding.
 
 ## Was this behavior never required?
 
-If no, it is new scope.
+If yes, it is new scope.
 
 Create a task requirement under:
 
