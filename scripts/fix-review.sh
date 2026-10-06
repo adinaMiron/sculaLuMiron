@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# This entire bootstrap is parsed before execution; no agent runs until exec.
+{
+    runner_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+    exec python3 -I "$runner_dir/trusted-runner.py" "$runner_dir/$(basename -- "${BASH_SOURCE[0]}")" "$@"
+    exit 1
+}
+# TRUSTED_RUNNER_BODY
 set -Eeuo pipefail
 
 # ==============================================================================
@@ -56,10 +63,7 @@ done
 # Locate repository
 # ==============================================================================
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
-    || die "This script must be located inside a Git repository"
-
+# REPO_ROOT is supplied by the sealed trusted launcher.
 cd "$REPO_ROOT"
 
 # ==============================================================================
@@ -80,7 +84,7 @@ cd "$REPO_ROOT"
 # The Codex CLI itself may still contact its configured model provider. A fully
 # offline run requires a local model/provider as well.
 
-source "$SCRIPT_DIR/codex-runner.sh"
+source "/proc/self/fd/$WRAPPER_HELPER_FD"
 preflight_codex
 
 # ==============================================================================
@@ -194,6 +198,11 @@ $original_line
 Do not change the finding wording.
 Do not mark any other finding complete.
 Do not perform unrelated refactoring, cleanup, formatting, renaming, dependency upgrades, architectural changes, or feature work.
+
+CONTROL PLANE
+Do not modify scripts/, .github/, .githooks/, .gitattributes, or .gitmodules.
+The wrapper rejects changes to these paths, including new or ignored files.
+Control-plane maintenance requires a separate human-reviewed change.
 
 NETWORK / EXTERNAL-TOOL POLICY
 Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,

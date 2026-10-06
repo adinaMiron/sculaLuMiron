@@ -40,7 +40,22 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   seven effective feature overrides, and both runners' Git ordering. Shell syntax
   checks passed. No model session or real Git mutation was used for verification.
 
-- [ ] [ID:protect-wrapper-code] **P1 — Agent-writable orchestration files cross into the trusted wrapper boundary.** Both runners allow workspace writes, including `scripts/`, and later stage everything with `git add -A` (`fix-review.sh:274`, `implement-tasks.sh:552`). They neither protect nor reject changes to their own executable scripts. Agent-controlled wrapper edits can be committed and executed with host privileges on subsequent invocations; executing a shell script from a mutable file also leaves its unread contents exposed during the current run. Run orchestration from an immutable trusted location and reject agent changes to the control plane before any host-side execution or publication. Verify attempted script replacement in an isolated fixture.
+- [x] [ID:protect-wrapper-code] **P1 — Agent-writable orchestration files cross into the trusted wrapper boundary.** Both runners allow workspace writes, including `scripts/`, and later stage everything with `git add -A` (`fix-review.sh:274`, `implement-tasks.sh:552`). They neither protect nor reject changes to their own executable scripts. Agent-controlled wrapper edits can be committed and executed with host privileges on subsequent invocations; executing a shell script from a mutable file also leaves its unread contents exposed during the current run. Run orchestration from an immutable trusted location and reject agent changes to the control plane before any host-side execution or publication. Verify attempted script replacement in an isolated fixture.
+
+  Fixed by bootstrapping both runners through `scripts/trusted-runner.py`.
+  The running wrapper, shared helper, checker, and control-plane baseline live
+  in kernel-sealed anonymous files; agent-writable workspace files are never
+  sourced again. Integrity checks reject changes to `scripts/`, `.github/`,
+  `.githooks/`, `.gitattributes`, and `.gitmodules` after every agent return and
+  before each host Git/GitHub command. Verified with 29 offline disposable-repo
+  cases in `node tests/runner-control-plane.js`, including actual seal-write and
+  truncation denial, script replacement/overwrite, checker replacement, ignored
+  additions, symlinks, agent errors, final review, branch drift, unavailable
+  sealing support, and normal completion. CLI preflight regressions, shell syntax,
+  and diff whitespace checks passed. Requires Linux/Python file sealing and a
+  trusted reviewed checkout at startup; see
+  `docs/tasks/agent-orchestration/04-decisions.md` for maintenance and remaining
+  isolation boundaries.
 
 - [ ] [ID:protect-validation-state] **P1 — Expected checkbox state is stored in temporary storage writable by the agent.** `fix-review.sh:161,194-195,253` and `implement-tasks.sh:410,446-448,524-531` place expected documents/manifests in ordinary `mktemp -d` directories, then compare against them after the agent returns. The default workspace-write sandbox includes temporary directories, and the parent and child run as the same user; directory mode 0700 does not separate them. Isolate validation evidence from agent writes and verify that attempts to modify expected documents/manifests fail. This is a trust-boundary defect identified by inspection, not a demonstrated sandbox escape.
 

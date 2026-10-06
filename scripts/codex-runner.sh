@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Shared launch contract for the task and review runners. Source after setting
-# REPO_ROOT and defining die(); this file does not launch a model session.
+# REPO_ROOT and defining die() and assert_control_plane(). Sourcing this file
+# does not launch a model session.
 
 TOML_REPO_ROOT="${REPO_ROOT//\\/\\\\}"
 TOML_REPO_ROOT="${TOML_REPO_ROOT//\"/\\\"}"
@@ -31,7 +32,12 @@ CODEX_SAFE_ARGS=(
 )
 
 run_codex_safely() {
-    codex "${CODEX_SAFE_ARGS[@]}" "$@"
+    local status=0
+    assert_control_plane
+    codex "${CODEX_SAFE_ARGS[@]}" "$@" || status=$?
+    # Check even a failed agent before the host inspects or publishes output.
+    assert_control_plane
+    return "$status"
 }
 
 preflight_codex() {

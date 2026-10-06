@@ -33,8 +33,9 @@ exits non-zero if anything failed.
 automation runners using disposable directories and fake Git/Codex executables.
 It verifies that rejected arguments, configuration, and feature flags stop the
 runner before any Git mutation, and that execution uses the same arguments as
-preflight. It needs only Node and Bash, not Playwright. From `tests/`, the same
-suite is available as `npm run test:runner-preflight`.
+preflight. It needs Node, Bash, and Linux/Python 3 with file sealing, not
+Playwright. From `tests/`, the same suite is available as
+`npm run test:runner-preflight`.
 
 Add `--real-codex` to also validate the installed CLI with an empty temporary
 Codex home. This checks strict configuration rejection, every disabled feature's
@@ -45,6 +46,19 @@ The runners require that result and stop on any other exit/diagnostic. A CLI
 upgrade changing this contract needs investigation before running automation.
 Neither test mode performs real Git mutations or launches a model session; these
 checks establish CLI compatibility, not operating-system confinement.
+
+`node tests/runner-control-plane.js` exercises both runners in disposable local
+Git repositories with fake model/GitHub adapters and inert fetch/push commands.
+It verifies kernel-enforced immutability of the running wrapper, helper, checker,
+and inventory, then attempts workspace script replacement, overwrite, deletion,
+permission/symlink changes, ignored additions, and workflow edits. Rejection must
+precede any subsequent host Git/GitHub call, including when the agent fails or
+the final reviewer edits scripts. Successful runs still commit the assigned
+change and reach the fake publication adapter. Run it from `tests/` with
+`npm run test:runner-control-plane`. These checks require Linux, Python 3, Bash,
+Node, and Git, and never launch a model session or contact a remote. See
+`docs/tasks/agent-orchestration/04-decisions.md` for the startup trust boundary
+and maintenance procedure.
 
 `teleprompter.js` covers Voice's Subtitrare chapter/draft import, read-only
 source handling, speech alignment (including revised interim results and

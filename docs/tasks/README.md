@@ -339,6 +339,12 @@ The repository task runner is:
 scripts/implement-tasks.sh
 ```
 
+Both runners require Linux and Python 3 with kernel file-sealing support. They
+execute an immutable snapshot of reviewed wrapper code and reject changes to
+the control plane, including `scripts/` and `.github/`. Such maintenance needs
+a separate human-reviewed change. See the [execution boundary and startup
+trust requirements](agent-orchestration/04-decisions.md).
+
 Normal usage:
 
 ```text

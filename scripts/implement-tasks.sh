@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# This entire bootstrap is parsed before execution; no agent runs until exec.
+{
+    runner_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+    exec python3 -I "$runner_dir/trusted-runner.py" "$runner_dir/$(basename -- "${BASH_SOURCE[0]}")" "$@"
+    exit 1
+}
+# TRUSTED_RUNNER_BODY
 set -Eeuo pipefail
 
 # Usage:
@@ -304,8 +311,7 @@ for cmd in git grep sed find sort awk cmp diff mktemp codex tr tee; do
     require_command "$cmd"
 done
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" || die "Script must be inside a Git repository"
+# REPO_ROOT is supplied by the sealed trusted launcher.
 cd "$REPO_ROOT"
 [[ -d "$TASKS_ROOT" ]] || die "Task module does not exist: $TASKS_ROOT"
 
@@ -329,7 +335,7 @@ cd "$REPO_ROOT"
 # IMPORTANT: the Codex CLI itself still needs to contact its configured model
 # provider unless you intentionally run it with a fully local model/provider.
 
-source "$SCRIPT_DIR/codex-runner.sh"
+source "/proc/self/fd/$WRAPPER_HELPER_FD"
 preflight_codex
 
 validate_task_graph
@@ -466,6 +472,11 @@ $ORIGINAL_LINE
 Do not change its wording.
 Do not change any other checkbox anywhere under $TASKS_ROOT.
 Do not add new checkbox tasks during this run.
+
+CONTROL PLANE
+Do not modify scripts/, .github/, .githooks/, .gitattributes, or .gitmodules.
+The wrapper rejects changes to these paths, including new or ignored files.
+Control-plane maintenance requires a separate human-reviewed change.
 
 NETWORK / EXTERNAL-TOOL POLICY
 Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,

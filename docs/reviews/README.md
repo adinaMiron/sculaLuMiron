@@ -232,6 +232,11 @@ The repository review runner is:
 scripts/fix-review.sh
 ```
 
+The runner requires Linux and Python 3 with kernel file-sealing support. It
+rejects agent changes to the control plane, including `scripts/` and `.github/`;
+fixes to those files need a separate human-reviewed change. See the [execution
+boundary and startup trust requirements](../tasks/agent-orchestration/04-decisions.md).
+
 The script should be configured for the review document and branch it is processing.
 
 Typical mapping:

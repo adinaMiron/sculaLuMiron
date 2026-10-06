@@ -28,7 +28,7 @@ function calls() {
     return fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
 }
 try {
-    for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh']) {
+    for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh', 'trusted-runner.py']) {
         write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)));
     }
     write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');
@@ -90,6 +90,7 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
 set -Eeuo pipefail
 REPO_ROOT="$PROBE_REPO"
 die() { echo "$*" >&2; exit 1; }
+assert_control_plane() { :; } # This unit probe isolates the CLI contract.
 source "$1"
 preflight_codex
 run_codex_safely 'fixture prompt'
@@ -108,6 +109,7 @@ run_codex_safely 'fixture prompt'
 set -Eeuo pipefail
 REPO_ROOT="$PROBE_REPO"
 die() { echo "$*" >&2; exit 1; }
+assert_control_plane() { :; } # This unit probe isolates the CLI contract.
 source "$1"
 shift
 CODEX_SAFE_ARGS+=("$@")
