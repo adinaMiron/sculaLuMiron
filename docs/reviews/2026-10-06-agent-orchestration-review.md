@@ -85,7 +85,19 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   fence delimiters/lengths/closure, indentation, line numbers, example-only
   dependency IDs, indented cycles, manifests, and parser immutability.
 
-- [ ] [ID:checkbox-scope] **P2 — Unassigned checkbox changes outside the selected document/module are not checked.** The review runner compares only its selected review file (`fix-review.sh:253-260`); the task runner's other-checkbox manifest covers only `TASKS_ROOT` (`implement-tasks.sh:82-98,529-533`). An invocation can change a different review or module checklist and still reach `git add -A`. Enforce the one-assigned-item rule across task and review documents, including newly added/deleted documents, with tests showing that unrelated transitions and new tasks are rejected.
+- [x] [ID:checkbox-scope] **P2 — Unassigned checkbox changes outside the selected document/module are not checked.** The review runner compares only its selected review file (`fix-review.sh:253-260`); the task runner's other-checkbox manifest covers only `TASKS_ROOT` (`implement-tasks.sh:82-98,529-533`). An invocation can change a different review or module checklist and still reach `git add -A`. Enforce the one-assigned-item rule across task and review documents, including newly added/deleted documents, with tests showing that unrelated transitions and new tasks are rejected.
+
+  Both runners now seal and compare the shared parser's repository-wide manifest
+  across `docs/tasks/` and `docs/reviews/`, excluding only the assigned document,
+  which remains checked in full. Live-tree enumeration includes new, deleted,
+  and moved checklists; inventory failures stop validation. JSON records preserve
+  control characters through shell capture. Verified with
+  `node tests/runner-control-plane.js` (82 offline cases),
+  `node tests/runner-markdown-tasks.js`, `node tests/runner-cli-preflight.js`,
+  shell syntax checks, and diff whitespace checks. Fixtures reject unrelated
+  completion/reopening, appended tasks, new pending/completed checklists,
+  deletions, and moves in both trees before staging or publication, while allowing
+  explanatory notes and fenced examples outside the assigned document.
 
 - [ ] [ID:metadata-validation] **P2 — Duplicate metadata tags and empty trailing dependencies are accepted.** `implement-tasks.sh:54-61,145-204` extracts the last matching tag and relies on Bash comma splitting. Local probes accepted both `- [ ] [ID:a] [ID:b] Duplicate metadata.` and a task with `[DEPENDS:a,]` when `a` existed. Reject repeated ID/DEPENDS tags and malformed dependency lists before selecting work. Preserve the existing successful duplicate-ID-across-tasks, unknown-reference, and cycle checks.
 

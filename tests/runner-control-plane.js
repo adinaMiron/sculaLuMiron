@@ -120,9 +120,9 @@ if not reviewer:
             assert entry.read_bytes() == original
             os.close(fd)
             evidence.append(str(entry))
-    assert len(evidence) == (2 if os.environ['PROBE_RUNNER'] == 'implement-tasks.sh' else 1), evidence
+    assert len(evidence) == 2, evidence
     record(tool='evidence', paths=evidence)
-if mode not in ('normal', 'evidence-document', 'evidence-manifest', 'evidence-holder-exit', 'two-items', 'empty-manifest', 'markdown'):
+if not mode.startswith('scope-') and mode not in ('normal', 'evidence-document', 'evidence-manifest', 'evidence-holder-exit', 'two-items', 'empty-manifest', 'markdown'):
     runner = root / 'scripts' / os.environ['PROBE_RUNNER']
     payload = '\\nprintf compromised > "' + os.environ['PROBE_MARKER'] + '"\\n'
     if mode in ('replace', 'final-review'):
@@ -173,6 +173,30 @@ else:
         other.write_text(other.read_text().replace('Other', 'Forged'))
     elif mode == 'evidence-holder-exit':
         os.kill(int(evidence[0].split('/')[2]), signal.SIGKILL)
+    elif mode.startswith('scope-'):
+        _, kind, change = mode.split('-', 2)
+        directory = root / ('docs/tasks/other-module' if kind == 'task' else 'docs/reviews/other-review')
+        other = directory / 'checklist.md'
+        if change == 'complete':
+            other.write_text(other.read_text().replace('- [ ]', '- [x]', 1))
+        elif change == 'reopen':
+            other.write_text(other.read_text().replace('- [x]', '- [ ]', 1))
+        elif change == 'append':
+            other.write_text(other.read_text() + '- [ ] Unassigned new task.\\n')
+        elif change in ('new', 'new-complete'):
+            nested = directory / 'new-module/nested/new.md'
+            nested.parent.mkdir(parents=True)
+            nested.write_text('- [ ] Unassigned new task.\\n' if change == 'new' else '- [x] Unassigned completed task.\\n')
+        elif change == 'delete':
+            other.unlink()
+        elif change == 'move':
+            other.rename(directory / 'moved.md')
+        elif change == 'delete-tree':
+            other.unlink()
+            directory.rmdir()
+        elif change == 'notes':
+            other.write_text(other.read_text() + '\\nExplanatory note.\\n~~~md\\n- [ ] Example only.\\n~~~\\n')
+            (directory / 'notes.md').write_text('New explanation.\\n~~~md\\n- [ ] Example only.\\n~~~\\n')
 
 if mode == 'agent-failure':
     sys.exit(42)
@@ -180,9 +204,14 @@ if mode == 'agent-failure':
 
     let count = 0;
     for (const runner of ['fix-review.sh', 'implement-tasks.sh']) {
-        const modes = ['normal', 'markdown', 'two-items', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
+        const modes = ['normal', 'markdown', 'two-items', 'empty-manifest', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
             'symlink', 'directory-symlink', 'ignored-addition', 'workflow', 'agent-failure'];
-        if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest', 'empty-manifest');
+        if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest');
+        for (const kind of ['task', 'review']) {
+            for (const change of ['complete', 'reopen', 'append', 'new', 'new-complete', 'delete', 'move', 'delete-tree', 'notes']) {
+                modes.push(`scope-${kind}-${change}`);
+            }
+        }
         for (const mode of modes) {
             const repo = path.join(tmp, `${runner}-${mode} with spaces`);
             fs.mkdirSync(repo);
@@ -197,6 +226,15 @@ if mode == 'agent-failure':
             write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');
             write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), '- [ ] Probe finding.\n');
             if (mode !== 'empty-manifest') write(path.join(repo, 'docs/tasks/probe/02-other.md'), '- [x] [ID:other] Other task.\n');
+            if (mode === 'empty-manifest') {
+                // The unselected tree may be absent; an empty sealed manifest
+                // must still validate the assigned item successfully.
+                fs.rmSync(path.join(repo, runner === 'implement-tasks.sh' ? 'docs/reviews' : 'docs/tasks'), { recursive: true });
+            }
+            if (mode.startsWith('scope-')) {
+                const directory = mode.startsWith('scope-task-') ? 'docs/tasks/other-module' : 'docs/reviews/other-review';
+                write(path.join(repo, directory, 'checklist.md'), '- [ ] Pending unrelated item.\n- [x] Completed unrelated item.\n');
+            }
             if (mode === 'two-items') {
                 for (const doc of ['docs/tasks/probe/01-requirements.md', 'docs/reviews/2026-10-04-solar-calcule-review.md']) {
                     fs.appendFileSync(path.join(repo, doc), '- [ ] Second item.\n');
@@ -283,15 +321,15 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             }
             assert(history.some(c => c.tool === 'agent'), result.stdout + result.stderr);
             assert(!fs.existsSync(marker), 'Mutable wrapper code executed');
-            if (['normal', 'markdown', 'two-items', 'empty-manifest'].includes(mode)) {
+            if (['normal', 'markdown', 'two-items', 'empty-manifest'].includes(mode) || mode.endsWith('-notes')) {
                 assert.equal(result.status, 0, result.stdout + result.stderr);
                 assert.equal(git(repo, 'rev-list', '--count', 'HEAD'), mode === 'two-items' ? '3' : '2');
                 assert.equal(history.filter(c => c.tool === 'evidence').length, mode === 'two-items' ? 2 : 1);
                 assert.equal(git(repo, 'status', '--porcelain'), '');
                 assert(history.some(c => c.tool === 'gh' && c.args[0] === 'pr' && c.args[1] === 'create'));
-            } else if (mode.startsWith('evidence-')) {
+            } else if (mode.startsWith('evidence-') || mode.startsWith('scope-')) {
                 assert.equal(result.status, 1, result.stdout + result.stderr);
-                assert.match(result.stderr, mode === 'evidence-manifest' ? /Another task checkbox was modified/
+                assert.match(result.stderr, mode === 'evidence-manifest' || mode.startsWith('scope-') ? /Unassigned task\/review checkbox changes rejected/
                     : /document changed unexpectedly/);
                 assert(!history.some(c => c.tool === 'gh' || (c.tool === 'git' && ['add', 'commit', 'push'].includes(c.args[0]))));
                 assert.equal(git(repo, 'diff', '--cached', '--name-only'), '');
@@ -308,7 +346,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             count++;
         }
     }
-    console.log(`PASS ${count} isolated runner cases: kernel seals, validation evidence, control-plane rejection, publication gates, normal completion`);
+    console.log(`PASS ${count} isolated runner cases: kernel seals, validation evidence, repository checkbox scope, control-plane rejection, publication gates, normal completion`);
 } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
 }

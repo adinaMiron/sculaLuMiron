@@ -31,6 +31,18 @@ CODEX_SAFE_ARGS=(
     --disable memories
 )
 
+build_other_checkbox_manifest() {
+    markdown_tasks scope-manifest . --exclude "$1"
+}
+
+check_other_checkboxes() {
+    local actual
+    actual="$(build_other_checkbox_manifest "$1")" || die "Cannot inventory task/review checkboxes"
+    if ! printf '%s' "$actual" | cmp -s "${EVIDENCE_PATHS[1]}" -; then
+        die "Unassigned task/review checkbox changes rejected; working tree preserved"
+    fi
+}
+
 # A fresh holder per iteration keeps sealed evidence alive without putting it
 # in the workspace or scratch directories. Neither chmod nor same-UID writes
 # can undo the seals. Close the pipe and reap the holder on success or failure.

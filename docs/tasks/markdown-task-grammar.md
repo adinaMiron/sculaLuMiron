@@ -43,7 +43,15 @@ document. Parser manifests contain tab-separated path, one-based line number,
 state (`pending` or `complete`), and original task line. The assigned document
 is checked in full after the agent returns; examples in that document must
 therefore remain unchanged too. Other-document manifests track only executable
-tasks, including their positions and wording.
+tasks, including their positions and wording. Both runners snapshot all other
+`.md` documents under `docs/tasks/` and `docs/reviews/`, recursively, before
+each agent invocation and compare them again before staging. This includes
+untracked documents, newly created modules/review directories, and deleted or
+moved checklists. Adding, removing, rewording, or changing the state/position of
+an unassigned task or finding fails validation. Documents without executable
+checkboxes and fenced examples do not contribute manifest entries. These scope
+manifests encode the same record fields as JSON to preserve control characters
+in paths and text during shell capture; selection manifests remain tab-separated.
 
 The parser is part of the sealed wrapper snapshot. Changes to its workspace
 copy are rejected like changes to the runners. Test the grammar with

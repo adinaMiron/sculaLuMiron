@@ -4,6 +4,8 @@
 This intentionally implements the documented subset, not a Markdown renderer.
 """
 import argparse
+import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -33,11 +35,25 @@ def tasks(file):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("count", "manifest", "first"))
+    parser.add_argument("action", choices=("count", "manifest", "first", "scope-manifest"))
     parser.add_argument("path", type=Path)
     parser.add_argument("--exclude", type=Path)
     args = parser.parse_args()
-    if args.path.is_dir():
+    if args.action == "scope-manifest":
+        # Inventory the live trees, not just tracked files or the chosen module:
+        # additions, deletions and moves must change the resulting evidence.
+        def read_error(error):
+            raise error
+
+        files = []
+        for name in ("docs/tasks", "docs/reviews"):
+            directory = args.path / name
+            if not directory.exists():
+                continue
+            for parent, _, names in os.walk(directory, onerror=read_error):
+                files.extend(Path(parent) / name for name in names if name.endswith(".md"))
+        files.sort()
+    elif args.path.is_dir():
         files = sorted(args.path.rglob("*.md"))
     else:
         files = [args.path]
@@ -48,7 +64,12 @@ def main():
                for number, state, line in tasks(file)]
     if not args.path.exists():
         raise FileNotFoundError(args.path)
-    if args.action == "count":
+    if args.action == "scope-manifest":
+        # Encode paths/text without literal control characters so shell capture
+        # cannot discard NULs or confuse embedded tabs/newlines with separators.
+        print(json.dumps([(str(file), number, state, line)
+                          for file, number, state, line in records]))
+    elif args.action == "count":
         print(sum(state == "pending" for _, _, state, _ in records))
     elif args.action == "first":
         for _, number, state, _ in records:

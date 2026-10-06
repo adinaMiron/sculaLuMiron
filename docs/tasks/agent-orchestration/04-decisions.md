@@ -48,11 +48,11 @@ It does not contact a remote or start a paid model session.
 
 ## 2026-10-06 — Sealed per-item validation evidence
 
-Both runners now seal their expected document before invoking the agent. The
-implementation runner also seals the other-document checkbox manifest. Input
-streams go directly into anonymous files; no expected or actual evidence is
-stored in an agent-writable temporary directory. The actual manifest is streamed
-into the comparison after the agent returns.
+Both runners seal their expected document and other-document checkbox manifest
+before invoking the agent. Input streams go directly into anonymous files; no
+expected or actual evidence is stored in an agent-writable temporary directory.
+The manifest is captured synchronously in a shell variable so inventory errors
+stop validation, then passed into the sealed holder or comparison.
 
 The existing sealed checker runs as a per-item holder, sealing all evidence
 before reporting `/proc/<pid>/fd/<fd>` paths to the wrapper. Those paths have no
@@ -70,3 +70,19 @@ manifests, altered document/manifest rejection, holder termination, evidence
 sealing failure before the agent starts, cleanup, and consecutive items.
 These checks establish evidence immutability, not general process confinement
 or protection from an unsandboxed process modifying host memory/tools.
+
+## 2026-10-06 — Repository-wide checkbox scope
+
+Both per-item runners use the same manifest of executable checkboxes across
+`docs/tasks/` and `docs/reviews/`, excluding only the assigned document, which is
+still compared in full. The live trees are inventoried on each side of the agent
+invocation, so newly created, deleted, or moved checklists cannot escape through
+a tracked-file-only list or a selected-module boundary. A documentation tree may
+be absent; its later creation contributes any executable items to the manifest.
+Checkbox-free documents and fenced examples remain editable outside the assigned
+document. Task selection and dependency validation remain module-local.
+
+The offline runner tests cover unrelated completion/reopening, new pending and
+completed items, document/directory creation and deletion, moves, allowed notes,
+and normal completion. Rejections leave changes unstaged and block commit, push,
+and PR creation for the iteration.

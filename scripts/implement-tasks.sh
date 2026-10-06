@@ -81,10 +81,6 @@ count_unchecked() {
     markdown_tasks count "$TASKS_ROOT"
 }
 
-build_other_checkbox_manifest() {
-    markdown_tasks manifest "$TASKS_ROOT" --exclude "$1"
-}
-
 # Module-wide dependency graph.
 declare -A ID_STATE=()
 declare -A ID_DEPS=()
@@ -381,9 +377,11 @@ while (( iteration < MAX )); do
     echo "Requirement:  $TASK_TEXT"
     echo
 
+    # Capture synchronously so a failed inventory cannot seal partial evidence.
+    other_checkboxes="$(build_other_checkbox_manifest "$TARGET_FILE")" || die "Cannot inventory task/review checkboxes"
     seal_validation_evidence \
         <(sed "${TARGET_LINE}s/- \[ \]/- [x]/" "$TARGET_FILE") \
-        <(build_other_checkbox_manifest "$TARGET_FILE")
+        <(printf '%s' "$other_checkboxes")
 
     head_before="$(git rev-parse HEAD)"
     branch_before="$(git branch --show-current)"
@@ -430,8 +428,8 @@ Only after the requirement is genuinely satisfied and relevant tests pass, chang
 $ORIGINAL_LINE
 
 Do not change its wording.
-Do not change any other checkbox anywhere under $TASKS_ROOT.
-Do not add new checkbox tasks during this run.
+Do not change any other checkbox anywhere under docs/tasks/ or docs/reviews/.
+Do not add, remove, or move checkbox tasks or findings during this run, including through document creation/deletion.
 
 CONTROL PLANE
 Do not modify scripts/, .github/, .githooks/, .gitattributes, or .gitmodules.
@@ -469,10 +467,7 @@ PROMPT
         die "Assigned task document changed unexpectedly; only the target [ ] -> [x] transition is allowed"
     fi
 
-    if ! build_other_checkbox_manifest "$TARGET_FILE" | cmp -s "${EVIDENCE_PATHS[1]}" -; then
-        diff -u "${EVIDENCE_PATHS[1]}" <(build_other_checkbox_manifest "$TARGET_FILE") || true
-        die "Another task checkbox was modified"
-    fi
+    check_other_checkboxes "$TARGET_FILE"
 
     validate_task_graph
     after="$(count_unchecked)"

@@ -165,7 +165,10 @@ while (( i < MAX )); do
 
     ensure_clean_worktree "before Codex finding $i"
 
-    seal_validation_evidence <(sed "${target_line}s/- \[ \]/- [x]/" "$REVIEW")
+    other_checkboxes="$(build_other_checkbox_manifest "$REVIEW")" || die "Cannot inventory task/review checkboxes"
+    seal_validation_evidence \
+        <(sed "${target_line}s/- \[ \]/- [x]/" "$REVIEW") \
+        <(printf '%s' "$other_checkboxes")
 
     head_before="$(git rev-parse HEAD)"
     branch_before="$(git branch --show-current)"
@@ -193,7 +196,8 @@ WORKFLOW
 $original_line
 
 Do not change the finding wording.
-Do not mark any other finding complete.
+Do not change any other checkbox anywhere under docs/tasks/ or docs/reviews/.
+Do not add, remove, or move checkbox tasks or findings during this run, including through document creation/deletion.
 Do not perform unrelated refactoring, cleanup, formatting, renaming, dependency upgrades, architectural changes, or feature work.
 
 CONTROL PLANE
@@ -232,6 +236,8 @@ PROMPT
         git diff -- "$REVIEW" || true
         die "Review document changed unexpectedly; only the assigned [ ] -> [x] transition is allowed"
     fi
+
+    check_other_checkboxes "$REVIEW"
 
     after="$(count_unchecked)"
     expected=$((before - 1))

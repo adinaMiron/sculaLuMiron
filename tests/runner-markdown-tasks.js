@@ -56,6 +56,35 @@ try {
     const missing = spawnSync('python3', ['-I', parser, 'count', path.join(tmp, 'missing.md')], { encoding: 'utf8' });
     assert.equal(missing.status, 1);
     assert.equal(missing.stdout, '');
+    // Scope includes both live documentation trees, even when a tree/module
+    // did not exist at snapshot time. Unrelated Markdown stays outside it.
+    const repo = path.join(tmp, 'repo');
+    const taskDir = path.join(repo, 'docs/tasks/selected');
+    fs.mkdirSync(taskDir, { recursive: true });
+    const assigned = path.join(taskDir, '01.md');
+    fs.writeFileSync(assigned, '- [ ] Assigned\n');
+    fs.writeFileSync(path.join(repo, 'docs/notes.md'), '- [ ] Outside scope\n');
+    const scope = () => JSON.parse(parse('scope-manifest', repo, '--exclude', assigned));
+    assert.deepEqual(scope(), []);
+    const reviewDir = path.join(repo, 'docs/reviews/nested');
+    fs.mkdirSync(reviewDir, { recursive: true });
+    const review = path.join(reviewDir, 'review.md');
+    fs.writeFileSync(review, '- [X] Review item\n');
+    const reviewRecord = [review, 1, 'complete', '- [X] Review item'];
+    assert.deepEqual(scope(), [reviewRecord]);
+    const otherDir = path.join(repo, 'docs/tasks/other');
+    fs.mkdirSync(otherDir);
+    const other = path.join(otherDir, 'new.md');
+    fs.writeFileSync(other, '- [ ] New task\n');
+    const otherRecord = [other, 1, 'pending', '- [ ] New task'];
+    assert.deepEqual(scope(), [reviewRecord, otherRecord]);
+    fs.writeFileSync(other, '- [ ] New\0task\n');
+    assert.deepEqual(scope(), [reviewRecord, [other, 1, 'pending', '- [ ] New\0task']]);
+    fs.writeFileSync(other, '- [ ] New task\n');
+    fs.rmSync(reviewDir, { recursive: true });
+    assert.deepEqual(scope(), [otherRecord]);
+    fs.unlinkSync(other);
+    assert.deepEqual(scope(), []);
     console.log('PASS shared Markdown grammar: fences, indentation, state, line numbers, ordering, manifests, documentation examples');
 } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

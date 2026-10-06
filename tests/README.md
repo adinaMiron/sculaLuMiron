@@ -78,6 +78,11 @@ between consecutive items. Empty manifests are covered. These probes exercise
 real kernel enforcement with a fake agent; they do not demonstrate a sandbox
 escape or establish general process confinement.
 
+Both runners also reject unrelated checkbox transitions, appended tasks, new
+pending/completed checklists, deletions, and moves across task modules and review
+documents before staging, committing, or publishing. Explanatory notes and fenced
+examples outside the assigned document remain allowed.
+
 `teleprompter.js` covers Voice's Subtitrare chapter/draft import, read-only
 source handling, speech alignment (including revised interim results and
 repeated phrases), microphone lifecycle/error recovery, manual controls,
