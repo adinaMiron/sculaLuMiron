@@ -7,6 +7,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const source = path.resolve(__dirname, '..');
+const realGit = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-preflight-'));
 const repo = path.join(tmp, 'repo with "quotes" and \\slashes');
 const bin = path.join(tmp, 'bin');
@@ -41,6 +42,10 @@ fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({tool: require('node:pat
     write(path.join(bin, 'git'), '#!/usr/bin/env node\n' + recorder + `
 if (args.includes('--show-toplevel')) console.log(process.env.PROBE_REPO);
 else if (args[0] === 'status' || args[0] === 'ls-files') process.exit(0);
+else if (args[0] === 'check-ref-format') {
+    const result = require('node:child_process').spawnSync(${JSON.stringify(realGit)}, args);
+    process.exit(result.status ?? 99);
+}
 else { console.error('Git mutation sentinel'); process.exit(73); }
 `, 0o755);
     write(path.join(bin, 'codex'), '#!/usr/bin/env node\n' + recorder + `
@@ -62,7 +67,40 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
 }
 `, 0o755);
     const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
-        PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false' };
+        PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false',
+        BASE: 'main', TASK_BRANCH: 'feat/probe' };
+    const gitMutations = history => history.filter(c => c.tool === 'git' &&
+        !c.args.includes('--show-toplevel') && !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
+    const invalidBranches = [
+        ['main', 'main', /TASK_BRANCH must differ from BASE/],
+        ['release/stable', 'release/stable', /TASK_BRANCH must differ from BASE/],
+        ['release/stable', 'main', /TASK_BRANCH targets a protected branch/],
+        ['main', 'master', /TASK_BRANCH targets a protected branch/],
+    ];
+    for (const name of ['bad..name', 'bad name', '-option', 'HEAD', '@{-1}',
+        'refs/heads/main', 'refs/remotes/origin/main', 'topic:main', 'topic\nmain', 'topic.lock']) {
+        invalidBranches.push(['main', name, /TASK_BRANCH must be a literal short branch name/]);
+        invalidBranches.push([name, 'feat/probe', /BASE must be a literal short branch name/]);
+    }
+    for (const [base, branch, diagnostic] of invalidBranches) {
+        write(log, '');
+        const result = run('bash', [path.join(repo, 'scripts/implement-tasks.sh'), 'probe'],
+            { ...env, BASE: base, TASK_BRANCH: branch, PROBE_MODE: 'valid' });
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stderr, diagnostic);
+        assert.deepEqual(gitMutations(calls()), [], 'invalid branches must fail before fetch/switch/push or any Git mutation');
+        assert.equal(calls().filter(c => c.tool === 'codex').length, 0);
+    }
+    // Defaults and valid overrides must still reach branch preparation.
+    for (const config of [{ BASE: '', TASK_BRANCH: '' },
+        { BASE: 'release/stable', TASK_BRANCH: 'fix/probe-v1.2' }]) {
+        write(log, '');
+        const result = run('bash', [path.join(repo, 'scripts/implement-tasks.sh'), 'probe'],
+            { ...env, ...config, PROBE_MODE: 'valid' });
+        assert.equal(result.status, 73, result.stderr);
+        assert.deepEqual(gitMutations(calls()).map(c => c.args[0]), ['fetch']);
+    }
+    console.log(`PASS task branch validation: ${invalidBranches.length} invalid configurations before any Git mutation, defaults and valid overrides`);
     for (const runner of ['fix-review.sh', 'implement-tasks.sh']) {
         for (const mode of ['syntax', 'feature', 'config', 'silent', 'zero', 'late-error', 'valid']) {
             write(log, '');
@@ -71,8 +109,7 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
                 'Caller input must not become a preflight prompt.\n');
             const history = calls();
             assert.equal(history.filter(c => c.tool === 'codex').length, 1);
-            const mutations = history.filter(c => c.tool === 'git' &&
-                !c.args.includes('--show-toplevel') && !['status', 'ls-files'].includes(c.args[0]));
+            const mutations = gitMutations(history);
             if (mode === 'valid') {
                 assert.equal(result.status, 73, result.stderr);
                 assert.deepEqual(mutations.map(c => c.args[0]), ['fetch']);

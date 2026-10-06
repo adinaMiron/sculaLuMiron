@@ -128,7 +128,17 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   and valid zero-match completion. Permission cases ran as a non-root user;
   root runs explicitly skip those cases. No model session or remote was used.
 
-- [ ] [ID:protect-base-branch] **P1 — Task branch overrides can target the base branch.** `implement-tasks.sh:288-301,380-408` accepts `TASK_BRANCH=main` with `BASE=main`. No check rejects the equality; the wrapper can switch to main and later commit and push there. Validate branch names and reject base/protected branch destinations before any Git mutation. Add a fixture proving that the invalid configuration exits before fetch/switch/push.
+- [x] [ID:protect-base-branch] **P1 — Task branch overrides can target the base branch.** `implement-tasks.sh:288-301,380-408` accepts `TASK_BRANCH=main` with `BASE=main`. No check rejects the equality; the wrapper can switch to main and later commit and push there. Validate branch names and reject base/protected branch destinations before any Git mutation. Add a fixture proving that the invalid configuration exits before fetch/switch/push.
+
+  Both branch names now pass literal Git ref/branch validation before Codex
+  preflight or Git mutation. Task destinations equal to the configured base,
+  `main`, or `master` are rejected; qualified refs and revision shorthand are
+  rejected without expansion. Verified with `node tests/runner-cli-preflight.js`:
+  24 invalid configurations exit before any Git mutation or Codex invocation,
+  while defaults and valid overrides reach the fetch sentinel. The existing CLI
+  checks, `node tests/runner-control-plane.js` (124 offline cases), shell and
+  JavaScript syntax checks, and diff whitespace checks passed. No real remote
+  or model session was used.
 
 - [ ] [ID:exclusive-runner-lock] **P1 — Concurrent runners can race over one working tree and index.** Neither script takes a repository-wide lock before selecting a branch or invoking an agent. Clean-tree checks are snapshots, so two processes can pass them together, change branches underneath each other, or stage each other's output via `git add -A`. Hold a common exclusive lock for the full run, including branch preparation and publishing, and test concurrent task/review invocations without contacting a remote service.
 

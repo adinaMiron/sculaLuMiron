@@ -33,6 +33,9 @@ Optional environment variables:
   MAX_TASKS=50
   CREATE_PR=true
   FINAL_REVIEW=true
+
+BASE and TASK_BRANCH must be literal short branch names (no refs/ prefix).
+TASK_BRANCH must differ from BASE and cannot be main or master.
 TXT
 }
 
@@ -44,6 +47,16 @@ die() {
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
+}
+
+validate_branch_name() {
+    local label="$1" name="$2"
+    # Full-ref validation rejects revision shorthand such as @{-1}; --branch
+    # also rejects HEAD and option-like names. Never expand or normalize input.
+    [[ "$name" != refs/* ]] &&
+        git check-ref-format "refs/heads/$name" >/dev/null 2>&1 &&
+        git check-ref-format --branch "$name" >/dev/null 2>&1 ||
+        die "$label must be a literal short branch name: $name"
 }
 
 ensure_clean_worktree() {
@@ -287,6 +300,13 @@ done
 # REPO_ROOT is supplied by the sealed trusted launcher.
 cd "$REPO_ROOT"
 [[ -d "$TASKS_ROOT" ]] || die "Task module does not exist: $TASKS_ROOT"
+
+validate_branch_name BASE "$BASE"
+validate_branch_name TASK_BRANCH "$BRANCH"
+[[ "$BRANCH" != "$BASE" ]] || die "TASK_BRANCH must differ from BASE: $BASE"
+case "$BRANCH" in
+    main|master) die "TASK_BRANCH targets a protected branch: $BRANCH" ;;
+esac
 
 # ------------------------------------------------------------------------------
 # Hardened Codex execution boundary

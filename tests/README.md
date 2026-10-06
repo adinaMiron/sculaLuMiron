@@ -33,7 +33,10 @@ exits non-zero if anything failed.
 automation runners using disposable directories and fake Git/Codex executables.
 It verifies that rejected arguments, configuration, and feature flags stop the
 runner before any Git mutation, and that execution uses the same arguments as
-preflight. It needs Node, Bash, and Linux/Python 3 with file sealing, not
+preflight. Task branch fixtures use real Git name validation and reject invalid
+names, the configured base, and protected destinations (`main`, `master`) before
+fetch/switch/push; defaults and valid overrides still reach branch preparation.
+It needs Git, Node, Bash, and Linux/Python 3 with file sealing, not
 Playwright. From `tests/`, the same suite is available as
 `npm run test:runner-preflight`.
 

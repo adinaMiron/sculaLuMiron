@@ -374,6 +374,11 @@ feat/song-creation
 
 as the feature branch.
 
+`BASE` and `TASK_BRANCH` overrides must be literal short branch names, without
+a `refs/` prefix or revision shorthand. Before any Git mutation, the runner
+rejects task destinations equal to `BASE` or either protected name, `main` and
+`master`.
+
 The automation is expected to:
 
 1. validate task metadata and dependency relationships;
