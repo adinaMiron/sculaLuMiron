@@ -247,7 +247,7 @@ if mode == 'agent-failure':
             modes.push('input-start-unreadable', 'input-branch-unreadable', 'input-agent-unreadable');
             if (runner === 'implement-tasks.sh') modes.push('input-branch-unreadable-directory', 'input-agent-unreadable-directory');
         }
-        if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest');
+        if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'final-review-linked', 'evidence-manifest');
         if (runner === 'implement-tasks.sh') modes.push('metadata-valid', ...Object.keys(metadataFailures).map(name => `metadata-${name}`));
         for (const kind of ['task', 'review']) {
             for (const change of ['complete', 'reopen', 'append', 'new', 'new-complete', 'delete', 'move', 'delete-tree', 'notes']) {
@@ -354,13 +354,18 @@ if mode == 'agent-failure':
                 git(repo, 'switch', 'main');
             }
             if (mode === 'input-start-unreadable') fs.chmodSync(inputFile, 0);
+            const runRoot = mode === 'final-review-linked' ? repo + ' linked worktree' : repo;
+            if (runRoot !== repo) {
+                git(repo, 'worktree', 'add', '-b', 'fixture-linked', runRoot);
+                assert(fs.statSync(path.join(runRoot, '.git')).isFile());
+            }
             const log = path.join(tmp, `${runner}-${mode}.jsonl`);
             const marker = path.join(tmp, `${runner}-${mode}.compromised`);
             write(log, '');
             const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_LOG: log, PROBE_MODE: mode, PROBE_RUNNER: runner, PROBE_MARKER: marker,
                 CREATE_PR: 'true', FINAL_REVIEW: 'true', MAX_TASKS: '2', MAX_FINDINGS: '2' };
-            const runnerArgs = [path.join(repo, 'scripts', runner),
+            const runnerArgs = [path.join(runRoot, 'scripts', runner),
                 ...(runner === 'implement-tasks.sh' ? ['probe'] : [])];
             const result = mode === 'sealing-unavailable'
                 ? run('python3', ['-I', '-c', `
@@ -371,7 +376,7 @@ os.memfd_create = unavailable
 sys.argv = sys.argv[1:]
 runpy.run_path(sys.argv[0], run_name='__main__')
 `, path.join(repo, 'scripts/trusted-runner.py'), ...runnerArgs], repo, env)
-                : run('bash', runnerArgs, repo, env);
+                : run('bash', runnerArgs, runRoot, env);
             // Restore permissions only after the runner exits, for fixture cleanup.
             if (mode.includes('unreadable')) {
                 if (fs.existsSync(inputFile)) fs.chmodSync(inputFile, 0o644);
@@ -425,12 +430,25 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             }
             assert(history.some(c => c.tool === 'agent'), result.stdout + result.stderr);
             assert(!fs.existsSync(marker), 'Mutable wrapper code executed');
-            if (['normal', 'markdown', 'two-items', 'empty-manifest', 'metadata-valid'].includes(mode) || mode.endsWith('-notes')) {
+            if (['normal', 'markdown', 'two-items', 'empty-manifest', 'metadata-valid', 'final-review-linked'].includes(mode) || mode.endsWith('-notes')) {
                 assert.equal(result.status, 0, result.stdout + result.stderr);
-                assert.equal(git(repo, 'rev-list', '--count', 'HEAD'), mode === 'two-items' ? '3' : '2');
+                assert.equal(git(runRoot, 'rev-list', '--count', 'HEAD'), mode === 'two-items' ? '3' : '2');
                 assert.equal(history.filter(c => c.tool === 'evidence').length, mode === 'two-items' ? 2 : 1);
-                assert.equal(git(repo, 'status', '--porcelain'), '');
+                assert.equal(git(runRoot, 'status', '--porcelain'), '');
                 assert(history.some(c => c.tool === 'gh' && c.args[0] === 'pr' && c.args[1] === 'create'));
+                if (runner === 'implement-tasks.sh' && ['normal', 'final-review-linked'].includes(mode)) {
+                    const adminDir = git(runRoot, 'rev-parse', '--absolute-git-dir');
+                    const outputName = 'codex-task-final-review-probe.txt';
+                    assert.equal(fs.readFileSync(path.join(adminDir, outputName), 'utf8'), 'VERDICT: PASS\n');
+                    assert.equal(history.filter(c => c.tool === 'agent').length, 2);
+                    if (runRoot !== repo) {
+                        assert.notEqual(adminDir, path.join(repo, '.git'));
+                        assert(!fs.existsSync(path.join(repo, '.git', outputName)), 'Linked review used the main checkout log');
+                        assert.equal(git(repo, 'status', '--porcelain'), '');
+                    } else {
+                        assert(fs.statSync(path.join(repo, '.git')).isDirectory());
+                    }
+                }
             } else if (mode.startsWith('evidence-') || mode.startsWith('scope-')) {
                 assert.equal(result.status, 1, result.stdout + result.stderr);
                 assert.match(result.stderr, mode === 'evidence-manifest' || mode.startsWith('scope-') ? /Unassigned task\/review checkbox changes rejected/

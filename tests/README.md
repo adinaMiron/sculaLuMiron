@@ -80,6 +80,11 @@ Node, and Git, and never launch a model session or contact a remote. See
 `docs/tasks/agent-orchestration/04-decisions.md` for the startup trust boundary
 and maintenance procedure.
 
+Final-review output checks cover an ordinary checkout and a linked worktree
+(both with spaces in their paths). They verify that the review log is saved in
+the worktree's Git administrative directory, stays out of the working tree,
+and permits the successful run to reach the fake PR adapter.
+
 Input regressions cover missing/wrong-type/invalid input on an existing target
 branch, deletion during fast-forward or agent work, unreadable input at startup
 and after branch selection/agent work, and genuine zero-match completion. Failed

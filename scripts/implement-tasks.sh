@@ -557,7 +557,9 @@ echo "All requirements for '$MODULE' are complete."
 if [[ "$FINAL_REVIEW" == "true" ]]; then
     reviewer_head_before="$(git rev-parse HEAD)"
     reviewer_branch_before="$(git branch --show-current)"
-    REVIEW_OUTPUT="$REPO_ROOT/.git/codex-task-final-review-$MODULE.txt"
+    # Linked worktrees have a .git file; keep each review in its own Git directory.
+    REVIEW_GIT_DIR="$(git rev-parse --absolute-git-dir)" || die "Cannot resolve final review Git directory"
+    REVIEW_OUTPUT="$REVIEW_GIT_DIR/codex-task-final-review-$MODULE.txt"
 
     review_prompt="$(cat <<PROMPT
 You are the FINAL REVIEWER for the completed module: $MODULE

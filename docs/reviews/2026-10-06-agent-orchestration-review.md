@@ -155,7 +155,17 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   remote service contacted. Lock lifetime and cooperative scope are documented
   in `docs/tasks/agent-orchestration/04-decisions.md`.
 
-- [ ] [ID:final-review-worktree-path] **P2 — Final review output assumes `.git` is a directory.** `implement-tasks.sh:585,619` writes to `$REPO_ROOT/.git/codex-task-final-review-$MODULE.txt`. In a linked Git worktree, `.git` is a file, so `tee` fails and final review cannot complete after task commits have already been pushed. Resolve a suitable Git administrative path or use trusted private output storage; cover an ordinary checkout and linked worktree.
+- [x] [ID:final-review-worktree-path] **P2 — Final review output assumes `.git` is a directory.** `implement-tasks.sh:585,619` writes to `$REPO_ROOT/.git/codex-task-final-review-$MODULE.txt`. In a linked Git worktree, `.git` is a file, so `tee` fails and final review cannot complete after task commits have already been pushed. Resolve a suitable Git administrative path or use trusted private output storage; cover an ordinary checkout and linked worktree.
+
+  Final review now resolves `git rev-parse --absolute-git-dir`, keeping the log
+  in each worktree's own administrative directory and stopping if resolution
+  fails. The new linked-worktree regression reproduced `tee: Not a directory`
+  against the previous runner. Verified with `node tests/runner-control-plane.js`
+  (125 offline cases), including ordinary and linked checkouts with spaces in
+  their paths, saved verdicts, clean working trees, separate log locations, and
+  successful fake PR creation. All 30 locking probes, CLI preflight, Markdown
+  parser, shell/JavaScript syntax, and diff whitespace checks passed. No remote
+  service or model session was used.
 
 - [ ] [ID:final-verdict-contract] **P2 — Final review accepts a PASS line that is not the final verdict.** `implement-tasks.sh:610-630` requests a verdict at the very end, but accepts any exact `VERDICT: PASS` line anywhere in captured stdout unless an exact FAIL line also appears. An answer quoting PASS as an example and ending without a valid verdict passes this check. Capture the final assistant message through the supported CLI output mechanism and validate one unambiguous final verdict. Test missing, contradictory, quoted, and non-final verdicts.
 
