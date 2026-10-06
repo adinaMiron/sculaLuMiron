@@ -11,12 +11,15 @@ Scope: `AGENTS.md`, `docs/reviews/README.md`, `docs/tasks/README.md`,
 
 The documentation broadly agrees on checkbox authoring, one assigned item per
 invocation, verified completion, and wrapper-owned Git history. The runners do
-not yet justify the requested safety assurance. Both fail to launch the installed
-Codex CLI, and their validation and isolation have the defects below.
+not yet justify the requested safety assurance. At initial review, both failed
+to launch the installed Codex CLI; validation and isolation findings and their
+current correction status are recorded below.
 
 This is a review, not a security certification. Unchecked findings have not been
-corrected; only the README wording defect was fixed and inspected. No runner was executed end to end, no model session
-was launched, and no commit, push, branch change, or PR was made during this review.
+corrected. At initial review, only the README wording defect was fixed and
+inspected; subsequent fixes are recorded below. No runner was executed end to
+end, no model session was launched, and no commit, push, branch change, or PR was
+made during this review.
 
 The stricter provider-only communication and isolation requirements requested in
 this review are recorded separately in
@@ -26,7 +29,16 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
 
 ## Findings
 
-- [ ] [ID:runner-cli-preflight] **P1 — Both runners use an unsupported CLI argument position and discover this after Git side effects.** `fix-review.sh:86-111` and `implement-tasks.sh:335-360` construct `codex exec ... --ask-for-approval never`. With installed `codex-cli 0.160.0`, `codex exec --ask-for-approval never --help` exits 2 with `unexpected argument '--ask-for-approval'`. The approval option belongs before `exec`, or can be supplied through supported configuration. Validate the complete supported CLI/configuration contract before fetching, switching branches, fast-forwarding, or pushing; fixing only this flag is not proof that all feature overrides work.
+- [x] [ID:runner-cli-preflight] **P1 — Both runners use an unsupported CLI argument position and discover this after Git side effects.** `fix-review.sh:86-111` and `implement-tasks.sh:335-360` construct `codex exec ... --ask-for-approval never`. With installed `codex-cli 0.160.0`, `codex exec --ask-for-approval never --help` exits 2 with `unexpected argument '--ask-for-approval'`. The approval option belongs before `exec`, or can be supplied through supported configuration. Validate the complete supported CLI/configuration contract before fetching, switching branches, fast-forwarding, or pushing; fixing only this flag is not proof that all feature overrides work.
+
+  Fixed using shared `scripts/codex-runner.sh`: approval precedes `exec`, strict
+  configuration validation is enabled, and both runners probe the exact launch
+  arguments with empty stdin before Git mutations. Only the expected exit 1 and
+  terminal empty-prompt diagnostic pass. Verified with
+  `node tests/runner-cli-preflight.js --real-codex` against `codex-cli 0.160.0`,
+  including unsupported arguments, unknown keys/features, invalid values, all
+  seven effective feature overrides, and both runners' Git ordering. Shell syntax
+  checks passed. No model session or real Git mutation was used for verification.
 
 - [ ] [ID:protect-wrapper-code] **P1 — Agent-writable orchestration files cross into the trusted wrapper boundary.** Both runners allow workspace writes, including `scripts/`, and later stage everything with `git add -A` (`fix-review.sh:274`, `implement-tasks.sh:552`). They neither protect nor reject changes to their own executable scripts. Agent-controlled wrapper edits can be committed and executed with host privileges on subsequent invocations; executing a shell script from a mutable file also leaves its unread contents exposed during the current run. Run orchestration from an immutable trusted location and reject agent changes to the control plane before any host-side execution or publication. Verify attempted script replacement in an isolated fixture.
 

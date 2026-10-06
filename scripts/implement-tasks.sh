@@ -329,36 +329,8 @@ cd "$REPO_ROOT"
 # IMPORTANT: the Codex CLI itself still needs to contact its configured model
 # provider unless you intentionally run it with a fully local model/provider.
 
-TOML_REPO_ROOT="${REPO_ROOT//\\/\\\\}"
-TOML_REPO_ROOT="${TOML_REPO_ROOT//\"/\\\"}"
-
-CODEX_SAFE_ARGS=(
-    exec
-    --ephemeral
-    --ignore-user-config
-    --ignore-rules
-    --sandbox workspace-write
-    --ask-for-approval never
-    -c 'sandbox_workspace_write.network_access=false'
-    -c 'web_search="disabled"'
-    -c 'check_for_update_on_startup=false'
-    -c 'analytics.enabled=false'
-    -c 'shell_environment_policy.inherit="core"'
-    -c 'shell_environment_policy.ignore_default_excludes=false'
-    -c 'allow_login_shell=false'
-    -c "projects.\"$TOML_REPO_ROOT\".trust_level=\"untrusted\""
-    --disable apps
-    --disable plugins
-    --disable remote_plugin
-    --disable multi_agent
-    --disable hooks
-    --disable goals
-    --disable memories
-)
-
-run_codex_safely() {
-    codex "${CODEX_SAFE_ARGS[@]}" "$@"
-}
+source "$SCRIPT_DIR/codex-runner.sh"
+preflight_codex
 
 validate_task_graph
 
