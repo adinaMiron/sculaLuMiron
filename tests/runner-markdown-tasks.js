@@ -56,6 +56,76 @@ try {
     const missing = spawnSync('python3', ['-I', parser, 'count', path.join(tmp, 'missing.md')], { encoding: 'utf8' });
     assert.equal(missing.status, 1);
     assert.equal(missing.stdout, '');
+    function rejectsInput(file) {
+        for (const action of ['count', 'first', 'manifest']) {
+            const result = spawnSync('python3', ['-I', parser, action, file], { encoding: 'utf8', timeout: 5000 });
+            assert.ifError(result.error);
+            assert.equal(result.status, 1, result.stdout + result.stderr);
+            assert.equal(result.stdout, '', 'Read failures must not emit partial results');
+            assert.match(result.stderr, /Cannot parse Markdown tasks/);
+        }
+    }
+    rejectsInput(path.join(tmp, 'missing-module'));
+    const broken = path.join(moduleDir, 'broken.md');
+    fs.symlinkSync(path.join(tmp, 'missing.md'), broken);
+    rejectsInput(broken);
+    rejectsInput(moduleDir);
+    fs.unlinkSync(broken);
+    const fifo = path.join(moduleDir, 'pipe.md');
+    assert.equal(spawnSync('mkfifo', [fifo]).status, 0);
+    rejectsInput(fifo);
+    rejectsInput(moduleDir);
+    fs.unlinkSync(fifo);
+    // Delete a discovered file before record reads. It must not be silently
+    // filtered out by an is_file() check and reported as an empty module.
+    const disappearingDir = path.join(tmp, 'disappearing');
+    fs.mkdirSync(disappearingDir);
+    const disappearing = path.join(disappearingDir, 'task.md');
+    fs.writeFileSync(disappearing, '- [ ] Pending\n');
+    const deleted = spawnSync('python3', ['-I', '-c', `
+import os, pathlib, runpy, sys
+original = os.scandir
+directory, document = sys.argv[2:4]
+class Scan:
+    def __init__(self, path):
+        self.path, self.entries = path, original(path)
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        self.entries.close()
+    def __iter__(self):
+        return self
+    def __next__(self):
+        try:
+            return next(self.entries)
+        except StopIteration:
+            if str(self.path) == directory:
+                pathlib.Path(document).unlink(missing_ok=True)
+            raise
+os.scandir = Scan
+sys.argv = [sys.argv[1], 'count', directory]
+runpy.run_path(sys.argv[0], run_name='__main__')
+`, parser, disappearingDir, disappearing], { encoding: 'utf8' });
+    assert.ifError(deleted.error);
+    assert.equal(deleted.status, 1, deleted.stdout + deleted.stderr);
+    assert.equal(deleted.stdout, '');
+    assert.match(deleted.stderr, /Cannot parse Markdown tasks/);
+    assert.equal(parse('count', disappearingDir), '0\n', 'An actually empty directory is valid');
+    if (process.getuid() !== 0) {
+        fs.chmodSync(second, 0);
+        try {
+            rejectsInput(second);
+            rejectsInput(moduleDir);
+        } finally {
+            fs.chmodSync(second, 0o644);
+        }
+        fs.chmodSync(path.dirname(second), 0);
+        try {
+            rejectsInput(moduleDir);
+        } finally {
+            fs.chmodSync(path.dirname(second), 0o755);
+        }
+    }
     // Scope includes both live documentation trees, even when a tree/module
     // did not exist at snapshot time. Unrelated Markdown stays outside it.
     const repo = path.join(tmp, 'repo');
@@ -85,7 +155,8 @@ try {
     assert.deepEqual(scope(), [otherRecord]);
     fs.unlinkSync(other);
     assert.deepEqual(scope(), []);
-    console.log('PASS shared Markdown grammar: fences, indentation, state, line numbers, ordering, manifests, documentation examples');
+    if (process.getuid() === 0) console.log('SKIP chmod-based unreadable input cases: root bypasses file permissions');
+    console.log('PASS shared Markdown grammar and input errors: fences, indentation, state, line numbers, ordering, manifests, deletion, unreadable inputs, documentation examples');
 } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
 }

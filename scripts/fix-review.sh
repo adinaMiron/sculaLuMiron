@@ -45,7 +45,14 @@ ensure_clean_worktree() {
 }
 
 count_unchecked() {
+    [[ -f "$REVIEW" ]] || die "Review file not found: $REVIEW"
     markdown_tasks count "$REVIEW"
+}
+
+validate_review_input() {
+    count_unchecked >/dev/null || die "Cannot read review file: $REVIEW"
+    git ls-files --error-unmatch "$REVIEW" >/dev/null 2>&1 \
+        || die "Review file is not tracked by Git: $REVIEW"
 }
 
 # ==============================================================================
@@ -91,9 +98,7 @@ preflight_codex
 # Validate starting state
 # ==============================================================================
 
-[[ -f "$REVIEW" ]] || die "Review file not found: $REVIEW"
-git ls-files --error-unmatch "$REVIEW" >/dev/null 2>&1 \
-    || die "Review file is not tracked by Git: $REVIEW"
+validate_review_input
 
 ensure_clean_worktree "before branch preparation"
 
@@ -116,7 +121,7 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
         if git merge-base --is-ancestor "$BRANCH" "origin/$BRANCH"; then
             git merge --ff-only "origin/$BRANCH"
         elif git merge-base --is-ancestor "origin/$BRANCH" "$BRANCH"; then
-            git push -u origin "$BRANCH"
+            : # Publish only after selected-branch inputs have been validated.
         else
             die "$BRANCH and origin/$BRANCH have diverged; resolve manually"
         fi
@@ -127,6 +132,7 @@ else
     git switch -c "$BRANCH" "origin/$BASE"
 fi
 
+validate_review_input
 ensure_clean_worktree "before review processing"
 [[ "$(git branch --show-current)" == "$BRANCH" ]] || die "Failed to activate $BRANCH"
 

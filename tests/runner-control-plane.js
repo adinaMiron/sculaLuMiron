@@ -55,6 +55,12 @@ const args = process.argv.slice(2);
 fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({tool: 'git', args}) + '\\n');
 if (['fetch', 'push'].includes(args[0])) process.exit(0);
 const r = require('node:child_process').spawnSync(${JSON.stringify(realGit)}, args, {stdio: 'inherit'});
+if (r.status === 0 && args[0] === 'switch' && process.env.PROBE_MODE.startsWith('input-branch-unreadable')) {
+    const task = process.env.PROBE_RUNNER === 'implement-tasks.sh';
+    const target = process.env.PROBE_MODE.endsWith('-directory') ? 'docs/tasks/probe/nested'
+        : task ? 'docs/tasks/probe/01-requirements.md' : 'docs/reviews/2026-10-04-solar-calcule-review.md';
+    fs.chmodSync(target, 0);
+}
 process.exit(r.status ?? 99);
 `, 0o755);
     write(path.join(bin, 'gh'), `#!/usr/bin/env node
@@ -196,6 +202,12 @@ else:
         other.write_text(other.read_text().replace('Other', 'Forged'))
     elif mode == 'evidence-holder-exit':
         os.kill(int(evidence[0].split('/')[2]), signal.SIGKILL)
+    elif mode == 'input-agent-delete':
+        doc.unlink()
+    elif mode == 'input-agent-unreadable':
+        doc.chmod(0)
+    elif mode == 'input-agent-unreadable-directory':
+        (root / 'docs/tasks/probe/nested').chmod(0)
     elif mode.startswith('scope-'):
         _, kind, change = mode.split('-', 2)
         directory = root / ('docs/tasks/other-module' if kind == 'task' else 'docs/reviews/other-review')
@@ -229,6 +241,12 @@ if mode == 'agent-failure':
     for (const runner of ['fix-review.sh', 'implement-tasks.sh']) {
         const modes = ['normal', 'markdown', 'two-items', 'empty-manifest', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
             'symlink', 'directory-symlink', 'ignored-addition', 'workflow', 'agent-failure'];
+        modes.push('input-branch-missing', 'input-ff-missing', 'input-branch-wrong-type', 'input-branch-invalid-utf8', 'input-agent-delete', 'input-zero');
+        // chmod(000) cannot deny reads to root; do not claim that coverage there.
+        if (process.getuid() !== 0) {
+            modes.push('input-start-unreadable', 'input-branch-unreadable', 'input-agent-unreadable');
+            if (runner === 'implement-tasks.sh') modes.push('input-branch-unreadable-directory', 'input-agent-unreadable-directory');
+        }
         if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest');
         if (runner === 'implement-tasks.sh') modes.push('metadata-valid', ...Object.keys(metadataFailures).map(name => `metadata-${name}`));
         for (const kind of ['task', 'review']) {
@@ -249,12 +267,16 @@ if mode == 'agent-failure':
             }
             write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');
             write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), '- [ ] Probe finding.\n');
+            const input = path.join(repo, runner === 'implement-tasks.sh' ? 'docs/tasks/probe' : 'docs/reviews/2026-10-04-solar-calcule-review.md');
+            const inputFile = runner === 'implement-tasks.sh' ? path.join(input, '01-requirements.md') : input;
+            if (mode.endsWith('unreadable-directory')) write(path.join(input, 'nested/hidden.md'), '- [x] Completed nested task.\n');
             if (mode !== 'empty-manifest') write(path.join(repo, 'docs/tasks/probe/02-other.md'), '- [x] [ID:other] Other task.\n');
             if (mode === 'empty-manifest') {
                 // The unselected tree may be absent; an empty sealed manifest
                 // must still validate the assigned item successfully.
                 fs.rmSync(path.join(repo, runner === 'implement-tasks.sh' ? 'docs/reviews' : 'docs/tasks'), { recursive: true });
             }
+            if (mode === 'input-zero') fs.writeFileSync(inputFile, '~~~md\n- [ ] Example\n~~~\n- [x] Done.\n');
             if (mode.startsWith('scope-')) {
                 const directory = mode.startsWith('scope-task-') ? 'docs/tasks/other-module' : 'docs/reviews/other-review';
                 write(path.join(repo, directory, 'checklist.md'), '- [ ] Pending unrelated item.\n- [x] Completed unrelated item.\n');
@@ -312,6 +334,26 @@ if mode == 'agent-failure':
                 git(repo, 'commit', '-m', 'different wrapper');
                 git(repo, 'switch', 'main');
             }
+            const inputBranch = mode.startsWith('input-branch-') || mode === 'input-ff-missing';
+            if (inputBranch) {
+                const branch = runner === 'implement-tasks.sh' ? 'feat/probe' : 'fix/review-2026-10-04';
+                git(repo, 'branch', branch);
+                git(repo, 'switch', '-c', 'fixture-input-change');
+                if (mode.endsWith('-missing') || mode.endsWith('-wrong-type')) fs.rmSync(input, { recursive: true });
+                if (mode.endsWith('-wrong-type')) {
+                    if (runner === 'implement-tasks.sh') write(input, '- [x] Wrong type.\n');
+                    else write(path.join(input, 'nested.md'), '- [x] Wrong type.\n');
+                }
+                if (mode.endsWith('-invalid-utf8')) fs.writeFileSync(inputFile, Buffer.from([0xff]));
+                fs.appendFileSync(path.join(repo, 'innocent.txt'), 'branch change\n');
+                git(repo, 'add', '-A');
+                git(repo, 'commit', '-m', 'selected branch inputs');
+                const changed = git(repo, 'rev-parse', 'HEAD');
+                git(repo, 'update-ref', `refs/heads/${branch}`, mode === 'input-ff-missing' ? initial : changed);
+                git(repo, 'update-ref', `refs/remotes/origin/${branch}`, mode === 'input-ff-missing' ? changed : initial);
+                git(repo, 'switch', 'main');
+            }
+            if (mode === 'input-start-unreadable') fs.chmodSync(inputFile, 0);
             const log = path.join(tmp, `${runner}-${mode}.jsonl`);
             const marker = path.join(tmp, `${runner}-${mode}.compromised`);
             write(log, '');
@@ -330,7 +372,33 @@ sys.argv = sys.argv[1:]
 runpy.run_path(sys.argv[0], run_name='__main__')
 `, path.join(repo, 'scripts/trusted-runner.py'), ...runnerArgs], repo, env)
                 : run('bash', runnerArgs, repo, env);
+            // Restore permissions only after the runner exits, for fixture cleanup.
+            if (mode.includes('unreadable')) {
+                if (fs.existsSync(inputFile)) fs.chmodSync(inputFile, 0o644);
+                if (mode.endsWith('-directory')) fs.chmodSync(path.join(input, 'nested'), 0o755);
+            }
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+            if (mode.startsWith('input-')) {
+                if (mode === 'input-zero') {
+                    assert.equal(result.status, 0, result.stdout + result.stderr);
+                    assert.equal(history.filter(c => c.tool === 'agent').length, runner === 'implement-tasks.sh' ? 1 : 0);
+                    assert(history.some(c => c.tool === 'git' && c.args[0] === 'push'));
+                } else {
+                    assert.equal(result.status, 1, result.stdout + result.stderr);
+                    // Git may itself report unreadable tracked input as dirty
+                    // immediately after switching; that guard also fails closed.
+                    assert.match(result.stderr, /Cannot parse Markdown tasks|Review file not found|Task module does not exist|document changed unexpectedly|Commit or stash them before continuing/);
+                    assert(!history.some(c => c.tool === 'gh' || (c.tool === 'git' && ['add', 'commit', 'push'].includes(c.args[0]))), result.stdout);
+                    assert.equal(history.filter(c => c.tool === 'agent').length, mode.startsWith('input-agent-') ? 1 : 0);
+                    if (mode === 'input-start-unreadable') assert(!history.some(c => c.tool === 'git' && ['fetch', 'switch', 'merge'].includes(c.args[0])));
+                    if (mode === 'input-ff-missing') assert(history.some(c => c.tool === 'git' && c.args[0] === 'merge'));
+                    assert.equal(git(repo, 'diff', '--cached', '--name-only'), '');
+                    assert(!result.stdout.includes('All review findings are complete.'));
+                    assert(!result.stdout.includes("All requirements for 'probe' are complete."));
+                }
+                count++;
+                continue;
+            }
             if (mode.startsWith('graph-') || metadataFailure) {
                 assert.equal(result.status, 1, result.stdout + result.stderr);
                 assert.match(result.stderr, metadataFailure ? metadataFailure[1]
@@ -382,7 +450,8 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             count++;
         }
     }
-    console.log(`PASS ${count} isolated runner cases: kernel seals, validation evidence, repository checkbox scope, control-plane rejection, publication gates, normal completion`);
+    if (process.getuid() === 0) console.log('SKIP chmod-based unreadable input cases: root bypasses file permissions');
+    console.log(`PASS ${count} isolated runner cases: kernel seals, validation evidence, repository checkbox scope, control-plane rejection, input errors, publication gates, normal completion`);
 } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
 }

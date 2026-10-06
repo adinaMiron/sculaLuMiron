@@ -8,11 +8,27 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 
 
 TASK = re.compile(r"^ {0,3}- \[([ xX])\](?:[ \t]+.*)?$")
 FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
+
+
+def markdown_files(directory):
+    # rglob and os.walk's default handling can hide enumeration/stat errors.
+    # Inspect every entry explicitly and propagate failures before emitting output.
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            mode = entry.stat().st_mode
+            if stat.S_ISDIR(mode):
+                if not entry.is_symlink():
+                    yield from markdown_files(Path(entry.path))
+            elif entry.name.endswith(".md"):
+                if not stat.S_ISREG(mode):
+                    raise OSError(f"Not a regular Markdown file: {entry.path}")
+                yield Path(entry.path)
 
 
 def tasks(file):
@@ -39,31 +55,34 @@ def main():
     parser.add_argument("path", type=Path)
     parser.add_argument("--exclude", type=Path)
     args = parser.parse_args()
+    mode = args.path.stat().st_mode
     if args.action == "scope-manifest":
         # Inventory the live trees, not just tracked files or the chosen module:
         # additions, deletions and moves must change the resulting evidence.
-        def read_error(error):
-            raise error
-
         files = []
         for name in ("docs/tasks", "docs/reviews"):
             directory = args.path / name
-            if not directory.exists():
+            try:
+                directory_mode = directory.stat().st_mode
+            except FileNotFoundError:
+                if directory.is_symlink():
+                    raise
                 continue
-            for parent, _, names in os.walk(directory, onerror=read_error):
-                files.extend(Path(parent) / name for name in names if name.endswith(".md"))
+            if not stat.S_ISDIR(directory_mode):
+                raise NotADirectoryError(directory)
+            files.extend(markdown_files(directory))
         files.sort()
-    elif args.path.is_dir():
-        files = sorted(args.path.rglob("*.md"))
-    else:
+    elif stat.S_ISDIR(mode):
+        files = sorted(markdown_files(args.path))
+    elif stat.S_ISREG(mode):
         files = [args.path]
+    else:
+        raise OSError(f"Not a regular Markdown file or directory: {args.path}")
     # Finish all reads before emitting evidence, so failures cannot look like an
     # empty or partially built manifest to a caller.
     records = [(file, number, state, line) for file in files
-               if file != args.exclude and file.is_file()
+               if file != args.exclude
                for number, state, line in tasks(file)]
-    if not args.path.exists():
-        raise FileNotFoundError(args.path)
     if args.action == "scope-manifest":
         # Encode paths/text without literal control characters so shell capture
         # cannot discard NULs or confuse embedded tabs/newlines with separators.

@@ -78,6 +78,7 @@ extract_task_text() {
 }
 
 count_unchecked() {
+    [[ -d "$TASKS_ROOT" ]] || die "Task module does not exist: $TASKS_ROOT"
     markdown_tasks count "$TASKS_ROOT"
 }
 
@@ -114,6 +115,7 @@ visit_dependency_node() {
 }
 
 validate_task_graph() {
+    [[ -d "$TASKS_ROOT" ]] || die "Task module does not exist: $TASKS_ROOT"
     local file line line_number state id deps dep location
     local deps_pattern='\[DEPENDS:[[:space:]]*[A-Za-z0-9._-]+[[:space:]]*(,[[:space:]]*[A-Za-z0-9._-]+[[:space:]]*)*\]'
     local -a dep_array=()
@@ -338,7 +340,7 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
         if git merge-base --is-ancestor "$BRANCH" "origin/$BRANCH"; then
             git merge --ff-only "origin/$BRANCH"
         elif git merge-base --is-ancestor "origin/$BRANCH" "$BRANCH"; then
-            git push -u origin "$BRANCH"
+            : # Publish only after selected-branch inputs have been validated.
         else
             die "$BRANCH and origin/$BRANCH have diverged; resolve manually"
         fi
@@ -349,6 +351,7 @@ else
     git switch -c "$BRANCH" "origin/$BASE"
 fi
 
+validate_task_graph
 ensure_clean_worktree "before task processing"
 [[ "$(git branch --show-current)" == "$BRANCH" ]] || die "Failed to activate $BRANCH"
 

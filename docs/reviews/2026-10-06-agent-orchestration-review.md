@@ -112,7 +112,21 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   Markdown parser, CLI preflight, shell/JavaScript syntax, `node tests/verify.js`,
   and diff whitespace checks passed.
 
-- [ ] [ID:input-errors-fail-closed] **P1 — Input read failures can be interpreted as completion.** `fix-review.sh:41` suppresses every grep error with `|| true`; `implement-tasks.sh:76-78` suppresses grep errors and does not propagate failure from the `find` process substitution. In addition, inputs are checked before branch switching rather than reliably revalidated on the selected branch. A missing/unreadable review file or missing module directory can yield an empty/zero count, leading to completion and push/PR logic. Distinguish zero matches from errors and validate selected-branch inputs before processing. Test deletion, unreadable input, and a module absent on an existing target branch.
+- [x] [ID:input-errors-fail-closed] **P1 — Input read failures can be interpreted as completion.** `fix-review.sh:41` suppresses every grep error with `|| true`; `implement-tasks.sh:76-78` suppresses grep errors and does not propagate failure from the `find` process substitution. In addition, inputs are checked before branch switching rather than reliably revalidated on the selected branch. A missing/unreadable review file or missing module directory can yield an empty/zero count, leading to completion and push/PR logic. Distinguish zero matches from errors and validate selected-branch inputs before processing. Test deletion, unreadable input, and a module absent on an existing target branch.
+
+  The shared parser now propagates enumeration/stat/read failures and rejects
+  non-regular inputs before emitting any count or manifest. Both runners check
+  input types and revalidate selected-branch inputs after switching/fast-forward;
+  branch preparation no longer pushes an unchecked local-ahead branch. An
+  unreadable nested module reproduced exit 0/count 0 with the prior parser and
+  now fails with no count. Verified with `node tests/runner-control-plane.js`
+  (124 offline cases, including 20 new input cases),
+  `node tests/runner-markdown-tasks.js`, `node tests/runner-cli-preflight.js`,
+  `node tests/verify.js`, shell/JavaScript syntax and diff whitespace checks.
+  Cases cover deletion after discovery and agent work, actual permission denial,
+  absent/wrong-type/invalid inputs on existing branches, fast-forward deletion,
+  and valid zero-match completion. Permission cases ran as a non-root user;
+  root runs explicitly skip those cases. No model session or remote was used.
 
 - [ ] [ID:protect-base-branch] **P1 — Task branch overrides can target the base branch.** `implement-tasks.sh:288-301,380-408` accepts `TASK_BRANCH=main` with `BASE=main`. No check rejects the equality; the wrapper can switch to main and later commit and push there. Validate branch names and reject base/protected branch destinations before any Git mutation. Add a fixture proving that the invalid configuration exits before fetch/switch/push.
 

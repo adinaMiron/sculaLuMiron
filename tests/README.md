@@ -49,7 +49,9 @@ checks establish CLI compatibility, not operating-system confinement.
 
 `node tests/runner-markdown-tasks.js` checks the shared automation task grammar,
 including backtick/tilde fences, indentation, line numbers, completed states,
-directory ordering, manifests, and documentation examples. Run it from `tests/`
+directory ordering, manifests, and documentation examples. Input cases cover
+missing paths, deletion after discovery, broken links, non-regular files,
+unreadable files/directories, and valid empty results. Run it from `tests/`
 with `npm run test:runner-markdown`.
 
 `node tests/runner-control-plane.js` exercises both runners in disposable local
@@ -64,6 +66,13 @@ change and reach the fake publication adapter. Run it from `tests/` with
 Node, and Git, and never launch a model session or contact a remote. See
 `docs/tasks/agent-orchestration/04-decisions.md` for the startup trust boundary
 and maintenance procedure.
+
+Input regressions cover missing/wrong-type/invalid input on an existing target
+branch, deletion during fast-forward or agent work, unreadable input at startup
+and after branch selection/agent work, and genuine zero-match completion. Failed
+reads must block completion and staging/push/PR operations. Permission cases use
+real `chmod(000)` and explicitly skip when run as root, which bypasses those
+permissions.
 
 It also checks that both runners select real indented tasks after fenced
 examples, that example edits do not enter other-document manifests, and that
