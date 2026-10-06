@@ -52,7 +52,7 @@ count_unchecked() {
 # Requirements
 # ==============================================================================
 
-for cmd in git grep sed cut cmp mktemp codex tr; do
+for cmd in git grep sed cut cmp codex tr; do
     require_command "$cmd"
 done
 
@@ -134,9 +134,7 @@ if ! git merge-base --is-ancestor "origin/$BASE" "$BRANCH"; then
     die "$BRANCH does not contain current origin/$BASE; rebase manually before continuing"
 fi
 
-TMP_DIR="$(mktemp -d)"
-cleanup() { rm -rf "$TMP_DIR"; }
-trap cleanup EXIT
+trap release_validation_evidence EXIT
 
 # ==============================================================================
 # Fix one finding at a time
@@ -167,8 +165,7 @@ while (( i < MAX )); do
 
     ensure_clean_worktree "before Codex finding $i"
 
-    cp "$REVIEW" "$TMP_DIR/review-expected.md"
-    sed -i "${target_line}s/^- \[ \]/- [x]/" "$TMP_DIR/review-expected.md"
+    seal_validation_evidence <(sed "${target_line}s/^- \[ \]/- [x]/" "$REVIEW")
 
     head_before="$(git rev-parse HEAD)"
     branch_before="$(git branch --show-current)"
@@ -231,7 +228,7 @@ PROMPT
     [[ "$(git rev-parse HEAD)" == "$head_before" ]] || die "Codex changed Git history"
     git diff --cached --quiet || die "Codex staged files"
 
-    if ! cmp -s "$REVIEW" "$TMP_DIR/review-expected.md"; then
+    if ! cmp -s "$REVIEW" "${EVIDENCE_PATHS[0]}"; then
         git diff -- "$REVIEW" || true
         die "Review document changed unexpectedly; only the assigned [ ] -> [x] transition is allowed"
     fi
@@ -239,6 +236,8 @@ PROMPT
     after="$(count_unchecked)"
     expected=$((before - 1))
     (( after == expected )) || die "Unchecked count changed unexpectedly: $before -> $after (expected $expected)"
+
+    release_validation_evidence || die "Validation evidence holder failed"
 
     git diff --check || die "git diff --check failed"
 

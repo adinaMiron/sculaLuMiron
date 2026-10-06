@@ -57,7 +57,20 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   `docs/tasks/agent-orchestration/04-decisions.md` for maintenance and remaining
   isolation boundaries.
 
-- [ ] [ID:protect-validation-state] **P1 — Expected checkbox state is stored in temporary storage writable by the agent.** `fix-review.sh:161,194-195,253` and `implement-tasks.sh:410,446-448,524-531` place expected documents/manifests in ordinary `mktemp -d` directories, then compare against them after the agent returns. The default workspace-write sandbox includes temporary directories, and the parent and child run as the same user; directory mode 0700 does not separate them. Isolate validation evidence from agent writes and verify that attempts to modify expected documents/manifests fail. This is a trust-boundary defect identified by inspection, not a demonstrated sandbox escape.
+- [x] [ID:protect-validation-state] **P1 — Expected checkbox state is stored in temporary storage writable by the agent.** `fix-review.sh:161,194-195,253` and `implement-tasks.sh:410,446-448,524-531` place expected documents/manifests in ordinary `mktemp -d` directories, then compare against them after the agent returns. The default workspace-write sandbox includes temporary directories, and the parent and child run as the same user; directory mode 0700 does not separate them. Isolate validation evidence from agent writes and verify that attempts to modify expected documents/manifests fail. This is a trust-boundary defect identified by inspection, not a demonstrated sandbox escape.
+
+  Fixed by sealing each expected document and the task runner's other-checkbox
+  manifest in anonymous kernel files before agent invocation. A holder running
+  from the sealed checker retains them until validation finishes; comparisons
+  use its `/proc` descriptors, and the actual manifest is streamed without
+  temporary storage. Missing evidence or holder failure blocks publication.
+  Verified with all 39 cases in `node tests/runner-control-plane.js`, including
+  same-UID chmod/write/truncate/grow/mmap/seal/replacement attempts against actual
+  evidence, document/manifest tampering, holder termination, unavailable evidence
+  sealing, empty manifests, cleanup, and consecutive items. CLI preflight, shell
+  syntax, JavaScript syntax, and diff whitespace checks passed. These offline
+  fixtures use fake agents/remotes and test evidence immutability; they neither
+  demonstrate a sandbox escape nor establish general process confinement.
 
 - [ ] [ID:markdown-task-parser] **P2 — Markdown examples are executable tasks, and the two runners disagree on indentation.** `implement-tasks.sh:72-92,145-182,233-249` scans raw checkbox-looking lines in every Markdown file, including fenced examples. `fix-review.sh:41,177` does the same for column-zero lines but ignores indented task items. A local fixture containing one fenced example followed by one real task was counted as two tasks and selected the example first. Use one documented Markdown task grammar for counting, selection, dependency validation, and manifests; exclude fenced examples and define supported indentation consistently. The documentation explicitly distinguishes examples from executable work.
 

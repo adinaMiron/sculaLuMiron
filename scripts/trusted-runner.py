@@ -70,6 +70,24 @@ def check(root, baseline_file):
                            + ", ".join(repr(name) for name in changed))
 
 
+def hold_evidence(files):
+    """Keep per-iteration evidence sealed until the wrapper closes our stdin.
+
+    /proc paths refer directly to these live kernel objects, without a mutable
+    directory entry. Killing this holder makes validation fail closed.
+    """
+    fds = []
+    try:
+        for index, file in enumerate(files):
+            fds.append(seal(f"validation-evidence-{index}", Path(file).read_bytes()))
+        for fd in fds:
+            print(f"/proc/{os.getpid()}/fd/{fd}", flush=True)
+        sys.stdin.buffer.read()
+    finally:
+        for fd in fds:
+            os.close(fd)
+
+
 def launch(runner, args):
     script = Path(runner).resolve(strict=True)
     if script.name not in ("fix-review.sh", "implement-tasks.sh"):
@@ -98,6 +116,7 @@ def launch(runner, args):
     prefix = f"""set -Eeuo pipefail
 readonly REPO_ROOT={shlex.quote(str(root))}
 readonly WRAPPER_HELPER_FD={helper_fd}
+readonly WRAPPER_CHECKER_FD={checker_fd}
 assert_control_plane() {{
     python3 -I /proc/self/fd/{checker_fd} --check "$REPO_ROOT" /proc/self/fd/{baseline_fd} || exit 1
 }}
@@ -123,6 +142,8 @@ if __name__ == "__main__":
     try:
         if sys.argv[1] == "--check":
             check(Path(sys.argv[2]), sys.argv[3])
+        elif sys.argv[1] == "--hold-evidence":
+            hold_evidence(sys.argv[2:])
         else:
             sys.exit(launch(sys.argv[1], sys.argv[2:]))
     except (OSError, ValueError, RuntimeError, IndexError, AttributeError) as error:

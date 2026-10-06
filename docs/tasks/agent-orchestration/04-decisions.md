@@ -32,9 +32,9 @@ trusted source for a new bootstrap. The immutable snapshot lasts for one run,
 not as a persistent installation or attestation of arbitrary future checkouts.
 
 This fixes `protect-wrapper-code`; it does not complete the separate findings
-for agent-writable checkbox evidence, process confinement, concurrent runners,
-or resource/process lifetime limits. In particular, these integrity checks do
-not establish isolation from an unsandboxed hostile process that can change
+for process confinement, concurrent runners, or resource/process lifetime limits.
+Checkbox evidence protection is recorded below. These integrity checks do not
+establish isolation from an unsandboxed hostile process that can change
 files concurrently, modify host tools/Git metadata, or interfere with the host
 process. The installed agent boundary must still confine such access.
 
@@ -45,3 +45,28 @@ deletion, mode changes, symlinks, ignored additions, workflow changes, failed
 agent returns, final-review rejection, unavailable sealing support, branch
 control-plane drift, and ordinary successful publication flow.
 It does not contact a remote or start a paid model session.
+
+## 2026-10-06 — Sealed per-item validation evidence
+
+Both runners now seal their expected document before invoking the agent. The
+implementation runner also seals the other-document checkbox manifest. Input
+streams go directly into anonymous files; no expected or actual evidence is
+stored in an agent-writable temporary directory. The actual manifest is streamed
+into the comparison after the agent returns.
+
+The existing sealed checker runs as a per-item holder, sealing all evidence
+before reporting `/proc/<pid>/fd/<fd>` paths to the wrapper. Those paths have no
+replaceable filesystem directory entry. The holder accepts no update commands
+and keeps the sealed files alive until the wrapper closes its private pipe.
+The wrapper reaps it after validation and on failure; each iteration receives
+fresh evidence. Missing evidence or unsuccessful holder termination blocks
+staging and publication. This uses the existing Linux/Python sealing boundary
+and does not add a permission-based trust assumption.
+
+The offline control-plane suite probes the actual evidence as the same UID,
+including chmod followed by writes, truncation, growth, writable mmap, seal
+changes, and replacement. It covers both expected documents and nonempty/empty
+manifests, altered document/manifest rejection, holder termination, evidence
+sealing failure before the agent starts, cleanup, and consecutive items.
+These checks establish evidence immutability, not general process confinement
+or protection from an unsandboxed process modifying host memory/tools.

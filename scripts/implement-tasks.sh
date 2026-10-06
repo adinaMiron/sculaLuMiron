@@ -307,7 +307,7 @@ ANY_CHECKBOX_PATTERN='^[[:space:]]*- \[[ xX]\]'
 [[ "$CREATE_PR" == "true" || "$CREATE_PR" == "false" ]] || die "CREATE_PR must be true or false"
 [[ "$FINAL_REVIEW" == "true" || "$FINAL_REVIEW" == "false" ]] || die "FINAL_REVIEW must be true or false"
 
-for cmd in git grep sed find sort awk cmp diff mktemp codex tr tee; do
+for cmd in git grep sed find sort awk cmp diff codex tr tee; do
     require_command "$cmd"
 done
 
@@ -385,9 +385,7 @@ if ! git merge-base --is-ancestor "origin/$BASE" "$BRANCH"; then
     die "$BRANCH does not contain current origin/$BASE; rebase manually before continuing"
 fi
 
-TMP_DIR="$(mktemp -d)"
-cleanup() { rm -rf "$TMP_DIR"; }
-trap cleanup EXIT
+trap release_validation_evidence EXIT
 
 # ------------------------------------------------------------------------------
 # Implementation loop
@@ -421,9 +419,9 @@ while (( iteration < MAX )); do
     echo "Requirement:  $TASK_TEXT"
     echo
 
-    cp "$TARGET_FILE" "$TMP_DIR/task-expected.md"
-    sed -i "${TARGET_LINE}s/- \[ \]/- [x]/" "$TMP_DIR/task-expected.md"
-    build_other_checkbox_manifest "$TARGET_FILE" > "$TMP_DIR/other-checkboxes-before.txt"
+    seal_validation_evidence \
+        <(sed "${TARGET_LINE}s/- \[ \]/- [x]/" "$TARGET_FILE") \
+        <(build_other_checkbox_manifest "$TARGET_FILE")
 
     head_before="$(git rev-parse HEAD)"
     branch_before="$(git branch --show-current)"
@@ -504,14 +502,13 @@ PROMPT
     [[ "$(git rev-parse HEAD)" == "$head_before" ]] || die "Codex changed Git history"
     git diff --cached --quiet || die "Codex staged files"
 
-    if ! cmp -s "$TARGET_FILE" "$TMP_DIR/task-expected.md"; then
+    if ! cmp -s "$TARGET_FILE" "${EVIDENCE_PATHS[0]}"; then
         git diff -- "$TARGET_FILE" || true
         die "Assigned task document changed unexpectedly; only the target [ ] -> [x] transition is allowed"
     fi
 
-    build_other_checkbox_manifest "$TARGET_FILE" > "$TMP_DIR/other-checkboxes-after.txt"
-    if ! cmp -s "$TMP_DIR/other-checkboxes-before.txt" "$TMP_DIR/other-checkboxes-after.txt"; then
-        diff -u "$TMP_DIR/other-checkboxes-before.txt" "$TMP_DIR/other-checkboxes-after.txt" || true
+    if ! build_other_checkbox_manifest "$TARGET_FILE" | cmp -s "${EVIDENCE_PATHS[1]}" -; then
+        diff -u "${EVIDENCE_PATHS[1]}" <(build_other_checkbox_manifest "$TARGET_FILE") || true
         die "Another task checkbox was modified"
     fi
 
@@ -519,6 +516,8 @@ PROMPT
     after="$(count_unchecked)"
     expected=$((before - 1))
     (( after == expected )) || die "Unchecked task count changed unexpectedly: $before -> $after (expected $expected)"
+
+    release_validation_evidence || die "Validation evidence holder failed"
 
     git diff --check || die "git diff --check failed"
 

@@ -60,6 +60,15 @@ Node, and Git, and never launch a model session or contact a remote. See
 `docs/tasks/agent-orchestration/04-decisions.md` for the startup trust boundary
 and maintenance procedure.
 
+The same suite verifies sealed per-item expected documents and checkbox
+manifests. Same-UID probes attempt chmod followed by writes, truncation, growth,
+writable mmap, seal changes, and path replacement. It also checks that document
+or manifest tampering and holder termination block staging/publication, sealing
+failures prevent agent invocation, holders are cleaned up, and evidence refreshes
+between consecutive items. Empty manifests are covered. These probes exercise
+real kernel enforcement with a fake agent; they do not demonstrate a sandbox
+escape or establish general process confinement.
+
 `teleprompter.js` covers Voice's Subtitrare chapter/draft import, read-only
 source handling, speech alignment (including revised interim results and
 repeated phrases), microphone lifecycle/error recovery, manual controls,

@@ -31,6 +31,36 @@ CODEX_SAFE_ARGS=(
     --disable memories
 )
 
+# A fresh holder per iteration keeps sealed evidence alive without putting it
+# in the workspace or scratch directories. Neither chmod nor same-UID writes
+# can undo the seals. Close the pipe and reap the holder on success or failure.
+release_validation_evidence() {
+    local status=0
+    if [[ -n "${EVIDENCE_PID:-}" ]]; then
+        exec {EVIDENCE_INPUT}>&-
+        exec {EVIDENCE_OUTPUT}<&-
+        wait "$EVIDENCE_PID" || status=1
+        unset EVIDENCE_PID
+    fi
+    return "$status"
+}
+
+seal_validation_evidence() {
+    release_validation_evidence || die "Validation evidence holder failed"
+    coproc EVIDENCE_HOLDER {
+        exec python3 -I "/proc/self/fd/$WRAPPER_CHECKER_FD" --hold-evidence "$@"
+    }
+    EVIDENCE_PID=$EVIDENCE_HOLDER_PID
+    EVIDENCE_INPUT=${EVIDENCE_HOLDER[1]}
+    EVIDENCE_OUTPUT=${EVIDENCE_HOLDER[0]}
+    EVIDENCE_PATHS=()
+    local input evidence_path
+    for input in "$@"; do
+        IFS= read -r evidence_path <&"$EVIDENCE_OUTPUT" || die "Could not seal validation evidence"
+        EVIDENCE_PATHS+=("$evidence_path")
+    done
+}
+
 run_codex_safely() {
     local status=0
     assert_control_plane
