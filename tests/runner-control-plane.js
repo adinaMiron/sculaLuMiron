@@ -287,6 +287,7 @@ if mode == 'agent-failure':
         if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'final-review-linked', 'evidence-manifest');
         if (runner === 'implement-tasks.sh') modes.push('metadata-valid', ...Object.keys(metadataFailures).map(name => `metadata-${name}`));
         if (runner === 'implement-tasks.sh') modes.push(...Object.keys(verdictCases).map(name => `verdict-${name}`));
+        if (runner === 'implement-tasks.sh') modes.push('no-pr-review', 'no-pr-skip');
         for (const kind of ['task', 'review']) {
             for (const change of ['complete', 'reopen', 'append', 'new', 'new-complete', 'delete', 'move', 'delete-tree', 'notes']) {
                 modes.push(`scope-${kind}-${change}`);
@@ -409,6 +410,10 @@ if mode == 'agent-failure':
             const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_LOG: log, PROBE_MODE: mode, PROBE_RUNNER: runner, PROBE_MARKER: marker,
                 CREATE_PR: 'true', FINAL_REVIEW: 'true', MAX_TASKS: '2', MAX_FINDINGS: '2' };
+            if (mode.startsWith('no-pr-')) {
+                env.CREATE_PR = 'false';
+                env.FINAL_REVIEW = mode === 'no-pr-review' ? 'true' : 'false';
+            }
             const runnerArgs = [path.join(runRoot, 'scripts', runner),
                 ...(runner === 'implement-tasks.sh' ? ['probe'] : [])];
             const result = mode === 'sealing-unavailable'
@@ -427,6 +432,22 @@ runpy.run_path(sys.argv[0], run_name='__main__')
                 if (mode.endsWith('-directory')) fs.chmodSync(path.join(input, 'nested'), 0o755);
             }
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+            if (mode.startsWith('no-pr-')) {
+                assert.equal(result.status, 0, result.stdout + result.stderr);
+                assert.equal(git(runRoot, 'rev-list', '--count', 'HEAD'), '2');
+                assert.equal(git(runRoot, 'status', '--porcelain'), '');
+                assert(history.some(c => c.tool === 'git' && c.args[0] === 'push'));
+                assert(!history.some(c => c.tool === 'gh'));
+                assert.equal(history.filter(c => c.tool === 'agent').length, mode === 'no-pr-review' ? 2 : 1);
+                const output = path.join(git(runRoot, 'rev-parse', '--absolute-git-dir'), 'codex-task-final-review-probe.txt');
+                if (mode === 'no-pr-review') assert.equal(fs.readFileSync(output, 'utf8'), 'VERDICT: PASS\n');
+                else {
+                    assert(!fs.existsSync(output));
+                    assert.match(result.stdout, /final review skipped; PR creation is disabled/);
+                }
+                count++;
+                continue;
+            }
             if (mode.startsWith('verdict-')) {
                 const testCase = verdictCases[mode.slice('verdict-'.length)];
                 assert.equal(result.status, testCase.pass ? 0 : 1, mode + result.stdout + result.stderr);
@@ -501,6 +522,11 @@ runpy.run_path(sys.argv[0], run_name='__main__')
                 assert.equal(git(runRoot, 'status', '--porcelain'), '');
                 assert(history.some(c => c.tool === 'gh' && c.args[0] === 'pr' && c.args[1] === 'create'));
                 if (runner === 'implement-tasks.sh' && ['normal', 'final-review-linked'].includes(mode)) {
+                    const pr = history.find(c => c.tool === 'gh' && c.args[0] === 'pr' && c.args[1] === 'create');
+                    const body = pr.args[pr.args.indexOf('--body') + 1];
+                    assert(body.includes('The independent final reviewer returned `VERDICT: PASS` for commit `' + git(runRoot, 'rev-parse', 'HEAD') + '` in this run.'));
+                    assert(body.includes('the wrapper does not independently verify test results'));
+                    assert(history.findLastIndex(c => c.tool === 'agent') < history.indexOf(pr));
                     const adminDir = git(runRoot, 'rev-parse', '--absolute-git-dir');
                     const outputName = 'codex-task-final-review-probe.txt';
                     assert.equal(fs.readFileSync(path.join(adminDir, outputName), 'utf8'), 'VERDICT: PASS\n');

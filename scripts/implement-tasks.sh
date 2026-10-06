@@ -36,6 +36,7 @@ Optional environment variables:
 
 BASE and TASK_BRANCH must be literal short branch names (no refs/ prefix).
 TASK_BRANCH must differ from BASE and cannot be main or master.
+FINAL_REVIEW=false requires CREATE_PR=false; PR creation requires a passing review.
 TXT
 }
 
@@ -292,6 +293,8 @@ FINAL_REVIEW="${FINAL_REVIEW:-true}"
 [[ "$MAX" =~ ^[1-9][0-9]*$ ]] || die "MAX_TASKS must be a positive integer"
 [[ "$CREATE_PR" == "true" || "$CREATE_PR" == "false" ]] || die "CREATE_PR must be true or false"
 [[ "$FINAL_REVIEW" == "true" || "$FINAL_REVIEW" == "false" ]] || die "FINAL_REVIEW must be true or false"
+[[ "$CREATE_PR" != "true" || "$FINAL_REVIEW" == "true" ]] ||
+    die "CREATE_PR=true requires FINAL_REVIEW=true; set CREATE_PR=false to skip final review"
 
 for cmd in git grep sed find sort awk cmp diff codex tr; do
     require_command "$cmd"
@@ -558,6 +561,7 @@ echo "All requirements for '$MODULE' are complete."
 # Independent final review
 # ------------------------------------------------------------------------------
 
+final_review_passed=false
 if [[ "$FINAL_REVIEW" == "true" ]]; then
     reviewer_head_before="$(git rev-parse HEAD)"
     reviewer_branch_before="$(git branch --show-current)"
@@ -648,6 +652,9 @@ PY
     if [[ "$review_verdict" == 'VERDICT: FAIL' ]]; then
         die "Final review failed; feature branch remains pushed and no PR was created. Review output: $REVIEW_OUTPUT"
     fi
+    final_review_passed=true
+else
+    echo "FINAL_REVIEW=false — final review skipped; PR creation is disabled."
 fi
 
 git push -u origin "$BRANCH"
@@ -657,6 +664,7 @@ git push -u origin "$BRANCH"
 # ------------------------------------------------------------------------------
 
 [[ "$CREATE_PR" == "true" ]] || { echo "CREATE_PR=false — stopping after push."; exit 0; }
+[[ "$final_review_passed" == "true" ]] || die "PR creation requires a successful final review in this run"
 require_command gh
 gh auth status >/dev/null 2>&1 || die "GitHub CLI is not authenticated; run: gh auth login"
 
@@ -679,8 +687,12 @@ Policy:
 - relevant tests must pass before completion;
 - only the assigned checkbox may change per iteration;
 - the shell wrapper owns Git commits, pushes, branches, and PR creation;
-- every completed task is pushed immediately;
-- an independent final review runs before PR creation.
+- every completed task is pushed immediately.
+
+Verification:
+- The independent final reviewer returned \`$review_verdict\` for commit \`$reviewer_head_before\` in this run.
+- The wrapper validated the verdict and confirmed the reviewer left the branch, commit, and working tree unchanged.
+- Relevant test execution is required by the agent instructions; the wrapper does not independently verify test results.
 EOF2
 )"
 

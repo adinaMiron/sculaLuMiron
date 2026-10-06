@@ -36,6 +36,8 @@ runner before any Git mutation, and that execution uses the same arguments as
 preflight. Task branch fixtures use real Git name validation and reject invalid
 names, the configured base, and protected destinations (`main`, `master`) before
 fetch/switch/push; defaults and valid overrides still reach branch preparation.
+All four `CREATE_PR`/`FINAL_REVIEW` combinations are checked; PR creation with
+review disabled must fail before agent invocation or Git mutation.
 It needs Git, Node, Bash, and Linux/Python 3 with file sealing, not
 Playwright. From `tests/`, the same suite is available as
 `npm run test:runner-preflight`.
@@ -84,6 +86,10 @@ Final-review output checks cover an ordinary checkout and a linked worktree
 (both with spaces in their paths). They verify that the review log is saved in
 the worktree's Git administrative directory, stays out of the working tree,
 and permits the successful run to reach the fake PR adapter.
+PR bodies must identify the current run's passing verdict and reviewed commit
+and distinguish agent-required testing from wrapper verification. Runs with
+`CREATE_PR=false` still complete and push, both with review enabled and skipped,
+without calling GitHub.
 The verdict contract cases use the CLI's `--output-last-message` file separately
 from console output. They cover missing/empty/stale output, FAIL, contradictory
 and duplicate markers, quoted/fenced examples, non-final and malformed verdicts,

@@ -75,6 +75,19 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
     const gitMutations = history => history.filter(c => c.tool === 'git' &&
         !c.args.includes('--show-toplevel') && !c.args.includes('--git-common-dir') &&
         !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
+    for (const createPR of ['true', 'false']) {
+        for (const finalReview of ['true', 'false']) {
+            write(log, '');
+            const result = run('bash', [path.join(repo, 'scripts/implement-tasks.sh'), 'probe'],
+                { ...env, CREATE_PR: createPR, FINAL_REVIEW: finalReview, PROBE_MODE: 'valid' });
+            const rejected = createPR === 'true' && finalReview === 'false';
+            assert.equal(result.status, rejected ? 1 : 73, result.stdout + result.stderr);
+            if (rejected) assert.match(result.stderr, /CREATE_PR=true requires FINAL_REVIEW=true/);
+            assert.deepEqual(gitMutations(calls()).map(c => c.args[0]), rejected ? [] : ['fetch']);
+            assert.equal(calls().filter(c => c.tool === 'codex').length, rejected ? 0 : 1);
+        }
+    }
+    console.log('PASS final review configuration: all four PR/review combinations, bypass rejected before agent or Git mutation');
     const invalidBranches = [
         ['main', 'main', /TASK_BRANCH must differ from BASE/],
         ['release/stable', 'release/stable', /TASK_BRANCH must differ from BASE/],

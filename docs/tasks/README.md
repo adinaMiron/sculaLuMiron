@@ -392,6 +392,12 @@ The automation is expected to:
 9. perform an independent final review when all requirements are complete;
 10. create a pull request only after the final review succeeds.
 
+`FINAL_REVIEW=false` is allowed only with `CREATE_PR=false`. The incompatible
+combination is rejected before agent invocation or Git mutation. Skipping review
+still permits the normal task commits and pushes, but cannot create a PR.
+Generated PR text records the passing review verdict and reviewed commit from
+the current run, and distinguishes that evidence from agent-required testing.
+
 ---
 
 # 14. Task completion

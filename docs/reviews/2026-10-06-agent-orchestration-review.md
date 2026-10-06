@@ -179,7 +179,18 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   session, Markdown parser tests, repository JavaScript checks, shell syntax,
   and diff whitespace checks. No real remote or model session was used.
 
-- [ ] [ID:mandatory-final-review] **P2 — PR creation can bypass the documented final review gate.** `implement-tasks.sh:294,301,582,639` permits `FINAL_REVIEW=false` together with `CREATE_PR=true`, despite `docs/tasks/README.md:379` requiring a successful final review before PR creation. Its PR body also claims an independent review ran even when skipped. Make bypass behavior agree with the documented gate and ensure generated PR text describes actual verification.
+- [x] [ID:mandatory-final-review] **P2 — PR creation can bypass the documented final review gate.** `implement-tasks.sh:294,301,582,639` permits `FINAL_REVIEW=false` together with `CREATE_PR=true`, despite `docs/tasks/README.md:379` requiring a successful final review before PR creation. Its PR body also claims an independent review ran even when skipped. Make bypass behavior agree with the documented gate and ensure generated PR text describes actual verification.
+
+  The task runner now rejects PR creation with review disabled before agent
+  invocation or Git mutation and checks successful review state before GitHub
+  calls. Skipping review remains supported with `CREATE_PR=false`. Generated PR
+  text records the current run's passing verdict and reviewed commit, and
+  distinguishes agent-required testing from wrapper checks. Verified with all
+  four flag combinations in `node tests/runner-cli-preflight.js` and all 150
+  offline cases in `node tests/runner-control-plane.js`, including review-on/off
+  runs without PR creation and PR text in ordinary and linked worktrees. Shell
+  and JavaScript syntax checks, `node tests/verify.js`, and diff whitespace
+  checks passed. No real remote or model session was used.
 
 - [ ] [ID:review-finding-text] **P3 — Review finding extraction does not remove the checkbox prefix.** In `fix-review.sh:181`, `${original_line#- [ ] }` treats brackets as a shell pattern, rather than literal Markdown. The local probe returned `- [ ] Fix an issue.` unchanged. Use literal prefix removal, reject empty finding text, and verify that generated commit subjects contain the finding text without its checkbox marker.
 
