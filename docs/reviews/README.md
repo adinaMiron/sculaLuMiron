@@ -58,6 +58,10 @@ Non-actionable observations may be recorded here as normal bullet points.
 
 # 3. Checkbox meaning
 
+Review findings use the same [Markdown task grammar](../tasks/markdown-task-grammar.md)
+as implementation requirements: fenced examples are excluded, and executable
+items allow zero to three leading spaces.
+
 An unchecked review finding means:
 
 ```text

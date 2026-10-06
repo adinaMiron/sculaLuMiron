@@ -28,7 +28,7 @@ function calls() {
     return fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
 }
 try {
-    for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh', 'trusted-runner.py']) {
+    for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
         write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)));
     }
     write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');

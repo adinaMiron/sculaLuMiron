@@ -103,9 +103,11 @@ def launch(runner, args):
     body = script_bytes.split(BODY_MARKER, 1)[1]
     helper = (script.parent / "codex-runner.sh").read_bytes()
     checker = Path(__file__).read_bytes()
+    task_parser = (script.parent / "markdown-tasks.py").read_bytes()
     # Reject a concurrent startup change rather than mixing wrapper versions.
     for name, data in ((script.name, script_bytes),
-                       ("codex-runner.sh", helper), ("trusted-runner.py", checker)):
+                       ("codex-runner.sh", helper), ("trusted-runner.py", checker),
+                       ("markdown-tasks.py", task_parser)):
         if baseline.get("scripts/" + name) != [
                 (script.parent / name).stat().st_mode, hashlib.sha256(data).hexdigest()]:
             raise RuntimeError("Control plane changed during startup")
@@ -113,10 +115,12 @@ def launch(runner, args):
     checker_fd = seal("wrapper-checker", checker)
     baseline_fd = seal("wrapper-baseline", json.dumps(baseline).encode())
     helper_fd = seal("wrapper-helper", helper)
+    parser_fd = seal("wrapper-task-parser", task_parser)
     prefix = f"""set -Eeuo pipefail
 readonly REPO_ROOT={shlex.quote(str(root))}
 readonly WRAPPER_HELPER_FD={helper_fd}
 readonly WRAPPER_CHECKER_FD={checker_fd}
+markdown_tasks() {{ python3 -I /proc/self/fd/{parser_fd} "$@"; }}
 assert_control_plane() {{
     python3 -I /proc/self/fd/{checker_fd} --check "$REPO_ROOT" /proc/self/fd/{baseline_fd} || exit 1
 }}
@@ -132,9 +136,9 @@ assert_control_plane
     try:
         return subprocess.call(
             ["bash", "--noprofile", "--norc", f"/proc/self/fd/{runner_fd}", *args],
-            pass_fds=(checker_fd, baseline_fd, helper_fd, runner_fd), env=env)
+            pass_fds=(checker_fd, baseline_fd, helper_fd, parser_fd, runner_fd), env=env)
     finally:
-        for fd in (checker_fd, baseline_fd, helper_fd, runner_fd):
+        for fd in (checker_fd, baseline_fd, helper_fd, parser_fd, runner_fd):
             os.close(fd)
 
 

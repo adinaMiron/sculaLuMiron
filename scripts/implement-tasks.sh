@@ -78,30 +78,11 @@ extract_task_text() {
 }
 
 count_unchecked() {
-    local total=0 file count
-    while IFS= read -r -d '' file; do
-        count="$(grep -cE "$TASK_PATTERN" "$file" || true)"
-        total=$((total + count))
-    done < <(find "$TASKS_ROOT" -type f -name '*.md' -print0 | sort -z)
-    printf '%s\n' "$total"
-}
-
-build_checkbox_manifest() {
-    local file line_number line
-    while IFS= read -r -d '' file; do
-        line_number=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            line_number=$((line_number + 1))
-            if printf '%s\n' "$line" | grep -qE "$ANY_CHECKBOX_PATTERN"; then
-                printf '%s\t%s\t%s\n' "$file" "$line_number" "$line"
-            fi
-        done < "$file"
-    done < <(find "$TASKS_ROOT" -type f -name '*.md' -print0 | sort -z)
+    markdown_tasks count "$TASKS_ROOT"
 }
 
 build_other_checkbox_manifest() {
-    local excluded_file="$1"
-    build_checkbox_manifest | awk -F '\t' -v target="$excluded_file" '$1 != target'
+    markdown_tasks manifest "$TASKS_ROOT" --exclude "$1"
 }
 
 # Module-wide dependency graph.
@@ -148,45 +129,37 @@ validate_task_graph() {
     DFS_STATE=()
     CYCLE_AT=""
 
+    # One parsed snapshot supplies graph validation, selection and diagnostics.
+    TASK_RECORDS="$(markdown_tasks manifest "$TASKS_ROOT")" || die "Cannot parse task documents"
     # First pass: collect IDs and metadata.
-    while IFS= read -r -d '' file; do
-        line_number=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            line_number=$((line_number + 1))
-            printf '%s\n' "$line" | grep -qE "$ANY_CHECKBOX_PATTERN" || continue
+    while IFS=$'\t' read -r file line_number state line; do
+        [[ -n "$file" ]] || continue
 
-            id="$(extract_id "$line")"
-            deps="$(extract_deps "$line")"
-            location="$file:$line_number"
+        id="$(extract_id "$line")"
+        deps="$(extract_deps "$line")"
+        location="$file:$line_number"
 
-            if [[ "$line" == *"[ID:"* && -z "$id" ]]; then
-                die "Malformed [ID:...] metadata at $location"
-            fi
-            if [[ "$line" == *"[DEPENDS:"* && -z "$deps" ]]; then
-                die "Malformed or empty [DEPENDS:...] metadata at $location; omit DEPENDS when there are no prerequisites"
-            fi
-            if [[ -n "$deps" && -z "$id" ]]; then
-                die "A task using [DEPENDS:...] must also have [ID:...] at $location"
-            fi
+        if [[ "$line" == *"[ID:"* && -z "$id" ]]; then
+            die "Malformed [ID:...] metadata at $location"
+        fi
+        if [[ "$line" == *"[DEPENDS:"* && -z "$deps" ]]; then
+            die "Malformed or empty [DEPENDS:...] metadata at $location; omit DEPENDS when there are no prerequisites"
+        fi
+        if [[ -n "$deps" && -z "$id" ]]; then
+            die "A task using [DEPENDS:...] must also have [ID:...] at $location"
+        fi
 
-            [[ -z "$id" ]] && continue
+        [[ -z "$id" ]] && continue
 
-            if [[ -n "${ID_LOCATION[$id]+x}" ]]; then
-                die "Duplicate task ID '$id': ${ID_LOCATION[$id]} and $location"
-            fi
+        if [[ -n "${ID_LOCATION[$id]+x}" ]]; then
+            die "Duplicate task ID '$id': ${ID_LOCATION[$id]} and $location"
+        fi
 
-            if printf '%s\n' "$line" | grep -qE '^[[:space:]]*- \[[xX]\]'; then
-                state="complete"
-            else
-                state="pending"
-            fi
-
-            ID_STATE[$id]="$state"
-            ID_DEPS[$id]="$deps"
-            ID_LOCATION[$id]="$location"
-            TASK_ID_ORDER+=("$id")
-        done < "$file"
-    done < <(find "$TASKS_ROOT" -type f -name '*.md' -print0 | sort -z)
+        ID_STATE[$id]="$state"
+        ID_DEPS[$id]="$deps"
+        ID_LOCATION[$id]="$location"
+        TASK_ID_ORDER+=("$id")
+    done <<< "$TASK_RECORDS"
 
     # Second pass: validate dependency references and duplicates.
     for id in "${TASK_ID_ORDER[@]}"; do
@@ -227,7 +200,7 @@ dependencies_complete() {
 }
 
 find_first_ready_task() {
-    local file line line_number deps
+    local file line line_number state deps
 
     TARGET_FILE=""
     TARGET_LINE=""
@@ -236,53 +209,45 @@ find_first_ready_task() {
     TASK_ID=""
     TASK_DEPS=""
 
-    while IFS= read -r -d '' file; do
-        line_number=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            line_number=$((line_number + 1))
-            printf '%s\n' "$line" | grep -qE "$TASK_PATTERN" || continue
+    while IFS=$'\t' read -r file line_number state line; do
+        [[ "$state" == "pending" ]] || continue
 
-            deps="$(extract_deps "$line")"
-            if dependencies_complete "$deps"; then
-                TARGET_FILE="$file"
-                TARGET_LINE="$line_number"
-                ORIGINAL_LINE="$line"
-                TASK_TEXT="$(extract_task_text "$line")"
-                TASK_ID="$(extract_id "$line")"
-                TASK_DEPS="$deps"
-                return 0
-            fi
-        done < "$file"
-    done < <(find "$TASKS_ROOT" -type f -name '*.md' -print0 | sort -z)
+        deps="$(extract_deps "$line")"
+        if dependencies_complete "$deps"; then
+            TARGET_FILE="$file"
+            TARGET_LINE="$line_number"
+            ORIGINAL_LINE="$line"
+            TASK_TEXT="$(extract_task_text "$line")"
+            TASK_ID="$(extract_id "$line")"
+            TASK_DEPS="$deps"
+            return 0
+        fi
+    done <<< "$TASK_RECORDS"
 
     return 1
 }
 
 print_blocked_tasks() {
-    local file line line_number deps dep waiting text id
+    local file line line_number state deps dep waiting text id
     local -a dep_array=()
     echo "Blocked tasks:"
-    while IFS= read -r -d '' file; do
-        line_number=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            line_number=$((line_number + 1))
-            printf '%s\n' "$line" | grep -qE "$TASK_PATTERN" || continue
-            deps="$(extract_deps "$line")"
-            dependencies_complete "$deps" && continue
+    while IFS=$'\t' read -r file line_number state line; do
+        [[ "$state" == "pending" ]] || continue
+        deps="$(extract_deps "$line")"
+        dependencies_complete "$deps" && continue
 
-            waiting=""
-            IFS=',' read -r -a dep_array <<< "$deps"
-            for dep in "${dep_array[@]}"; do
-                [[ "${ID_STATE[$dep]:-pending}" == "complete" ]] && continue
-                waiting+="${waiting:+, }$dep"
-            done
+        waiting=""
+        IFS=',' read -r -a dep_array <<< "$deps"
+        for dep in "${dep_array[@]}"; do
+            [[ "${ID_STATE[$dep]:-pending}" == "complete" ]] && continue
+            waiting+="${waiting:+, }$dep"
+        done
 
-            id="$(extract_id "$line")"
-            text="$(extract_task_text "$line")"
-            printf '  - %s:%s%s\n      %s\n      waiting for: %s\n' \
-                "$file" "$line_number" "${id:+ [$id]}" "$text" "$waiting"
-        done < "$file"
-    done < <(find "$TASKS_ROOT" -type f -name '*.md' -print0 | sort -z)
+        id="$(extract_id "$line")"
+        text="$(extract_task_text "$line")"
+        printf '  - %s:%s%s\n      %s\n      waiting for: %s\n' \
+            "$file" "$line_number" "${id:+ [$id]}" "$text" "$waiting"
+    done <<< "$TASK_RECORDS"
 }
 
 # ------------------------------------------------------------------------------
@@ -299,9 +264,6 @@ BRANCH="${TASK_BRANCH:-feat/$MODULE}"
 MAX="${MAX_TASKS:-50}"
 CREATE_PR="${CREATE_PR:-true}"
 FINAL_REVIEW="${FINAL_REVIEW:-true}"
-
-TASK_PATTERN='^[[:space:]]*- \[ \]'
-ANY_CHECKBOX_PATTERN='^[[:space:]]*- \[[ xX]\]'
 
 [[ "$MAX" =~ ^[1-9][0-9]*$ ]] || die "MAX_TASKS must be a positive integer"
 [[ "$CREATE_PR" == "true" || "$CREATE_PR" == "false" ]] || die "CREATE_PR must be true or false"

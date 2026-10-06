@@ -221,6 +221,9 @@ However, IDs are recommended when:
 # 8. What must not use unchecked checkboxes
 
 The automated task runner treats unchecked Markdown task items as executable work.
+Both runners use the [shared Markdown task grammar](markdown-task-grammar.md):
+fenced examples are excluded, and executable items allow zero to three leading
+spaces. Four-space and tab indentation are not supported for executable tasks.
 
 Therefore do not write:
 

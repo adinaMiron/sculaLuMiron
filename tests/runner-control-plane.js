@@ -38,7 +38,7 @@ process.exit(r.status ?? 99);
 require('node:fs').appendFileSync(process.env.PROBE_LOG, JSON.stringify({tool: 'gh', args: process.argv.slice(2)}) + '\\n');
 `, 0o755);
     write(path.join(bin, 'codex'), `#!/usr/bin/env python3
-import errno, fcntl, json, mmap, os, pathlib, signal, sys
+import errno, fcntl, json, mmap, os, pathlib, re, signal, sys
 root = pathlib.Path.cwd()
 log = pathlib.Path(os.environ['PROBE_LOG'])
 def record(**entry):
@@ -69,7 +69,7 @@ for name in os.listdir('/proc/self/fd'):
         else:
             raise AssertionError('Trusted storage was mutable')
     sealed.append(target)
-assert len(sealed) == 4, sealed
+assert len(sealed) == 5, sealed
 record(tool='agent', sealed=sealed)
 mode = os.environ['PROBE_MODE']
 reviewer = 'You are the FINAL REVIEWER' in sys.argv[-1]
@@ -122,7 +122,7 @@ if not reviewer:
             evidence.append(str(entry))
     assert len(evidence) == (2 if os.environ['PROBE_RUNNER'] == 'implement-tasks.sh' else 1), evidence
     record(tool='evidence', paths=evidence)
-if mode not in ('normal', 'evidence-document', 'evidence-manifest', 'evidence-holder-exit', 'two-items', 'empty-manifest'):
+if mode not in ('normal', 'evidence-document', 'evidence-manifest', 'evidence-holder-exit', 'two-items', 'empty-manifest', 'markdown'):
     runner = root / 'scripts' / os.environ['PROBE_RUNNER']
     payload = '\\nprintf compromised > "' + os.environ['PROBE_MARKER'] + '"\\n'
     if mode in ('replace', 'final-review'):
@@ -133,6 +133,8 @@ if mode not in ('normal', 'evidence-document', 'evidence-manifest', 'evidence-ho
         runner.write_text(payload)
     elif mode == 'helper':
         (root / 'scripts/codex-runner.sh').write_text(payload)
+    elif mode == 'parser':
+        (root / 'scripts/markdown-tasks.py').write_text('raise Exception("UNTRUSTED PARSER")')
     elif mode == 'checker':
         (root / 'scripts/trusted-runner.py').write_text('raise Exception("UNTRUSTED CHECKER")')
     elif mode == 'delete':
@@ -156,7 +158,13 @@ if reviewer:
 else:
     doc = root / ('docs/tasks/probe/01-requirements.md' if os.environ['PROBE_RUNNER'] == 'implement-tasks.sh'
                   else 'docs/reviews/2026-10-04-solar-calcule-review.md')
-    doc.write_text(doc.read_text().replace('- [ ]', '- [x]', 1))
+    assigned = int(re.search(r'(?:Assigned line|Line): (\\d+)', sys.argv[-1])[1])
+    lines = doc.read_text().splitlines(keepends=True)
+    lines[assigned - 1] = lines[assigned - 1].replace('- [ ]', '- [x]', 1)
+    doc.write_text(''.join(lines))
+    if mode == 'markdown' and os.environ['PROBE_RUNNER'] == 'implement-tasks.sh':
+        other = root / 'docs/tasks/probe/02-other.md'
+        other.write_text(other.read_text().replace('Example wording', 'Updated example'))
     (root / 'implementation.txt').write_text('implemented\\n')
     if mode == 'evidence-document':
         doc.write_text(doc.read_text().replace('Probe', 'Forged'))
@@ -172,13 +180,13 @@ if mode == 'agent-failure':
 
     let count = 0;
     for (const runner of ['fix-review.sh', 'implement-tasks.sh']) {
-        const modes = ['normal', 'two-items', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'delete', 'chmod',
+        const modes = ['normal', 'markdown', 'two-items', 'evidence-document', 'evidence-holder-exit', 'branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable', 'replace', 'overwrite', 'helper', 'checker', 'parser', 'delete', 'chmod',
             'symlink', 'directory-symlink', 'ignored-addition', 'workflow', 'agent-failure'];
-        if (runner === 'implement-tasks.sh') modes.push('final-review', 'evidence-manifest', 'empty-manifest');
+        if (runner === 'implement-tasks.sh') modes.push('graph-fenced-ref', 'graph-indented-cycle', 'final-review', 'evidence-manifest', 'empty-manifest');
         for (const mode of modes) {
             const repo = path.join(tmp, `${runner}-${mode} with spaces`);
             fs.mkdirSync(repo);
-            for (const name of ['fix-review.sh', 'implement-tasks.sh', 'codex-runner.sh', 'trusted-runner.py']) {
+            for (const name of ['fix-review.sh', 'implement-tasks.sh', 'codex-runner.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
                 write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)), 0o755);
             }
             if (mode === 'evidence-sealing-unavailable') {
@@ -193,6 +201,25 @@ if mode == 'agent-failure':
                 for (const doc of ['docs/tasks/probe/01-requirements.md', 'docs/reviews/2026-10-04-solar-calcule-review.md']) {
                     fs.appendFileSync(path.join(repo, doc), '- [ ] Second item.\n');
                 }
+            }
+            if (mode === 'markdown') {
+                const examples = '```md\n- [ ] [ID:probe] [DEPENDS:missing] Example.\n```\n' +
+                    '  ~~~~md\n- [ ] [ID:bad id] Example.\n~~~\n- [ ] Still example.\n  ~~~~\n' +
+                    '    - [ ] Indented code.\n\t- [ ] Tab code.\n';
+                write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), examples +
+                    '   - [ ] [ID:probe] [DEPENDS:other] Probe task.\n');
+                write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), examples +
+                    '   - [ ] Probe finding.\n');
+                write(path.join(repo, 'docs/tasks/probe/02-other.md'),
+                    '```\n- [ ] Example wording\n```\n  - [X] [ID:other] Other task.\n');
+            }
+            if (mode === 'graph-fenced-ref') {
+                write(path.join(repo, 'docs/tasks/probe/01-requirements.md'),
+                    '~~~\n- [x] [ID:example] Example.\n~~~\n  - [ ] [ID:probe] [DEPENDS:example] Probe.\n');
+            }
+            if (mode === 'graph-indented-cycle') {
+                write(path.join(repo, 'docs/tasks/probe/01-requirements.md'),
+                    ' - [ ] [ID:a] [DEPENDS:b] A.\n   - [ ] [ID:b] [DEPENDS:a] B.\n');
             }
             write(path.join(repo, '.github/workflows/existing.yml'), 'name: existing\n');
             write(path.join(repo, '.gitignore'), 'scripts/ignored.sh\n');
@@ -232,6 +259,14 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 `, path.join(repo, 'scripts/trusted-runner.py'), ...runnerArgs], repo, env)
                 : run('bash', runnerArgs, repo, env);
             const history = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+            if (mode.startsWith('graph-')) {
+                assert.equal(result.status, 1, result.stdout + result.stderr);
+                assert.match(result.stderr, mode === 'graph-fenced-ref' ? /unknown task ID 'example'/ : /Dependency cycle/);
+                assert(!history.some(c => c.tool === 'agent'));
+                assert(!history.some(c => c.tool === 'git' && ['fetch', 'add', 'commit', 'push'].includes(c.args[0])));
+                count++;
+                continue;
+            }
             if (['branch-drift', 'sealing-unavailable', 'evidence-sealing-unavailable'].includes(mode)) {
                 assert.equal(result.status, 1, result.stdout + result.stderr);
                 assert.match(result.stderr, mode === 'branch-drift' ? /Control-plane changes rejected/ : /(?:File|Evidence) sealing unavailable/);
@@ -248,7 +283,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             }
             assert(history.some(c => c.tool === 'agent'), result.stdout + result.stderr);
             assert(!fs.existsSync(marker), 'Mutable wrapper code executed');
-            if (['normal', 'two-items', 'empty-manifest'].includes(mode)) {
+            if (['normal', 'markdown', 'two-items', 'empty-manifest'].includes(mode)) {
                 assert.equal(result.status, 0, result.stdout + result.stderr);
                 assert.equal(git(repo, 'rev-list', '--count', 'HEAD'), mode === 'two-items' ? '3' : '2');
                 assert.equal(history.filter(c => c.tool === 'evidence').length, mode === 'two-items' ? 2 : 1);

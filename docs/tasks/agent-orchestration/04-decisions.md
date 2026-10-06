@@ -8,8 +8,8 @@ Linux, Python 3 with `memfd_create`/file-sealing support, and `/proc/self/fd`.
 Unsupported platforms fail before a model invocation or Git mutation.
 
 The launcher copies the selected runner, shared Codex helper, integrity checker,
-and control-plane inventory into kernel-sealed anonymous files. Bash executes
-and sources only these files for the entire run. Write, truncate, grow, and
+Markdown task parser, and control-plane inventory into kernel-sealed anonymous
+files. Bash executes and sources only these files for the entire run. Write, truncate, grow, and
 seal-removal attempts cannot alter them, including from a process with the same
 UID. Ordinary permissions or files in `/tmp` would not provide that boundary.
 Python runs in isolated mode so repository modules and `PYTHONPATH` cannot

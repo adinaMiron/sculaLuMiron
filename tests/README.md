@@ -47,11 +47,16 @@ upgrade changing this contract needs investigation before running automation.
 Neither test mode performs real Git mutations or launches a model session; these
 checks establish CLI compatibility, not operating-system confinement.
 
+`node tests/runner-markdown-tasks.js` checks the shared automation task grammar,
+including backtick/tilde fences, indentation, line numbers, completed states,
+directory ordering, manifests, and documentation examples. Run it from `tests/`
+with `npm run test:runner-markdown`.
+
 `node tests/runner-control-plane.js` exercises both runners in disposable local
 Git repositories with fake model/GitHub adapters and inert fetch/push commands.
 It verifies kernel-enforced immutability of the running wrapper, helper, checker,
-and inventory, then attempts workspace script replacement, overwrite, deletion,
-permission/symlink changes, ignored additions, and workflow edits. Rejection must
+task parser, and inventory, then attempts workspace script replacement, overwrite,
+deletion, permission/symlink changes, ignored additions, and workflow edits. Rejection must
 precede any subsequent host Git/GitHub call, including when the agent fails or
 the final reviewer edits scripts. Successful runs still commit the assigned
 change and reach the fake publication adapter. Run it from `tests/` with
@@ -59,6 +64,10 @@ change and reach the fake publication adapter. Run it from `tests/` with
 Node, and Git, and never launch a model session or contact a remote. See
 `docs/tasks/agent-orchestration/04-decisions.md` for the startup trust boundary
 and maintenance procedure.
+
+It also checks that both runners select real indented tasks after fenced
+examples, that example edits do not enter other-document manifests, and that
+dependency validation rejects references to example IDs and indented cycles.
 
 The same suite verifies sealed per-item expected documents and checkbox
 manifests. Same-UID probes attempt chmod followed by writes, truncation, growth,

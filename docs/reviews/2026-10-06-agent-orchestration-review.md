@@ -72,7 +72,18 @@ model provider. Neither runner implements an Anthropic/Claude execution path.
   fixtures use fake agents/remotes and test evidence immutability; they neither
   demonstrate a sandbox escape nor establish general process confinement.
 
-- [ ] [ID:markdown-task-parser] **P2 — Markdown examples are executable tasks, and the two runners disagree on indentation.** `implement-tasks.sh:72-92,145-182,233-249` scans raw checkbox-looking lines in every Markdown file, including fenced examples. `fix-review.sh:41,177` does the same for column-zero lines but ignores indented task items. A local fixture containing one fenced example followed by one real task was counted as two tasks and selected the example first. Use one documented Markdown task grammar for counting, selection, dependency validation, and manifests; exclude fenced examples and define supported indentation consistently. The documentation explicitly distinguishes examples from executable work.
+- [x] [ID:markdown-task-parser] **P2 — Markdown examples are executable tasks, and the two runners disagree on indentation.** `implement-tasks.sh:72-92,145-182,233-249` scans raw checkbox-looking lines in every Markdown file, including fenced examples. `fix-review.sh:41,177` does the same for column-zero lines but ignores indented task items. A local fixture containing one fenced example followed by one real task was counted as two tasks and selected the example first. Use one documented Markdown task grammar for counting, selection, dependency validation, and manifests; exclude fenced examples and define supported indentation consistently. The documentation explicitly distinguishes examples from executable work.
+
+  Verified: both runners consume `scripts/markdown-tasks.py`, included in the
+  sealed wrapper snapshot. The shared grammar is documented in
+  `docs/tasks/markdown-task-grammar.md`: fenced examples are excluded and zero
+  through three leading spaces are supported consistently. Counting, selection,
+  dependency validation, diagnostics, and manifests use the same parsed tasks.
+  `node tests/runner-markdown-tasks.js`, `node tests/runner-control-plane.js`
+  (45 offline cases), `node tests/runner-cli-preflight.js`, shell syntax checks,
+  `node tests/verify.js`, and diff whitespace checks passed. Fixtures cover
+  fence delimiters/lengths/closure, indentation, line numbers, example-only
+  dependency IDs, indented cycles, manifests, and parser immutability.
 
 - [ ] [ID:checkbox-scope] **P2 — Unassigned checkbox changes outside the selected document/module are not checked.** The review runner compares only its selected review file (`fix-review.sh:253-260`); the task runner's other-checkbox manifest covers only `TASKS_ROOT` (`implement-tasks.sh:82-98,529-533`). An invocation can change a different review or module checklist and still reach `git add -A`. Enforce the one-assigned-item rule across task and review documents, including newly added/deleted documents, with tests showing that unrelated transitions and new tasks are rejected.
 

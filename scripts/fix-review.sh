@@ -45,7 +45,7 @@ ensure_clean_worktree() {
 }
 
 count_unchecked() {
-    grep -c '^- \[ \]' "$REVIEW" || true
+    markdown_tasks count "$REVIEW"
 }
 
 # ==============================================================================
@@ -148,11 +148,11 @@ while (( i < MAX )); do
 
     i=$((i + 1))
 
-    target_line="$(grep -n -m1 '^- \[ \]' "$REVIEW" | cut -d: -f1)"
+    target_line="$(markdown_tasks first "$REVIEW")"
     [[ -n "$target_line" ]] || die "Could not determine first unchecked review line"
 
     original_line="$(sed -n "${target_line}p" "$REVIEW")"
-    finding="${original_line#- [ ] }"
+    finding="$(printf '%s\n' "$original_line" | sed -E 's/^ {0,3}- \[ \][[:blank:]]*//')"
     [[ -n "$finding" ]] || die "Could not extract review finding from line $target_line"
 
     echo
@@ -165,7 +165,7 @@ while (( i < MAX )); do
 
     ensure_clean_worktree "before Codex finding $i"
 
-    seal_validation_evidence <(sed "${target_line}s/^- \[ \]/- [x]/" "$REVIEW")
+    seal_validation_evidence <(sed "${target_line}s/- \[ \]/- [x]/" "$REVIEW")
 
     head_before="$(git rev-parse HEAD)"
     branch_before="$(git branch --show-current)"
