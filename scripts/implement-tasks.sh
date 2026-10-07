@@ -522,6 +522,10 @@ PROMPT
     git diff --cached --quiet || die "Codex staged files"
 
     if ! cmp -s "$TARGET_FILE" "${EVIDENCE_PATHS[0]}"; then
+        if sed "${TARGET_LINE}s/- \[x\]/- [ ]/" "${EVIDENCE_PATHS[0]}" | cmp -s "$TARGET_FILE" -; then
+            check_other_checkboxes "$TARGET_FILE"
+            die "Assigned requirement is still unchecked; implementation or verification is incomplete. See the agent summary in the log; working tree preserved for inspection"
+        fi
         git diff -- "$TARGET_FILE" >> "$WORK_LOG" 2>&1 || true
         die "Assigned task document changed unexpectedly; only the target [ ] -> [x] transition is allowed"
     fi

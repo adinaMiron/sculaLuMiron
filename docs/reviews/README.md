@@ -199,6 +199,12 @@ The agent must stop after that finding.
 
 The orchestration script then validates the result before creating the commit.
 
+If an agent returns with the review document unchanged and the assigned finding
+still unchecked, the runner reports incomplete implementation or verification
+and directs you to the agent summary in the log. It preserves partial changes
+and stops before staging, committing, or publishing. Unauthorized document or
+other checkbox changes remain validation failures.
+
 ---
 
 # 8. Minimal fixes

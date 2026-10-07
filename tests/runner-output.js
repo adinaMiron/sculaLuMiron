@@ -27,6 +27,9 @@ function git(repo, ...args) {
 try {
     write(path.join(bin, 'git'), `#!/usr/bin/env node
 const args = process.argv.slice(2);
+if (['add', 'commit', 'push'].includes(args[0])) {
+    require('node:fs').appendFileSync(process.env.PROBE_PUBLICATION, args[0] + '\\n');
+}
 if (['fetch', 'push'].includes(args[0])) {
     console.log('NOISY_GIT_TRANSFER: Counting objects: 100%');
     process.exit(0);
@@ -37,6 +40,7 @@ process.exit(r.status ?? 99);
     write(path.join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n', 0o755);
     write(path.join(bin, 'gh'), `#!/usr/bin/env node
 const args = process.argv.slice(2);
+require('node:fs').appendFileSync(process.env.PROBE_PUBLICATION, 'gh\\n');
 if (args[0] === 'pr' && args[1] === 'create') console.log('https://example.invalid/repo/pull/7');
 `, 0o755);
     write(path.join(bin, 'codex'), `#!/usr/bin/env python3
@@ -59,7 +63,7 @@ command = {'id': 'read', 'type': 'command_execution', 'command': "/bin/sh -c 'ca
 event('item.started', command)
 event('item.completed', dict(command, status='completed', exit_code=0, aggregated_output='SOURCE_EXCERPT_LINE_1\\nSOURCE_EXCERPT_LINE_2\\n'))
 event('item.completed', {'id': 'notes', 'type': 'reasoning', 'text': 'Detailed implementation notes.\\nAnother line.'})
-if not review:
+if not review and mode != 'incomplete-clean':
     changed = pathlib.Path('implementation.txt')
     changed.write_text(changed.read_text() + pending + '\\n' if changed.exists() else pending + '\\n')
     change = {'id': 'edit', 'type': 'file_change', 'changes': [{'path': str(changed.resolve()), 'kind': 'update'}], 'status': 'in_progress'}
@@ -68,8 +72,19 @@ if not review:
     event('item.completed', dict(change, status='completed'))
 command = {'id': 'test', 'type': 'command_execution', 'command': "/bin/sh -c 'node tests/probe.js'", 'status': 'in_progress'}
 event('item.started', command)
-event('item.completed', dict(command, status='completed', exit_code=0, aggregated_output='PASS detailed check one\\nPASS detailed check two\\n'))
+blocked = mode.startswith('incomplete-')
+event('item.completed', dict(command, status='completed', exit_code=1 if blocked else 0,
+    aggregated_output='Chromium launch failed: Operation not permitted\\n' if blocked else 'PASS detailed check one\\nPASS detailed check two\\n'))
 event('item.completed', {'id': 'summary', 'type': 'agent_message', 'text': 'SUMMARY_DETAIL_LINE_1\\nSUMMARY_DETAIL_LINE_2'})
+if mode.startswith('incomplete-'):
+    event('item.completed', {'id': 'blocker', 'type': 'agent_message', 'text': 'Verification blocked: Chromium socket operations denied. Assignment left unchecked.'})
+    if mode == 'incomplete-wording':
+        document.write_text(document.read_text() + 'Unauthorized wording change.\\n')
+    if mode == 'incomplete-other':
+        pathlib.Path('docs/reviews').mkdir(parents=True, exist_ok=True)
+        pathlib.Path('docs/reviews/other.md').write_text('- [x] Unassigned finding.\\n')
+    print(json.dumps({'type': 'turn.completed'}), flush=True)
+    sys.exit(0)
 if mode == 'failure':
     print(json.dumps({'type': 'turn.failed', 'error': {'message': 'Authentication failed'}}))
     sys.exit(1)
@@ -88,7 +103,10 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
 
     let cases = 0;
     for (const runner of ['implement-tasks.sh', 'fix-review.sh']) {
-        for (const mode of ['success', 'retry', 'failure', 'log-error', 'linked']) {
+        for (const mode of ['success', 'retry', 'failure', 'log-error', 'linked',
+            'incomplete-clean', 'incomplete-partial', 'incomplete-wording', 'incomplete-other']) {
+            const incomplete = mode.startsWith('incomplete-');
+            const stopped = incomplete || mode === 'failure';
             const repo = path.join(tmp, runner + '-' + mode + ' with spaces');
             fs.mkdirSync(repo);
             for (const name of ['trusted-runner.py', 'markdown-tasks.py', 'codex-runner.sh', 'implement-tasks.sh', 'fix-review.sh']) {
@@ -115,10 +133,11 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
             if (mode === 'log-error') write(logsDir, 'not a directory');
             const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_DOC: doc, PROBE_MODE: mode, CREATE_PR: mode === 'success' ? 'true' : 'false', FINAL_REVIEW: 'true',
+                PROBE_PUBLICATION: path.join(tmp, runner + '-' + mode + '-publication.log'),
                 MAX_TASKS: '2', MAX_FINDINGS: '2', BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '1' };
             const result = run('bash', [path.join(cwd, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])], cwd, env);
             const terminal = result.stdout + result.stderr;
-            assert.equal(result.status, ['failure', 'log-error'].includes(mode) ? 1 : 0, terminal);
+            assert.equal(result.status, stopped || mode === 'log-error' ? 1 : 0, terminal);
             assert(!/SOURCE_EXCERPT|SUMMARY_DETAIL|PASS detailed|CLI_STDERR_DETAIL|NOISY_GIT_TRANSFER|aggregated_output|"type":|\/bin\/sh -c/.test(terminal), terminal);
             if (mode === 'log-error') {
                 assert.match(terminal, /Cannot create log directory/);
@@ -129,19 +148,41 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
             }
             const names = fs.readdirSync(logsDir).sort();
             const assignmentNames = names.filter(name => /^(?:task-probe-\d|fix-\d)-/.test(name));
-            assert.equal(assignmentNames.length, mode === 'failure' ? 1 : 2, names.join('\n'));
+            assert.equal(assignmentNames.length, stopped ? 1 : 2, names.join('\n'));
             const texts = names.map(name => fs.readFileSync(path.join(logsDir, name), 'utf8'));
             const details = texts.join('\n');
             assert.match(details, /SOURCE_EXCERPT_LINE_1\nSOURCE_EXCERPT_LINE_2/);
-            assert.match(details, /PASS detailed check one\nPASS detailed check two/);
+            assert.match(details, incomplete ? /Chromium launch failed: Operation not permitted/
+                : /PASS detailed check one\nPASS detailed check two/);
             assert.match(details, /SUMMARY_DETAIL_LINE_1\nSUMMARY_DETAIL_LINE_2/);
             assert.match(details, /CLI_STDERR_DETAIL/);
             assert(!details.includes('aggregated_output'));
-            assert.equal((terminal.match(/Edited: implementation\.txt/g) || []).length, mode === 'retry' ? 3 : mode === 'failure' ? 1 : 2);
+            assert.equal((terminal.match(/Edited: implementation\.txt/g) || []).length,
+                mode === 'incomplete-clean' ? 0 : mode === 'retry' ? 3 : stopped ? 1 : 2);
             assert.match(terminal, /Reading files\.\.\./);
             assert.match(terminal, /Running tests\.\.\./);
             for (const name of names) assert(terminal.includes(path.join(logsDir, name)), name);
-            if (mode === 'failure') {
+            if (incomplete) {
+                if (mode === 'incomplete-wording') {
+                    assert.match(terminal, /document changed unexpectedly/);
+                } else if (mode === 'incomplete-other') {
+                    assert.match(terminal, /checkbox/i);
+                    assert(!terminal.includes('is still unchecked'), terminal);
+                } else {
+                    assert.match(terminal, /Assigned (?:finding|requirement) is still unchecked/);
+                    assert.match(terminal, /implementation or verification is incomplete/);
+                    assert(!terminal.includes('document changed unexpectedly'), terminal);
+                }
+                assert.match(details, /Verification blocked: Chromium socket operations denied/);
+                assert.match(details, /Finished: .*exit 1/);
+                assert.equal(git(cwd, 'rev-list', '--count', 'HEAD'), '1');
+                assert.equal(git(cwd, 'diff', '--cached', '--name-only'), '');
+                assert(!fs.existsSync(env.PROBE_PUBLICATION), 'incomplete assignment must not stage, commit, push, or call GitHub');
+                assert.equal(fs.existsSync(path.join(cwd, 'implementation.txt')), mode !== 'incomplete-clean');
+                if (mode !== 'incomplete-wording') {
+                    assert.equal(fs.readFileSync(path.join(cwd, doc), 'utf8'), '- [ ] First assignment.\n- [ ] Second assignment.\n');
+                }
+            } else if (mode === 'failure') {
                 assert.match(terminal, /Authentication failed/);
                 assert.match(details, /ERROR: Codex failed/);
                 assert.match(details, /Finished: .*exit 1/);
@@ -168,7 +209,7 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
             cases++;
         }
     }
-    console.log(`PASS ${cases} offline output cases: concise progress, readable per-item logs, retries, failures, log errors, final review, linked worktrees, and clean commits`);
+    console.log(`PASS ${cases} offline output cases: concise progress, readable logs, incomplete assignments, tampering rejection, retries, failures, final review, linked worktrees, and clean commits`);
 } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
 }

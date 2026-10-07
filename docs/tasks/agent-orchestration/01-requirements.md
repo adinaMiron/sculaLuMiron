@@ -29,6 +29,8 @@ Existing defects are recorded separately in
 
 ## Runner output
 
+- [x] [ID:incomplete-assignment-diagnostic] Distinguish an unchanged assigned document left unchecked from unauthorized document changes when an agent returns successfully. Stop without staging, committing, or publishing incomplete work, preserve partial edits and the agent's logged blocker, and retain rejection of unrelated checkbox changes. Verify both runners with offline fixtures.
+
 - [x] [ID:readable-runner-output] Show concise assignment, activity, edited-file, completion/failure, and log-location notices in both runners, without raw event JSON, source excerpts, edit instructions, or command output in normal terminal progress. Preserve detailed, readable per-task/per-finding logs and a separate final-review log, append retries to the same assignment log, keep logs out of commits, and retain all existing validation and retry gates. Verify using offline disposable fixtures.
 
 ## Model selection

@@ -277,6 +277,10 @@ PROMPT
     git diff --cached --quiet || die "Codex staged files"
 
     if ! cmp -s "$REVIEW" "${EVIDENCE_PATHS[0]}"; then
+        if sed "${target_line}s/- \[x\]/- [ ]/" "${EVIDENCE_PATHS[0]}" | cmp -s "$REVIEW" -; then
+            check_other_checkboxes "$REVIEW"
+            die "Assigned finding is still unchecked; implementation or verification is incomplete. See the agent summary in the log; working tree preserved for inspection"
+        fi
         git diff -- "$REVIEW" >> "$WORK_LOG" 2>&1 || true
         die "Review document changed unexpectedly; only the assigned [ ] -> [x] transition is allowed"
     fi

@@ -34,7 +34,9 @@ checks concise terminal progress and readable per-task/per-finding logs in both
 runners. It verifies suppression of source excerpts, commands, raw event JSON,
 and tool output; preservation of multiline details and summaries in logs;
 separate assignment/final-review logs; retries appended to the same log;
-failure diagnostics, unavailable log storage, linked worktrees, and logs kept
+failure diagnostics (including unchecked assignments with preserved partial
+work and blocked publication), unauthorized document/checkbox changes,
+unavailable log storage, linked worktrees, and logs kept
 out of commits. Disposable repositories use fake Codex/remotes and waits;
 no model session or remote is contacted.
 

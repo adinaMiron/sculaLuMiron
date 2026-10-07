@@ -1,5 +1,29 @@
 # Agent orchestration decisions
 
+## 2026-10-07 — Incomplete assignments are a separate failure
+
+An agent can return successfully while leaving its assignment unchecked because
+implementation or verification is blocked. Both runners compare that document
+against the original text reconstructed from the sealed completion evidence.
+An exact original match reports incomplete work and points to the logged agent
+summary. Unauthorized document edits still report a validation violation, and
+other checkbox changes are checked before reporting incomplete work. Both paths
+stop before staging or publication and preserve useful partial edits. This does
+not relax the agent sandbox or make blocked tests count as successful.
+
+Offline cases in `tests/runner-output.js` cover unchanged documents with and
+without partial implementation edits, document wording changes, and unrelated
+checkbox changes in both runners. They check the error, retained blocker log,
+preserved edits, and absence of staging, commits, pushes, or GitHub calls.
+
+Verification passed: 18 output cases, 33 usage-recovery cases, and 157
+control-plane cases, plus Bash/JavaScript syntax and diff whitespace checks.
+The diagnostic change and documentation were inspected. The separate Markdown
+finding remains unchecked: its original run could not launch Chromium in the
+offline sandbox, and a browser run in this session fails `mdautosave.js`'s
+immediate draft assertion because the current journal debounces writes by
+700 ms. Neither that test nor Markdown implementation was changed here.
+
 ## 2026-10-07 — Concise progress and readable work logs
 
 Both runners show the current assignment and log path, brief activity notices,
