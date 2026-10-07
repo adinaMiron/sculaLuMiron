@@ -143,7 +143,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Bind pending transcription to its recording destination/session and handle navigation explicitly. Verify delayed responses after chapter changes, idea filing/closure and another recording; no text should be silently misfiled.
 
-- [ ] [ID:md-loose-draft-storage-failure] **P1 — Failure of the loose-file draft journal is silent and loses all loose text on reload.**
+- [x] [ID:md-loose-draft-storage-failure] **P1 — Failure of the loose-file draft journal is silent and loses all loose text on reload.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbDraftWrite` lines 305–313 and `scheduleAutosave` lines 1223–1229.
 

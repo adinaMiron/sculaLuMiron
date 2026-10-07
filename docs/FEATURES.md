@@ -629,6 +629,13 @@ path that changes the editor already ends in, so no future action can forget
 it. `wbPark()` writes it again on `visibilitychange`, `freeze`, `pagehide`
 **and** `beforeunload`: `beforeunload` alone never fires on a discard.
 
+The two journals are read and written independently, so a blocked or full
+`localStorage` does not hide the tab's recovery snapshot. If the tab journal
+cannot be updated, a loose file shows a persistent recovery warning and a
+direct Markdown download of the current text, including embedded images.
+Editing stays usable; closing or reloading asks for confirmation while
+recovery is unavailable. Saving into a workbook still writes to IndexedDB.
+
 ### Coming back: the resume, and the race it used to lose
 
 A browser restores a `<textarea>`'s value from the navigation entry when a

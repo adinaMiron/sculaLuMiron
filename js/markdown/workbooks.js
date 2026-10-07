@@ -385,6 +385,24 @@ async function wbPendingClear(id, saved) {
 const WB_DRAFT_KEY = 'scula:md:draft';
 let wbDraftTimer = 0;
 let wbDraftReady = false;    // boot reconciles first; until then, nothing is written
+let wbDraftFailed = false;   // the tab's reload recovery could not be updated
+
+function wbDraftUnavailable() { return wbDraftFailed && !wbCurrentId && !!editor.value; }
+function wbPaintDraftWarning() {
+  const el = document.getElementById('wb-draft-warning');
+  if (el) el.hidden = !wbDraftUnavailable();
+}
+// A direct download stays usable even when browser storage is blocked/full.
+function wbExportLooseDraft() {
+  const url = URL.createObjectURL(new Blob([editor.value], { type: 'text/markdown;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = wbFileLabel() || 'untitled.md';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 
 // The header's file name, read or written in one place.
 function wbFileLabel(text) {
@@ -396,26 +414,28 @@ function wbFileLabel(text) {
 function wbDraftWrite() {
   clearTimeout(wbDraftTimer);
   if (!wbDraftReady) return;
+  const draft = JSON.stringify({
+    id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now(),
+    base: wbChapterVersions.get(wbCurrentId) || null,
+    dirty: wbDirty || !!(wbCurrentId && editor.value !== (wbChapter(wbCurrentId)?.content || '')),
+    conflictId: wbConflictCopies.get(wbCurrentId)?.chapter.id || null, tab: true
+  });
+  // sessionStorage survives reload/discard and is isolated from other tabs.
+  // A shared journal failure must not prevent this tab from recovering.
   try {
-    const draft = JSON.stringify({
-      id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now(),
-      base: wbChapterVersions.get(wbCurrentId) || null,
-      dirty: wbDirty || !!(wbCurrentId && editor.value !== (wbChapter(wbCurrentId)?.content || '')),
-      conflictId: wbConflictCopies.get(wbCurrentId)?.chapter.id || null, tab: true
-    });
-    // sessionStorage survives reload/discard and is isolated from other tabs.
-    // Keep the shared journal for other readers, but never resume another tab's.
     sessionStorage.setItem(WB_DRAFT_KEY, draft);
-    localStorage.setItem(WB_DRAFT_KEY, draft);
-  } catch (e) {}             // a full quota is not a reason to block typing
+    wbDraftFailed = false;
+  } catch (e) { wbDraftFailed = true; }
+  // Keep the shared journal for other readers, but never resume another tab's.
+  try { localStorage.setItem(WB_DRAFT_KEY, draft); } catch (e) {}
+  wbPaintDraftWarning();     // failure is visible without blocking editing/export
 }
 function wbDraftRead() {
-  try {
-    const own = JSON.parse(sessionStorage.getItem(WB_DRAFT_KEY) || 'null');
-    const shared = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null');
-    const d = shared && !shared.tab && (!own || shared.at > own.at) ? shared : own;
-    return d && typeof d.text === 'string' ? d : null;
-  } catch (e) { return null; }
+  let own = null, shared = null;
+  try { own = JSON.parse(sessionStorage.getItem(WB_DRAFT_KEY) || 'null'); } catch (e) {}
+  try { shared = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null'); } catch (e) {}
+  const d = shared && !shared.tab && (!own || shared.at > own.at) ? shared : own;
+  return d && typeof d.text === 'string' ? d : null;
 }
 /* Unflushed text from this tab's journal. Boot checks its base before writing
    it back; older journals without a base retain the timestamp comparison. */
@@ -430,6 +450,7 @@ function wbDraftAhead(draft, ch) {
    that is where this hangs: one hook for the journal and for the flag. */
 function wbEditorChanged() {
   wbPaintAttach();
+  wbPaintDraftWarning();
   if (!wbDraftReady) return;
   clearTimeout(wbDraftTimer);
   wbDraftTimer = setTimeout(wbDraftWrite, 700);

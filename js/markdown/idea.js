@@ -463,7 +463,13 @@ window.addEventListener('scula-folder', () => { wbMirrorAsked = false; });
 /* Leaving, hiding, being frozen or being discarded: the journal is written
    synchronously each time, because an IndexedDB write started here is not
    guaranteed to finish, and `beforeunload` alone never fires on a discard. */
-function wbPark() { wbDraftWrite(); flushChapter(); }
+function wbPark(event) {
+  wbDraftWrite(); flushChapter();
+  if (event && event.type === 'beforeunload' && wbDraftUnavailable()) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+}
 document.addEventListener('visibilitychange', () => { if (document.hidden) wbPark(); });
 // A Kanban tab writes the same chapter store. Pull its changed line into an
 // open editor before the next autosave can restore the previous task state.

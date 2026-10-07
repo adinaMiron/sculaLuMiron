@@ -406,6 +406,7 @@
   #btn-garden[hidden] { display: none; }
 
   #stat-wb { color: var(--text-2); }
+  #wb-draft-warning { padding: 8px 16px; color: var(--danger); background: var(--surface); flex-shrink: 0; }
 
   /* ── Tree ── */
   #tree-container {
@@ -3863,6 +3864,11 @@
 <div id="view-tabs">
   <button id="tab-source" class="active" onclick="setView('source')" data-i="tabSource">✎ Source</button>
   <button id="tab-preview" onclick="setView('preview')" data-i="tabPreview">👁 Preview</button>
+</div>
+
+<div id="wb-draft-warning" role="alert" hidden>
+  <span data-i="wbDraftFailed">Reload recovery is unavailable. Save the text to a workbook or download the file before closing this page.</span>
+  <button class="btn" onclick="wbExportLooseDraft()" data-i="wbDraftDownload">Download .md file</button>
 </div>
 
 <div id="panel-backdrop" onclick="closeAllPanels()"></div>
