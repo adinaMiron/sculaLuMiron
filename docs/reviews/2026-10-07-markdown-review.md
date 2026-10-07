@@ -111,7 +111,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Distinguish “no manifest exists” from “existing manifest could not be read/validated”; the latter must not publish a replacement. Verify transient failure, invalid JSON, unsupported schema and successful retry.
 
-- [ ] [ID:md-drive-pull-edit-race] **P1 — A delayed Drive pull overwrites edits typed while its download is in flight.**
+- [x] [ID:md-drive-pull-edit-race] **P1 — A delayed Drive pull overwrites edits typed while its download is in flight.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync` lines 374–391; [workbooks.js](../../js/markdown/workbooks.js), `loadChapterIntoEditor`.
 

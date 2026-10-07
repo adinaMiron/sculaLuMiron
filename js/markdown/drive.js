@@ -404,19 +404,56 @@ async function cloudSync(interactive) {
       const lc = wbChapter(rc.id);
       if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
       if (!wbBook(rc.workbookId)) continue;                          // its workbook is gone here
+      const base = wbChapterVersion(lc), baseText = lc?.content || '';
+      const unchanged = () => wbChapterVersion(wbChapter(rc.id)) === base
+        && !(rc.id === wbCurrentId && (wbDirty || editor.value !== baseText))
+        && !wbFlushPromise;
       // A required pull must succeed before publishing a manifest built from
       // local chapters, or remote-only entries and newer metadata would be lost.
       const text = await gsDownload(rc.driveId);
-      const ch = lc || { id: rc.id, workbookId: rc.workbookId, created: rc.created || Date.now(), order: 0 };
+      let ch = { ...(lc || { id: rc.id, created: rc.created || Date.now() }) };
       ch.workbookId = rc.workbookId;
       ch.title = rc.title; ch.file = rc.file;
       ch.order = rc.order || 0;
       ch.content = text;
       ch.updated = rc.updated || Date.now();
-      if (!lc) wbChapters.push(ch);
-      if (!await wbPersist(WB_CHAPTERS, ch)) continue;
-      await wbPendingMark(ch);          // so the markdown folder catches up too
+      const competing = () => {
+        const id = wbNewId('ch_'), title = t('wbConflictTitle', rc.title);
+        return { ...ch, id, title, file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
+          created: Date.now(), updated: Date.now(), order: wbChaptersOf(rc.workbookId).length };
+      };
+      let conflict = false;
+      // Recheck both the editor and the durable revision in the transaction:
+      // an autosave or another tab can finish while the body is downloading.
+      await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+        const req = chapters.get(rc.id);
+        req.onsuccess = () => {
+          conflict = !unchanged() || wbChapterVersion(req.result) !== base;
+          if (conflict) { ch = competing(); chapters.add(ch); }
+          else chapters.put(ch);
+        };
+        return req;
+      });
+      wbChapterVersions.set(ch.id, wbChapterVersion(ch));
+      // Typing can also occur between the transaction's request and commit.
+      // Preserve the downloaded body before a later autosave replaces it.
+      if (!conflict && !unchanged()) {
+        ch = competing();
+        if (!await wbPersist(WB_CHAPTERS, ch)) throw new Error(t('wbStoreFailed'));
+        conflict = true;
+      }
+      wbRecordResponsibles(ch.content);
+      if (conflict) {
+        wbChapters.push(ch);
+        await wbPendingMark(ch);
+        renderWorkbooks();
+        throw new Error(t('cloudPullConflict'));
+      }
+      if (lc) Object.assign(lc, ch);
+      else wbChapters.push(ch);
+      // No await between the final revision check and replacing the editor.
       if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
+      await wbPendingMark(ch);          // so the markdown folder catches up too
       down++;
     }
     const outChaps = [];
