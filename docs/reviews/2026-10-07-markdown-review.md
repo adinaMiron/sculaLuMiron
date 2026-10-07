@@ -71,7 +71,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Distinguish successful mirror writes, intentionally local-only saves, and failed requested folder writes. Clear only confirmed mirrored versions and report partial failure accurately. Test permission denial, disk/quota error and unavailable folder, then retry after reload.
 
-- [ ] [ID:md-rename-failed-copy] **P1 — Rename removes the old mirror even when writing its replacement failed.**
+- [x] [ID:md-rename-failed-copy] **P1 — Rename removes the old mirror even when writing its replacement failed.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `renameWorkbook` (lines 906–923) and `renameChapter` (lines 1002–1016).
 

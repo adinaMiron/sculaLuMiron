@@ -925,11 +925,14 @@ async function renameWorkbook(id, preset) {
   book.updated = Date.now();
   if (!await wbPersist(WB_BOOKS, book)) return;
   if (book.folder !== oldFolder && wbFolderMode()) {
+    let failed = false;
     for (const ch of wbChaptersOf(book.id)) {
-      await wbMirrorWrite(book, ch, ch.content || '');
-      await wbMirrorRemove(oldFolder, ch.file);
+      const result = await wbSaveMirror(book, ch);
+      if (result.failed) failed = true;
+      else await wbMirrorRemove(oldFolder, ch.file);
     }
-    await wbMirrorRemove(oldFolder, null);
+    if (failed) wbSay(t('wbMirrorFailed'), true);
+    else await wbMirrorRemove(oldFolder, null);
   }
   renderWorkbooks();
 }
@@ -1022,8 +1025,9 @@ async function renameChapter(id, preset) {
   ch.updated = Date.now();
   if (!await wbPersist(WB_CHAPTERS, ch)) return;
   if (book && ch.file !== oldFile && wbFolderMode()) {
-    await wbMirrorWrite(book, ch, ch.content || '');
-    await wbMirrorRemove(book.folder, oldFile);
+    const result = await wbSaveMirror(book, ch);
+    if (result.failed) wbSay(t('wbMirrorFailed'), true);
+    else await wbMirrorRemove(book.folder, oldFile);
   }
   if (ch.id === wbCurrentId) document.getElementById('current-file').textContent = ch.file;
   renderWorkbooks();
