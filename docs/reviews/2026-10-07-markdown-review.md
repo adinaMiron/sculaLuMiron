@@ -103,7 +103,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Abort publication or preserve untouched remote entries when required downloads fail. Verify retry discovers the same chapter without duplicates or metadata regression.
 
-- [ ] [ID:md-drive-unreadable-manifest] **P1 — An unreadable or malformed Drive manifest is treated as an empty workspace and overwritten.**
+- [x] [ID:md-drive-unreadable-manifest] **P1 — An unreadable or malformed Drive manifest is treated as an empty workspace and overwritten.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync`, lines 291–301 and 435–441.
 

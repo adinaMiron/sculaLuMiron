@@ -265,6 +265,33 @@ async function cloudTombstone(id) {
    One pass: read the manifest, merge it against IndexedDB record by record,
    move only what differs, write the manifest back. Returns {up, down} so the
    caller can say what happened. */
+function gsValidateManifest(man) {
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const stamp = value => Number.isFinite(value) && value >= 0;
+  const strings = (record, fields) => fields.every(field => typeof record[field] === 'string');
+  const ids = new Set(), books = new Set();
+  const record = (value, fields) => object(value) && strings(value, fields)
+    && value.id && !ids.has(value.id) && stamp(value.updated)
+    && (value.created === undefined || stamp(value.created))
+    && (value.order === undefined || Number.isFinite(value.order));
+  const invalid = () => { throw new Error('Invalid Drive manifest'); };
+  if (!object(man)) invalid();
+  if (man.v !== 1) throw new Error('Unsupported Drive manifest version');
+  if (!Array.isArray(man.books) || !Array.isArray(man.chapters) || !object(man.deleted)
+      || (man.updated !== undefined && !stamp(man.updated))) invalid();
+  for (const book of man.books) {
+    if (!record(book, ['id', 'name', 'folder', 'driveId']) || !book.driveId || !book.folder) invalid();
+    ids.add(book.id); books.add(book.id);
+  }
+  for (const chapter of man.chapters) {
+    if (!record(chapter, ['id', 'workbookId', 'title', 'file', 'driveId'])
+        || !books.has(chapter.workbookId) || !chapter.file || !chapter.driveId) invalid();
+    ids.add(chapter.id);
+  }
+  if (!Object.values(man.deleted).every(stamp)) invalid();
+  return man;
+}
+
 async function cloudSync(interactive) {
   if (gsBusy) return null;
   if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
@@ -281,7 +308,9 @@ async function cloudSync(interactive) {
     const found = await gsChild(GSYNC.MANIFEST, rootId, false);
     if (found) {
       manId = found.id;
-      try { man = JSON.parse(await gsDownload(found.id)) || man; } catch (e) {}
+      // Only an absent index means an empty workspace. An unreadable or
+      // invalid existing index must stop the pass before any merge or write.
+      man = gsValidateManifest(JSON.parse(await gsDownload(found.id)));
     }
     const remBooks = new Map((man.books || []).map(b => [b.id, b]));
     const remChaps = new Map((man.chapters || []).map(c => [c.id, c]));
