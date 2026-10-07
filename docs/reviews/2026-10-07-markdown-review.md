@@ -119,7 +119,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Revalidate the local revision after asynchronous downloads; preserve both versions when local work changed. Test a slow pull with typing, formatting and chapter switching during the request.
 
-- [ ] [ID:md-cloud-mirror-name-collision] **P1 — Independently created cloud notes can acquire the same local mirror path and overwrite each other on folder sync.**
+- [x] [ID:md-cloud-mirror-name-collision] **P1 — Independently created cloud notes can acquire the same local mirror path and overwrite each other on folder sync.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), remote workbook/chapter adoption; [workbooks.js](../../js/markdown/workbooks.js), `wbUniqueFolder`, `wbUniqueFile`, `wbMirrorWrite`.
 

@@ -464,19 +464,22 @@ function wbSlug(name, fallback) {
   if (s.length > 60) s = s.slice(0, 60).replace(/-+$/, '');
   return s || fallback;
 }
-function wbUniqueFolder(name, exceptId) {
-  const base = wbSlug(name, t('untitledWorkbook'));
+// Preserve cloud mirror names unless another ID already owns them here.
+function wbUniqueFolder(name, exceptId, folder) {
+  const base = folder || wbSlug(name, t('untitledWorkbook'));
   const taken = new Set(wbBooks.filter(b => b.id !== exceptId).map(b => b.folder.toLowerCase()));
   let n = base, i = 1;
   while (taken.has(n.toLowerCase())) n = base + '-' + (++i);
   return n;
 }
-function wbUniqueFile(workbookId, title, exceptId) {
-  const base = wbSlug(title, t('untitledChapter'));
+function wbUniqueFile(workbookId, title, exceptId, file) {
+  const dot = file ? file.lastIndexOf('.') : -1;
+  const base = file ? (dot > 0 ? file.slice(0, dot) : file) : wbSlug(title, t('untitledChapter'));
+  const ext = file ? (dot > 0 ? file.slice(dot) : '') : '.md';
   const taken = new Set(wbChapters.filter(c => c.workbookId === workbookId && c.id !== exceptId)
                                   .map(c => c.file.toLowerCase()));
-  let n = base + '.md', i = 1;
-  while (taken.has(n.toLowerCase())) n = base + '-' + (++i) + '.md';
+  let n = base + ext, i = 1;
+  while (taken.has(n.toLowerCase())) n = base + '-' + (++i) + ext;
   return n;
 }
 function wbSay(msg, alsoToast) {

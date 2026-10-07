@@ -357,13 +357,14 @@ async function cloudSync(interactive) {
     for (const rb of remBooks.values()) {
       const lb = wbBook(rb.id);
       if (!lb) {
-        const book = { id: rb.id, name: rb.name, folder: rb.folder, created: rb.created || Date.now(),
+        const book = { id: rb.id, name: rb.name, folder: wbUniqueFolder(rb.name, rb.id, rb.folder), created: rb.created || Date.now(),
                        updated: rb.updated || Date.now(), order: rb.order || 0 };
         wbBooks.push(book);
         await wbPersist(WB_BOOKS, book);
         down++;
       } else if ((rb.updated || 0) > (lb.updated || 0)) {
-        lb.name = rb.name; lb.folder = rb.folder; lb.order = rb.order || 0; lb.updated = rb.updated;
+        lb.name = rb.name; lb.folder = wbUniqueFolder(rb.name, rb.id, rb.folder);
+        lb.order = rb.order || 0; lb.updated = rb.updated;
         await wbPersist(WB_BOOKS, lb);
         down++;
       }
@@ -413,7 +414,7 @@ async function cloudSync(interactive) {
       const text = await gsDownload(rc.driveId);
       let ch = { ...(lc || { id: rc.id, created: rc.created || Date.now() }) };
       ch.workbookId = rc.workbookId;
-      ch.title = rc.title; ch.file = rc.file;
+      ch.title = rc.title; ch.file = wbUniqueFile(rc.workbookId, rc.title, rc.id, rc.file);
       ch.order = rc.order || 0;
       ch.content = text;
       ch.updated = rc.updated || Date.now();
