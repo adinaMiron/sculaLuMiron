@@ -55,7 +55,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Retain failed edits and retry state; a failed flush must prevent destructive navigation or preserve a recoverable independent draft before navigation proceeds. Verify quota/aborted-write failure followed by switch and reload.
 
-- [ ] [ID:md-import-replaces-edits] **P1 — Opening a Markdown file replaces existing work without flushing or guarding it. DOCX replacement also drops pending chapter edits.**
+- [x] [ID:md-import-replaces-edits] **P1 — Opening a Markdown file replaces existing work without flushing or guarding it. DOCX replacement also drops pending chapter edits.**
 
   **Location:** [files.js](../../js/markdown/files.js), `handleFileOpen` (lines 12–24), `handleDocxImport` (lines 36–56); [workbooks.js](../../js/markdown/workbooks.js), `detachChapter`.
 

@@ -12,7 +12,9 @@ function openFile() { document.getElementById('file-input').click(); }
 function handleFileOpen(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
+    // Resolve the current work after reading, including edits made meanwhile.
+    if (!canLeaveEditor() || !await flushChapter()) return;
     editor.value = e.target.result;
     undoReset();
     detachChapter();
@@ -42,7 +44,7 @@ function handleDocxImport(event) {
       // Convert the HTML output to Markdown
       const md = htmlToMarkdown(result.value);
 
-      if (editor.value.trim() && !confirm(t('confirmReplace'))) {
+      if ((editor.value.trim() && !confirm(t('confirmReplace'))) || !await flushChapter()) {
         event.target.value = '';
         return;
       }
