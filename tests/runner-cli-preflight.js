@@ -76,7 +76,7 @@ case 'late-error': console.error('No prompt provided via stdin.\\nError: invalid
 default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provided via stdin.'); process.exit(1);
 }
 `, 0o755);
-    const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
+    const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
         PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false',
         BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '300',
         CODEX_MODEL: '', CODEX_EFFORT: '' };

@@ -2,7 +2,7 @@
 const path = require('path');
 const { chromium } = require('playwright');
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.PW_CHROME_PATH || '/usr/bin/google-chrome-stable' });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROME_PATH || undefined });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('file://' + path.join(__dirname, '..', 'index.html'));

@@ -177,7 +177,7 @@ if os.environ['PROBE_MODE'].startswith('cancel'): time.sleep(300)
         git(repo, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
         const log = path.join(tmp, runner + '-' + mode + '.jsonl');
         write(log, '');
-        const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
+        const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
             PROBE_LOG: log, PROBE_MODE: mode, PROBE_DOC: doc, REAL_GIT: realGit,
             CODEX_USAGE_RETRY_SECONDS: '17', CREATE_PR: 'false', FINAL_REVIEW: mode.startsWith('final-') ? 'true' : 'false',
             BASE: 'main', TASK_BRANCH: 'feat/probe', MAX_TASKS: '1', MAX_FINDINGS: '1',

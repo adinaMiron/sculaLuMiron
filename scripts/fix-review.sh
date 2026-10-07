@@ -37,6 +37,7 @@ Example:
 Optional environment variables:
   MAX_FINDINGS=20
   CREATE_PR=true
+  BROWSER_PREFLIGHT=true
   CODEX_MODEL=<OpenAI model identifier> (unset: script default)
   CODEX_EFFORT=none|minimal|low|medium|high|xhigh|max|ultra (unset: script default)
 
@@ -44,6 +45,10 @@ Edit DEFAULT_CODEX_MODEL and DEFAULT_CODEX_EFFORT in the configuration section.
 Environment values override those defaults; empty values use CLI/model defaults.
 Choose an effort supported by your model and installed Codex CLI.
 Model/effort selections apply to findings and retries.
+Before any Git change, the runner checks that Playwright's bundled headless
+Chromium starts inside the Codex sandbox (install it with: cd tests &&
+npm install && npx playwright install chromium-headless-shell).
+BROWSER_PREFLIGHT=false skips that check for runs without browser tests.
 The review document and branch are configured in this script.
 Progress is concise; detailed per-finding logs are in .git/automation-logs/
 (linked worktrees use their own Git administrative directory).
@@ -98,7 +103,7 @@ validate_review_input() {
 # Requirements
 # ==============================================================================
 
-for cmd in git grep sed cut cmp codex tr; do
+for cmd in git grep sed cut cmp codex tr timeout; do
     require_command "$cmd"
 done
 
@@ -121,6 +126,8 @@ cd "$REPO_ROOT"
 #   - workspace-write filesystem sandbox;
 #   - local browser IPC via the enforced network proxy sandbox, with no
 #     allowed outbound destinations from agent-executed shell commands;
+#   - Chromium and Node bypass that proxy, so their internet requests fail
+#     offline instead of terminating the command;
 #   - no approval/escalation path;
 #   - no hosted web search;
 #   - no apps/connectors/plugins/hooks/multi-agent tooling;
@@ -136,6 +143,7 @@ assert_finding_retry_state() {
     assert_item_retry_state "$REVIEW" "$target_line"
 }
 preflight_codex
+preflight_browser
 
 # ==============================================================================
 # Validate starting state
@@ -250,11 +258,12 @@ The wrapper rejects changes to these paths, including new or ignored files.
 Control-plane maintenance requires a separate human-reviewed change.
 
 NETWORK / EXTERNAL-TOOL POLICY
-Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,
+Do not use web search, browser MCP tools, apps/connectors, plugins, MCP tools, curl, wget,
 network package installation, remote APIs, or any command requiring outbound network access.
 Use only repository files, already-installed local tooling, and local tests.
-Local Playwright/Chromium tests are permitted inside the configured sandbox.
-External destinations remain blocked by the network proxy's empty allowlist.
+Local Playwright tests are required where relevant; see the next section.
+
+$CODEX_SANDBOX_GUIDANCE
 
 GIT OWNERSHIP
 The Bash wrapper owns Git history and remote operations.
@@ -353,7 +362,7 @@ work_status "Creating pull request..."
 run_logged gh pr create \
     --base "$BASE" \
     --head "$BRANCH" \
-    --title "Fixes from review 2026-10-04" \
+    --title "Fixes from review $(basename "$REVIEW" .md)" \
     --body "Automated one-by-one fixes for findings in \`$REVIEW\`. Codex runs locally with workspace writes allowed but agent-command network access and external integration tools disabled; the Bash wrapper owns commits, pushes, and PR creation."
 
 pr_url="$(tail -n 1 "$WORK_LOG")"

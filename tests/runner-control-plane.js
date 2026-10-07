@@ -423,7 +423,7 @@ if mode == 'agent-failure':
             const log = path.join(tmp, `${runner}-${mode}.jsonl`);
             const marker = path.join(tmp, `${runner}-${mode}.compromised`);
             write(log, '');
-            const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
+            const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_LOG: log, PROBE_MODE: mode, PROBE_RUNNER: runner, PROBE_MARKER: marker,
                 CREATE_PR: 'true', FINAL_REVIEW: 'true', MAX_TASKS: '2', MAX_FINDINGS: '2' };
             if (mode.startsWith('no-pr-')) {
