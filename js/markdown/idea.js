@@ -320,6 +320,7 @@ async function saveIdea() {
 
 async function ideaSaveNow() {
   const el = document.getElementById('idea-text');
+  const submitted = el.value;
   const r = ideaResolve();
   if (!r.body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
   ideaDictationDestination++;
@@ -330,10 +331,13 @@ async function ideaSaveNow() {
   }
   const done = target && await ideaAppendTo(target, r.line);
   if (!done) { wbSay(t(wbConflictCopies.has(target?.id) ? 'wbConflict' : 'ideaFailed'), true); return; }
-  el.value = '';
-  ideaSetPick(null);
-  ideaRenderChapterList();
-  closeIdeaModal();
+  // Only retire the submitted draft; typing during either write stays available.
+  if (el.value === submitted) {
+    el.value = '';
+    ideaSetPick(null);
+    ideaRenderChapterList();
+    closeIdeaModal();
+  }
   const info = { book: done.book.name, chapter: done.chapter.title, path: done.path };
   wbSay(done.failed ? t('wbMirrorFailed') : done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
 }

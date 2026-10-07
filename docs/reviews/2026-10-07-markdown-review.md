@@ -151,7 +151,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Keep editing usable but surface that recovery is unavailable and preserve an alternative recovery/export route. Verify blocked storage and quota failure on loose files containing text and embedded images.
 
-- [ ] [ID:md-idea-save-input-race] **P2 — Quick idea saving clears text entered after the save started.**
+- [x] [ID:md-idea-save-input-race] **P2 — Quick idea saving clears text entered after the save started.**
 
   **Location:** [idea.js](../../js/markdown/idea.js), `saveIdea` and `ideaSaveNow` lines 312–334.
 
