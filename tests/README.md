@@ -79,6 +79,27 @@ upgrade changing this contract needs investigation before running automation.
 Neither test mode performs real Git mutations or launches a model session; these
 checks establish CLI compatibility, not operating-system confinement.
 
+`PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/runner-browser-sandbox.js`
+checks the shared runner's real Codex proxy sandbox from a Linux host that can
+create it. It requires installed Playwright and Chromium; omit `PW_CHROME_PATH`
+when using Playwright's managed browser. It verifies Chromium's local Unix
+socket operations and browser startup, denied direct host TCP/Unix socket
+connections, and rejected HTTP/HTTPS proxy destinations with an empty allowlist.
+All network targets are local listeners or reserved `.invalid` names; it makes
+no model calls or Git changes. Unlike the fake-agent suites, this checks actual
+OS isolation for those probes. It does not establish every agent-confinement
+requirement. `npm run test:runner-browser` from `tests/` runs the same check.
+Optional repository-relative Node test paths run afterward inside the same
+sandbox configuration, for example:
+
+```bash
+PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/runner-browser-sandbox.js tests/wbstorefailure.js
+```
+
+Run this probe on the host, outside another restrictive sandbox; an outer
+sandbox can prevent Codex from creating its own sandbox. It fails explicitly
+when the runtime or installed CLI cannot support the configuration.
+
 `node tests/runner-lock.js` (or `npm run test:runner-lock` from `tests/`) checks
 the shared exclusive repository lock with concurrent task/review invocations
 in every pairing, including linked worktrees. It pauses the owning runner at

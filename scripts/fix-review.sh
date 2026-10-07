@@ -119,7 +119,8 @@ cd "$REPO_ROOT"
 # The Bash wrapper keeps normal host network access for git fetch/push and gh.
 # The Codex child gets a separate restrictive execution policy:
 #   - workspace-write filesystem sandbox;
-#   - no outbound network from agent-executed shell commands;
+#   - local browser IPC via the enforced network proxy sandbox, with no
+#     allowed outbound destinations from agent-executed shell commands;
 #   - no approval/escalation path;
 #   - no hosted web search;
 #   - no apps/connectors/plugins/hooks/multi-agent tooling;
@@ -252,6 +253,8 @@ NETWORK / EXTERNAL-TOOL POLICY
 Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,
 network package installation, remote APIs, or any command requiring outbound network access.
 Use only repository files, already-installed local tooling, and local tests.
+Local Playwright/Chromium tests are permitted inside the configured sandbox.
+External destinations remain blocked by the network proxy's empty allowlist.
 
 GIT OWNERSHIP
 The Bash wrapper owns Git history and remote operations.

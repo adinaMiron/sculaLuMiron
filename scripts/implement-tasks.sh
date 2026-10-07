@@ -344,7 +344,8 @@ esac
 # Git and create the PR.  Every Codex child process gets a stricter policy:
 #
 #   - workspace writes allowed;
-#   - outbound network for agent-executed commands denied;
+#   - local browser IPC via the enforced network proxy sandbox, with no
+#     allowed outbound destinations from agent-executed commands;
 #   - no interactive permission escalation;
 #   - hosted web search disabled;
 #   - apps/connectors/plugins/hooks/multi-agent features disabled;

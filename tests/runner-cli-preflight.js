@@ -60,6 +60,8 @@ const assert = require('node:assert/strict');
 assert.deepEqual(args.slice(0, 3), ['--ask-for-approval', 'never', 'exec']);
 for (const flag of ['--json', '--strict-config', '--ephemeral', '--ignore-user-config', '--ignore-rules']) assert(args.includes(flag));
 assert.equal(args[args.indexOf('--sandbox') + 1], 'workspace-write');
+assert(args.includes('sandbox_workspace_write.network_access=true'));
+assert(args.includes('features.network_proxy={enabled=true,domains={},unix_sockets={},allow_upstream_proxy=false,allow_local_binding=false,dangerously_allow_non_loopback_proxy=false,dangerously_allow_all_unix_sockets=false,enable_socks5=false,enable_socks5_udp=false,proxy_url="http://127.0.0.1:0"}'));
 for (const feature of ${JSON.stringify(features)}) assert(args.some((a, i) => a === '--disable' && args[i + 1] === feature));
 if (args.at(-1) !== '-') process.exit(74); // Fake model launch, never real.
 assert.equal(fs.readFileSync(0, 'utf8'), '', 'preflight must not read caller input');
@@ -300,6 +302,8 @@ preflight_codex
             ['-c', 'features.unknown_runner_feature=false'],
             ['-c', 'shell_environment_policy.inherit="invalid"'],
             ['-c', 'sandbox_workspace_write.network_access="invalid"'],
+            ['-c', 'features.network_proxy.enabled="invalid"'],
+            ['-c', 'features.network_proxy.unknown_runner_setting=true'],
             ['-c', 'web_search="invalid"']
         ]) {
             const invalid = run('bash', ['-c', probe, 'probe', helper, ...override], realEnv);

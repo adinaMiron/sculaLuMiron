@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Ad-hoc Playwright checks for editor.html, recipes.html, index.html, calendar.html, map.html, voice.html and song.html (see README.md). Not part of the apps themselves - see the root CLAUDE.md for why the apps stay dependency-free.",
   "scripts": {
+    "test:runner-browser": "node runner-browser-sandbox.js",
     "test:runner-output": "node runner-output.js",
     "test:runner-usage": "node runner-usage-limits.js",
     "test:runner-lock": "node runner-lock.js",

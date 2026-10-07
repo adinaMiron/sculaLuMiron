@@ -1,5 +1,44 @@
 # Agent orchestration decisions
 
+## 2026-10-07 — Browser-compatible offline command execution
+
+The reported review run stopped because Chromium crashed on Crashpad's
+`setsockopt` call under `sandbox_workspace_write.network_access=false`, before
+`wbstorefailure.js` could verify the existing fix. This was reproduced with a
+local Unix socket pair; the unchecked-finding gate was behaving correctly.
+
+The shared runner now uses command networking together with Codex's enforced
+network proxy sandbox. Its complete proxy configuration supplies empty domain
+and host Unix socket allowlists, disables upstream proxies, broad local access,
+SOCKS, and unrestricted socket access, and binds the HTTP proxy on a dynamically
+allocated loopback port. The proxy sandbox allows local socket operations while
+blocking outbound destinations. Both settings are mandatory; enabling command
+networking alone would allow external access. The
+[official configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+documents that domain rules require the enabled proxy. No user option or
+automatic fallback disables this enforcement. Strict CLI preflight validates the
+proxy table before branch preparation, and approval escalation remains disabled.
+
+`tests/runner-browser-sandbox.js` reads the actual helper configuration and uses
+the installed CLI without a model call. It checks local Unix socket operations,
+blocked direct host TCP/Unix sockets, rejected HTTP/HTTPS proxy requests, and a
+real Playwright browser launch. Optional test paths reproduce repository browser
+regressions under that configuration. The sandbox subcommand lacks the exec
+command's ignore-user-config flag, so the probe uses an explicit permission
+profile; execution preflight separately checks the real exec arguments. These
+probes cover the reported incompatibility, not every pending confinement or
+credential-isolation requirement.
+
+Verified on `codex-cli 0.160.1` with installed Chrome: all sandbox probes and all
+seven `wbstorefailure.js` cases passed, including quota/abort failures, reload
+recovery, retry, and concurrent saves. The Markdown review checkbox remains for
+the review runner's own verification/completion cycle. No model session, live
+review run, remote Git operation, or publication was started for these checks.
+The CLI preflight suite (including the installed CLI), 18 output cases, 33
+usage-recovery cases, and 157 control-plane cases also passed. Bash/JavaScript
+syntax and diff whitespace checks passed; the implementation, test, and
+documentation diffs were inspected before completing the requirement.
+
 ## 2026-10-07 — Incomplete assignments are a separate failure
 
 An agent can return successfully while leaving its assignment unchecked because

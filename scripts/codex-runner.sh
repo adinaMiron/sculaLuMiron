@@ -26,7 +26,12 @@ CODEX_SAFE_ARGS=(
     --ignore-user-config
     --ignore-rules
     --sandbox workspace-write
-    -c 'sandbox_workspace_write.network_access=false'
+    # Strict network_access=false denies socket operations needed by Chromium's
+    # local IPC (Crashpad setsockopt). Use the enforced proxy sandbox instead:
+    # sockets work inside its network namespace, but no upstream destinations
+    # or host Unix sockets are allowed. Port 0 avoids local listener conflicts.
+    -c 'sandbox_workspace_write.network_access=true'
+    -c 'features.network_proxy={enabled=true,domains={},unix_sockets={},allow_upstream_proxy=false,allow_local_binding=false,dangerously_allow_non_loopback_proxy=false,dangerously_allow_all_unix_sockets=false,enable_socks5=false,enable_socks5_udp=false,proxy_url="http://127.0.0.1:0"}'
     -c 'web_search="disabled"'
     -c 'check_for_update_on_startup=false'
     -c 'analytics.enabled=false'

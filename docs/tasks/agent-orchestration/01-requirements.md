@@ -27,6 +27,10 @@ Existing defects are recorded separately in
 
 - [x] [ID:usage-limit-recovery] Automatically wait and retry the same task, finding, or final review after a Codex usage-limit failure. Honor a reported reset time with a conservative fallback interval, preserve partial work and original validation evidence, retain the repository lock, support cancellation, and stop on unrelated failures or validation violations. Verify recovery and rejection paths using offline fake agents and clocks.
 
+## Browser-test compatibility
+
+- [x] [ID:offline-browser-tests] Allow installed Chromium/Playwright tests to run in the shared runner sandbox without enabling external traffic or host socket access. Verify real browser startup and denied direct/proxied connections with local fixtures, retain strict configuration preflight and completion gates, and document the supported sandbox configuration.
+
 ## Runner output
 
 - [x] [ID:incomplete-assignment-diagnostic] Distinguish an unchanged assigned document left unchecked from unauthorized document changes when an agent returns successfully. Stop without staging, committing, or publishing incomplete work, preserve partial edits and the agent's logged blocker, and retain rejection of unrelated checkbox changes. Verify both runners with offline fixtures.
