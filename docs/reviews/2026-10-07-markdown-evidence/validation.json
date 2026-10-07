@@ -1,0 +1,128 @@
+{
+  "wbsaveall": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "wbresume": {
+    "failures": [],
+    "errors": [
+      "page.evaluate: ReferenceError: wbAll is not defined"
+    ],
+    "tail": [
+      "}",
+      "",
+      "Node.js v26.8.1"
+    ]
+  },
+  "wbrename": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "wbadopt": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS what ☁ pulled is written into the folder",
+      "",
+      "all checks passed"
+    ]
+  },
+  "idea": {
+    "failures": [
+      "FAIL 💡 button is right of New  -> [\"btn-workbooks\",\"newFileBtn\",\"btn-help\",\"btn-idea\",\"btn-cal-sync\",\"btn-map\",\"openFileBtn\",\"importDocxBtn\",\"exportHtmlBtn\"]"
+    ],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "1 FAILED"
+    ]
+  },
+  "mdundo": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "paste": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "dictate": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS  no page errors",
+      "",
+      "all checks passed"
+    ]
+  },
+  "gantt": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS Gantt tasks, dates, metadata, dependencies, navigation"
+    ]
+  },
+  "nav": {
+    "failures": [
+      "FAIL and the preview too  -> {\"picked\":\"# Mecanică\",\"start\":0,\"focused\":true,\"edTop\":0,\"edMax\":5043,\"pvTop\":716,\"pvMax\":6743,\"flashed\":\"mecanică\",\"active\":\"Mecanică\"}",
+      "FAIL on a phone the click shows the preview  -> {\"start\":7928,\"focused\":true,\"view\":\"view-source\",\"flashed\":\"\"}",
+      "FAIL and leaves the source (and the keyboard) alone  -> {\"start\":7928,\"focused\":true,\"view\":\"view-source\",\"flashed\":\"\"}"
+    ],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "3 FAILED"
+    ]
+  },
+  "find": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "taskstatus": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors",
+      "",
+      "all good"
+    ]
+  },
+  "gdsync": {
+    "failures": [],
+    "errors": [],
+    "tail": [
+      "PASS no page errors through it",
+      "",
+      "all checks passed"
+    ]
+  },
+  "task-suites": {
+    "result": "  256 passed (3.8m)"
+  }
+}

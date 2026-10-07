@@ -1,0 +1,4362 @@
+{
+  "main": {
+    "failed-folder-save-all": {
+      "text": "LATEST a",
+      "id": "a",
+      "dirty": false,
+      "pending": [],
+      "status": "1 capitol modificat salvat.",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "LATEST a",
+          "created": 1,
+          "updated": 1791342043869,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b",
+          "created": 1,
+          "updated": 1,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "a",
+        "name": "a.md",
+        "text": "ORIGINAL a",
+        "at": 1791342043802
+      }
+    },
+    "failed-folder-sync": {
+      "text": "LATEST a",
+      "id": "a",
+      "dirty": false,
+      "pending": [],
+      "status": "0 capitole scrise în dosar.",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "LATEST a",
+          "created": 1,
+          "updated": 1791342044426,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b",
+          "created": 1,
+          "updated": 1,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "a",
+        "name": "a.md",
+        "text": "ORIGINAL a",
+        "at": 1791342044365
+      }
+    },
+    "failed-store-then-switch": {
+      "afterFailure": {
+        "dirty": false,
+        "status": "Nu s-a putut salva local (IndexedDB indisponibil)."
+      },
+      "text": "ORIGINAL a",
+      "id": "a",
+      "dirty": false,
+      "pending": [],
+      "status": "Capitol deschis: A",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "ORIGINAL a",
+          "created": 1,
+          "updated": 1,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b",
+          "created": 1,
+          "updated": 1,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "a",
+        "name": "a.md",
+        "text": "ORIGINAL a",
+        "at": 1791342045111
+      }
+    },
+    "file-open-before-autosave": {
+      "text": "IMPORTED",
+      "id": null,
+      "dirty": false,
+      "pending": [],
+      "status": "",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "ORIGINAL a",
+          "created": 1,
+          "updated": 1,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b",
+          "created": 1,
+          "updated": 1,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "",
+        "name": "incoming.md",
+        "text": "IMPORTED",
+        "at": 1791342046355
+      }
+    },
+    "export-before-autosave": {
+      "exported": "ORIGINAL a",
+      "expected": "LATEST EDIT"
+    },
+    "toolbar-edit-not-autosaved": {
+      "before": {
+        "text": "**ORIGINAL a**",
+        "id": "a",
+        "dirty": false,
+        "pending": [],
+        "status": "Capitol deschis: A",
+        "stored": [
+          {
+            "id": "a",
+            "workbookId": "review-book",
+            "title": "A",
+            "file": "a.md",
+            "content": "ORIGINAL a",
+            "created": 1,
+            "updated": 1,
+            "order": 0
+          },
+          {
+            "id": "b",
+            "workbookId": "review-book",
+            "title": "B",
+            "file": "b.md",
+            "content": "ORIGINAL b",
+            "created": 1,
+            "updated": 1,
+            "order": 1
+          }
+        ],
+        "draft": {
+          "id": "a",
+          "name": "a.md",
+          "text": "**ORIGINAL a**",
+          "at": 1791342049867
+        }
+      },
+      "after": {
+        "text": "ORIGINAL a",
+        "id": "a",
+        "dirty": false,
+        "pending": [],
+        "status": "Capitol deschis: A",
+        "stored": [
+          {
+            "id": "a",
+            "workbookId": "review-book",
+            "title": "A",
+            "file": "a.md",
+            "content": "ORIGINAL a",
+            "created": 1,
+            "updated": 1,
+            "order": 0
+          },
+          {
+            "id": "b",
+            "workbookId": "review-book",
+            "title": "B",
+            "file": "b.md",
+            "content": "ORIGINAL b",
+            "created": 1,
+            "updated": 1,
+            "order": 1
+          }
+        ],
+        "draft": {
+          "id": "a",
+          "name": "a.md",
+          "text": "ORIGINAL a",
+          "at": 1791342050280
+        }
+      }
+    },
+    "rename-failed-copy-deletes-source": {
+      "removed": [
+        "a.md"
+      ],
+      "title": "Renamed",
+      "file": "Renamed.md"
+    },
+    "quick-idea-typing-during-save": {
+      "box": "",
+      "chapter": "ORIGINAL a\nFIRST IDEA\n",
+      "open": false
+    },
+    "two-tabs-stale-overwrite": {
+      "visible": "TAB A NEWER",
+      "stored": "TAB B STALE EDIT"
+    },
+    "drive-failed-download-forgets-remote": {
+      "remoteIds": [
+        "a"
+      ],
+      "uploadedIds": [
+        "b"
+      ]
+    },
+    "drive-malformed-manifest-overwrite": {
+      "v": 1,
+      "updated": 1791342052464,
+      "books": [
+        {
+          "id": "review-book",
+          "name": "Review",
+          "folder": "Review",
+          "created": 1,
+          "updated": 1,
+          "order": 0,
+          "driveId": "new-dir"
+        }
+      ],
+      "chapters": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "created": 1,
+          "updated": 1,
+          "order": 0,
+          "driveId": "new"
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "created": 1,
+          "updated": 1,
+          "order": 1,
+          "driveId": "new"
+        }
+      ],
+      "deleted": {}
+    },
+    "drive-pull-overwrites-typing": {
+      "text": "REMOTE BODY",
+      "dirty": false,
+      "stored": "REMOTE BODY",
+      "draft": {
+        "id": "a",
+        "name": "a.md",
+        "text": "REMOTE BODY",
+        "at": 1791342052785
+      }
+    },
+    "markdown-active-span": {
+      "executed": 1,
+      "html": "<p><span span=\"\" onmouseover=\"window.reviewExecuted=1\">hover</span></p>"
+    },
+    "modal-shortcut-mutates-editor": {
+      "text": "ORIGINAL a**text**",
+      "id": "a",
+      "dirty": false,
+      "pending": [],
+      "status": "Capitol deschis: A",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "ORIGINAL a",
+          "created": 1,
+          "updated": 1,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b",
+          "created": 1,
+          "updated": 1,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "a",
+        "name": "a.md",
+        "text": "ORIGINAL a",
+        "at": 1791342053410
+      }
+    },
+    "modal-keyboard-focus-escape": {
+      "stillOpen": true,
+      "role": null,
+      "ariaModal": null
+    },
+    "ui-layout-and-contrast": [
+      {
+        "lang": "ro",
+        "width": 1920,
+        "height": 1080,
+        "pageScroll": 1920,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1920,
+          "h": 52,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 146,
+          "w": 1920,
+          "h": 81,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "workspace": {
+          "x": 0,
+          "y": 227,
+          "w": 1920,
+          "h": 832,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "editor": {
+          "x": 261,
+          "y": 255,
+          "w": 718.5,
+          "h": 804,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 719,
+          "client": 719
+        },
+        "preview": {
+          "x": 980.5,
+          "y": 255,
+          "w": 718.5,
+          "h": 804,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 719,
+          "client": 719
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 105,
+          "w": 1920,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 237,
+          "w": 43.328125,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 43,
+          "client": 43
+        },
+        "tbLabel": {
+          "x": 183.21875,
+          "y": 161,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 1059,
+          "w": 1920,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "loose": {
+          "x": 1032.375,
+          "y": 64.5,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 28,
+            "w": 87.796875
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 28,
+            "w": 53.828125
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 28,
+            "w": 64.953125
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 28,
+            "w": 75.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 28,
+            "w": 129.9375
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 28,
+            "w": 110.578125
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 28,
+            "w": 115.890625
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 28,
+            "w": 114.5625
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 28,
+            "w": 204.46875
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 28,
+            "w": 179.859375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 28,
+            "w": 120.515625
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 28,
+            "w": 220.3125
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 25,
+            "w": 87.90625
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 25,
+            "w": 60.3125
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 25,
+            "w": 57.390625
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 25,
+            "w": 91.671875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 25,
+            "w": 85.59375
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 25,
+            "w": 59.953125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 25,
+            "w": 103.390625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 25,
+            "w": 89.875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 25,
+            "w": 69.765625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 25,
+            "w": 80.53125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 25,
+            "w": 69.96875
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 32,
+            "w": 60.25
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 25,
+            "w": 67.8125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 25,
+            "w": 73.265625
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 32,
+            "w": 97.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 1920,
+        "height": 1080,
+        "pageScroll": 1920,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1920,
+          "h": 52,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 146,
+          "w": 1920,
+          "h": 81,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "workspace": {
+          "x": 0,
+          "y": 227,
+          "w": 1920,
+          "h": 832,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "editor": {
+          "x": 261,
+          "y": 255,
+          "w": 718.5,
+          "h": 804,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 719,
+          "client": 719
+        },
+        "preview": {
+          "x": 980.5,
+          "y": 255,
+          "w": 718.5,
+          "h": 804,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 719,
+          "client": 719
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 105,
+          "w": 1920,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 237,
+          "w": 77.484375,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 77,
+          "client": 77
+        },
+        "tbLabel": {
+          "x": 162.875,
+          "y": 161,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 1059,
+          "w": 1920,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1920,
+          "client": 1920
+        },
+        "loose": {
+          "x": 1063.3125,
+          "y": 64.5,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 28,
+            "w": 114.71875
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 28,
+            "w": 55.8125
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 28,
+            "w": 57.09375
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 28,
+            "w": 75.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 28,
+            "w": 115.5625
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 28,
+            "w": 87.5
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 28,
+            "w": 108.625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 28,
+            "w": 107.296875
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 28,
+            "w": 154.5
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 28,
+            "w": 126.375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 28,
+            "w": 139
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 28,
+            "w": 151.09375
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 25,
+            "w": 49.78125
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 25,
+            "w": 84.765625
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 25,
+            "w": 74.703125
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 25,
+            "w": 67.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 25,
+            "w": 88.140625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 25,
+            "w": 82.25
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 25,
+            "w": 73.375
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 25,
+            "w": 79.8125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 25,
+            "w": 87.75
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 32,
+            "w": 71.484375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 25,
+            "w": 79.4375
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 25,
+            "w": 63.46875
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 32,
+            "w": 86.078125
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "ro",
+        "width": 1366,
+        "height": 900,
+        "pageScroll": 1366,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1366,
+          "h": 52,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 146,
+          "w": 1366,
+          "h": 115,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "workspace": {
+          "x": 0,
+          "y": 261,
+          "w": 1366,
+          "h": 618,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "editor": {
+          "x": 261,
+          "y": 289,
+          "w": 441.5,
+          "h": 590,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 442,
+          "client": 442
+        },
+        "preview": {
+          "x": 703.5,
+          "y": 289,
+          "w": 441.5,
+          "h": 590,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 442,
+          "client": 442
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 105,
+          "w": 1366,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 271,
+          "w": 43.328125,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 43,
+          "client": 43
+        },
+        "tbLabel": {
+          "x": 175.21875,
+          "y": 161,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 879,
+          "w": 1366,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "loose": {
+          "x": 558.375,
+          "y": 64.5,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 28,
+            "w": 79.796875
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 28,
+            "w": 45.828125
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 28,
+            "w": 56.953125
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 28,
+            "w": 67.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 28,
+            "w": 121.9375
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 28,
+            "w": 102.578125
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 28,
+            "w": 107.890625
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 28,
+            "w": 106.5625
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 28,
+            "w": 196.46875
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 28,
+            "w": 171.859375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 28,
+            "w": 112.515625
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 28,
+            "w": 212.3125
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 25,
+            "w": 87.90625
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 25,
+            "w": 60.3125
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 25,
+            "w": 57.390625
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 25,
+            "w": 91.671875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 25,
+            "w": 85.59375
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 25,
+            "w": 59.953125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 25,
+            "w": 103.390625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 25,
+            "w": 89.875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 25,
+            "w": 69.765625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 25,
+            "w": 80.53125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 25,
+            "w": 69.96875
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 32,
+            "w": 60.25
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 25,
+            "w": 67.8125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 25,
+            "w": 73.265625
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 32,
+            "w": 97.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 1366,
+        "height": 900,
+        "pageScroll": 1366,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1366,
+          "h": 52,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 146,
+          "w": 1366,
+          "h": 108,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "workspace": {
+          "x": 0,
+          "y": 254,
+          "w": 1366,
+          "h": 625,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "editor": {
+          "x": 261,
+          "y": 282,
+          "w": 441.5,
+          "h": 597,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 442,
+          "client": 442
+        },
+        "preview": {
+          "x": 703.5,
+          "y": 282,
+          "w": 441.5,
+          "h": 597,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 442,
+          "client": 442
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 105,
+          "w": 1366,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 264,
+          "w": 77.484375,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 77,
+          "client": 77
+        },
+        "tbLabel": {
+          "x": 154.875,
+          "y": 161,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 879,
+          "w": 1366,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1366,
+          "client": 1366
+        },
+        "loose": {
+          "x": 589.3125,
+          "y": 64.5,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 28,
+            "w": 106.71875
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 28,
+            "w": 47.8125
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 28,
+            "w": 49.09375
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 28,
+            "w": 67.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 28,
+            "w": 107.5625
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 28,
+            "w": 79.5
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 28,
+            "w": 100.625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 28,
+            "w": 99.296875
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 28,
+            "w": 146.5
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 28,
+            "w": 118.375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 28,
+            "w": 131
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 28,
+            "w": 143.09375
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 25,
+            "w": 49.78125
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 25,
+            "w": 84.765625
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 25,
+            "w": 74.703125
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 25,
+            "w": 67.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 25,
+            "w": 88.140625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 25,
+            "w": 82.25
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 25,
+            "w": 73.375
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 25,
+            "w": 79.8125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 25,
+            "w": 87.75
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 32,
+            "w": 71.484375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 25,
+            "w": 79.4375
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 25,
+            "w": 63.46875
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 32,
+            "w": 86.078125
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "ro",
+        "width": 1025,
+        "height": 768,
+        "pageScroll": 1025,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1025,
+          "h": 75,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 169,
+          "w": 1025,
+          "h": 109,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "workspace": {
+          "x": 0,
+          "y": 278,
+          "w": 1025,
+          "h": 469,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "editor": {
+          "x": 261,
+          "y": 306,
+          "w": 271,
+          "h": 441,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 271,
+          "client": 271
+        },
+        "preview": {
+          "x": 533,
+          "y": 306,
+          "w": 271,
+          "h": 441,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 271,
+          "client": 271
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 128,
+          "w": 1025,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 288,
+          "w": 43.328125,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 43,
+          "client": 43
+        },
+        "tbLabel": {
+          "x": 175.21875,
+          "y": 184,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 747,
+          "w": 1025,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "loose": {
+          "x": 329.9375,
+          "y": 59,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 28,
+            "w": 79.796875
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 28,
+            "w": 45.828125
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 28,
+            "w": 56.953125
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 28,
+            "w": 67.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 28,
+            "w": 121.9375
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 28,
+            "w": 102.578125
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 28,
+            "w": 107.890625
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 28,
+            "w": 106.5625
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 28,
+            "w": 196.46875
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 28,
+            "w": 171.859375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 28,
+            "w": 112.515625
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 28,
+            "w": 212.3125
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 25,
+            "w": 87.90625
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 25,
+            "w": 60.3125
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 25,
+            "w": 57.390625
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 25,
+            "w": 91.671875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 25,
+            "w": 85.59375
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 25,
+            "w": 59.953125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 25,
+            "w": 103.390625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 25,
+            "w": 89.875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 25,
+            "w": 69.765625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 25,
+            "w": 80.53125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 25,
+            "w": 69.96875
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 32,
+            "w": 60.25
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 25,
+            "w": 67.8125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 25,
+            "w": 73.265625
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 32,
+            "w": 97.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 1025,
+        "height": 768,
+        "pageScroll": 1025,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 1025,
+          "h": 75,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 169,
+          "w": 1025,
+          "h": 115,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "workspace": {
+          "x": 0,
+          "y": 284,
+          "w": 1025,
+          "h": 463,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "editor": {
+          "x": 261,
+          "y": 312,
+          "w": 271,
+          "h": 435,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 271,
+          "client": 271
+        },
+        "preview": {
+          "x": 533,
+          "y": 312,
+          "w": 271,
+          "h": 435,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 271,
+          "client": 271
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 128,
+          "w": 1025,
+          "h": 41,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "panelTitle": {
+          "x": 12,
+          "y": 294,
+          "w": 77.484375,
+          "h": 11,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 77,
+          "client": 77
+        },
+        "tbLabel": {
+          "x": 154.875,
+          "y": 184,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 747,
+          "w": 1025,
+          "h": 21,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 1025,
+          "client": 1025
+        },
+        "loose": {
+          "x": 353.609375,
+          "y": 59,
+          "w": 50.8125,
+          "h": 28,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "12px",
+          "scroll": 49,
+          "client": 49
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 28,
+            "w": 106.71875
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 28,
+            "w": 47.8125
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 28,
+            "w": 49.09375
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 28,
+            "w": 67.265625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 28,
+            "w": 107.5625
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 28,
+            "w": 79.5
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 28,
+            "w": 100.625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 28,
+            "w": 99.296875
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 28,
+            "w": 146.5
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 28,
+            "w": 118.375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 28,
+            "w": 131
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 28,
+            "w": 143.09375
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 25,
+            "w": 63.9375
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 25,
+            "w": 25.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 25,
+            "w": 20.015625
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 25,
+            "w": 49.78125
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 25,
+            "w": 84.765625
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 25,
+            "w": 62.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 25,
+            "w": 74.703125
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 25,
+            "w": 64.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 25,
+            "w": 67.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 25,
+            "w": 88.140625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 25,
+            "w": 82.25
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 25,
+            "w": 73.375
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 25,
+            "w": 79.8125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 25,
+            "w": 87.75
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 32,
+            "w": 71.484375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 25,
+            "w": 79.4375
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 25,
+            "w": 63.46875
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 32,
+            "w": 86.078125
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 25,
+            "w": 56.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 25,
+            "w": 79.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 25,
+            "w": 66.421875
+          }
+        ]
+      },
+      {
+        "lang": "ro",
+        "width": 390,
+        "height": 844,
+        "pageScroll": 390,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 390,
+          "h": 155,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 248,
+          "w": 390,
+          "h": 354,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "workspace": {
+          "x": 0,
+          "y": 642,
+          "w": 390,
+          "h": 182,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "editor": {
+          "x": 0,
+          "y": 642,
+          "w": 390,
+          "h": 182,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 390,
+          "client": 390
+        },
+        "preview": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 0,
+          "client": 0
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 208,
+          "w": 390,
+          "h": 40,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 724,
+          "client": 390
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 174.21875,
+          "y": 295.5,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 824,
+          "w": 390,
+          "h": 20,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "10px",
+          "scroll": 390,
+          "client": 390
+        },
+        "loose": {
+          "x": 12,
+          "y": 80,
+          "w": 366,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 364,
+          "client": 364
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 27,
+            "w": 56.875
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 27,
+            "w": 31.0625
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 27,
+            "w": 38.828125
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 27,
+            "w": 47.421875
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 27,
+            "w": 87.984375
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 27,
+            "w": 73.84375
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 27,
+            "w": 180.5625
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 27,
+            "w": 179.453125
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 27,
+            "w": 140.890625
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 27,
+            "w": 122.890625
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 27,
+            "w": 78.9375
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 27,
+            "w": 153.09375
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 31,
+            "w": 30.046875
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 31,
+            "w": 89.90625
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 31,
+            "w": 62.3125
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 31,
+            "w": 27.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 31,
+            "w": 22.015625
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 31,
+            "w": 59.390625
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 31,
+            "w": 93.671875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 31,
+            "w": 64.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 31,
+            "w": 87.59375
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 31,
+            "w": 66.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 31,
+            "w": 61.953125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 31,
+            "w": 105.390625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 31,
+            "w": 91.875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 31,
+            "w": 71.765625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 31,
+            "w": 82.53125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 31,
+            "w": 71.96875
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 38,
+            "w": 62.25
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 31,
+            "w": 69.8125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 31,
+            "w": 75.265625
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 38,
+            "w": 99.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 31,
+            "w": 58.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 31,
+            "w": 81.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 31,
+            "w": 68.421875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 390,
+        "height": 844,
+        "pageScroll": 390,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 390,
+          "h": 155,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 248,
+          "w": 390,
+          "h": 354,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "workspace": {
+          "x": 0,
+          "y": 642,
+          "w": 390,
+          "h": 182,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 390,
+          "client": 390
+        },
+        "editor": {
+          "x": 0,
+          "y": 642,
+          "w": 390,
+          "h": 182,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 390,
+          "client": 390
+        },
+        "preview": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 0,
+          "client": 0
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 208,
+          "w": 390,
+          "h": 40,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 557,
+          "client": 390
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 153.875,
+          "y": 295.5,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 824,
+          "w": 390,
+          "h": 20,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "10px",
+          "scroll": 390,
+          "client": 390
+        },
+        "loose": {
+          "x": 12,
+          "y": 80,
+          "w": 366,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 364,
+          "client": 364
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 27,
+            "w": 79.484375
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 27,
+            "w": 34.40625
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 27,
+            "w": 34.96875
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 27,
+            "w": 49.109375
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 27,
+            "w": 79.6875
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 27,
+            "w": 58.3125
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 27,
+            "w": 180.5625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 27,
+            "w": 179.453125
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 27,
+            "w": 104.75
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 27,
+            "w": 82.3125
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 27,
+            "w": 92.828125
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 27,
+            "w": 101.421875
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 31,
+            "w": 30.046875
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 31,
+            "w": 65.9375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 31,
+            "w": 65.9375
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 31,
+            "w": 27.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 31,
+            "w": 22.015625
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 31,
+            "w": 51.78125
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 31,
+            "w": 86.765625
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 31,
+            "w": 64.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 31,
+            "w": 76.703125
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 31,
+            "w": 66.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 31,
+            "w": 69.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 31,
+            "w": 90.140625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 31,
+            "w": 84.25
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 31,
+            "w": 75.375
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 31,
+            "w": 81.8125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 31,
+            "w": 89.75
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 38,
+            "w": 73.484375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 31,
+            "w": 81.4375
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 31,
+            "w": 65.46875
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 38,
+            "w": 88.078125
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 31,
+            "w": 58.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 31,
+            "w": 81.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 31,
+            "w": 68.421875
+          }
+        ]
+      },
+      {
+        "collapsedWidth": 390,
+        "workspaceHeight": 491,
+        "focusedHiddenControls": 29
+      },
+      {
+        "lang": "ro",
+        "width": 320,
+        "height": 640,
+        "pageScroll": 320,
+        "header": {
+          "x": 0,
+          "y": -7,
+          "w": 320,
+          "h": 155,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 188,
+          "w": 320,
+          "h": 411,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "workspace": {
+          "x": 0,
+          "y": 639,
+          "w": 320,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "editor": {
+          "x": 0,
+          "y": 625,
+          "w": 320,
+          "h": 32,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 320,
+          "client": 320
+        },
+        "preview": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 0,
+          "client": 0
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 148,
+          "w": 320,
+          "h": 40,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 724,
+          "client": 320
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 174.21875,
+          "y": 235.5,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 639,
+          "w": 320,
+          "h": 20,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "10px",
+          "scroll": 320,
+          "client": 320
+        },
+        "loose": {
+          "x": 12,
+          "y": 20,
+          "w": 296,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 294,
+          "client": 294
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 27,
+            "w": 58.84375
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 27,
+            "w": 33.03125
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 27,
+            "w": 40.796875
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 27,
+            "w": 49.390625
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 27,
+            "w": 89.953125
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 27,
+            "w": 92.078125
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 27,
+            "w": 96.515625
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 27,
+            "w": 95.40625
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 27,
+            "w": 140.890625
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 27,
+            "w": 122.890625
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 27,
+            "w": 78.9375
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 27,
+            "w": 153.09375
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 31,
+            "w": 30.046875
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 31,
+            "w": 89.90625
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 31,
+            "w": 62.3125
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 31,
+            "w": 27.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 31,
+            "w": 22.015625
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 31,
+            "w": 59.390625
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 31,
+            "w": 93.671875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 31,
+            "w": 64.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 31,
+            "w": 87.59375
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 31,
+            "w": 66.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 31,
+            "w": 61.953125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 31,
+            "w": 105.390625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 31,
+            "w": 91.875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 31,
+            "w": 71.765625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 31,
+            "w": 82.53125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 31,
+            "w": 71.96875
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 38,
+            "w": 62.25
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 31,
+            "w": 69.8125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 31,
+            "w": 75.265625
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 38,
+            "w": 99.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 31,
+            "w": 58.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 31,
+            "w": 81.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 31,
+            "w": 68.421875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 320,
+        "height": 640,
+        "pageScroll": 320,
+        "header": {
+          "x": 0,
+          "y": -7,
+          "w": 320,
+          "h": 155,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 188,
+          "w": 320,
+          "h": 418,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "workspace": {
+          "x": 0,
+          "y": 646,
+          "w": 320,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 320,
+          "client": 320
+        },
+        "editor": {
+          "x": 0,
+          "y": 632,
+          "w": 320,
+          "h": 32,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 320,
+          "client": 320
+        },
+        "preview": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 0,
+          "client": 0
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 148,
+          "w": 320,
+          "h": 40,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 557,
+          "client": 320
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 153.875,
+          "y": 235.5,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 646,
+          "w": 320,
+          "h": 20,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "10px",
+          "scroll": 320,
+          "client": 320
+        },
+        "loose": {
+          "x": 12,
+          "y": 20,
+          "w": 296,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 294,
+          "client": 294
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 27,
+            "w": 78.359375
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 27,
+            "w": 33.28125
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 27,
+            "w": 33.84375
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 27,
+            "w": 47.984375
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 27,
+            "w": 78.5625
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 27,
+            "w": 84.3125
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 27,
+            "w": 100.40625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 27,
+            "w": 99.296875
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 27,
+            "w": 104.75
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 27,
+            "w": 82.3125
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 27,
+            "w": 92.828125
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 27,
+            "w": 101.421875
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 31,
+            "w": 30.046875
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 31,
+            "w": 65.9375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 31,
+            "w": 65.9375
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 31,
+            "w": 27.78125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 31,
+            "w": 22.015625
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 31,
+            "w": 51.78125
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 31,
+            "w": 86.765625
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 31,
+            "w": 64.03125
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 31,
+            "w": 76.703125
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 31,
+            "w": 66.078125
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 31,
+            "w": 69.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 31,
+            "w": 90.140625
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 31,
+            "w": 84.25
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 31,
+            "w": 75.375
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 31,
+            "w": 81.8125
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 31,
+            "w": 89.75
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 38,
+            "w": 73.484375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 31,
+            "w": 81.4375
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 31,
+            "w": 65.46875
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 38,
+            "w": 88.078125
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 31,
+            "w": 58.34375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 31,
+            "w": 81.84375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 31,
+            "w": 68.421875
+          }
+        ]
+      },
+      {
+        "collapsedWidth": 320,
+        "workspaceHeight": 287,
+        "focusedHiddenControls": 29
+      },
+      {
+        "lang": "ro",
+        "width": 844,
+        "height": 390,
+        "pageScroll": 844,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 844,
+          "h": 93,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 182,
+          "w": 844,
+          "h": 157,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "workspace": {
+          "x": 0,
+          "y": 339,
+          "w": 844,
+          "h": 51,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "editor": {
+          "x": 0,
+          "y": 342,
+          "w": 421.5,
+          "h": 48,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 422,
+          "client": 422
+        },
+        "preview": {
+          "x": 422.5,
+          "y": 367,
+          "w": 421.5,
+          "h": 48,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 422,
+          "client": 422
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 146,
+          "w": 844,
+          "h": 36,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 871,
+          "client": 844
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 157.28125,
+          "y": 223,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 0,
+          "client": 0
+        },
+        "loose": {
+          "x": 126.34375,
+          "y": 83.5,
+          "w": 44.40625,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 42,
+          "client": 42
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Caiete",
+            "h": 27,
+            "w": 74.984375
+          },
+          {
+            "id": "",
+            "text": "Nou",
+            "h": 26,
+            "w": 43.84375
+          },
+          {
+            "id": "btn-help",
+            "text": "Ajutor",
+            "h": 26,
+            "w": 54.046875
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idee",
+            "h": 27,
+            "w": 63.5
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Trimite datele",
+            "h": 27,
+            "w": 113.609375
+          },
+          {
+            "id": "",
+            "text": "Deschide .md",
+            "h": 26,
+            "w": 95.859375
+          },
+          {
+            "id": "",
+            "text": "Importă DOCX",
+            "h": 26,
+            "w": 100.734375
+          },
+          {
+            "id": "",
+            "text": "Exportă HTML",
+            "h": 26,
+            "w": 99.515625
+          },
+          {
+            "id": "",
+            "text": "📓 Salvează capitolul în caiet",
+            "h": 27,
+            "w": 181.921875
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sincronizează în dosar",
+            "h": 27,
+            "w": 159.375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Cont Google",
+            "h": 27,
+            "w": 104.96875
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Salvează tot ce s-a modificat",
+            "h": 27,
+            "w": 196.453125
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 26,
+            "w": 25.125
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Anulează",
+            "h": 26,
+            "w": 80.375
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Refă",
+            "h": 26,
+            "w": 54.90625
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 26,
+            "w": 23.03125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 26,
+            "w": 17.703125
+          },
+          {
+            "id": "",
+            "text": "≡ Listă",
+            "h": 26,
+            "w": 52.21875
+          },
+          {
+            "id": "",
+            "text": "№ Ordonată",
+            "h": 26,
+            "w": 83.84375
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 26,
+            "w": 56.484375
+          },
+          {
+            "id": "",
+            "text": "⬛ Imagine",
+            "h": 26,
+            "w": 78.25
+          },
+          {
+            "id": "",
+            "text": "⊞ Tabel",
+            "h": 26,
+            "w": 58.390625
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Cod",
+            "h": 26,
+            "w": 54.578125
+          },
+          {
+            "id": "",
+            "text": "⏳ Cronologie",
+            "h": 26,
+            "w": 94.671875
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagramă",
+            "h": 26,
+            "w": 82.1875
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Schiță",
+            "h": 26,
+            "w": 63.625
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictare",
+            "h": 26,
+            "w": 73.5625
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Notiță",
+            "h": 26,
+            "w": 63.8125
+          },
+          {
+            "id": "",
+            "text": "🕸 Graf",
+            "h": 33,
+            "w": 54.84375
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Poze",
+            "h": 26,
+            "w": 61.828125
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Caută",
+            "h": 26,
+            "w": 66.859375
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorator",
+            "h": 33,
+            "w": 89.40625
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 26,
+            "w": 51.234375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 26,
+            "w": 72.9375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 26,
+            "w": 60.546875
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "width": 844,
+        "height": 390,
+        "pageScroll": 844,
+        "header": {
+          "x": 0,
+          "y": 53,
+          "w": 844,
+          "h": 93,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 182,
+          "w": 844,
+          "h": 130,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(34, 52, 42)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "workspace": {
+          "x": 0,
+          "y": 312,
+          "w": 844,
+          "h": 78,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "editor": {
+          "x": 0,
+          "y": 337,
+          "w": 421.5,
+          "h": 50,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "14px",
+          "scroll": 422,
+          "client": 422
+        },
+        "preview": {
+          "x": 422.5,
+          "y": 340,
+          "w": 421.5,
+          "h": 50,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "15px",
+          "scroll": 422,
+          "client": 422
+        },
+        "saveRow": {
+          "x": 0,
+          "y": 146,
+          "w": 844,
+          "h": 36,
+          "color": "rgb(243, 238, 225)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "16px",
+          "scroll": 844,
+          "client": 844
+        },
+        "panelTitle": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "10px",
+          "scroll": 0,
+          "client": 0
+        },
+        "tbLabel": {
+          "x": 138.5,
+          "y": 223,
+          "w": 8.828125,
+          "h": 12,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "font": "11px",
+          "scroll": 9,
+          "client": 9
+        },
+        "status": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(27, 42, 34)",
+          "font": "11px",
+          "scroll": 0,
+          "client": 0
+        },
+        "loose": {
+          "x": 126.34375,
+          "y": 83.5,
+          "w": 44.40625,
+          "h": 24,
+          "color": "rgb(90, 106, 96)",
+          "bg": "rgb(20, 32, 26)",
+          "font": "11px",
+          "scroll": 42,
+          "client": 42
+        },
+        "buttons": [
+          {
+            "id": "btn-workbooks",
+            "text": "📓 Workbooks",
+            "h": 27,
+            "w": 99.65625
+          },
+          {
+            "id": "",
+            "text": "New",
+            "h": 26,
+            "w": 45.65625
+          },
+          {
+            "id": "btn-help",
+            "text": "Help",
+            "h": 26,
+            "w": 46.828125
+          },
+          {
+            "id": "btn-idea",
+            "text": "💡 Idea",
+            "h": 27,
+            "w": 63.5
+          },
+          {
+            "id": "btn-cal-sync",
+            "text": "📅 Push dates",
+            "h": 27,
+            "w": 100.421875
+          },
+          {
+            "id": "",
+            "text": "Open .md",
+            "h": 26,
+            "w": 74.703125
+          },
+          {
+            "id": "",
+            "text": "Import DOCX",
+            "h": 26,
+            "w": 94.0625
+          },
+          {
+            "id": "",
+            "text": "Export HTML",
+            "h": 26,
+            "w": 92.84375
+          },
+          {
+            "id": "",
+            "text": "📓 Save to workbook",
+            "h": 27,
+            "w": 136.125
+          },
+          {
+            "id": "btn-wb-sync",
+            "text": "⇩ Sync to folder",
+            "h": 27,
+            "w": 110.34375
+          },
+          {
+            "id": "btn-wb-cloud",
+            "text": "☁ Google account",
+            "h": 27,
+            "w": 121.921875
+          },
+          {
+            "id": "btn-save-all-modified",
+            "text": "📚 Save all modified",
+            "h": 27,
+            "w": 133
+          },
+          {
+            "id": "btn-toolbar-toggle",
+            "text": "☰",
+            "h": 26,
+            "w": 25.125
+          },
+          {
+            "id": "btn-undo",
+            "text": "↶ Undo",
+            "h": 26,
+            "w": 58.25
+          },
+          {
+            "id": "btn-redo",
+            "text": "↷ Redo",
+            "h": 26,
+            "w": 58.25
+          },
+          {
+            "id": "",
+            "text": "B",
+            "h": 26,
+            "w": 23.03125
+          },
+          {
+            "id": "",
+            "text": "I",
+            "h": 26,
+            "w": 17.703125
+          },
+          {
+            "id": "",
+            "text": "≡ List",
+            "h": 26,
+            "w": 45.171875
+          },
+          {
+            "id": "",
+            "text": "№ Ordered",
+            "h": 26,
+            "w": 77.46875
+          },
+          {
+            "id": "",
+            "text": "🔗 Link",
+            "h": 26,
+            "w": 56.484375
+          },
+          {
+            "id": "",
+            "text": "⬛ Image",
+            "h": 26,
+            "w": 68.1875
+          },
+          {
+            "id": "",
+            "text": "⊞ Table",
+            "h": 26,
+            "w": 58.390625
+          },
+          {
+            "id": "",
+            "text": "⟨/⟩ Code",
+            "h": 26,
+            "w": 61.609375
+          },
+          {
+            "id": "",
+            "text": "⏳ Timeline",
+            "h": 26,
+            "w": 80.59375
+          },
+          {
+            "id": "btn-diagram",
+            "text": "◇ Diagram",
+            "h": 26,
+            "w": 75.15625
+          },
+          {
+            "id": "btn-sketch",
+            "text": "✏ Sketch",
+            "h": 26,
+            "w": 66.96875
+          },
+          {
+            "id": "btn-dictate",
+            "text": "🎤 Dictate",
+            "h": 26,
+            "w": 72.90625
+          },
+          {
+            "id": "",
+            "text": "⟦⟧ Note link",
+            "h": 26,
+            "w": 80.234375
+          },
+          {
+            "id": "",
+            "text": "🕸 Graph",
+            "h": 33,
+            "w": 65.21875
+          },
+          {
+            "id": "btn-media",
+            "text": "📸 Photos",
+            "h": 26,
+            "w": 72.546875
+          },
+          {
+            "id": "btn-find",
+            "text": "🔍 Find",
+            "h": 26,
+            "w": 57.8125
+          },
+          {
+            "id": "btn-explorer",
+            "text": "🖼 Explorer",
+            "h": 33,
+            "w": 78.6875
+          },
+          {
+            "id": "btn-nav",
+            "text": "☰ Nav",
+            "h": 26,
+            "w": 51.234375
+          },
+          {
+            "id": "btn-kanban",
+            "text": "▦ Kanban",
+            "h": 26,
+            "w": 72.9375
+          },
+          {
+            "id": "btn-gantt",
+            "text": "▤ Gantt",
+            "h": 26,
+            "w": 60.546875
+          }
+        ]
+      },
+      {
+        "collapsedWidth": 844,
+        "workspaceHeight": 172,
+        "focusedHiddenControls": 29
+      }
+    ]
+  },
+  "additional": {
+    "save-overlaps-new-edit": {
+      "pendingBefore": [
+        "a"
+      ],
+      "pendingAfter": [],
+      "stored": "SECOND VERSION",
+      "status": "Salvat în folder/first-version.md"
+    },
+    "collapsed-toolbar-focus-invisible": {
+      "focused": "heading-select",
+      "toolbarCollapsed": true,
+      "ancestorOpacity": "0"
+    },
+    "lost-loose-draft-on-quota": {
+      "before": {
+        "text": "LOOSE WORK MUST SURVIVE",
+        "id": null,
+        "dirty": false,
+        "pending": [],
+        "status": "",
+        "stored": [],
+        "draft": {
+          "id": "",
+          "name": "untitled.md",
+          "text": "",
+          "at": 1791342123220
+        }
+      },
+      "after": {
+        "text": "",
+        "id": null,
+        "dirty": false,
+        "pending": [],
+        "status": "",
+        "stored": [],
+        "draft": {
+          "id": "",
+          "name": "untitled.md",
+          "text": "",
+          "at": 1791342124809
+        }
+      }
+    },
+    "late-dictation-wrong-chapter": {
+      "text": "ORIGINAL b\n\nSPOKEN FOR CHAPTER A",
+      "id": "b",
+      "dirty": false,
+      "pending": [
+        "b"
+      ],
+      "status": "salvat automat",
+      "stored": [
+        {
+          "id": "a",
+          "workbookId": "review-book",
+          "title": "A",
+          "file": "a.md",
+          "content": "ORIGINAL a",
+          "created": 1,
+          "updated": 1,
+          "order": 0
+        },
+        {
+          "id": "b",
+          "workbookId": "review-book",
+          "title": "B",
+          "file": "b.md",
+          "content": "ORIGINAL b\n\nSPOKEN FOR CHAPTER A",
+          "created": 1,
+          "updated": 1791342127192,
+          "order": 1
+        }
+      ],
+      "draft": {
+        "id": "b",
+        "name": "b.md",
+        "text": "ORIGINAL b",
+        "at": 1791342127166
+      }
+    },
+    "cloud-name-collision-mirror": [
+      {
+        "id": "a",
+        "path": "Review/a.md",
+        "text": "ORIGINAL a"
+      },
+      {
+        "id": "b",
+        "path": "Review/b.md",
+        "text": "ORIGINAL b"
+      },
+      {
+        "id": "other-a",
+        "path": "Review/a.md",
+        "text": "REMOTE NOTE"
+      }
+    ],
+    "modal-focus-leaves-dialog": {
+      "inside": false,
+      "tag": "BODY",
+      "id": ""
+    }
+  }
+}
