@@ -375,8 +375,9 @@ async function cloudSync(interactive) {
       const lc = wbChapter(rc.id);
       if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
       if (!wbBook(rc.workbookId)) continue;                          // its workbook is gone here
-      let text = '';
-      try { text = await gsDownload(rc.driveId); } catch (e) { continue; }
+      // A required pull must succeed before publishing a manifest built from
+      // local chapters, or remote-only entries and newer metadata would be lost.
+      const text = await gsDownload(rc.driveId);
       const ch = lc || { id: rc.id, workbookId: rc.workbookId, created: rc.created || Date.now(), order: 0 };
       ch.workbookId = rc.workbookId;
       ch.title = rc.title; ch.file = rc.file;

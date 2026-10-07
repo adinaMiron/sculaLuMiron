@@ -95,7 +95,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Detect stale writes and preserve the competing text before overwrite. Test two real same-origin contexts/pages, including edits, reload and background/foreground transitions.
 
-- [ ] [ID:md-drive-failed-download] **P1 — A failed chapter download removes that remote chapter from the next Drive manifest.**
+- [x] [ID:md-drive-failed-download] **P1 — A failed chapter download removes that remote chapter from the next Drive manifest.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync`, chapter download and `outChaps` construction (lines 372–432).
 
