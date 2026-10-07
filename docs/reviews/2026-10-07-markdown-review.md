@@ -47,7 +47,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Verified:** The existing shared `editor.setRangeText` override journals and schedules autosave for programmatic edits. `mdautosave.js`, `mdundo.js`, `wbsaveall.js`, and `wbresume.js` pass with the installed Chrome. The reload test's copied-page fixture now resolves assets from the repository root. See [verification details](2026-10-07-markdown-evidence/autosave-verification.md).
 
-- [ ] [ID:md-failed-store-navigation] **P1 — A failed store write clears the dirty flag and permits leaving the chapter, destroying its recovery draft.**
+- [x] [ID:md-failed-store-navigation] **P1 — A failed store write clears the dirty flag and permits leaving the chapter, destroying its recovery draft.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `flushChapter`, `saveToWorkbook`, `openChapter`, `canLeaveEditor` and `loadChapterIntoEditor`.
 
