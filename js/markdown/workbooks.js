@@ -21,6 +21,11 @@ let wbCurrentId = null;      // open chapter, or null for a loose file
 let wbDirty = false;
 let wbSaveTimer = 0;
 let wbFlushPromise = null;   // serialize writes, including a switch during autosave
+const wbChapterVersions = new Map(); // immutable versions this tab actually read/wrote
+const wbConflictCopies = new Map();
+function wbChapterVersion(ch) {
+  return ch ? JSON.stringify([ch.updated, ch.content || '', ch.workbookId, ch.file, ch.title, ch.order]) : null;
+}
 let wbUserEdited = false;    // has anyone actually typed since this page loaded?
 // The browser's own "Edit files?" permission prompt is asked at most once per
 // page load: past that, a granted handle needs no more asking, and a denied
@@ -252,16 +257,68 @@ function wbTx(store, mode, run) {
   }));
 }
 const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
-const wbPut = (store, v) => wbTx(store, 'readwrite', s => s.put(v));
-const wbDrop = (store, k) => wbTx(store, 'readwrite', s => s.delete(k));
+const wbPut = async (store, v) => {
+  const version = store === WB_CHAPTERS ? wbChapterVersion(v) : null;
+  const result = await wbTx(store, 'readwrite', s => s.put(v));
+  if (store === WB_CHAPTERS) wbChapterVersions.set(v.id, version);
+  return result;
+};
+const wbDrop = async (store, k) => {
+  await wbTx(store, 'readwrite', s => s.delete(k));
+  if (store === WB_CHAPTERS) {
+    wbChapterVersions.delete(k);
+    wbConflictCopies.delete(k);
+  }
+};
 // The meta store has no keyPath — put(value, key), get(key).
 const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
 async function wbPersist(store, value) {
   try {
-    await wbPut(store, value);
-    if (store === WB_CHAPTERS) wbRecordResponsibles(value.content);
+    if (store !== WB_CHAPTERS) { await wbPut(store, value); return true; }
+    const saved = { ...value };
+    const expected = wbChapterVersions.get(saved.id) || null;
+    let conflict = null;
+    let createdConflict = false;
+    const conflictVersion = wbChapterVersion({ ...saved, updated: 0 });
+    // IndexedDB serializes read/write transactions across tabs. Comparing
+    // inside the write transaction also catches simultaneous autosaves.
+    await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+      const req = chapters.get(saved.id);
+      req.onsuccess = () => {
+        if (wbChapterVersion(req.result) === expected) { chapters.put(saved); return; }
+        const previous = wbConflictCopies.get(saved.id);
+        if (previous && previous.version === conflictVersion) conflict = previous.chapter;
+        else {
+          const id = wbNewId('ch_'), title = t('wbConflictTitle', saved.title);
+          conflict = {
+            ...saved, id, title,
+            // Other tabs may already own the same visible conflict title.
+            file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
+            created: Date.now(), updated: Date.now(), order: wbChaptersOf(saved.workbookId).length
+          };
+        }
+        // Preserve both texts before reporting failure, even if this tab closes.
+        createdConflict = conflict !== (previous && previous.chapter);
+        if (createdConflict) chapters.add(conflict);
+      };
+      return req;
+    });
+    if (conflict) {
+      wbConflictCopies.set(saved.id, { version: conflictVersion, chapter: conflict });
+      if (createdConflict) {
+        wbChapters.push({ ...conflict });
+        wbChapterVersions.set(conflict.id, wbChapterVersion(conflict));
+        await wbPendingMark(conflict);
+      }
+      renderWorkbooks();
+      wbDraftWrite();
+      wbSay(t('wbConflict'), true);
+      return false;
+    }
+    wbChapterVersions.set(saved.id, wbChapterVersion(saved));
+    wbRecordResponsibles(saved.content);
     return true;
   }
   catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
@@ -321,9 +378,9 @@ async function wbPendingClear(id, saved) {
    after a few minutes, then reload it when you come back.
 
    So every change also lands in localStorage, synchronously, tagged with the
-   chapter it belongs to ('' for a loose file) and when it was written. It is
-   a journal, not a store: boot compares it against the record and keeps
-   whichever is newer, and the next keystroke overwrites it. § E. */
+   chapter it belongs to ('' for a loose file) and its base revision. Each
+   tab also keeps an isolated sessionStorage journal. Boot recovers edits
+   against that base, preserving conflicts separately. § E. */
 const WB_DRAFT_KEY = 'scula:md:draft';
 let wbDraftTimer = 0;
 let wbDraftReady = false;    // boot reconciles first; until then, nothing is written
@@ -339,23 +396,32 @@ function wbDraftWrite() {
   clearTimeout(wbDraftTimer);
   if (!wbDraftReady) return;
   try {
-    localStorage.setItem(WB_DRAFT_KEY, JSON.stringify({
-      id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now()
-    }));
+    const draft = JSON.stringify({
+      id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now(),
+      base: wbChapterVersions.get(wbCurrentId) || null,
+      dirty: wbDirty || !!(wbCurrentId && editor.value !== (wbChapter(wbCurrentId)?.content || '')),
+      conflictId: wbConflictCopies.get(wbCurrentId)?.chapter.id || null, tab: true
+    });
+    // sessionStorage survives reload/discard and is isolated from other tabs.
+    // Keep the shared journal for other readers, but never resume another tab's.
+    sessionStorage.setItem(WB_DRAFT_KEY, draft);
+    localStorage.setItem(WB_DRAFT_KEY, draft);
   } catch (e) {}             // a full quota is not a reason to block typing
 }
 function wbDraftRead() {
   try {
-    const d = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null');
+    const own = JSON.parse(sessionStorage.getItem(WB_DRAFT_KEY) || 'null');
+    const shared = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null');
+    const d = shared && !shared.tab && (!own || shared.at > own.at) ? shared : own;
     return d && typeof d.text === 'string' ? d : null;
   } catch (e) { return null; }
 }
-/* The journal's text when it is this chapter's and ahead of the record —
-   keystrokes the autosave never got to. Otherwise null. A record that is
-   newer (a Drive pull, an edit in another tab) always wins. */
+/* Unflushed text from this tab's journal. Boot checks its base before writing
+   it back; older journals without a base retain the timestamp comparison. */
 function wbDraftAhead(draft, ch) {
   if (!draft || !ch || draft.id !== ch.id) return null;
   if (draft.text === (ch.content || '')) return null;
+  if (draft.base) return draft.dirty ? draft.text : null;
   if ((draft.at || 0) <= (ch.updated || 0)) return null;
   return draft.text;
 }
@@ -1166,18 +1232,33 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
     if (!changes.length) return;
     const pending = changingBooks && wbPendingIds.has(id)
       ? { chapterId: id, workbookId: bookId, content: ch.content, updated: now } : null;
+    const expectedVersions = new Map(changes.map(item => [item.id, wbChapterVersions.get(item.id)]));
+    let stale = false;
     try {
       const db = await wbDb();
       await new Promise((resolve, reject) => {
         const tx = db.transaction(pending ? [WB_CHAPTERS, WB_PENDING] : [WB_CHAPTERS], 'readwrite');
-        changes.forEach(item => tx.objectStore(WB_CHAPTERS).put(item));
+        const chapters = tx.objectStore(WB_CHAPTERS);
+        changes.forEach(item => {
+          const req = chapters.get(item.id);
+          req.onsuccess = () => {
+            if (stale) return;
+            if (wbChapterVersion(req.result) !== expectedVersions.get(item.id)) {
+              stale = true;
+              tx.abort();
+            } else chapters.put(item);
+          };
+        });
         if (pending) tx.objectStore(WB_PENDING).put(pending);
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
         tx.onabort = () => reject(tx.error);
       }).finally(() => db.close());
-    } catch (e) { wbSay(t('wbStoreFailed'), true); return; }
-    changes.forEach(item => Object.assign(wbChapter(item.id), item));
+    } catch (e) { wbSay(t(stale ? 'wbStaleMove' : 'wbStoreFailed'), true); return; }
+    changes.forEach(item => {
+      Object.assign(wbChapter(item.id), item);
+      wbChapterVersions.set(item.id, wbChapterVersion(item));
+    });
     if (changingBooks) {
       wbOpenBooks.add(bookId);
       if (id === wbCurrentId) {
@@ -1296,6 +1377,7 @@ async function flushChapter(force = false) {
     Object.assign(ch, saved);
     // Typing while the write was in flight still needs its own save.
     if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
+    wbDraftWrite();
     const wasPending = wbPendingIds.has(ch.id);
     await wbPendingMark(saved);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot

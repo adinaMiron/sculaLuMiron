@@ -119,6 +119,9 @@ const type = (page, text) => page.evaluate(t => {
     try {
       const plant = localStorage.getItem('__plant');
       if (plant) {
+        // Plant a legacy recovery journal (or no journal at all), including
+        // clearing the editor's newer tab-specific recovery journal.
+        sessionStorage.removeItem('scula:md:draft');
         if (plant === 'REMOVE') localStorage.removeItem('scula:md:draft');
         else localStorage.setItem('scula:md:draft', plant);
         localStorage.removeItem('__plant');

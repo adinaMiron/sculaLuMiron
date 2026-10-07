@@ -611,12 +611,14 @@ moments are outside it, and both used to end in lost text:
    when you come back, which is how "the page was open for a while" turns
    into "the page reloaded without being asked".
 
-So every editor change also lands in **`localStorage`** under
+So every editor change also lands in **`sessionStorage`**, isolated per tab,
+and in **`localStorage`** for other readers, under
 `scula:md:draft`, tagged with the chapter it belongs to (`''` for a loose
 file) and when it was written:
 
 ```js
-{ id: 'ch_…' | '', name: 'mecanica.md', text: '…', at: 1712345678901 }
+{ id: 'ch_…' | '', name: 'mecanica.md', text: '…', at: 1712345678901,
+  base: '…', dirty: true, conflictId: null, tab: true }
 ```
 
 It is a **journal, not a store**: the record in IndexedDB is still the truth,
@@ -649,17 +651,24 @@ progress, so the chapter is re-attached **over** it. Typing that started
 while IndexedDB was still opening is the one case that still wins over the
 resume — and the journal is what keeps it.
 
-Nothing that was on screen is thrown away. Once the chapter is attached, the
-newest of the three wins:
+The tab's journal selects its own chapter on reload, independently of other
+tabs' navigation. Recovery uses the saved base revision:
 
 | Source | Wins when |
 |---|---|
-| the journal (`wbDraftAhead`) | it is this chapter's and its `at` is newer than the record's `updated` |
-| the restored text (`wbBootText`) | there is no such journal entry and it differs from the record |
-| the record | otherwise — including a Drive pull or another tab having written it since (§ O) |
+| the journal (`wbDraftAhead`) | it carries unflushed edits for this chapter; legacy journals use `at > updated` |
+| the restored text (`wbBootText`) | there is no pending journal text, the base still matches (or the journal is legacy), and it differs from the record |
+| the record | otherwise, including a newer revision in another tab with no pending local edits |
 
-and whatever is recovered is flushed straight back into the chapter. With no
-chapter to resume at all, a journalled loose file is put back with its name.
+Recovered text is flushed back only when the base still matches. Chapter
+writes compare the tab's last known revision with IndexedDB inside a single
+read/write transaction. A stale write keeps the existing chapter and saves
+the competing text as a separate chapter with `(conflict)` in its title and
+a distinct file path. The editor reports the conflict and blocks switching;
+reload opens the preserved copy. Unflushed recovery against a changed base
+also creates a conflict copy. With no chapter to resume, a journalled loose
+file is put back with its name. `tests/wbmultitab.js` covers concurrent saves,
+same timestamps, ideas, reload, closing tabs, and background transitions.
 
 Which side of the race a browser lands on is not ours to choose, so the other
 side is handled too: `wbSettleRestore()` looks once, 1.2 s after boot, for an

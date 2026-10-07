@@ -112,17 +112,19 @@ async function ideaAppendTo(ch, line) {
   if (!book) return null;
   const open = ch.id === wbCurrentId;
   const before = (open ? editor.value : (ch.content || '')).replace(/\s+$/, '');
-  ch.content = (before ? before + '\n' : '') + line + '\n';
-  ch.updated = Date.now();
+  const next = { ...ch, content: (before ? before + '\n' : '') + line + '\n', updated: Date.now() };
   if (open) {
     clearTimeout(wbSaveTimer);
-    editor.value = ch.content;
+    editor.value = next.content;
     undoReset();               // the idea is already written out; undoing it
-    wbDirty = false;           // here would lose it on the next autosave
+    wbDirty = true;            // retain the attempted append until persistence succeeds
 
     updatePreview(); updateStatus(); updateNav();
   }
-  if (!await wbPersist(WB_CHAPTERS, ch)) return null;
+  if (!await wbPersist(WB_CHAPTERS, next)) return null;
+  Object.assign(ch, next);
+  if (open && editor.value === next.content) wbDirty = false;
+  if (open) wbDraftWrite();
   const saved = await wbSaveMirror(book, ch);
   wbOpenBooks.add(book.id);
   renderWorkbooks();
@@ -324,7 +326,7 @@ async function ideaSaveNow() {
     target = book && await ideaEnsureChapter(book, ideaToday());
   }
   const done = target && await ideaAppendTo(target, r.line);
-  if (!done) { wbSay(t('ideaFailed'), true); return; }
+  if (!done) { wbSay(t(wbConflictCopies.has(target?.id) ? 'wbConflict' : 'ideaFailed'), true); return; }
   el.value = '';
   ideaSetPick(null);
   ideaRenderChapterList();
@@ -339,6 +341,7 @@ async function loadWorkbooks() {
     const [books, chapters] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS)]);
     wbBooks = (books || []).sort(wbByOrder);
     wbChapters = (chapters || []).sort(wbByOrder);
+    wbChapters.forEach(ch => wbChapterVersions.set(ch.id, wbChapterVersion(ch)));
     try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }
   try {
@@ -357,8 +360,9 @@ async function loadWorkbooks() {
 
   let last = null;
   try { last = await wbMetaGet('last'); } catch (e) {}
-  const ch = last ? wbChapter(last) : null;
   const draft = wbDraftRead();
+  // The shared "last" metadata belongs to whichever tab navigated last.
+  const ch = wbChapter(draft && draft.tab ? draft.id : last);
   // Text nobody has typed into is the browser's own form restoration: a
   // reload, or a tab that was discarded while idle and came back. Resuming
   // *over* it is the point — an "untouched editor" used to mean an empty one,
@@ -370,19 +374,34 @@ async function loadWorkbooks() {
   if (ch && untouched) {
     wbOpenBooks.add(ch.workbookId);
     loadChapterIntoEditor(ch);
-    // Whichever is ahead of the record wins: the journal when it carries this
-    // chapter's keystrokes, otherwise the text the browser put back on screen
-    // (that is what was last seen, and it cannot be older than the record).
+    // Recover this tab's unflushed text. Browser-restored text can be used
+    // directly only while its journal's base still matches the record.
     const ahead = wbDraftAhead(draft, ch);
     const boardLink = new URLSearchParams(location.search).has('chapter');
-    const back = !boardLink && wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
+    const back = (!draft?.tab || draft.base === wbChapterVersion(ch)) && !boardLink
+      && wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
     const recovered = ahead != null ? ahead : back;
     if (recovered != null) {
-      editor.value = recovered;
-      wbDirty = true;
-      updatePreview(); updateStatus(); updateNav();
-      await flushChapter();
-      wbSay(t('wbRecovered'), true);
+      if (draft?.base && draft.base !== wbChapterVersion(ch)) {
+        let copy = wbChapter(draft.conflictId);
+        if (!copy || copy.content !== recovered) {
+          wbChapterVersions.set(ch.id, draft.base);
+          await wbPersist(WB_CHAPTERS, { ...ch, content: recovered, updated: Date.now() });
+          copy = wbConflictCopies.get(ch.id)?.chapter;
+        }
+        if (copy) {
+          loadChapterIntoEditor(copy);
+          wbSay(t('wbConflict'), true);
+        } else {
+          editor.value = recovered; wbDirty = true;
+          updatePreview(); updateStatus(); updateNav();
+        }
+      } else {
+        editor.value = recovered;
+        wbDirty = true;
+        updatePreview(); updateStatus(); updateNav();
+        if (await flushChapter()) wbSay(t('wbRecovered'), true);
+      }
     } else {
       wbSay(t('wbRestored', ch.title));
     }
@@ -461,7 +480,10 @@ window.addEventListener('storage', async event => {
   } else {
     try {
       const latest = await wbTx(WB_CHAPTERS, 'readonly', store => store.get(ch.id));
-      if (latest) Object.assign(ch, latest);
+      if (latest) {
+        Object.assign(ch, latest);
+        wbChapterVersions.set(ch.id, wbChapterVersion(latest));
+      }
       renderWorkbooks();
       cloudAutoSync();
     } catch (e) {}

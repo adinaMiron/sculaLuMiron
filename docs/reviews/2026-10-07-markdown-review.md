@@ -87,7 +87,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Tie write completion and marker clearing to the exact saved revision. Verify edits arriving during delayed saves and full-folder syncs remain pending until that version is mirrored.
 
-- [ ] [ID:md-multi-tab-overwrite] **P1 — Two editor tabs silently overwrite each other's chapters.**
+- [x] [ID:md-multi-tab-overwrite] **P1 — Two editor tabs silently overwrite each other's chapters.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbPersist`, `flushChapter`; [idea.js](../../js/markdown/idea.js), `loadWorkbooks` and the storage listener.
 
