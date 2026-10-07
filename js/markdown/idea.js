@@ -277,6 +277,7 @@ function openIdeaModal() {
   }, 40);
 }
 function closeIdeaModal() {
+  ideaDictationDestination++;
   document.getElementById('idea-modal').classList.remove('open');
   if (document.getElementById('btn-idea-dictate').classList.contains('active')) toggleIdeaDictation();
 }
@@ -309,6 +310,7 @@ function ideaPaintHint() {
 // True while a save is awaiting its writes: a second Ctrl+Enter or a
 // double-click on Save would otherwise append the same idea twice.
 let ideaSaving = false;
+let ideaDictationDestination = 0; // a filed/closed idea is no longer the recording's draft
 
 async function saveIdea() {
   if (ideaSaving) return;
@@ -320,6 +322,7 @@ async function ideaSaveNow() {
   const el = document.getElementById('idea-text');
   const r = ideaResolve();
   if (!r.body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
+  ideaDictationDestination++;
   let target = r.chapter;
   if (!target) {
     const book = await ideaEnsureBook();

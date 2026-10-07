@@ -135,7 +135,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Permit only the intended formatting attributes/styles and reject event handlers and unsafe URLs throughout rendering/export. Verify malicious imported, synchronized and exported content while preserving supported color/highlight/font-size spans. The proof here used only a harmless local marker.
 
-- [ ] [ID:md-dictation-destination] **P1 — A delayed transcription is inserted into whichever chapter is currently in the editor, rather than the chapter that was recorded.**
+- [x] [ID:md-dictation-destination] **P1 — A delayed transcription is inserted into whichever chapter is currently in the editor, rather than the chapter that was recorded.**
 
   **Location:** [dictation.js](../../js/markdown/dictation.js), `target`, `beginInsert`, `enqueue`, `pump`, `emit`.
 

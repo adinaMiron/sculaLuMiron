@@ -1500,9 +1500,16 @@ voice dictation engine — same Caiet vocal settings, same `PROVIDERS`/queue/
 Web Speech code, same status pill — through `window.toggleIdeaDictation()`,
 which calls `window.toggleDictation(targetEl)` with `#idea-text` as the
 target instead of the default editor. See `docs/MAP.md` § "Voice dictation"
-for how the shared engine's `target` swap works. Closing the modal
-(`closeIdeaModal()`) stops an active dictation so it never keeps recording
-into a hidden box.
+for the shared engine. Each recording owns its destination and insertion
+state, including queued segments and late Web Speech results. A delayed
+chapter transcript updates the recorded chapter even after navigation;
+that chapter stays marked modified until its file is saved. Closing the
+modal (`closeIdeaModal()`) stops active idea dictation and invalidates its
+draft destination, as does submitting the idea. Transcripts for a closed or
+submitted idea, a replaced loose draft, a deleted chapter, or a failed
+chapter write appear in a labelled recovery panel for copying instead of
+being inserted into another draft. Recovery text remains on this page
+until reload; copy it before leaving.
 
 While the mic is on, the recording button (`#btn-dictate` or `#btn-idea-dictate`,
 only the one recording) reads "⏹ Oprește înregistrarea" / "⏹ Stop recording"

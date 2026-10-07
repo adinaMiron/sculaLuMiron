@@ -18,6 +18,7 @@ var wbBooted = false;        // var: applyUILang() reads it before this runs
 let wbBooks = [];            // [{ id, name, folder, created, updated, order }]
 let wbChapters = [];         // [{ id, workbookId, title, file, content, … }]
 let wbCurrentId = null;      // open chapter, or null for a loose file
+let wbEditorDestination = 0; // distinguishes replaced loose drafts for dictation
 let wbDirty = false;
 let wbSaveTimer = 0;
 let wbFlushPromise = null;   // serialize writes, including a switch during autosave
@@ -1089,6 +1090,7 @@ async function newChapter(workbookId) {
 }
 
 function loadChapterIntoEditor(ch) {
+  wbEditorDestination++;
   wbCurrentId = ch.id;
   wbDirty = false;
   clearTimeout(wbSaveTimer);
@@ -1392,6 +1394,7 @@ async function flushChapter(force = false) {
   finally { wbFlushPromise = null; }
 }
 function detachChapter() {
+  wbEditorDestination++;
   clearTimeout(wbSaveTimer);
   wbCurrentId = null;
   wbDirty = false;

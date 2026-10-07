@@ -1,6 +1,6 @@
 /* ============================================================
    Voice dictation — the Caiet vocal transcriber writing into the
-   open chapter. It reads the API / engine / spoken-language
+   recorded chapter. It reads the API / engine / spoken-language
    settings saved on the Caiet vocal page (the shared
    "caiet-vocal:settings" blob) and has no settings UI of its own.
    Transcribed text lands at the caret; when the editor has no
@@ -48,44 +48,83 @@
      Defaults to the main editor textarea, but toggleDictation() accepts an
      override target — the 💡 idea modal points it at #idea-text so the same
      engine/queue/pill machinery can dictate into either box. */
-  const ins = { mode:"append", pos:0, emitted:false };
-  let lastCaret = null;   // editor selection captured the moment focus leaves it
+  let lastCaret = null;   // caret belongs to the document that lost focus
   let target = editor;
+  let currentSession = null;
   editor.addEventListener("blur", () => {
-    lastCaret = { start: editor.selectionStart, end: editor.selectionEnd };
+    lastCaret = { end: editor.selectionEnd, destination:wbEditorDestination };
   });
-  function beginInsert(){
-    ins.emitted = false;
-    if(document.activeElement === target){
-      ins.mode = "cursor"; ins.pos = target.selectionEnd;
-    } else if(target === editor && lastCaret){
-      ins.mode = "cursor"; ins.pos = Math.min(lastCaret.end, editor.value.length);
-    } else {
-      ins.mode = "append"; ins.pos = target.value.length;
+  function beginInsert(targetEl){
+    const session = {
+      target:targetEl, chapterId:targetEl === editor ? wbCurrentId : null,
+      destination:targetEl === editor ? wbEditorDestination : ideaDictationDestination,
+      label:targetEl === editor ? (wbChapter(wbCurrentId)?.title || wbFileLabel()) : t("lblIdea"),
+      mode:"append", pos:targetEl.value.length, emitted:false
+    };
+    if(document.activeElement === targetEl){
+      session.mode = "cursor"; session.pos = targetEl.selectionEnd;
+    } else if(targetEl === editor && lastCaret?.destination === wbEditorDestination){
+      session.mode = "cursor"; session.pos = Math.min(lastCaret.end, editor.value.length);
     }
+    return session;
   }
-  function emit(raw){
+  function recover(session, text){
+    const panel = document.getElementById("dictate-recovery");
+    const box = document.getElementById("dictate-recovery-text");
+    box.value += (box.value ? "\n\n" : "") + session.label + ":\n" + text;
+    panel.hidden = false; panel.open = true;
+    toast(t("dictateRecovery"));
+  }
+  async function emit(raw, session){
     const text = (raw || "").replace(/\s+/g, " ").trim();
     if(!text) return;
-    const val = target.value;
-    const at = (ins.mode === "cursor" && document.activeElement === target)
-      ? target.selectionEnd
-      : Math.min(ins.pos, val.length);
+    const targetEl = session.target;
+    let ch = null;
+    if(targetEl === editor){
+      // Wait for a navigation/autosave already writing the recorded chapter.
+      while(wbFlushPromise) await wbFlushPromise;
+      if(session.chapterId) ch = wbChapter(session.chapterId);
+      if(session.chapterId ? !ch : (wbCurrentId || session.destination !== wbEditorDestination)){
+        recover(session, text); return;
+      }
+    } else if(session.destination !== ideaDictationDestination || ideaSaving){
+      recover(session, text); return;
+    }
+    const visible = targetEl !== editor || session.chapterId === wbCurrentId;
+    const val = visible ? targetEl.value : (ch.content || "");
+    const at = (visible && currentSession === session && session.mode === "cursor" && document.activeElement === targetEl)
+      ? targetEl.selectionEnd
+      : Math.min(session.pos, val.length);
     const before = val.slice(0, at);
     let prefix = "";
-    if(ins.mode === "append" && !ins.emitted && before && !/\n\n$/.test(before)){
+    if(session.mode === "append" && !session.emitted && before && !/\n\n$/.test(before)){
       prefix = before.endsWith("\n") ? "\n" : "\n\n";
     } else if(before && !/\s$/.test(before)){
       prefix = " ";
     }
     const chunk = prefix + text;
-    target.setRangeText(chunk, at, at, "end");
-    ins.pos = at + chunk.length;
-    ins.emitted = true;
-    target.selectionStart = target.selectionEnd = ins.pos;
-    target.scrollTop = target.scrollHeight;
-    if(target === editor){ updatePreview(); updateStatus(); scheduleAutosave(); }
-    else { target.dispatchEvent(new Event("input", { bubbles:true })); }
+    if(!visible){
+      const saved = { ...ch, content:before + chunk + val.slice(at), updated:Date.now() };
+      // Chapter switches await this same lock before loading their destination.
+      wbFlushPromise = (async () => {
+        if(!await wbPersist(WB_CHAPTERS, saved)){ recover(session, text); return false; }
+        Object.assign(ch, saved);
+        await wbPendingMark(saved);
+        renderWorkbooks(); cloudAutoSync();
+        return true;
+      })();
+      let savedOk;
+      try{ savedOk = await wbFlushPromise; } finally { wbFlushPromise = null; }
+      if(!savedOk) return;
+    } else {
+      targetEl.setRangeText(chunk, at, at, "end");
+      targetEl.selectionStart = targetEl.selectionEnd = at + chunk.length;
+      targetEl.scrollTop = targetEl.scrollHeight;
+      if(targetEl === editor){ updatePreview(); updateStatus(); scheduleAutosave(); }
+      else { targetEl.dispatchEvent(new Event("input", { bubbles:true })); }
+    }
+    session.pos = at + chunk.length;
+    session.emitted = true;
   }
   /* ── status pill + button state ── */
   function showPill(state, interim){
@@ -112,10 +151,10 @@
   function fail(msg){ hidePill(); setBtn(false); toast(msg); }
 
   /* ── API engine: MediaRecorder + segment rotation + queue ── */
-  const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, rot:null, rotating:false, t0:0, timer:null };
+  const rec = { active:false, stream:null, mr:null, session:null, fmt:null, rot:null, rotating:false, t0:0, timer:null };
   const queue = { items:[], busy:false };
 
-  async function startApi(){
+  async function startApi(session){
     if(typeof MediaRecorder === "undefined"){ fail(t("dictateNoRecorder")); return; }
     if(S.provider === "custom" ? !S.endpoint : !S.key){ fail(t("dictateNoSetup")); return; }
     try{
@@ -123,9 +162,13 @@
         audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
       });
     }catch(e){ fail(t("dictateNoMic")); return; }
+    if(session.target !== editor && session.destination !== ideaDictationDestination){
+      rec.stream.getTracks().forEach(tr => tr.stop()); rec.stream = null;
+      return;
+    }
     rec.fmt = pickMime();
     rec.active = true; rec.t0 = Date.now();
-    beginInsert(); setBtn(true);
+    rec.session = session; setBtn(true);
     tickApi(); rec.timer = setInterval(tickApi, 1000);
     startSegment();
   }
@@ -139,14 +182,13 @@
     if(rec.fmt.mime) opts.mimeType = rec.fmt.mime;
     try{ rec.mr = new MediaRecorder(rec.stream, opts); }
     catch(e){ try{ rec.mr = new MediaRecorder(rec.stream); }catch(e2){ fail(t("dictateNoRecorder")); return; } }
-    rec.chunks = [];
-    rec.mr.ondataavailable = ev => { if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
-    rec.mr.onstop = () => {
-      const type = rec.chunks.length ? (rec.chunks[0].type || rec.fmt.mime) : rec.fmt.mime;
-      const blob = new Blob(rec.chunks, { type: type || "audio/webm" });
-      rec.chunks = [];
-      if(blob.size > 1200) enqueue(blob, rec.fmt.ext);
-      if(rec.rotating && rec.active){ rec.rotating = false; startSegment(); armRotation(); }
+    const chunks = [], fmt = rec.fmt, session = rec.session, mr = rec.mr;
+    mr.ondataavailable = ev => { if(ev.data && ev.data.size) chunks.push(ev.data); };
+    mr.onstop = () => {
+      const type = chunks.length ? (chunks[0].type || fmt.mime) : fmt.mime;
+      const blob = new Blob(chunks, { type: type || "audio/webm" });
+      if(blob.size > 1200) enqueue(blob, fmt.ext, session);
+      if(rec.mr === mr && rec.rotating && rec.active){ rec.rotating = false; startSegment(); armRotation(); }
     };
     rec.mr.start();
     armRotation();
@@ -165,11 +207,11 @@
     setBtn(false);
     if(queue.busy || queue.items.length) showPill(t("dictateTranscribing"));
     else hidePill();
-    setTimeout(() => {
-      if(rec.stream){ rec.stream.getTracks().forEach(tr => tr.stop()); rec.stream = null; }
-    }, 400);
+    const stream = rec.stream;
+    rec.stream = null;
+    setTimeout(() => { if(stream) stream.getTracks().forEach(tr => tr.stop()); }, 400);
   }
-  function enqueue(blob, ext){ queue.items.push({ blob, ext }); pump(); }
+  function enqueue(blob, ext, session){ queue.items.push({ blob, ext, session }); pump(); }
   async function pump(){
     if(queue.busy || !queue.items.length) return;
     queue.busy = true;
@@ -179,7 +221,7 @@
       if(item.blob.size > 25 * 1024 * 1024) throw new Error(t("dictateTooBig"));
       let text = await transcribe(item.blob, item.ext);
       if(text && S.tidy){ showPill(t("dictateTidying")); text = await tidyUp(text); }
-      emit(text);
+      await emit(text, item.session);
     }catch(e){
       toast(t("dictateError") + " " + (e && e.message ? e.message : e));
     }
@@ -332,7 +374,7 @@
 
   /* ── Live engine: Web Speech API ── */
   const live = { active:false, sr:null, wantOn:false };
-  function startLive(){
+  function startLive(session){
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SR){ fail(t("dictateNoLive")); return; }
     try{ live.sr = new SR(); }catch(e){ fail(t("dictateNoLive")); return; }
@@ -340,22 +382,26 @@
     live.sr.continuous = true;
     live.sr.interimResults = true;
     live.wantOn = true; live.active = true;
-    beginInsert(); setBtn(true);
+    setBtn(true);
     showPill(t("dictateListening"));
-    live.sr.onresult = ev => {
+    const sr = live.sr;
+    let delivery = Promise.resolve();
+    sr.onresult = ev => {
       let interim = "";
       for(let i = ev.resultIndex; i < ev.results.length; i++){
         const r = ev.results[i];
-        if(r.isFinal) emit(String(r[0].transcript));
+        if(r.isFinal) delivery = delivery.then(() => emit(String(r[0].transcript), session));
         else interim += r[0].transcript;
       }
-      showPill(t("dictateListening"), interim);
+      if(live.sr === sr && live.active) showPill(t("dictateListening"), interim);
     };
-    live.sr.onerror = ev => {
+    sr.onerror = ev => {
+      if(live.sr !== sr) return;
       if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){ live.wantOn = false; fail(t("dictateNoMic")); }
       else if(ev.error === "language-not-supported"){ live.wantOn = false; fail(t("dictateNoLive")); }
     };
-    live.sr.onend = () => {
+    sr.onend = () => {
+      if(live.sr !== sr) return;
       if(live.wantOn){ try{ live.sr.start(); }catch(e){} }
       else { live.active = false; setBtn(false); hidePill(); }
     };
@@ -381,10 +427,14 @@
     if(opening) return;
     if(!window.isSecureContext){ fail(t("dictateInsecure")); return; }
     target = targetEl || editor;
+    const session = beginInsert(target);
+    currentSession = session;
     opening = true;
-    try{ await loadSettings(); } finally { opening = false; }
-    if(S.engine === "live") startLive();
-    else startApi();
+    try{
+      await loadSettings();
+      if(S.engine === "live") startLive(session);
+      else await startApi(session);
+    } finally { opening = false; }
   };
   window.toggleIdeaDictation = function(){
     window.toggleDictation(document.getElementById("idea-text"));

@@ -952,6 +952,13 @@
   #dictate-pill #dictate-pill-interim { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @keyframes dictate-blink { 50% { opacity: 0.25; } }
   #btn-dictate.active { background: var(--danger); color: var(--text); }
+  #dictate-recovery {
+    position: fixed; right: 16px; bottom: 80px; z-index: 9991;
+    width: min(80vw, 420px); padding: 12px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  }
+  #dictate-recovery[hidden] { display: none; }
+  #dictate-recovery textarea { width: 100%; margin-top: 8px; }
 
   /* ── Mobile view tabs (hidden on desktop) ── */
   #view-tabs {
@@ -3982,6 +3989,10 @@ Use the toolbar above to insert formatting.
   <span id="dictate-pill-state"></span>
   <span id="dictate-pill-interim"></span>
 </div>
+<details id="dictate-recovery" hidden>
+  <summary data-i="dictateRecovery">Dictation could not be inserted. Copy the recovered text below.</summary>
+  <textarea id="dictate-recovery-text" rows="6" readonly data-i-aria="dictateRecoveredText" aria-label="Recovered dictation"></textarea>
+</details>
 
 <!-- Image URL modal -->
 <div class="image-modal" id="image-modal">
