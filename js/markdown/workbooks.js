@@ -20,6 +20,7 @@ let wbChapters = [];         // [{ id, workbookId, title, file, content, … }]
 let wbCurrentId = null;      // open chapter, or null for a loose file
 let wbDirty = false;
 let wbSaveTimer = 0;
+let wbFlushPromise = null;   // serialize writes, including a switch during autosave
 let wbUserEdited = false;    // has anyone actually typed since this page loaded?
 // The browser's own "Edit files?" permission prompt is asked at most once per
 // page load: past that, a granted handle needs no more asking, and a denied
@@ -954,7 +955,7 @@ async function newChapter(workbookId) {
   const title = (prompt(t('promptNewChapter'), t('defaultChapterName')) || '').trim();
   if (!title) return;
   if (!canLeaveEditor()) return;
-  await flushChapter();
+  if (!await flushChapter()) return;
   const ch = {
     id: wbNewId('ch_'), workbookId: book.id, title,
     file: wbUniqueFile(book.id, title), content: '',
@@ -985,7 +986,7 @@ async function openChapter(id) {
   const ch = wbChapter(id);
   if (!ch || ch.id === wbCurrentId) return;
   if (!canLeaveEditor()) return;
-  await flushChapter();
+  if (!await flushChapter()) return;
   loadChapterIntoEditor(ch);
   if (isSmallScreen()) closeAllPanels();
 }
@@ -1089,7 +1090,7 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
   if (targetId && (!target || target.workbookId !== bookId)) return;
   wbMovingChapter = true;
   try {
-    if (id === wbCurrentId) await flushChapter();
+    if (id === wbCurrentId && !await flushChapter()) return;
     const oldBook = wbBook(ch.workbookId);
     const oldFile = ch.file;
     const changingBooks = ch.workbookId !== bookId;
@@ -1189,7 +1190,7 @@ async function syncAllToFolder(opts) {
     } finally { gsInteractive = false; paintCloud(); }
   }
 
-  await flushChapter();
+  if (!await flushChapter()) return;
   const found = await wbAdoptFromFolder();
 
   if (cloud) {
@@ -1231,21 +1232,29 @@ function scheduleAutosave() {
   clearTimeout(wbSaveTimer);
   wbSaveTimer = setTimeout(() => { flushChapter(); }, 800);
 }
-async function flushChapter() {
+async function flushChapter(force = false) {
   clearTimeout(wbSaveTimer);
-  if (!wbCurrentId || !wbDirty) return;
+  while (wbFlushPromise) await wbFlushPromise;
+  if (!wbCurrentId || (!wbDirty && !force)) return true;
   const ch = wbChapter(wbCurrentId);
-  if (!ch) { wbDirty = false; return; }
-  ch.content = editor.value;
-  ch.updated = Date.now();
-  wbDirty = false;
-  if (await wbPersist(WB_CHAPTERS, ch)) {
+  if (!ch) return false;
+  const saved = { ...ch, content: editor.value, updated: Date.now() };
+  wbDirty = true;
+  wbDraftWrite();            // keep recovery even if the store rejects this write
+  wbFlushPromise = (async () => {
+    if (!await wbPersist(WB_CHAPTERS, saved)) return false;
+    Object.assign(ch, saved);
+    // Typing while the write was in flight still needs its own save.
+    if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
     const wasPending = wbPendingIds.has(ch.id);
-    await wbPendingMark(ch);
+    await wbPendingMark(saved);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot
-    wbSay(t('wbAutosaved'));
+    if (!wbDirty) wbSay(t('wbAutosaved'));
     cloudAutoSync();                      // and, debounced, up to Drive — § O
-  }
+    return wbCurrentId === ch.id && !wbDirty;
+  })();
+  try { return await wbFlushPromise; }
+  finally { wbFlushPromise = null; }
 }
 function detachChapter() {
   clearTimeout(wbSaveTimer);
@@ -1257,8 +1266,8 @@ function detachChapter() {
   wbSay('');
   renderWorkbooks();
 }
-// A chapter is always safe to leave (autosave already stored it); a loose
-// file with text in it is not.
+// Attached chapters must also pass the caller's awaited flush before leaving.
+// A loose file needs confirmation because it has no chapter store.
 function canLeaveEditor() {
   if (wbCurrentId) return true;
   if (!editor.value.trim()) return true;
@@ -1271,11 +1280,7 @@ async function saveToWorkbook() {
   const ch = wbChapter(wbCurrentId);
   const book = ch && wbBook(ch.workbookId);
   if (!ch || !book) { detachChapter(); openWorkbookModal(); return; }
-  clearTimeout(wbSaveTimer);
-  ch.content = editor.value;
-  ch.updated = Date.now();
-  wbDirty = false;
-  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  if (!await flushChapter(true)) return;
   // Finish both IndexedDB and the local file before cloud sign-in can open.
   const path = await wbMirrorWrite(book, ch, ch.content);
   await wbPendingClear(ch.id);
@@ -1287,7 +1292,7 @@ async function saveToWorkbook() {
 /* Save every chapter edited since its last save — write each one's .md
    file, then drop its pending marker. Header button + Ctrl+Alt+S. */
 async function saveAllModifiedChapters() {
-  await flushChapter();                       // fold in the open chapter's latest edits
+  if (!await flushChapter()) return;          // fold in the open chapter's latest edits
   const ids = [...wbPendingIds];
   if (!ids.length) { wbSay(t('wbNoModified'), true); return; }
   let done = 0, failed = 0;

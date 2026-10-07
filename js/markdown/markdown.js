@@ -426,13 +426,13 @@ function openMap() {
 // Open the board at the current chapter; its scope picker can widen to the
 // workbook or all workbooks. Flush first so the board sees the latest text.
 async function openKanban() {
-  await flushChapter();
+  if (!await flushChapter()) return;
   const scope = wbCurrentId ? '?scope=' + encodeURIComponent('c:' + wbCurrentId) : '';
   location.href = 'kanban.html' + scope;
 }
 document.querySelector('#site-nav a[data-page="kanban.html"]').addEventListener('click', event => {
   event.preventDefault();
-  flushChapter().then(() => { location.href = 'kanban.html'; });
+  flushChapter().then(saved => { if (saved) location.href = 'kanban.html'; });
 });
 // The button exists only while there is something for it to show. Called
 // from updatePreview(), which every keystroke and every chapter opened ends
@@ -802,7 +802,7 @@ async function createChapterNamed(workbookId, title, content) {
   const book = wbBook(workbookId);
   if (!book) return null;
   if (!canLeaveEditor()) return null;
-  await flushChapter();
+  if (!await flushChapter()) return null;
   const ch = {
     id: wbNewId('ch_'), workbookId: book.id, title,
     file: wbUniqueFile(book.id, title), content: content || '',

@@ -587,6 +587,12 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
   folder* all run inside a click, so they can call
   `ScuLaFolder.dir(true)` and write the file.
 
+Chapter writes are serialized and keep the editor dirty until IndexedDB
+confirms the saved text. A quota error or aborted transaction retains the
+chapter's recovery journal and blocks chapter switching; saving or switching
+again retries the write. Edits typed during a write remain dirty until their
+own snapshot is saved.
+
 `wbMirrorRemove()` is deliberately **never recursive**: it removes files
 this app knows it wrote, and drops a workbook folder only if the file
 system agrees it's empty. Nothing a person put in that folder by hand is
