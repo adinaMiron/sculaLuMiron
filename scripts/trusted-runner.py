@@ -168,29 +168,118 @@ def usage_retry_delay(error, fallback, now=None):
     return fallback
 
 
-def watch_codex_events(fallback):
-    """Stream diagnostics live; return only a terminal usage failure's delay.
+def display_text(value, limit=180):
+    """Keep untrusted event text on one short terminal line, without escapes."""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", str(value))[:limit]
+
+
+class CodexOutput:
+    """Readable diagnostics only; never used as validation/retry evidence."""
+
+    def __init__(self, log):
+        self.log = log
+        self.activity = None
+        self.commands = set()
+        self.changed = set()
+
+    def detail(self, heading, body=""):
+        stamp = datetime.now().strftime("%H:%M:%S")
+        print(f"\n[{stamp}] {heading}", file=self.log, flush=True)
+        if body:
+            print(body, file=self.log, flush=True)
+
+    def progress(self, text):
+        if self.activity != text:
+            print(text, file=sys.stderr, flush=True)
+            self.activity = text
+
+    def event(self, event):
+        kind = event.get("type", "Unknown event")
+        item = event.get("item")
+        if kind in ("item.started", "item.updated", "item.completed") and isinstance(item, dict):
+            item_kind = item.get("type")
+            if item_kind == "command_execution":
+                command = str(item.get("command", ""))
+                identity = str(item.get("id", command))
+                if identity not in self.commands:
+                    self.detail("Command", command)
+                    self.commands.add(identity)
+                if kind == "item.started":
+                    if re.search(r"\b(?:test[s]?/|npm\s+(?:run\s+)?test|pytest|cargo\s+test)", command):
+                        self.progress("Running tests...")
+                    elif re.search(r"\b(?:cat|sed|rg|head|tail|ls|find)\b", command):
+                        self.progress("Reading files...")
+                    else:
+                        self.progress("Running a command...")
+                elif kind == "item.completed":
+                    self.detail(f"Command finished (exit {item.get('exit_code', '?')})",
+                                item.get("aggregated_output", ""))
+            elif item_kind == "file_change":
+                if kind == "item.completed":
+                    if item.get("status") == "failed":
+                        self.detail("File change failed", json.dumps(item, ensure_ascii=False, indent=2))
+                        self.progress("File change failed; see log.")
+                        return
+                    changes = item.get("changes", [])
+                    for change in changes if isinstance(changes, list) else []:
+                        if not isinstance(change, dict):
+                            continue
+                        path = str(change.get("path", "?"))
+                        self.detail(f"File {change.get('kind', 'changed')}: {path}")
+                        if path not in self.changed:
+                            try:
+                                short_path = str(Path(path).relative_to(Path.cwd()))
+                            except ValueError:
+                                short_path = path
+                            self.progress(f"Edited: {display_text(short_path)}")
+                            self.changed.add(path)
+            elif item_kind in ("agent_message", "reasoning"):
+                if kind == "item.completed":
+                    self.detail("Agent summary" if item_kind == "agent_message" else "Agent notes",
+                                item.get("text", ""))
+            else:
+                self.detail(kind, json.dumps(item, ensure_ascii=False, indent=2))
+        elif kind in ("turn.failed", "error"):
+            error = event.get("error", event)
+            message = error.get("message", "Unknown error") if isinstance(error, dict) else error
+            self.detail("Codex error", str(message))
+            self.progress(f"Codex: {display_text(message)}")
+        else:
+            self.detail(kind, json.dumps({k: v for k, v in event.items() if k != "type"},
+                                        ensure_ascii=False, indent=2))
+
+
+def watch_codex_events(fallback, log_path=None):
+    """Format diagnostics; return only a terminal usage failure's delay.
 
     Tool output and assistant messages can quote errors, so only top-level
     failure events participate. Keep state in this process, not writable logs.
     A subsequent success or different error replaces an earlier usage error.
     """
     failure = None
-    for line in sys.stdin:
-        print(line, end="", file=sys.stderr, flush=True)
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(event, dict):
-            continue
-        kind = event.get("type")
-        if kind == "turn.failed":
-            failure = event.get("error")
-        elif kind == "error":
-            failure = event
-        elif kind in ("turn.started", "turn.completed"):
-            failure = None
+    log = open(log_path, "a", encoding="utf-8") if log_path else sys.stderr
+    try:
+        output = CodexOutput(log)
+        for line in sys.stdin:
+            try:
+                event = json.loads(line)
+            except ValueError:
+                output.detail("CLI diagnostic", line.rstrip())
+                continue
+            if not isinstance(event, dict):
+                output.detail("CLI diagnostic", line.rstrip())
+                continue
+            output.event(event)
+            kind = event.get("type")
+            if kind == "turn.failed":
+                failure = event.get("error")
+            elif kind == "error":
+                failure = event
+            elif kind in ("turn.started", "turn.completed"):
+                failure = None
+    finally:
+        if log_path:
+            log.close()
     print(usage_retry_delay(failure, fallback), flush=True)
 
 
@@ -275,7 +364,7 @@ if __name__ == "__main__":
         elif sys.argv[1] == "--hold-evidence":
             hold_evidence(sys.argv[2:])
         elif sys.argv[1] == "--codex-events":
-            watch_codex_events(int(sys.argv[2]))
+            watch_codex_events(int(sys.argv[2]), sys.argv[3] if len(sys.argv) > 3 else None)
         else:
             sys.exit(launch(sys.argv[1], sys.argv[2:]))
     except (OSError, ValueError, RuntimeError, IndexError, AttributeError) as error:

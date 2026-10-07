@@ -17,6 +17,17 @@ set -Eeuo pipefail
 #
 # Tasks without ID/DEPENDS are treated as independent tasks.
 
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+# Set your preferred model and effort here, for example "gpt-6.1-sol" and "high".
+# Empty defaults use the CLI/model defaults. Environment values take precedence;
+# an explicitly empty environment value also restores the CLI/model default.
+DEFAULT_CODEX_MODEL=""
+DEFAULT_CODEX_EFFORT=""
+CODEX_MODEL="${CODEX_MODEL-$DEFAULT_CODEX_MODEL}"
+CODEX_EFFORT="${CODEX_EFFORT-$DEFAULT_CODEX_EFFORT}"
+
 usage() {
     cat <<'TXT'
 Usage:
@@ -26,6 +37,7 @@ Examples:
   ./scripts/implement-tasks.sh song-creation
   MAX_TASKS=3 ./scripts/implement-tasks.sh song-creation
   CREATE_PR=false ./scripts/implement-tasks.sh song-creation
+  CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=high ./scripts/implement-tasks.sh song-creation
 
 Optional environment variables:
   BASE=main
@@ -33,16 +45,25 @@ Optional environment variables:
   MAX_TASKS=50
   CREATE_PR=true
   FINAL_REVIEW=true
+  CODEX_MODEL=<OpenAI model identifier> (unset: script default)
+  CODEX_EFFORT=none|minimal|low|medium|high|xhigh|max|ultra (unset: script default)
 
 BASE and TASK_BRANCH must be literal short branch names (no refs/ prefix).
 TASK_BRANCH must differ from BASE and cannot be main or master.
 FINAL_REVIEW=false requires CREATE_PR=false; PR creation requires a passing review.
+Edit DEFAULT_CODEX_MODEL and DEFAULT_CODEX_EFFORT in the configuration section.
+Environment values override those defaults; empty values use CLI/model defaults.
+Choose an effort supported by your model and installed Codex CLI.
+Model/effort selections apply to tasks, retries, and final review.
+Progress is concise; detailed per-task and final-review logs are in
+.git/automation-logs/ (linked worktrees use their own Git directory).
 TXT
 }
 
 die() {
     echo >&2
     echo "ERROR: $*" >&2
+    if declare -F log_error >/dev/null; then log_error "$@"; fi
     exit 1
 }
 
@@ -279,6 +300,10 @@ print_blocked_tasks() {
 # Arguments / configuration
 # ------------------------------------------------------------------------------
 
+if (( $# == 1 )) && [[ "$1" == --help || "$1" == -h ]]; then
+    usage
+    exit 0
+fi
 (( $# == 1 )) || { usage; exit 2; }
 MODULE="$1"
 [[ "$MODULE" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "Invalid module name: $MODULE"
@@ -351,28 +376,19 @@ validate_task_graph
 # Git branch preparation
 # ------------------------------------------------------------------------------
 
-echo
-echo "Repository:   $REPO_ROOT"
-echo "Module:       $MODULE"
-echo "Tasks:        $TASKS_ROOT"
-echo "Base:         $BASE"
-echo "Branch:       $BRANCH"
-echo "Max tasks:    $MAX"
-echo "Final review: $FINAL_REVIEW"
-echo "Create PR:    $CREATE_PR"
-echo
-
 ensure_clean_worktree "before branch preparation"
-git fetch origin --prune
+start_work_log "tasks-$MODULE-prepare" "Preparing $MODULE — branch: $BRANCH"
+work_status "Fetching origin..."
+run_logged git fetch origin --prune
 git show-ref --verify --quiet "refs/remotes/origin/$BASE" || die "origin/$BASE does not exist"
 
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-    git switch "$BRANCH"
+    run_logged git switch "$BRANCH"
     ensure_clean_worktree "after switching to $BRANCH"
 
     if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
         if git merge-base --is-ancestor "$BRANCH" "origin/$BRANCH"; then
-            git merge --ff-only "origin/$BRANCH"
+            run_logged git merge --ff-only "origin/$BRANCH"
         elif git merge-base --is-ancestor "origin/$BRANCH" "$BRANCH"; then
             : # Publish only after selected-branch inputs have been validated.
         else
@@ -380,9 +396,9 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
         fi
     fi
 elif git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-    git switch --track -c "$BRANCH" "origin/$BRANCH"
+    run_logged git switch --track -c "$BRANCH" "origin/$BRANCH"
 else
-    git switch -c "$BRANCH" "origin/$BASE"
+    run_logged git switch -c "$BRANCH" "origin/$BASE"
 fi
 
 validate_task_graph
@@ -392,8 +408,6 @@ ensure_clean_worktree "before task processing"
 if ! git merge-base --is-ancestor "origin/$BASE" "$BRANCH"; then
     die "$BRANCH does not contain current origin/$BASE; rebase manually before continuing"
 fi
-
-trap release_validation_evidence EXIT
 
 # ------------------------------------------------------------------------------
 # Implementation loop
@@ -417,15 +431,9 @@ while (( iteration < MAX )); do
     git ls-files --error-unmatch "$TARGET_FILE" >/dev/null 2>&1 || die "Task document is not tracked: $TARGET_FILE"
     ensure_clean_worktree "before Codex task $iteration"
 
-    echo
-    echo "=============================================================================="
-    echo "Task $iteration / $MAX"
-    echo "=============================================================================="
-    echo "Document:     $TARGET_FILE:$TARGET_LINE"
-    echo "Task ID:      ${TASK_ID:-<none>}"
-    echo "Dependencies: ${TASK_DEPS:-<none>}"
-    echo "Requirement:  $TASK_TEXT"
-    echo
+    start_work_log "task-$MODULE-$iteration" "Task $iteration: $before open — $TARGET_FILE:$TARGET_LINE${TASK_ID:+ [$TASK_ID]}"
+    work_status "Implementing: $(printf '%s' "$TASK_TEXT" | cut -c1-160)"
+    printf '\nExact requirement:\n%s\nDependencies: %s\n' "$ORIGINAL_LINE" "${TASK_DEPS:-none}" >> "$WORK_LOG"
 
     # Capture synchronously so a failed inventory cannot seal partial evidence.
     other_checkboxes="$(build_other_checkbox_manifest "$TARGET_FILE")" || die "Cannot inventory task/review checkboxes"
@@ -508,12 +516,13 @@ PROMPT
         die "Codex failed; working tree preserved for inspection"
     fi
 
+    work_status "Validating requirement and changes..."
     [[ "$(git branch --show-current)" == "$branch_before" ]] || die "Codex changed branches"
     [[ "$(git rev-parse HEAD)" == "$head_before" ]] || die "Codex changed Git history"
     git diff --cached --quiet || die "Codex staged files"
 
     if ! cmp -s "$TARGET_FILE" "${EVIDENCE_PATHS[0]}"; then
-        git diff -- "$TARGET_FILE" || true
+        git diff -- "$TARGET_FILE" >> "$WORK_LOG" 2>&1 || true
         die "Assigned task document changed unexpectedly; only the target [ ] -> [x] transition is allowed"
     fi
 
@@ -526,24 +535,25 @@ PROMPT
 
     release_validation_evidence || die "Validation evidence holder failed"
 
-    git diff --check || die "git diff --check failed"
+    run_logged git diff --check
 
     changed_outside_task_file="$({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | grep -Fvx -- "$TARGET_FILE" || true)"
     if [[ -z "$changed_outside_task_file" ]]; then
         commit_prefix="docs"
-        echo "Requirement was already implemented and verified."
+        work_status "Requirement was already implemented and verified."
     else
         commit_prefix="feat"
-        echo "Changed files:"
-        printf '%s\n' "$changed_outside_task_file" | sed 's/^/  /'
+        printf '\nChanged files:\n%s\n' "$changed_outside_task_file" >> "$WORK_LOG"
     fi
 
-    git add -A
-    git diff --cached --check || die "Staged diff validation failed"
+    work_status "Committing and pushing task $iteration..."
+    run_logged git add -A
+    run_logged git diff --cached --check
 
     short_task="$(printf '%s' "$TASK_TEXT" | tr '\n' ' ' | tr -s ' ' | cut -c1-68)"
-    git commit -m "$commit_prefix($MODULE): $short_task"
-    git push -u origin "$BRANCH"
+    run_logged git commit -m "$commit_prefix($MODULE): $short_task"
+    run_logged git push -u origin "$BRANCH"
+    work_status "Completed task $iteration — committed $(git rev-parse --short HEAD) and pushed."
 
 done
 
@@ -570,6 +580,7 @@ echo "All requirements for '$MODULE' are complete."
 
 final_review_passed=false
 if [[ "$FINAL_REVIEW" == "true" ]]; then
+    start_work_log "final-review-$MODULE" "Final review: $MODULE"
     reviewer_head_before="$(git rev-parse HEAD)"
     reviewer_branch_before="$(git branch --show-current)"
     # Linked worktrees have a .git file; keep each review in its own Git directory.
@@ -622,6 +633,8 @@ PROMPT
     [[ "$(git rev-parse HEAD)" == "$reviewer_head_before" ]] || die "Final reviewer changed Git history"
     [[ -z "$(git status --porcelain)" ]] || die "Final reviewer modified the working tree"
 
+    printf '\nFinal reviewer message:\n' >> "$WORK_LOG"
+    cat "$REVIEW_OUTPUT" >> "$WORK_LOG" 2>&1 || true
     review_verdict="$(python3 -I - "$REVIEW_OUTPUT" <<'PY'
 import pathlib
 import re
@@ -659,11 +672,12 @@ PY
         die "Final review failed; feature branch remains pushed and no PR was created. Review output: $REVIEW_OUTPUT"
     fi
     final_review_passed=true
+    work_status "Final review passed."
 else
     echo "FINAL_REVIEW=false — final review skipped; PR creation is disabled."
 fi
 
-git push -u origin "$BRANCH"
+run_logged git push -u origin "$BRANCH"
 
 # ------------------------------------------------------------------------------
 # Pull request
@@ -702,10 +716,16 @@ Verification:
 EOF2
 )"
 
-gh pr create \
+work_status "Creating pull request..."
+run_logged gh pr create \
     --base "$BASE" \
     --head "$BRANCH" \
     --title "Implement $MODULE requirements" \
     --body "$pr_body"
 
-echo "Done."
+pr_url="$(tail -n 1 "$WORK_LOG")"
+if [[ "$pr_url" =~ ^https://[^[:space:]]+/pull/[0-9]+$ ]]; then
+    work_status "Pull request: $pr_url"
+else
+    work_status "Done. Pull request details: $WORK_LOG"
+fi

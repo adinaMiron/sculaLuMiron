@@ -27,6 +27,18 @@ Existing defects are recorded separately in
 
 - [x] [ID:usage-limit-recovery] Automatically wait and retry the same task, finding, or final review after a Codex usage-limit failure. Honor a reported reset time with a conservative fallback interval, preserve partial work and original validation evidence, retain the repository lock, support cancellation, and stop on unrelated failures or validation violations. Verify recovery and rejection paths using offline fake agents and clocks.
 
+## Runner output
+
+- [x] [ID:readable-runner-output] Show concise assignment, activity, edited-file, completion/failure, and log-location notices in both runners, without raw event JSON, source excerpts, edit instructions, or command output in normal terminal progress. Preserve detailed, readable per-task/per-finding logs and a separate final-review log, append retries to the same assignment log, keep logs out of commits, and retain all existing validation and retry gates. Verify using offline disposable fixtures.
+
+## Model selection
+
+- [x] [ID:openai-model-selection] Let users select an OpenAI model through `CODEX_MODEL` in both runners. Apply it to preflight, task/finding execution, retries, and final review; preserve CLI defaults when unset and reject malformed model identifiers before Codex invocation or Git mutation.
+
+- [x] [ID:reasoning-effort-selection] Let users select reasoning effort through `CODEX_EFFORT` in both runners. Apply it to all Codex invocations, preserve the selected model's default when unset, document model-dependent support, and reject invalid effort values before Codex invocation or Git mutation.
+
+- [x] [ID:script-model-defaults] Provide editable model and effort defaults in both scripts' configuration sections. Environment values take precedence, including explicit empty values that restore CLI/model defaults; validate script defaults through the existing shared runner checks.
+
 ## Validation approach
 
 Use offline disposable repositories and fake model/GitHub adapters for normal

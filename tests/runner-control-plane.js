@@ -309,7 +309,10 @@ if mode == 'agent-failure':
             const repo = path.join(tmp, `${runner}-${mode} with spaces`);
             fs.mkdirSync(repo);
             for (const name of ['fix-review.sh', 'implement-tasks.sh', 'codex-runner.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
-                write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)), 0o755);
+                const content = fs.readFileSync(path.join(source, 'scripts', name), 'utf8');
+                write(path.join(repo, 'scripts', name), name === 'fix-review.sh'
+                    ? content.replace(/^REVIEW=.*$/m, 'REVIEW="docs/reviews/2026-10-04-solar-calcule-review.md"')
+                        .replace(/^BRANCH=.*$/m, 'BRANCH="fix/review-2026-10-04"') : content, 0o755);
             }
             if (mode === 'evidence-sealing-unavailable') {
                 const checker = path.join(repo, 'scripts/trusted-runner.py');

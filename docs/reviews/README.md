@@ -167,6 +167,14 @@ This distinction prevents feature expansion from being disguised as bug fixing.
 
 Automated review-fix workflows should process exactly one unchecked finding per agent invocation.
 
+`scripts/fix-review.sh` shows the current finding, brief activity and edited-file
+notices, and completion or failure. Each finding has a readable detailed log;
+retries append to that same file, and branch preparation has a separate log.
+Source excerpts, commands, test output, and the full agent summary stay in the
+logs. The runner prints each absolute log path, normally under
+`.git/automation-logs/`. Linked worktrees use their own Git administrative
+directory. Logs stay out of commits and remain available after a stopped run.
+
 The intended flow is:
 
 ```text
@@ -242,6 +250,33 @@ fixes to those files need a separate human-reviewed change. See the [execution
 boundary and startup trust requirements](../tasks/agent-orchestration/04-decisions.md).
 
 The script should be configured for the review document and branch it is processing.
+
+Select an OpenAI model and reasoning effort with environment variables:
+
+```sh
+CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=high ./scripts/fix-review.sh
+```
+
+Alternatively, edit `DEFAULT_CODEX_MODEL` and `DEFAULT_CODEX_EFFORT` in the
+configuration section near the top of `scripts/fix-review.sh`. For example:
+
+```sh
+DEFAULT_CODEX_MODEL="gpt-6.1-sol"
+DEFAULT_CODEX_EFFORT="high"
+```
+
+Both settings are optional and apply to preflight, every finding, and retries.
+The shipped script defaults are empty. Unset environment variables use script
+defaults; supplied environment values override them. Explicitly empty values
+restore the CLI's default model or the selected model's default effort.
+Model identifiers may contain letters, digits, dots,
+underscores, and hyphens, starting with a letter or digit. Effort values are
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`; choose one
+supported by your model and installed CLI. Model availability and compatibility
+are determined by the CLI/provider; empty-input preflight checks configuration
+syntax without making a model request. Personal Codex configuration remains
+ignored. See [model selection details](../tasks/README.md) and
+`./scripts/fix-review.sh --help`.
 
 Usage-limit failures automatically wait and retry the same finding, retaining
 partial work, the original validation evidence, and the repository lock.

@@ -3,6 +3,17 @@
 # REPO_ROOT and defining die() and assert_control_plane(). Sourcing this file
 # does not launch a model session.
 
+# Validate before constructing argv. These values are single arguments, never
+# evaluated as shell code or accepted as arbitrary CLI/config overrides.
+CODEX_MODEL="${CODEX_MODEL:-}"
+CODEX_EFFORT="${CODEX_EFFORT:-}"
+[[ -z "$CODEX_MODEL" || "$CODEX_MODEL" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
+    || die "CODEX_MODEL must be a model identifier containing only letters, digits, dots, underscores, or hyphens"
+case "$CODEX_EFFORT" in
+    ''|none|minimal|low|medium|high|xhigh|max|ultra) ;;
+    *) die "CODEX_EFFORT must be none, minimal, low, medium, high, xhigh, max, or ultra (or unset for the model default)" ;;
+esac
+
 TOML_REPO_ROOT="${REPO_ROOT//\\/\\\\}"
 TOML_REPO_ROOT="${TOML_REPO_ROOT//\"/\\\"}"
 
@@ -31,6 +42,73 @@ CODEX_SAFE_ARGS=(
     --disable goals
     --disable memories
 )
+
+if [[ -n "$CODEX_MODEL" ]]; then
+    CODEX_SAFE_ARGS+=(--model "$CODEX_MODEL")
+fi
+if [[ -n "$CODEX_EFFORT" ]]; then
+    CODEX_SAFE_ARGS+=(-c "model_reasoning_effort=\"$CODEX_EFFORT\"")
+fi
+
+# Logs live in this checkout's Git administrative directory, including linked
+# worktrees. They cannot appear in git add -A and need no branch-specific ignore.
+start_work_log() {
+    local label="$1" description="$2" git_dir
+    git_dir="$(git rev-parse --absolute-git-dir)" || die "Cannot locate log directory"
+    mkdir -p "$git_dir/automation-logs" || die "Cannot create log directory"
+    WORK_LOG="$(mktemp "$git_dir/automation-logs/$label-$(date +%Y%m%d-%H%M%S)-XXXXXX.log")" \
+        || die "Cannot create work log"
+    WORK_LOG_REPORTED=false
+    trap 'finish_runner "$?"' EXIT
+    printf '%s\nStarted: %s\nRepository: %s\nBranch: %s\n' \
+        "$description" "$(date -Is)" "$REPO_ROOT" "${BRANCH:-}" >> "$WORK_LOG"
+    printf '\n=== %s ===\nLog: %s\n' "$description" "$WORK_LOG"
+}
+
+work_status() {
+    printf '%s\n' "$*"
+    if [[ -n "${WORK_LOG:-}" ]]; then
+        printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >> "$WORK_LOG"
+    fi
+}
+
+log_error() {
+    if [[ -n "${WORK_LOG:-}" ]]; then
+        printf '\nERROR: %s\n' "$*" >> "$WORK_LOG"
+        printf 'Log: %s\n' "$WORK_LOG" >&2
+        WORK_LOG_REPORTED=true
+    fi
+}
+
+finish_runner() {
+    local status="$1"
+    release_validation_evidence || status=1
+    if [[ -n "${WORK_LOG:-}" ]]; then
+        printf '\nFinished: %s (exit %s)\n' "$(date -Is)" "$status" >> "$WORK_LOG"
+        if (( status != 0 )) && [[ "$WORK_LOG_REPORTED" != true ]]; then
+            printf 'Stopped (exit %s). Log: %s\n' "$status" "$WORK_LOG" >&2
+        fi
+    fi
+    return "$status"
+}
+
+# Keep Git transfer statistics, diffs, and other command details in the log.
+# Run in a subshell so a trusted integrity rejection remains visible and stops
+# the parent too; never bypass the existing git()/gh() integrity gates.
+run_logged() {
+    local status=0
+    printf '\n[%s] ' "$(date +%H:%M:%S)" >> "$WORK_LOG"
+    printf '%s ' "$@" >> "$WORK_LOG"
+    printf '\n' >> "$WORK_LOG"
+    ( "$@" ) >> "$WORK_LOG" 2>&1 || status=$?
+    if (( status != 0 )); then
+        # One bounded diagnostic, never a dump of command output or source.
+        tail -n 1 "$WORK_LOG" | tr '\033\r' '  ' | cut -c1-240 >&2
+        printf 'ERROR: %s failed (exit %s)\n' "$1" "$status" >&2
+        log_error "$1 failed (exit $status)"
+        exit "$status"
+    fi
+}
 
 build_other_checkbox_manifest() {
     markdown_tasks scope-manifest . --exclude "$1"
@@ -120,28 +198,29 @@ run_codex_with_usage_retry() {
     shift
     local -a args=("$@")
     local original_prompt="${!#}"
-    local status delay events_pid events_input events_output parser_status output_file="" i
+    local status delay events_pid events_input events_output parser_status output_file="" i attempt=0
     for (( i=0; i<${#args[@]}-1; i++ )); do
         if [[ "${args[i]}" == --output-last-message ]]; then
             output_file="${args[i+1]}"
         fi
     done
     while true; do
+        attempt=$((attempt + 1))
+        work_status "Working on assignment (attempt $attempt)..."
         assert_control_plane
         if [[ -n "$output_file" ]]; then
             : > "$output_file" || die "Cannot initialize final review output: $output_file"
         fi
-        # A pipe and trusted parser keep retry evidence out of agent-writable
-        # temporary files, while preserving live diagnostics and the CLI status.
+        # Retry evidence stays in the pipe/trusted parser, never in the log.
         coproc CODEX_EVENTS {
-            exec python3 -I "/proc/self/fd/$WRAPPER_CHECKER_FD" --codex-events "$CODEX_USAGE_RETRY_SECONDS"
+            exec python3 -I "/proc/self/fd/$WRAPPER_CHECKER_FD" --codex-events "$CODEX_USAGE_RETRY_SECONDS" "$WORK_LOG"
         }
         events_pid=$CODEX_EVENTS_PID
         events_input=${CODEX_EVENTS[1]}
         events_output=${CODEX_EVENTS[0]}
         unset CODEX_EVENTS CODEX_EVENTS_PID
         status=0
-        codex "${CODEX_SAFE_ARGS[@]}" "${args[@]}" </dev/null >&"$events_input" || status=$?
+        codex "${CODEX_SAFE_ARGS[@]}" "${args[@]}" </dev/null >&"$events_input" 2>>"$WORK_LOG" || status=$?
         exec {events_input}>&-
         parser_status=0
         IFS= read -r delay <&"$events_output" || parser_status=1
@@ -154,7 +233,7 @@ run_codex_with_usage_retry() {
         # Signals and unrelated failures must never start another model session.
         (( status < 128 && delay > 0 )) || return "$status"
         "$guard"
-        printf 'Codex usage limit reached. Waiting %s seconds before retrying the same assignment (Ctrl+C to stop).\n' "$delay" >&2
+        work_status "Codex usage limit reached. Waiting $delay seconds before retrying the same assignment (Ctrl+C to stop)."
         wait_for_usage_reset "$delay" || die "Usage-limit wait failed"
         assert_control_plane
         "$guard"

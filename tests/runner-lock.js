@@ -24,7 +24,10 @@ function git(repo, ...args) {
 function fixture(name) {
     const repo = path.join(tmp, name + ' with spaces');
     for (const file of [...runners, 'trusted-runner.py', 'codex-runner.sh', 'markdown-tasks.py']) {
-        write(path.join(repo, 'scripts', file), fs.readFileSync(path.join(source, 'scripts', file)));
+        const content = fs.readFileSync(path.join(source, 'scripts', file), 'utf8');
+        write(path.join(repo, 'scripts', file), file === 'fix-review.sh'
+            ? content.replace(/^REVIEW=.*$/m, 'REVIEW="docs/reviews/2026-10-04-solar-calcule-review.md"')
+                .replace(/^BRANCH=.*$/m, 'BRANCH="fix/review-2026-10-04"') : content);
     }
     write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');
     write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), '- [ ] Probe finding.\n');

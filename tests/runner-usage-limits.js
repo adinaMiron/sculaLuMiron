@@ -101,6 +101,8 @@ process.exit(r.status ?? 99);
 import json, os, pathlib, subprocess, sys
 args = sys.argv[1:]
 assert '--json' in args
+assert args[args.index('--model') + 1] == 'gpt-6.1-sol'
+assert 'model_reasoning_effort="high"' in args
 if args[-1] == '-':
     print('No prompt provided via stdin.', file=sys.stderr)
     sys.exit(1)
@@ -158,7 +160,12 @@ if os.environ['PROBE_MODE'].startswith('cancel'): time.sleep(300)
     function fixture(runner, mode) {
         const repo = path.join(tmp, runner + '-' + mode);
         fs.mkdirSync(repo);
-        for (const script of scripts) write(path.join(repo, 'scripts', script), fs.readFileSync(path.join(source, 'scripts', script)));
+        for (const script of scripts) {
+            const content = fs.readFileSync(path.join(source, 'scripts', script), 'utf8');
+            write(path.join(repo, 'scripts', script), script === 'fix-review.sh'
+                ? content.replace(/^REVIEW=.*$/m, 'REVIEW="docs/reviews/2026-10-04-solar-calcule-review.md"')
+                    .replace(/^BRANCH=.*$/m, 'BRANCH="fix/review-2026-10-04"') : content);
+        }
         const doc = runner === 'implement-tasks.sh' ? 'docs/tasks/probe/requirements.md' : 'docs/reviews/2026-10-04-solar-calcule-review.md';
         write(path.join(repo, doc), '- [ ] Probe assignment.\n');
         write(path.join(repo, 'docs/tasks/other/requirements.md'), '- [ ] Other.\n');
@@ -173,7 +180,8 @@ if os.environ['PROBE_MODE'].startswith('cancel'): time.sleep(300)
         const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
             PROBE_LOG: log, PROBE_MODE: mode, PROBE_DOC: doc, REAL_GIT: realGit,
             CODEX_USAGE_RETRY_SECONDS: '17', CREATE_PR: 'false', FINAL_REVIEW: mode.startsWith('final-') ? 'true' : 'false',
-            BASE: 'main', TASK_BRANCH: 'feat/probe', MAX_TASKS: '1', MAX_FINDINGS: '1' };
+            BASE: 'main', TASK_BRANCH: 'feat/probe', MAX_TASKS: '1', MAX_FINDINGS: '1',
+            CODEX_MODEL: 'gpt-6.1-sol', CODEX_EFFORT: 'high' };
         return { repo, log, doc, env, args: [path.join(repo, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])] };
     }
     let count = 0;

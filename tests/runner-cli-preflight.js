@@ -31,7 +31,11 @@ function calls() {
 try {
     fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
     for (const name of ['codex-runner.sh', 'fix-review.sh', 'implement-tasks.sh', 'trusted-runner.py', 'markdown-tasks.py']) {
-        write(path.join(repo, 'scripts', name), fs.readFileSync(path.join(source, 'scripts', name)));
+        const content = fs.readFileSync(path.join(source, 'scripts', name), 'utf8');
+        // Keep the disposable review target independent of the live run target.
+        write(path.join(repo, 'scripts', name), name === 'fix-review.sh'
+            ? content.replace(/^REVIEW=.*$/m, 'REVIEW="docs/reviews/2026-10-04-solar-calcule-review.md"')
+                .replace(/^BRANCH=.*$/m, 'BRANCH="fix/review-2026-10-04"') : content);
     }
     write(path.join(repo, 'docs/tasks/probe/01-requirements.md'), '- [ ] [ID:probe] Probe task.\n');
     write(path.join(repo, 'docs/reviews/2026-10-04-solar-calcule-review.md'), '- [ ] Probe finding.\n');
@@ -43,6 +47,7 @@ fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({tool: require('node:pat
     write(path.join(bin, 'git'), '#!/usr/bin/env node\n' + recorder + `
 if (args.includes('--show-toplevel')) console.log(process.env.PROBE_REPO);
 else if (args.includes('--git-common-dir')) console.log('.git');
+else if (args.includes('--absolute-git-dir')) console.log(require('node:path').join(process.env.PROBE_REPO, '.git'));
 else if (args[0] === 'status' || args[0] === 'ls-files') process.exit(0);
 else if (args[0] === 'check-ref-format') {
     const result = require('node:child_process').spawnSync(${JSON.stringify(realGit)}, args);
@@ -71,10 +76,95 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
 `, 0o755);
     const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
         PROBE_LOG: log, PROBE_REPO: repo, CREATE_PR: 'false', FINAL_REVIEW: 'false',
-        BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '300' };
+        BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '300',
+        CODEX_MODEL: '', CODEX_EFFORT: '' };
     const gitMutations = history => history.filter(c => c.tool === 'git' &&
-        !c.args.includes('--show-toplevel') && !c.args.includes('--git-common-dir') &&
+        !c.args.includes('--show-toplevel') && !c.args.includes('--git-common-dir') && !c.args.includes('--absolute-git-dir') &&
         !['status', 'ls-files', 'check-ref-format'].includes(c.args[0]));
+    for (const runner of ['implement-tasks.sh', 'fix-review.sh']) {
+        const argv = [path.join(repo, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])];
+        for (const [key, values] of [
+            ['CODEX_MODEL', ['--model', 'gpt model', 'gpt/model', 'gpt"model', 'gpt\nmodel', '$(false)', '`false`']],
+            ['CODEX_EFFORT', ['HIGH', 'unknown', 'high low', 'high\n', '"high"', '$(false)']]
+        ]) {
+            for (const value of values) {
+                write(log, '');
+                const result = run('bash', argv, { ...env, [key]: value });
+                assert.equal(result.status, 1, result.stderr);
+                assert.match(result.stderr, new RegExp(key + ' must be'));
+                assert.deepEqual(gitMutations(calls()), []);
+                assert(!calls().some(c => c.tool === 'codex'));
+            }
+        }
+        for (const config of [
+            {}, { CODEX_MODEL: 'gpt-6.1-sol' }, { CODEX_EFFORT: 'high' },
+            ...['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']
+                .map(effort => ({ CODEX_MODEL: 'gpt-6.1-sol', CODEX_EFFORT: effort }))
+        ]) {
+            write(log, '');
+            const result = run('bash', argv, { ...env, ...config, PROBE_MODE: 'valid' });
+            assert.equal(result.status, 73, result.stdout + result.stderr);
+            const args = calls().find(c => c.tool === 'codex').args;
+            assert.equal(args.includes('--model'), Boolean(config.CODEX_MODEL));
+            if (config.CODEX_MODEL) assert.equal(args[args.indexOf('--model') + 1], config.CODEX_MODEL);
+            const effortArgs = args.filter(a => a.startsWith('model_reasoning_effort='));
+            assert.deepEqual(effortArgs, config.CODEX_EFFORT ? [`model_reasoning_effort="${config.CODEX_EFFORT}"`] : []);
+            assert.deepEqual(gitMutations(calls()).map(c => c.args[0]), ['fetch']);
+        }
+        write(log, '');
+        const help = run('bash', [path.join(repo, 'scripts', runner), '--help'], env);
+        assert.equal(help.status, 0, help.stderr);
+        assert.match(help.stdout, /CODEX_MODEL/);
+        assert.match(help.stdout, /CODEX_EFFORT/);
+        assert.deepEqual(gitMutations(calls()), []);
+        assert(!calls().some(c => c.tool === 'codex'));
+
+        const runnerFile = path.join(repo, 'scripts', runner);
+        const originalScript = fs.readFileSync(runnerFile, 'utf8');
+        const defaultEnv = { ...env, PROBE_MODE: 'valid' };
+        delete defaultEnv.CODEX_MODEL;
+        delete defaultEnv.CODEX_EFFORT;
+        try {
+            assert.match(originalScript, /^DEFAULT_CODEX_MODEL="[^"]*"$/m, 'script must expose an editable model default');
+            assert.match(originalScript, /^DEFAULT_CODEX_EFFORT="[^"]*"$/m, 'script must expose an editable effort default');
+            const withDefaults = originalScript
+                .replace(/^DEFAULT_CODEX_MODEL=.*$/m, 'DEFAULT_CODEX_MODEL="gpt-6.1-sol"')
+                .replace(/^DEFAULT_CODEX_EFFORT=.*$/m, 'DEFAULT_CODEX_EFFORT="high"');
+            write(runnerFile, withDefaults);
+            for (const [overrides, model, effort] of [
+                [{}, 'gpt-6.1-sol', 'high'],
+                [{ CODEX_MODEL: 'gpt-6-astra' }, 'gpt-6-astra', 'high'],
+                [{ CODEX_EFFORT: 'low' }, 'gpt-6.1-sol', 'low'],
+                [{ CODEX_MODEL: 'gpt-6-astra', CODEX_EFFORT: 'medium' }, 'gpt-6-astra', 'medium'],
+                [{ CODEX_MODEL: '' }, '', 'high'],
+                [{ CODEX_EFFORT: '' }, 'gpt-6.1-sol', ''],
+                [{ CODEX_MODEL: '', CODEX_EFFORT: '' }, '', '']
+            ]) {
+                write(log, '');
+                const result = run('bash', argv, { ...defaultEnv, ...overrides });
+                assert.equal(result.status, 73, result.stdout + result.stderr);
+                const args = calls().find(c => c.tool === 'codex').args;
+                assert.equal(args.includes('--model'), Boolean(model));
+                if (model) assert.equal(args[args.indexOf('--model') + 1], model);
+                assert.deepEqual(args.filter(a => a.startsWith('model_reasoning_effort=')),
+                    effort ? [`model_reasoning_effort="${effort}"`] : []);
+            }
+            for (const [key, value] of [['MODEL', 'bad model'], ['EFFORT', 'unknown']]) {
+                write(runnerFile, withDefaults.replace(
+                    new RegExp('^DEFAULT_CODEX_' + key + '=.*$', 'm'),
+                    `DEFAULT_CODEX_${key}="${value}"`));
+                write(log, '');
+                const result = run('bash', argv, defaultEnv);
+                assert.equal(result.status, 1, result.stderr);
+                assert.match(result.stderr, new RegExp('CODEX_' + key + ' must be'));
+                assert.deepEqual(gitMutations(calls()), []);
+                assert(!calls().some(c => c.tool === 'codex'));
+            }
+        } finally {
+            write(runnerFile, originalScript);
+        }
+    }
+    console.log('PASS both runners: editable script defaults, environment precedence, empty resets, effort levels, help, and invalid input before Codex/Git mutation');
     for (const runner of ['implement-tasks.sh', 'fix-review.sh']) {
         for (const interval of ['0', '-1', '1.5', '01', '1000000', '$(false)', 'abc']) {
             write(log, '');
@@ -161,7 +251,7 @@ assert_control_plane() { :; } # This unit probe isolates the CLI contract.
 source "$1"
 preflight_codex
 run_codex_safely 'fixture prompt'
-`, 'probe', helper], env);
+`, 'probe', helper], { ...env, CODEX_MODEL: 'gpt-6.1-sol', CODEX_EFFORT: 'high' });
     assert.equal(launch.status, 74, launch.stderr);
     const invocations = calls();
     assert.equal(invocations.length, 2);
@@ -182,7 +272,8 @@ run_codex_safely 'fixture prompt'
     if (process.argv.includes('--real-codex')) {
         const home = path.join(tmp, 'codex-home');
         fs.mkdirSync(home);
-        const realEnv = { ...process.env, CODEX_HOME: home, PROBE_REPO: repo };
+        const realEnv = { ...process.env, CODEX_HOME: home, PROBE_REPO: repo,
+            CODEX_MODEL: '', CODEX_EFFORT: '' };
         const probe = `
 set -Eeuo pipefail
 REPO_ROOT="$PROBE_REPO"
@@ -199,6 +290,9 @@ preflight_codex
         assert.equal(valid.status, 0, valid.stderr);
         const review = run('bash', ['-c', probe, 'probe', helper, '--output-last-message', '/dev/null'], realEnv);
         assert.equal(review.status, 0, review.stderr);
+        const selected = run('bash', ['-c', probe, 'probe', helper],
+            { ...realEnv, CODEX_MODEL: 'gpt-6.1-sol', CODEX_EFFORT: 'high' });
+        assert.equal(selected.status, 0, selected.stderr);
         for (const override of [
             ['--unknown-runner-option'],
             ['--disable', 'unknown_runner_feature'],

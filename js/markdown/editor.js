@@ -90,11 +90,15 @@ editor.addEventListener('beforeinput', e => {
 });
 
 /* Every programmatic edit in this file goes through setRangeText, so one
-   override records them all and no new toolbar action can forget to. */
+   override records and autosaves them all. Native setRangeText emits no input
+   event; updateStatus also journals edits such as Tab indentation. */
 const editorSetRangeText = editor.setRangeText.bind(editor);
 editor.setRangeText = function (...args) {
   undoMark(false);
-  return editorSetRangeText(...args);
+  const result = editorSetRangeText(...args);
+  updateStatus();
+  scheduleAutosave();
+  return result;
 };
 
 function insertAtCursor(text) {

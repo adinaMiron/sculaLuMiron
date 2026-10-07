@@ -29,6 +29,15 @@ nine applications never reference it and retain their dependency-free runtime.
 Each script is self-contained, prints `PASS`/`FAIL` lines per check, and
 exits non-zero if anything failed.
 
+`node tests/runner-output.js` (or `npm run test:runner-output` from `tests/`)
+checks concise terminal progress and readable per-task/per-finding logs in both
+runners. It verifies suppression of source excerpts, commands, raw event JSON,
+and tool output; preservation of multiline details and summaries in logs;
+separate assignment/final-review logs; retries appended to the same log;
+failure diagnostics, unavailable log storage, linked worktrees, and logs kept
+out of commits. Disposable repositories use fake Codex/remotes and waits;
+no model session or remote is contacted.
+
 `node tests/runner-usage-limits.js` (or `npm run test:runner-usage` from `tests/`)
 checks automatic usage-limit recovery in both runners and the final reviewer.
 It covers structured error detection, reset-time parsing, fallback waits,
@@ -36,6 +45,8 @@ repeated limits, preserved partial work and checkbox evidence, unrelated
 failures, tampering, stale review verdicts, lock retention, and cancellation.
 It uses disposable local repositories, fake Codex/remotes, and simulated sleeps;
 the cancellation case interrupts a real sleeper. No model or remote is contacted.
+Every invocation checks that the selected model and effort survive task/finding
+execution, retries, and final review.
 
 `node tests/runner-cli-preflight.js` (from the repository root) checks both
 automation runners using disposable directories and fake Git/Codex executables.
@@ -46,6 +57,12 @@ names, the configured base, and protected destinations (`main`, `master`) before
 fetch/switch/push; defaults and valid overrides still reach branch preparation.
 All four `CREATE_PR`/`FINAL_REVIEW` combinations are checked; PR creation with
 review disabled must fail before agent invocation or Git mutation.
+Model/effort cases cover omitted/empty defaults, independent overrides, all
+accepted effort names, malformed values rejected before Codex/Git mutation,
+and both scripts' help output. The real-CLI probe also checks explicit model
+and effort arguments with empty stdin.
+Script-default fixtures check editable model/effort settings, independent
+environment overrides, explicit empty resets, and invalid script defaults.
 It needs Git, Node, Bash, and Linux/Python 3 with file sealing, not
 Playwright. From `tests/`, the same suite is available as
 `npm run test:runner-preflight`.

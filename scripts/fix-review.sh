@@ -18,6 +18,44 @@ BASE="main"
 MAX="${MAX_FINDINGS:-20}"
 CREATE_PR="${CREATE_PR:-true}"
 
+# Set your preferred model and effort here, for example "gpt-6.1-sol" and "high".
+# Empty defaults use the CLI/model defaults. Environment values take precedence;
+# an explicitly empty environment value also restores the CLI/model default.
+DEFAULT_CODEX_MODEL="gpt-6.1-sol"
+DEFAULT_CODEX_EFFORT="high"
+CODEX_MODEL="${CODEX_MODEL-$DEFAULT_CODEX_MODEL}"
+CODEX_EFFORT="${CODEX_EFFORT-$DEFAULT_CODEX_EFFORT}"
+
+usage() {
+    cat <<'TXT'
+Usage:
+  ./scripts/fix-review.sh
+
+Example:
+  CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=high ./scripts/fix-review.sh
+
+Optional environment variables:
+  MAX_FINDINGS=20
+  CREATE_PR=true
+  CODEX_MODEL=<OpenAI model identifier> (unset: script default)
+  CODEX_EFFORT=none|minimal|low|medium|high|xhigh|max|ultra (unset: script default)
+
+Edit DEFAULT_CODEX_MODEL and DEFAULT_CODEX_EFFORT in the configuration section.
+Environment values override those defaults; empty values use CLI/model defaults.
+Choose an effort supported by your model and installed Codex CLI.
+Model/effort selections apply to findings and retries.
+The review document and branch are configured in this script.
+Progress is concise; detailed per-finding logs are in .git/automation-logs/
+(linked worktrees use their own Git administrative directory).
+TXT
+}
+
+if (( $# == 1 )) && [[ "$1" == --help || "$1" == -h ]]; then
+    usage
+    exit 0
+fi
+(( $# == 0 )) || { usage; exit 2; }
+
 # ==============================================================================
 # Helpers
 # ==============================================================================
@@ -25,6 +63,7 @@ CREATE_PR="${CREATE_PR:-true}"
 die() {
     echo >&2
     echo "ERROR: $*" >&2
+    if declare -F log_error >/dev/null; then log_error "$@"; fi
     exit 1
 }
 
@@ -109,20 +148,21 @@ ensure_clean_worktree "before branch preparation"
 # Prepare branch
 # ==============================================================================
 
-echo "Fetching origin..."
-git fetch origin --prune
+start_work_log "review-prepare" "Preparing review branch: $BRANCH"
+work_status "Fetching origin..."
+run_logged git fetch origin --prune
 
 git show-ref --verify --quiet "refs/remotes/origin/$BASE" \
     || die "Remote base branch origin/$BASE does not exist"
 
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-    echo "Using existing local branch: $BRANCH"
-    git switch "$BRANCH"
+    work_status "Using existing local branch: $BRANCH"
+    run_logged git switch "$BRANCH"
     ensure_clean_worktree "after switching to $BRANCH"
 
     if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
         if git merge-base --is-ancestor "$BRANCH" "origin/$BRANCH"; then
-            git merge --ff-only "origin/$BRANCH"
+            run_logged git merge --ff-only "origin/$BRANCH"
         elif git merge-base --is-ancestor "origin/$BRANCH" "$BRANCH"; then
             : # Publish only after selected-branch inputs have been validated.
         else
@@ -130,9 +170,9 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
         fi
     fi
 elif git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-    git switch --track -c "$BRANCH" "origin/$BRANCH"
+    run_logged git switch --track -c "$BRANCH" "origin/$BRANCH"
 else
-    git switch -c "$BRANCH" "origin/$BASE"
+    run_logged git switch -c "$BRANCH" "origin/$BASE"
 fi
 
 validate_review_input
@@ -142,8 +182,6 @@ ensure_clean_worktree "before review processing"
 if ! git merge-base --is-ancestor "origin/$BASE" "$BRANCH"; then
     die "$BRANCH does not contain current origin/$BASE; rebase manually before continuing"
 fi
-
-trap release_validation_evidence EXIT
 
 # ==============================================================================
 # Fix one finding at a time
@@ -164,13 +202,9 @@ while (( i < MAX )); do
     finding="$(printf '%s\n' "$original_line" | sed -E 's/^ {0,3}- \[ \][[:blank:]]*//')"
     [[ -n "$finding" ]] || die "Could not extract review finding from line $target_line"
 
-    echo
-    echo "=============================================================================="
-    echo "Finding $i / $MAX"
-    echo "=============================================================================="
-    echo "Review:  $REVIEW:$target_line"
-    echo "Finding: $finding"
-    echo
+    start_work_log "fix-$i" "Finding $i: $before open — $REVIEW:$target_line"
+    work_status "Fixing: $(printf '%s' "$finding" | cut -c1-160)"
+    printf '\nExact finding:\n%s\n' "$original_line" >> "$WORK_LOG"
 
     ensure_clean_worktree "before Codex finding $i"
 
@@ -237,12 +271,13 @@ PROMPT
         die "Codex failed; working tree preserved for inspection"
     fi
 
+    work_status "Validating finding and changes..."
     [[ "$(git branch --show-current)" == "$branch_before" ]] || die "Codex changed branches"
     [[ "$(git rev-parse HEAD)" == "$head_before" ]] || die "Codex changed Git history"
     git diff --cached --quiet || die "Codex staged files"
 
     if ! cmp -s "$REVIEW" "${EVIDENCE_PATHS[0]}"; then
-        git diff -- "$REVIEW" || true
+        git diff -- "$REVIEW" >> "$WORK_LOG" 2>&1 || true
         die "Review document changed unexpectedly; only the assigned [ ] -> [x] transition is allowed"
     fi
 
@@ -254,24 +289,25 @@ PROMPT
 
     release_validation_evidence || die "Validation evidence holder failed"
 
-    git diff --check || die "git diff --check failed"
+    run_logged git diff --check
 
     changed_outside_review="$({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | grep -Fvx -- "$REVIEW" || true)"
     if [[ -z "$changed_outside_review" ]]; then
-        echo "Finding was already fixed and verified; only review status changed."
+        work_status "Finding was already fixed and verified; only review status changed."
         commit_prefix="docs"
     else
-        echo "Changed files:"
-        printf '%s\n' "$changed_outside_review" | sed 's/^/  /'
+        printf '\nChanged files:\n%s\n' "$changed_outside_review" >> "$WORK_LOG"
         commit_prefix="fix"
     fi
 
-    git add -A
-    git diff --cached --check || die "Staged diff validation failed"
+    work_status "Committing and pushing finding $i..."
+    run_logged git add -A
+    run_logged git diff --cached --check
 
     short_finding="$(printf '%s' "$finding" | tr '\n' ' ' | tr -s ' ' | cut -c1-68)"
-    git commit -m "$commit_prefix: $short_finding"
-    git push -u origin "$BRANCH"
+    run_logged git commit -m "$commit_prefix: $short_finding"
+    run_logged git push -u origin "$BRANCH"
+    work_status "Completed finding $i — committed $(git rev-parse --short HEAD) and pushed."
 done
 
 # ==============================================================================
@@ -287,7 +323,7 @@ if (( remaining > 0 )); then
 fi
 
 ensure_clean_worktree "after completing all findings"
-git push -u origin "$BRANCH"
+run_logged git push -u origin "$BRANCH"
 
 echo
 echo "All review findings are complete."
@@ -306,10 +342,16 @@ fi
 commits_ahead="$(git rev-list --count "origin/$BASE..$BRANCH")"
 (( commits_ahead > 0 )) || { echo "No commits beyond origin/$BASE; no PR necessary."; exit 0; }
 
-gh pr create \
+work_status "Creating pull request..."
+run_logged gh pr create \
     --base "$BASE" \
     --head "$BRANCH" \
     --title "Fixes from review 2026-10-04" \
     --body "Automated one-by-one fixes for findings in \`$REVIEW\`. Codex runs locally with workspace writes allowed but agent-command network access and external integration tools disabled; the Bash wrapper owns commits, pushes, and PR creation."
 
-echo "Done."
+pr_url="$(tail -n 1 "$WORK_LOG")"
+if [[ "$pr_url" =~ ^https://[^[:space:]]+/pull/[0-9]+$ ]]; then
+    work_status "Pull request: $pr_url"
+else
+    work_status "Done. Pull request details: $WORK_LOG"
+fi

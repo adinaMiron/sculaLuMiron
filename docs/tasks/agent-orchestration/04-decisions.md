@@ -1,5 +1,62 @@
 # Agent orchestration decisions
 
+## 2026-10-07 — Concise progress and readable work logs
+
+Both runners show the current assignment and log path, brief activity notices,
+deduplicated edited-file names, validation/commit/push progress, and a short
+completion or error notice. Agent summaries, source excerpts, command text,
+command/test output, CLI stderr, and Git transfer output stay in the logs.
+Codex events are decoded into timestamped sections with actual newlines,
+rather than dumped as raw JSON. The final agent summary is preserved in full.
+
+Logs are unique timestamped `.log` files in `automation-logs/` inside the
+checkout's Git administrative directory, normally `.git/automation-logs/`.
+The absolute path is printed when a log is created. Each finding/task gets its
+own log; retries append attempt notices and details to that same log. Branch
+preparation and the independent final review have separate logs. Linked
+worktrees use their own administrative directory, obtained with
+`git rev-parse --absolute-git-dir`. This keeps logs out of `git add -A` without
+requiring ignore rules on the selected branch. Log creation fails before branch
+preparation if storage is unavailable. Logs remain available after failure or
+cancellation; they are local diagnostics, never evidence for retry decisions,
+checkbox validation, or review verdicts.
+
+Verification: `tests/runner-output.js` uses offline disposable repositories,
+fake agents/remotes, and simulated waits to check terminal suppression,
+readable multiline details, one log per assignment, retries, failures, log
+creation errors, final-review evidence, linked worktrees, and clean commits.
+All 10 output cases, 157 control-plane cases, 33 usage-recovery cases, 30
+concurrent-lock probes, CLI preflight fixtures, and Markdown parser checks
+passed. Bash/Python/JavaScript syntax and diff whitespace checks passed, and
+the resulting change was inspected against the requirement. No model or
+remote was contacted during verification.
+
+## 2026-10-07 — Explicit model and reasoning effort
+
+Both runners accept optional `CODEX_MODEL` and `CODEX_EFFORT` environment
+variables, matching the existing environment-based configuration. The shared
+helper validates model identifier syntax and known effort names before Codex
+invocation or Git mutation, then adds `--model` and the
+`model_reasoning_effort` configuration override as separate array arguments.
+Preflight, task/finding execution, retries, and final review use the same array.
+Each script also exposes editable `DEFAULT_CODEX_MODEL` and
+`DEFAULT_CODEX_EFFORT` settings near its top. Unset environment variables use
+these script defaults; supplied values override them, including explicit empty
+values that omit the respective CLI override. The shipped defaults are empty,
+preserving CLI/model defaults. Both sources use the same shared validation.
+User/project configuration remains ignored and execution restrictions remain
+in effect. Help is available in both scripts without starting Codex.
+
+Model IDs and model/effort pairings are not hardcoded: account availability and
+support change, and the CLI/provider remains responsible for those checks.
+Empty-input preflight validates configuration syntax, not remote model access
+or every model/effort pairing. No model request is made by the tests.
+
+Verification uses `tests/runner-cli-preflight.js` (including `--real-codex`)
+and `tests/runner-usage-limits.js`. Disposable review fixtures pin their own
+document/branch so changing the live review target cannot break regression
+coverage.
+
 ## 2026-10-06 — Automatic usage-limit recovery
 
 The task, finding, and final-review invocations use the shared usage-limit retry
@@ -10,9 +67,10 @@ provides top-level failure events. Only explicit usage exhaustion in those
 events qualifies for retry; quoted tool/assistant output, generic HTTP 429,
 billing/authentication errors, signal exits, and other failures do not.
 
-The event parser is part of the kernel-sealed checker. Diagnostics stream live
-to stderr, while the retry decision travels through pipes and process memory,
-without an agent-writable log. Recognized future reset timestamps or durations
+The event parser is part of the kernel-sealed checker. Concise progress streams
+live to stderr and detailed diagnostics go to the work log. The retry decision
+travels through pipes and process memory, never through a writable log.
+Recognized future reset timestamps or durations
 receive a five-second buffer. Human-readable times use the CLI's local timezone;
 time-only values can refer to the next day. Missing/stale/unrecognized times
 use the positive `CODEX_USAGE_RETRY_SECONDS` interval (default 300 seconds).

@@ -360,6 +360,45 @@ Example:
 ./scripts/implement-tasks.sh song-creation
 ```
 
+Select an OpenAI model and reasoning effort with environment variables:
+
+```sh
+CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=high ./scripts/implement-tasks.sh song-creation
+```
+
+`CODEX_MODEL` accepts a model identifier containing letters, digits, dots,
+underscores, and hyphens, starting with a letter or digit. `CODEX_EFFORT` accepts
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`. Choose a
+level supported by the selected model and installed CLI; not every model
+supports every level. The [official OpenAI configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+describes `model_reasoning_effort`. CLI/provider validation determines model
+availability and compatibility; empty-input preflight validates configuration
+syntax without making a model request.
+
+You can also edit these settings near the top of `scripts/implement-tasks.sh`:
+
+```sh
+DEFAULT_CODEX_MODEL="gpt-6.1-sol"
+DEFAULT_CODEX_EFFORT="high"
+```
+
+The shipped script defaults are empty, preserving CLI/model defaults. An unset
+environment variable uses its script default; a supplied environment value
+overrides it. An explicitly empty environment value restores the CLI's default
+model or the selected model's default effort. Either setting can be changed
+independently. Explicit selections apply to preflight, all tasks, usage-limit
+retries, and final review.
+Personal Codex configuration remains ignored, and the runner's execution
+restrictions still apply. `./scripts/implement-tasks.sh --help` lists the options.
+
+The terminal shows the current requirement, brief activity and edited-file
+notices, and completion or failure. Each requirement has a readable detailed
+log, with retries appended to the same file; preparation and final review have
+separate logs. Source excerpts, commands, test output, and the full agent summary
+stay in these logs. The runner prints each absolute log path. Logs normally live
+in `.git/automation-logs/`; linked worktrees use their own Git administrative
+directory. Logs stay out of commits and remain available after a stopped run.
+
 This operates on:
 
 ```text
