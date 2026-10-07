@@ -20,6 +20,7 @@
 //   node wbresume.js        # from tests/
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
@@ -81,7 +82,11 @@ const RESTORED = path.join(__dirname, '.restored.html');
 async function openRestored(page, text) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  fs.writeFileSync(RESTORED, src.replace('"></textarea>', '">' + escaped + '</textarea>'));
+  // The copy lives in tests/, but its assets must resolve beside index.html.
+  const base = pathToFileURL(path.join(__dirname, '..') + path.sep).href;
+  const restored = src.replace('<head>', '<head>\n<base href="' + base + '">')
+    .replace('"></textarea>', '">' + escaped + '</textarea>');
+  fs.writeFileSync(RESTORED, restored);
   await page.goto('file://' + RESTORED);
   await page.waitForTimeout(600);
 }

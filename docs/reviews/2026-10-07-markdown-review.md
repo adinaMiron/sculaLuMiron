@@ -37,13 +37,15 @@ They print observations rather than asserting that the current defective behavio
 
 ## Findings: preservation and data flow
 
-- [ ] [ID:md-format-autosave] **P1 — Formatting-only edits bypass chapter autosave and disappear on chapter switching.**
+- [x] [ID:md-format-autosave] **P1 — Formatting-only edits bypass chapter autosave and disappear on chapter switching.**
 
   **Location:** [editor.js](../../js/markdown/editor.js), lines 95–122, 141–174 and 866–873; [files.js](../../js/markdown/files.js), lines 397–416; [workbooks.js](../../js/markdown/workbooks.js), lines 1223–1249.
 
   **Reproduce:** Open a saved chapter, wait beyond the one-time 1.2-second restoration check, select its text and click Bold without typing. After 1.1 seconds, the textarea and draft contain `**ORIGINAL a**`, but IndexedDB contains `ORIGINAL a`, `wbDirty` is false and no pending marker exists. Open another chapter, then return: the formatting is gone and the journal has been overwritten. `setRangeText` records undo but emits no input event; many actions call only preview/status updates. The restoration timer can accidentally hide this defect in tests performed immediately after load.
 
   **Correction/verification:** Every document mutation, including formatting, inserted links/images/tables/code and Tab indentation, must participate in autosave. Verify persistence and chapter switching after startup has settled, without requiring a subsequent typed character.
+
+  **Verified:** The existing shared `editor.setRangeText` override journals and schedules autosave for programmatic edits. `mdautosave.js`, `mdundo.js`, `wbsaveall.js`, and `wbresume.js` pass with the installed Chrome. The reload test's copied-page fixture now resolves assets from the repository root. See [verification details](2026-10-07-markdown-evidence/autosave-verification.md).
 
 - [ ] [ID:md-failed-store-navigation] **P1 — A failed store write clears the dirty flag and permits leaving the chapter, destroying its recovery draft.**
 

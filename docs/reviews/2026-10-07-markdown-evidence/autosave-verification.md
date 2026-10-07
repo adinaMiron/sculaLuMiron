@@ -17,7 +17,7 @@ restoration check settle before every action, including those after reloads.
 It retains checks for immediate dirty state, persisted chapter content, pending
 markers, chapter switching, and reload without typing another character.
 
-## Verification and blocker
+## Verification
 
 Commands use the installed browser:
 
@@ -28,13 +28,21 @@ PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/wbsaveall.js
 PW_CHROME_PATH=/usr/bin/google-chrome-stable node tests/wbresume.js
 ```
 
-The autosave, undo, and pending-save suites pass outside the sandbox.
-`wbresume.js` fails at its restored-page scenario with
+The autosave, undo, and pending-save suites passed in the earlier follow-up.
+`wbresume.js` initially failed at its restored-page scenario with
 `page.evaluate: ReferenceError: wbAll is not defined` at line 150. Its
 `openRestored()` helper copies `index.html` into `tests/.restored.html` without
 adjusting relative script URLs, so the Markdown modules are unavailable in that
-copy. This pre-existing test failure remains a verification blocker under
-`AGENTS.md` section 9; `md-format-autosave` remains unchecked.
+copy. That failure kept the finding unchecked in the earlier follow-up.
+
+The fixture now inserts a file-URL base pointing to the repository root, so
+the copied page loads the same assets as `index.html`. No application code or
+runner policy changed. All four commands above pass in the current session,
+including the restored-text scenarios, with no page errors. The autosave suite
+verifies all eight actions after startup settles, including the recovery draft,
+IndexedDB content, pending marker, chapter switching, and reload.
+`md-format-autosave` is now checked after source inspection, successful tests,
+and diff review.
 
 The runner's execution policy has not changed. Browser verification outside its
 sandbox does not establish that future automated browser runs can launch Chrome.
