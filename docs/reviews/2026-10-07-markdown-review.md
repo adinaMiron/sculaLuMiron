@@ -63,7 +63,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Resolve preservation before replacing the editor and do not proceed after a failed flush. Test attached and loose text, delayed file reads, confirmed/canceled DOCX replacement and storage failure.
 
-- [ ] [ID:md-mirror-failure-markers] **P1 — Failed folder saves clear pending markers and can claim that chapters were saved.**
+- [x] [ID:md-mirror-failure-markers] **P1 — Failed folder saves clear pending markers and can claim that chapters were saved.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbMirrorWrite`, `saveToWorkbook`, `saveAllModifiedChapters`, `syncAllToFolder`, `confirmSaveToWorkbook`; [idea.js](../../js/markdown/idea.js), `ideaAppendTo`.
 
