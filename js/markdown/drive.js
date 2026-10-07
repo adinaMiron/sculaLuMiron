@@ -501,7 +501,7 @@ async function cloudButton() {
     if (r && r.down && wbFolderMode() && await ScuLaFolder.dir(false)) {
       for (const id of [...wbPendingIds]) {
         const ch = wbChapter(id), book = ch && wbBook(ch.workbookId);
-        if (book && await wbMirrorWrite(book, ch, ch.content || '')) await wbPendingClear(id);
+        if (book) await wbSaveMirror(book, ch);
       }
       renderWorkbooks();
     }

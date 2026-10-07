@@ -79,7 +79,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Remove the source only after a confirmed destination write; retain recoverable correspondence and pending state on failure. Verify failed and partially successful chapter/workbook renames.
 
-- [ ] [ID:md-save-version-race] **P1 — An older save completing after a newer edit clears the newer edit's pending marker.**
+- [x] [ID:md-save-version-race] **P1 — An older save completing after a newer edit clears the newer edit's pending marker.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `saveToWorkbook` and the unconditional `wbPendingClear` calls in save/sync paths.
 

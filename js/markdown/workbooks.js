@@ -278,9 +278,39 @@ async function wbPendingMark(ch) {
   try { await wbPut(WB_PENDING, { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() }); }
   catch (e) {}
 }
-async function wbPendingClear(id) {
-  wbPendingIds.delete(id);
-  try { await wbDrop(WB_PENDING, id); } catch (e) {}
+async function wbPendingClear(id, saved) {
+  if (!saved) {
+    wbPendingIds.delete(id);
+    try { await wbDrop(WB_PENDING, id); } catch (e) {}
+    return true;
+  }
+  let cleared = false;
+  const matches = () => {
+    const current = wbChapter(id);
+    return current && current.content === saved.content && current.updated === saved.updated
+      && current.workbookId === saved.workbookId && current.file === saved.file
+      && !(id === wbCurrentId && wbDirty && editor.value !== saved.content);
+  };
+  try {
+    // Compare and delete in one transaction so a newer marker cannot be
+    // removed between reading its version and completing the old save.
+    await wbTx(WB_PENDING, 'readwrite', store => {
+      const req = store.get(id);
+      req.onsuccess = () => {
+        const pending = req.result;
+        if (!matches()) return;
+        if (pending && (pending.content !== saved.content || pending.updated !== saved.updated
+          || pending.workbookId !== saved.workbookId)) return;
+        store.delete(id);
+        wbPendingIds.delete(id); // a later mark may re-add it while this transaction finishes
+        cleared = true;
+      };
+    });
+  } catch (e) {
+    if (cleared) wbPendingIds.add(id);
+    return false;
+  }
+  return cleared && matches();
 }
 
 /* ── The draft journal ──
@@ -424,12 +454,20 @@ async function wbMirrorWrite(book, chapter, text) {
 // Explicit saves accept a local-only route, but a requested folder write
 // must keep its retry marker until the writable has closed successfully.
 async function wbSaveMirror(book, chapter) {
+  // Chapter objects are updated in place by autosave. Keep the exact body
+  // and revision handed to this write across every asynchronous step.
+  chapter = { ...chapter };
+  book = { ...book };
   const folder = wbFolderMode();
   if (folder) await wbPendingMark(chapter);
   const path = await wbMirrorWrite(book, chapter, chapter.content || '');
   const failed = folder && !path;
-  if (!failed) await wbPendingClear(chapter.id);
-  return { path, failed };
+  const cleared = !failed && await wbPendingClear(chapter.id, chapter);
+  // Another save may have cleared the newer marker before this older file
+  // closed. That newer version needs mirroring again in that case.
+  const current = wbChapter(chapter.id);
+  if (!cleared && current && !wbPendingIds.has(chapter.id)) await wbPendingMark(current);
+  return { path, failed, pending: !cleared };
 }
 // Best effort, and never recursive: only files this app knows it wrote are
 // removed, and an empty workbook folder is dropped only if the FS agrees it
@@ -1147,12 +1185,9 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
         wbDraftWrite();
       }
       if (wbFolderMode()) {
-        const written = await wbMirrorWrite(book, ch, ch.content || '');
-        if (written) {
+        const saved = await wbSaveMirror(book, ch);
+        if (saved.path) {
           await wbMirrorRemove(oldBook.folder, oldFile);
-          if (pending) await wbPendingClear(id);
-        } else {
-          await wbPendingMark(ch);
         }
       }
     }
@@ -1298,7 +1333,8 @@ async function saveToWorkbook() {
   if (!await flushChapter(true)) return;
   // Finish both IndexedDB and the local file before cloud sign-in can open.
   const saved = await wbSaveMirror(book, ch);
-  wbSay(saved.failed ? t('wbMirrorFailed') : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.pending ? t(wbDirty ? 'wbEditing' : 'wbAutosaved')
+    : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
 }
@@ -1442,7 +1478,8 @@ async function confirmSaveToWorkbook() {
   renderWorkbooks();
   // Cancelling the later cloud sign-in must not cancel either local write.
   const saved = await wbSaveMirror(book, ch);
-  wbSay(saved.failed ? t('wbMirrorFailed') : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.pending ? t(wbDirty ? 'wbEditing' : 'wbAutosaved')
+    : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
 }
