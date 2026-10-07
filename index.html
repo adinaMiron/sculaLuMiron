@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#14201A">
 <title>Markdown Editor</title>
 <style>
@@ -1255,6 +1255,7 @@
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
   @media (max-width: 1024px) {
     :root { --panel-w: 240px; }
+    body { height: 100dvh; }
 
     header { height: auto; flex-wrap: wrap; gap: 8px; padding: 8px 14px; }
     .header-actions { flex-wrap: wrap; gap: 6px; }
@@ -1263,17 +1264,19 @@
 
     .wb-save-sync-row { padding: 6px 14px; gap: 6px; }
 
-    .toolbar { padding: 5px 10px; gap: 1px; flex-wrap: wrap; align-items: flex-start; }
+    .toolbar { padding: 5px 10px; gap: 1px; flex-wrap: nowrap; align-items: flex-start; }
     .tb-toggle { display: inline-flex; align-items: center; justify-content: center; }
     .toolbar-groups {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 1px;
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-width: 0;
-      max-height: 400px;
-      overflow: hidden;
+      /* Keep writing space while every formatting control remains scrollable. */
+      max-height: min(200px, 20dvh);
+      overflow-x: hidden;
+      overflow-y: auto;
       transition: max-height 0.2s ease, opacity 0.2s ease;
     }
     .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; }
@@ -1344,7 +1347,7 @@
     .btn { flex: 1 1 auto; min-width: 0; text-align: center; padding: 8px 6px; font-size: 11px; }
     .wb-save-sync-row { padding: 6px 12px; }
 
-    /* Toolbar wraps to show every button; give up vertical space instead */
+    /* Formatting controls wrap inside their bounded, scrollable group. */
     .toolbar { padding: 6px 10px; }
     .tb-btn { padding: 8px 9px; font-size: 13px; }  /* bigger tap targets */
     #btn-dictate.active { font-size: 0; }  /* recording: icon only, aria-label keeps the meaning */
@@ -1410,6 +1413,13 @@
     .logo span { display: none; }
     #status-bar span:nth-child(3) { display: none; }  /* drop char count */
     .btn { font-size: 10px; padding: 7px 4px; letter-spacing: 0; }
+  }
+
+  /* A keyboard or short landscape viewport also needs room below the chrome.
+     Scroll header actions rather than letting them consume the writing area. */
+  @media (max-width: 1024px) and (max-height: 500px) {
+    header { max-height: 20dvh; overflow-y: auto; }
+    .toolbar-groups { max-height: max(32px, 10dvh); }
   }
 
   /* Landscape phones: reclaim vertical space */

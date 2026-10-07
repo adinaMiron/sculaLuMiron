@@ -169,7 +169,7 @@ They print observations rather than asserting that the current defective behavio
 
 ## Findings: UI, accessibility and workflow
 
-- [ ] [ID:md-mobile-writing-space] **P2 — The default expanded mobile toolbar can leave no usable writing area.**
+- [x] [ID:md-mobile-writing-space] **P2 — The default expanded mobile toolbar can leave no usable writing area.**
 
   **Location:** [index.html](../../index.html), toolbar/mobile rules around lines 1248–1415; [editor.js](../../js/markdown/editor.js), `initToolbarCollapse`.
 
