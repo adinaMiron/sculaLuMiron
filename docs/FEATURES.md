@@ -1367,7 +1367,7 @@ Run: `/apptest find`.
 ## J. Quick idea capture (`index.html`)
 
 A thought arrives while you are writing about something else. The 💡 button
-in `.header-actions` — immediately right of **New** — and **Ctrl+Alt+I** open
+in `.header-actions` — after **New** and **Help** — and **Ctrl+Alt+I** open
 one textarea, and what you type is filed into the chapter it belongs to
 without ever leaving the chapter you were in.
 
@@ -1475,7 +1475,7 @@ early, for the same reason the importance chords do — `Alt` does not change
 
 ### Testing
 
-`tests/idea.js`. The button's position next to New, `Ctrl+Alt+I` and
+`tests/idea.js`. The **New → Help → Idea** button order, `Ctrl+Alt+I` and
 `Escape`, the hint, filing by `Ctrl+Enter`, the prefix stripped only on a
 match, a folded name (`retete` → `Rețete`), the editor moving when the
 target is the open chapter, the `Idei`/today fallback created and then

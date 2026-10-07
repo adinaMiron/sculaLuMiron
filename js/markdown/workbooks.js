@@ -421,6 +421,16 @@ async function wbMirrorWrite(book, chapter, text) {
     return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
   } catch (e) { return null; }
 }
+// Explicit saves accept a local-only route, but a requested folder write
+// must keep its retry marker until the writable has closed successfully.
+async function wbSaveMirror(book, chapter) {
+  const folder = wbFolderMode();
+  if (folder) await wbPendingMark(chapter);
+  const path = await wbMirrorWrite(book, chapter, chapter.content || '');
+  const failed = folder && !path;
+  if (!failed) await wbPendingClear(chapter.id);
+  return { path, failed };
+}
 // Best effort, and never recursive: only files this app knows it wrote are
 // removed, and an empty workbook folder is dropped only if the FS agrees it
 // is empty. Nothing a person put there by hand is ever deleted.
@@ -1203,16 +1213,17 @@ async function syncAllToFolder(opts) {
     }
   }
 
-  let n = 0;
+  let n = 0, failed = 0;
   for (const book of wbBooks) {
     for (const ch of wbChaptersOf(book.id)) {
-      if (await wbMirrorWrite(book, ch, ch.content || '')) n++;
+      const saved = await wbSaveMirror(book, ch);
+      if (saved.path) n++;
+      if (saved.failed) failed++;
     }
   }
-  for (const id of [...wbPendingIds]) await wbPendingClear(id);   // everything is on disk now
   renderWorkbooks();
 
-  let msg = t('wbSynced', n);
+  let msg = t(failed ? 'wbSyncedSome' : 'wbSynced', n);
   if (found.books || found.chapters) msg = t('wbAdopted', found) + ' ' + msg;
   if (cloudMsg) msg += ' ' + cloudMsg;
   wbSay(msg, true);
@@ -1282,9 +1293,8 @@ async function saveToWorkbook() {
   if (!ch || !book) { detachChapter(); openWorkbookModal(); return; }
   if (!await flushChapter(true)) return;
   // Finish both IndexedDB and the local file before cloud sign-in can open.
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
-  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  const saved = await wbSaveMirror(book, ch);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
 }
@@ -1302,9 +1312,9 @@ async function saveAllModifiedChapters() {
     const book = wbBook(ch.workbookId);
     if (!book) { failed++; continue; }
     try {
-      await wbMirrorWrite(book, ch, ch.content || '');
-      await wbPendingClear(id);
-      done++;
+      const saved = await wbSaveMirror(book, ch);
+      if (saved.failed) failed++;
+      else done++;
     } catch (e) { failed++; }
   }
   wbSay(failed ? t('wbSavedSomeModified', done) : t('wbSavedAllModified', done), true);
@@ -1427,8 +1437,8 @@ async function confirmSaveToWorkbook() {
   closeWorkbookModal();
   renderWorkbooks();
   // Cancelling the later cloud sign-in must not cancel either local write.
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
-  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  const saved = await wbSaveMirror(book, ch);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
+  renderWorkbooks();
   await cloudSyncAfterSave();
 }

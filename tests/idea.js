@@ -69,9 +69,11 @@ const contentOf = (page, id) => page.evaluate(i => wbChapter(i).content, id);
     await page.waitForTimeout(80);
   };
 
-  // ── the button sits immediately after "New" in .header-actions ──
+  // ── Help sits between New and Idea in .header-actions ──
   const order = await page.$$eval('.header-actions .btn', els => els.map(b => b.id || b.getAttribute('data-i')));
-  check('💡 button is right of New', order[order.indexOf('newFileBtn') + 1] === 'btn-idea', order);
+  const newIndex = order.indexOf('newFileBtn');
+  check('header buttons follow New → Help → 💡 order',
+    newIndex >= 0 && order[newIndex + 1] === 'btn-help' && order[newIndex + 2] === 'btn-idea', order);
 
   // ── Ctrl+Alt+I opens it, Escape closes it ──
   await page.keyboard.press('Control+Alt+KeyI');

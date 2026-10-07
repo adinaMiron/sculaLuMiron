@@ -123,11 +123,10 @@ async function ideaAppendTo(ch, line) {
     updatePreview(); updateStatus(); updateNav();
   }
   if (!await wbPersist(WB_CHAPTERS, ch)) return null;
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
+  const saved = await wbSaveMirror(book, ch);
   wbOpenBooks.add(book.id);
   renderWorkbooks();
-  return { book, chapter: ch, path };
+  return { book, chapter: ch, ...saved };
 }
 
 /* ── The chapter picker ──
@@ -331,7 +330,7 @@ async function ideaSaveNow() {
   ideaRenderChapterList();
   closeIdeaModal();
   const info = { book: done.book.name, chapter: done.chapter.title, path: done.path };
-  wbSay(done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
+  wbSay(done.failed ? t('wbMirrorFailed') : done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
 }
 
 /* ── Boot: load the tree, then reopen whatever was last edited ── */
