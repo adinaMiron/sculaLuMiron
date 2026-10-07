@@ -12,8 +12,8 @@ set -Eeuo pipefail
 # Configuration
 # ==============================================================================
 
-REVIEW="docs/reviews/2026-10-04-solar-calcule-review.md"
-BRANCH="fix/review-2026-10-04"
+REVIEW="docs/reviews/2026-10-07-markdown-review.md"
+BRANCH="fix/review-2026-10-07_markdown_rev"
 BASE="main"
 MAX="${MAX_FINDINGS:-20}"
 CREATE_PR="${CREATE_PR:-true}"
