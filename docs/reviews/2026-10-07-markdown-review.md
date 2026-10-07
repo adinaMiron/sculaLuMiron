@@ -159,7 +159,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Preserve edits made during an in-flight submission, or clearly lock the submitted input until completion. Verify delayed successful and failed submissions followed by more typing/dictation.
 
-- [ ] [ID:md-export-stale-editor] **P2 — Chapter export can omit the latest visible edits.**
+- [x] [ID:md-export-stale-editor] **P2 — Chapter export can omit the latest visible edits.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `exportChapter` lines 1151–1157.
 

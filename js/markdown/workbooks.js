@@ -1310,7 +1310,8 @@ function exportChapter(id) {
   if (!ch) return;
   const book = wbBook(ch.workbookId);
   const name = (book ? book.folder + '-' : '') + ch.file;
-  ScuLaFolder.save(name, new Blob([ch.content || ''], { type: 'text/markdown' }));
+  const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
+  ScuLaFolder.save(name, new Blob([content], { type: 'text/markdown' }));
 }
 
 /* Every direction in one press, in this order: read the folder for
