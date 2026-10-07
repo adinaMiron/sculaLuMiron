@@ -15,8 +15,6 @@ const { chromium } = require('playwright');
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('file://' + path.join(__dirname, '..', 'index.html'));
     await page.waitForFunction(() => wbBooted);
-    // The one-time restoration check must not accidentally save our edits.
-    await page.waitForTimeout(1500);
     await page.evaluate(async () => {
       const book = { id: 'autosave-book', name: 'Autosave', folder: 'Autosave', order: 0 };
       wbBooks = [book];
@@ -30,6 +28,9 @@ const { chromium } = require('playwright');
     });
 
     for (const action of ['bold', 'color', 'heading', 'link', 'image', 'table', 'code', 'tab']) {
+      // Each preceding reload starts a new one-time restoration check.
+      // Let it settle before every action so it cannot save our edits for us.
+      await page.waitForTimeout(1500);
       await page.evaluate(async () => {
         await wbPendingClear('a');
         const chapter = wbChapter('a');
@@ -62,11 +63,15 @@ const { chromium } = require('playwright');
         }, action);
       }
       const edited = await page.evaluate(() => ({
-        text: editor.value, dirty: wbDirty, draft: wbDraftRead().text
+        text: editor.value, dirty: wbDirty
       }));
       assert.notEqual(edited.text, 'ORIGINAL a', action + ' changed text');
       assert.equal(edited.dirty, true, action + ' schedules autosave');
-      assert.equal(edited.draft, edited.text, action + ' journals immediately');
+      // updateStatus schedules the recovery journal with a 700 ms debounce.
+      await page.waitForFunction(expected => {
+        const draft = wbDraftRead();
+        return draft && draft.id === 'a' && draft.text === expected;
+      }, edited.text);
       await page.waitForFunction(async expected => {
         const stored = (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a');
         return stored.content === expected && wbPendingIds.has('a') && !wbDirty;
