@@ -127,7 +127,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Preserve distinct, stable mirror ownership on remote adoption and renaming. Verify same-name workbooks/chapters from independent device IDs reach separate disk files and survive reload/repeated sync.
 
-- [ ] [ID:md-active-content-injection] **P1 — Markdown span attributes execute JavaScript in the editor's origin.**
+- [x] [ID:md-active-content-injection] **P1 — Markdown span attributes execute JavaScript in the editor's origin.**
 
   **Location:** [markdown.js](../../js/markdown/markdown.js), `parseMarkdown` lines 887–894 and `updatePreview`'s `innerHTML` assignment.
 

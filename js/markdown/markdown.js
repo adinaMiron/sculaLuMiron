@@ -821,10 +821,45 @@ async function createChapterNamed(workbookId, title, content) {
    Pass {forExport:true} for export: it rewrites relative image paths to
    `public/images/…` and recognises a bare image-path line as a standalone
    <img>. Preview (the default, forExport:false) leaves paths as-authored. */
+// Only ordinary links and image sources may become live URL attributes.
+// Check browser-ignored controls too, so "java\tscript:" cannot bypass this.
+function mdSafeUrl(src, image) {
+  const scheme = src.replace(/[\u0000-\u0020\u007f]/g, '').match(/^([a-z][a-z0-9+.-]*):/i);
+  if (!scheme) return src;
+  const protocol = scheme[1].toLowerCase();
+  if (protocol === 'http' || protocol === 'https') return src;
+  if (!image && (protocol === 'mailto' || protocol === 'tel')) return src;
+  if (image && (protocol === 'blob' || /^data:image\/(?:png|jpe?g|gif|webp|avif|bmp|x-icon);base64,/i.test(src))) return src;
+  return '';
+}
+
 function resolveImageSrc(src, forExport) {
+  src = mdSafeUrl(src, true);
+  if (!src) return '';
   if (!forExport) return src;
-  const isAbsolute = /^(https?:\/\/|\/|data:)/i.test(src);
+  const isAbsolute = /^(https?:\/\/|\/|data:|blob:)/i.test(src);
   return isAbsolute ? src : 'public/images/' + src;
+}
+
+// Rebuild authored spans using only the styles emitted by the toolbar.
+// Never copy arbitrary attributes or CSS (including URL-bearing properties).
+function mdSpanStyle(attrs) {
+  const styles = [];
+  const attributes = /([^\s=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  for (const match of attrs.matchAll(attributes)) {
+    if (match[1].toLowerCase() !== 'style') continue;
+    for (const declaration of (match[2] || match[3] || match[4] || '').split(';')) {
+      const pair = declaration.trim().match(/^(color|background-color|font-size)\s*:\s*(.*?)\s*$/i);
+      if (!pair) continue;
+      const property = pair[1].toLowerCase(), value = pair[2];
+      const valid = property === 'font-size'
+        ? /^\d+(?:\.\d+)?px$/i.test(value) && parseFloat(value) > 0
+        : /^#[0-9a-f]{6}$/i.test(value);
+      if (valid) styles.push(property + ':' + value);
+    }
+    break;
+  }
+  return styles.length ? ` style="${styles.join(';')}"` : '';
 }
 
 function applyInline(text, opts) {
@@ -839,8 +874,9 @@ function applyInline(text, opts) {
     // before the image rule only for readability: "![" can never be a marker
     .replace(IMP_RE, (m, lead, level) => renderImportance(lead, level, opts))
     .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
-      (_, alt, src, title) => `<img src="${resolveImageSrc(src, forExport)}" alt="${alt}"${title ? ` title="${title}"` : ''}>`)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      (_, alt, src, title) => `<img src="${attrEsc(resolveImageSrc(mdUnescape(src), forExport))}" alt="${attrEsc(mdUnescape(alt))}"${title ? ` title="${attrEsc(mdUnescape(title))}"` : ''}>`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+      (_, label, src) => `<a href="${attrEsc(mdSafeUrl(mdUnescape(src), false))}" target="_blank" rel="noopener">${label}</a>`)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -887,8 +923,8 @@ function parseMarkdown(md, opts) {
   let previous;
   do {
     previous = html;
-    html = html.replace(/&lt;(span\s[^&]*?)&gt;((?:(?!&lt;span\s)[\s\S])*?)&lt;\/span&gt;/g,
-      (_, attrs, content) => `<span ${attrs}>${content}</span>`);
+    html = html.replace(/&lt;span\b((?:(?!&gt;)[\s\S])*?)&gt;((?:(?!&lt;span\b)[\s\S])*?)&lt;\/span&gt;/gi,
+      (_, attrs, content) => `<span${mdSpanStyle(attrs)}>${content}</span>`);
   } while (html !== previous);
 
   const lines = html.split('\n');
@@ -1023,7 +1059,7 @@ function parseMarkdown(md, opts) {
       const imgPathMatch = line.trim().match(/^([^\s<>&]+\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|tiff?))\s*$/i);
       if (imgPathMatch) {
         const src = imgPathMatch[1];
-        out.push(`<p><img src="${resolveImageSrc(src, forExport)}" alt="${src}"></p>`);
+        out.push(`<p><img src="${attrEsc(resolveImageSrc(mdUnescape(src), forExport))}" alt="${attrEsc(mdUnescape(src))}"></p>`);
         continue;
       }
     }
