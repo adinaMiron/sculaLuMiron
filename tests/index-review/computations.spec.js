@@ -145,9 +145,43 @@ test('Gantt keeps valid schedules and arrows when invalid ranges share the chart
   await expect(page.locator('.gantt-bar')).toHaveCount(2);
 });
 
-test('Gantt excludes tasks inside a longer enclosing code fence', async ({ page }) => {
+test('Gantt excludes tasks inside a longer enclosing code fence', { tag: '@idx-gantt-fence-length' }, async ({ page }) => {
   const titles = await page.evaluate(() => ganttParse('````markdown\n```\n- [ ] Example, not a task\n```\n````\n- [ ] Real task').tasks.map(t => t.title));
   expect(titles).toEqual(['Real task']);
+});
+
+for (const [name, opening, interior, closing] of [
+  ['short backticks', '````markdown', '```', '````'],
+  ['short tildes', '~~~~markdown', '~~~', '~~~~'],
+  ['different fence character', '```markdown', '~~~~', '```'],
+  ['backtick closer with text', '```markdown', '``` trailing text', '```'],
+  ['tilde closer with text', '~~~markdown', '~~~~ trailing text', '~~~'],
+  ['longer closer with whitespace', '````markdown', '```', '  ````` \t\r'],
+  ['tilde info containing backticks', '~~~markdown `example`', '```', '~~~~\t'],
+  ['unterminated enclosing block', '````markdown', '```', null],
+]) {
+  test(`Gantt respects enclosing fence syntax: ${name}`, { tag: '@idx-gantt-fence-length' }, async ({ page }) => {
+    const source = [opening, interior, '- [ ] Hidden #99 $404 start@2020-01-01', closing, '- [ ] Real task'].filter(line => line !== null).join('\n');
+    const result = await page.evaluate(source => {
+      const parsed = ganttParse(source);
+      return { titles: parsed.tasks.map(task => task.title), definitions: [...parsed.definitions.keys()], problems: parsed.problems };
+    }, source);
+    expect(result).toEqual({ titles: closing === null ? [] : ['Real task'], definitions: [], problems: [] });
+  });
+}
+
+test('Gantt fenced examples do not affect counts, dependencies or dates', { tag: '@idx-gantt-fence-length' }, async ({ page }) => {
+  const source = '````markdown\n```\n- [ ] Example #1 #99 $404 start@2020-01-01\n```\n````\n- [ ] First #1 start@2026-10-08\n- [ ] Second $1 $99 end@2026-10-09';
+  await edit(page, source);
+  await page.evaluate(() => openGantt());
+  await expect(page.locator('.gantt-label a')).toHaveText(['First', 'Second']);
+  await expect(page.locator('.gantt-label-head')).toHaveText(await page.evaluate(() => t('ganttTasks') + ' (2)'));
+  await expect(page.locator('#gantt-notice')).toHaveText(await page.evaluate(() => t('ganttMissing', '99')));
+  await expect(page.locator('.gantt-bar')).toHaveCount(2);
+  await expect(page.locator('.gantt-day')).toHaveCount(4);
+  await expect(page.locator('.gantt-arrows > path')).toHaveCount(1);
+  await page.locator('.gantt-label a').nth(1).click();
+  expect(await page.evaluate(() => editor.selectionStart)).toBe(source.indexOf('- [ ] Second'));
 });
 
 test('Gantt large ranges use bounded ticks instead of one element per day', async ({ page }) => {

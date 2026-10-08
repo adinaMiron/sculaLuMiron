@@ -25,11 +25,17 @@ function ganttFormat(day) {
 }
 function ganttParse(text) {
   const tasks = [], definitions = new Map(), problems = [];
-  let fence = '';
+  let fence = null;
   text.split('\n').forEach((line, lineIndex) => {
-    const marker = line.match(/^[ \t]*(`{3,}|~{3,})/);
-    if (marker) { if (!fence) fence = marker[1][0]; else if (marker[1][0] === fence) fence = ''; return; }
-    if (fence) return;
+    const marker = line.match(/^[ \t]*(`{3,}|~{3,})([^\n]*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence.character && marker[1].length >= fence.length && /^[ \t\r]*$/.test(marker[2])) fence = null;
+      return;
+    }
+    if (marker && (marker[1][0] === '~' || !marker[2].includes('`'))) {
+      fence = { character: marker[1][0], length: marker[1].length };
+      return;
+    }
     const match = line.match(GANTT_TASK);
     if (!match) return;
     let body = match[2].replace(/^~(?:inwork|onhold|blocked)(?:[ \t]+|$)/, '');

@@ -116,7 +116,7 @@ real Drive account or production service were changed.
   **Required outcome:** Distinguish absent dates from invalid dates and surface invalid/reversed ranges without presenting an invented valid schedule.  
   **Test:** `computations.spec.js` — `Gantt reports invalid and reversed ranges instead of inventing valid bars`.
 
-- [ ] [ID:idx-gantt-fence-length] **P2 — A short fence inside a longer code block exposes example tasks to Gantt.**
+- [x] [ID:idx-gantt-fence-length] **P2 — A short fence inside a longer code block exposes example tasks to Gantt.**
 
   **Location:** [gantt.js](../../js/markdown/gantt.js), `ganttParse()`, lines 28–32.  
   **Reproduce:** Wrap a three-backtick example containing `- [ ] Example, not a task` inside a four-backtick fence, followed by a real task. Gantt returns both tasks; it tracks only fence character, not delimiter length.  
