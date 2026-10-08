@@ -107,6 +107,19 @@ Run this probe on the host, outside another restrictive sandbox; an outer
 sandbox can prevent Codex from creating its own sandbox. It fails explicitly
 when the runtime or installed CLI cannot support the configuration.
 
+`node tests/runner-repair.js` (or `npm run test:runner-repair` from `tests/`)
+checks bounded incomplete-assignment recovery in both runners using disposable
+repositories and fake agents/remotes. A real local CSV assertion first fails
+because it omits the blank separator, then is corrected and rerun. The suite
+checks original assignment/log delivery, preserved edits, default and custom
+caps, disabled recovery, budget reset per item, usage-limit interaction, and
+immediate rejection of CLI failures, changed Git state, document/checkbox edits,
+and control-plane changes on initial and repair invocations. Exhaustion must
+leave work unchecked without staging or publication. The output suite also
+retains the explicitly disabled-recovery behavior; CLI preflight checks reject
+invalid repair settings before model calls or Git mutation. These fixtures test
+orchestration, not whether a real model will always fix a failure correctly.
+
 `node tests/runner-lock.js` (or `npm run test:runner-lock` from `tests/`) checks
 the shared exclusive repository lock with concurrent task/review invocations
 in every pairing, including linked worktrees. It pauses the owning runner at

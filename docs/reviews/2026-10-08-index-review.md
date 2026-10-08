@@ -137,7 +137,7 @@ real Drive account or production service were changed.
   **Required outcome:** Use the calendar's validated marker semantics and do not assign records to nonexistent dates. Verify leap/non-leap years, month lengths and invalid headers following valid ones.  
   **Test:** `computations.spec.js` — `garden respects leap-day validity in its calendar markers`.
 
-- [ ] [ID:idx-garden-code-examples] **P2 — Garden totals include activity examples inside fenced code.**
+- [x] [ID:idx-garden-code-examples] **P2 — Garden totals include activity examples inside fenced code.**
 
   **Location:** [garden.js](../../js/markdown/garden.js), `gdScan()`, lines 209–269.  
   **Reproduce:** Under one date, put `udat sm 100 l apa` inside a code fence and a real `udat sm 5 l apa` outside it. Garden totals 105 litres instead of 5. There is no code-fence state, so an instructional snippet can contaminate activity/harvest totals and CSV output.  

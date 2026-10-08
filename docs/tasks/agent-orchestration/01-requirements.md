@@ -27,6 +27,12 @@ Existing defects are recorded separately in
 
 - [x] [ID:usage-limit-recovery] Automatically wait and retry the same task, finding, or final review after a Codex usage-limit failure. Honor a reported reset time with a conservative fallback interval, preserve partial work and original validation evidence, retain the repository lock, support cancellation, and stop on unrelated failures or validation violations. Verify recovery and rejection paths using offline fake agents and clocks.
 
+## Incomplete-assignment recovery
+
+- [x] [ID:incomplete-assignment-recovery] Give both runners a configurable, bounded number of automatic repair invocations when a successful agent exit leaves the assigned item unchecked. Supply the original assignment and diagnostic log, preserve partial work, the repository lock, and original sealed evidence, and revalidate before retrying. Keep usage-limit retries separate; reject integrity violations and ordinary CLI failures immediately, and stop without publication when repairs are exhausted. Verify success, exhaustion, disabled recovery, and rejection paths using offline fixtures.
+
+- [x] [ID:repair-test-guidance] Align repository instructions and both runner prompts so agents diagnose and repair implementation defects and demonstrably incorrect tests within their assigned scope, rerun relevant checks, and document why an assertion changed. Keep completion conditional on passing verification; do not permit skipped tests, weakened behavior, or unrelated fixes to manufacture success.
+
 ## Browser-test compatibility
 
 - [x] [ID:offline-browser-tests] Allow installed Chromium/Playwright tests to run in the shared runner sandbox without enabling external traffic or host socket access. Verify real browser startup and denied direct/proxied connections with local fixtures, retain strict configuration preflight and completion gates, and document the supported sandbox configuration.

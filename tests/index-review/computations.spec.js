@@ -333,9 +333,85 @@ test('garden preserves inline clock intervals when reading shared calendar marke
   }
 });
 
-test('garden ignores examples inside fenced code', async ({ page }) => {
+test('garden ignores examples inside fenced code', { tag: '@idx-garden-code-examples' }, async ({ page }) => {
   const records = await page.evaluate(() => gdScan('@2026-10-01\n```text\nudat sm 100 l apa\n```\nudat sm 5 l apa'));
   expect(records.reduce((n, r) => n + (r.litres || 0), 0)).toBe(5);
+});
+
+for (const [name, opening, inner, closing] of [
+  ['longer backtick fence', '````markdown', '```', '````'],
+  ['longer tilde fence', '~~~~text', '~~~', '~~~~'],
+  ['different fence character', '```text', '~~~', '```'],
+  ['closing fence with trailing text', '```text', '``` udat sm 100 l apa', '```'],
+  ['longer closing fence', '~~~text', '', '~~~~~'],
+  ['indented CRLF fence', '  ```text\r', '  ``\r', '  ``` \t\r'],
+]) {
+  test(`garden preserves real dates and rows across fenced examples: ${name}`, { tag: '@idx-garden-code-examples' }, async ({ page }) => {
+    const records = await page.evaluate(({ opening, inner, closing }) => gdScan([
+      '@2026-10-01', opening, inner, '@2026-10-02',
+      'udat sm 100 l apa', 'cules din sm: 10 kg rosii', 'cosit 20 ture gg',
+      '@2026-02-29', closing, 'udat sm 5 l apa', 'cules din sm: 250 g rosii', 'cosit 2 ture gg'
+    ].join('\n')), { opening, inner, closing });
+    expect(records).toHaveLength(4);
+    expect(records.map(r => [r.kind, r.date, r.line])).toEqual([
+      ['act', '2026-10-01', 9], ['act', '2026-10-01', 10],
+      ['harvest', '2026-10-01', 10], ['act', '2026-10-01', 11]
+    ]);
+    expect(records[0].litres).toBe(5);
+    expect(records[2].grams).toBe(250);
+    expect(records[3].rounds).toBe(2);
+  });
+}
+
+test('garden fenced dates do not establish a day and unclosed fences stay excluded', { tag: '@idx-garden-code-examples' }, async ({ page }) => {
+  const records = await page.evaluate(() => gdScan([
+    '```text', '@2026-10-02', 'udat sm 100 l apa', '```',
+    'udat sm 5 l apa', '@2026-10-01', 'udat sm 3 l apa',
+    '~~~', '@2026-10-03', 'cules din sm: 10 kg rosii', 'cosit 20 ture gg'
+  ].join('\n')));
+  expect(records.map(r => [r.date, r.litres, r.line])).toEqual([
+    [null, 5, 4], ['2026-10-01', 3, 6]
+  ]);
+});
+
+test('garden totals and CSV contain only real rows outside fenced examples', { tag: '@idx-garden-code-examples' }, async ({ page }) => {
+  await edit(page, [
+    '@2026-10-01', '```text', '@2026-10-02', 'udat sm 100 l apa',
+    'cules din sm: 10 kg rosii', 'cosit 20 ture gg', '```',
+    'udat sm 5 l apa', 'cules din sm: 250 g rosii', 'cosit 2 ture gg'
+  ].join('\n'));
+  const result = await page.evaluate(async () => {
+    Object.assign(gdState, { scope: 'note', from: '', to: '', place: '', plant: '', cat: '', q: '', group: 'none' });
+    const realSave = ScuLaFolder.save;
+    let blob;
+    ScuLaFolder.save = (name, data) => { blob = data; return Promise.resolve(); };
+    try {
+      const result = {};
+      for (const tab of ['act', 'harvest', 'mow']) {
+        gdState.tab = tab;
+        gdRender();
+        const totals = structuredClone(gdLast.totals);
+        const dates = gdLast.rows.map(r => r.date);
+        gdCsv();
+        result[tab] = { totals, dates, csv: await blob.text() };
+      }
+      return result;
+    } finally {
+      ScuLaFolder.save = realSave;
+    }
+  });
+  expect(result.act.totals).toMatchObject({ n: 3, litres: 5 });
+  expect(result.harvest.totals).toMatchObject({ n: 1, grams: 250 });
+  expect(result.mow.totals).toMatchObject({ n: 1, rounds: 2 });
+  for (const [tab, rows] of [['act', 3], ['harvest', 1], ['mow', 1]]) {
+    expect(result[tab].dates).toEqual(Array(rows).fill('2026-10-01'));
+    const lines = result[tab].csv.split('\n');
+    // CSV contains a header, data rows, a blank separator and a totals footer.
+    expect(lines).toHaveLength(rows + 3);
+    expect(lines[rows + 1]).toBe('');
+    expect(result[tab].csv).toContain('01.10.2026');
+    expect(result[tab].csv).not.toMatch(/02\.10\.2026|100 l apa|10 kg rosii|20 ture/);
+  }
 });
 
 test('garden does not reinterpret a negative quantity as positive harvest', async ({ page }) => {

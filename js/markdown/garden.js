@@ -206,8 +206,18 @@ function gdCatsOf(folded) {
 function gdScan(text) {
   const recs = [];
   const dateRe = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
-  let day = null;
+  let day = null, fence = null;
   String(text).split('\n').forEach((line, i) => {
+    // Skip examples before interpreting either their dates or activities.
+    const marker = line.match(/^[ \t]*(`{3,}|~{3,})([^\n]*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence.character && marker[1].length >= fence.length && /^[ \t\r]*$/.test(marker[2])) fence = null;
+      return;
+    }
+    if (marker && (marker[1][0] === '~' || !marker[2].includes('`'))) {
+      fence = { character: marker[1][0], length: marker[1].length };
+      return;
+    }
     dateRe.lastIndex = 0;
     const dm = dateRe.exec(line);
     let body = line;
