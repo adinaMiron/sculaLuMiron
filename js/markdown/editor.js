@@ -680,11 +680,25 @@ function toggleNav() { togglePanelById('nav-panel'); }
 
 const TB_COLLAPSED_KEY = 'scula:toolbar-collapsed';
 
-function toggleToolbarCollapse() {
+function setToolbarCollapsed(collapsed) {
   const bar = document.querySelector('.toolbar');
   const btn = document.getElementById('btn-toolbar-toggle');
-  const collapsed = bar.classList.toggle('collapsed');
+  const groups = document.getElementById('toolbar-groups');
+  if (collapsed && isSmallScreen() && groups.contains(document.activeElement)) btn.focus();
+  bar.classList.toggle('collapsed', collapsed);
+  groups.inert = collapsed && isSmallScreen();
   btn.classList.toggle('active', !collapsed);
+  btn.setAttribute('aria-expanded', String(!groups.inert));
+}
+
+// Desktop always shows the groups, even with a saved mobile collapse preference.
+window.matchMedia('(max-width: 1024px)').addEventListener('change', () => {
+  setToolbarCollapsed(document.querySelector('.toolbar').classList.contains('collapsed'));
+});
+
+function toggleToolbarCollapse() {
+  const collapsed = !document.querySelector('.toolbar').classList.contains('collapsed');
+  setToolbarCollapsed(collapsed);
   if (isSmallScreen()) {
     try { store.set(TB_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
   }
@@ -694,9 +708,7 @@ async function initToolbarCollapse() {
   if (!isSmallScreen()) return;
   let saved = null;
   try { saved = await store.get(TB_COLLAPSED_KEY); } catch (e) {}
-  const collapsed = saved === '1';
-  document.querySelector('.toolbar').classList.toggle('collapsed', collapsed);
-  document.getElementById('btn-toolbar-toggle').classList.toggle('active', !collapsed);
+  setToolbarCollapsed(saved === '1');
 }
 // Opening the search panel is always a request to search: refresh what is in
 // it and put the cursor in the query box. A keyboard shortcut fired while it

@@ -193,7 +193,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Provide adequate actual hit areas and spacing without recreating the writing-space failure. Measure touch hitboxes, not just glyph dimensions, at 320/390px in both languages.
 
-- [ ] [ID:md-collapsed-toolbar-focus] **P2 — Collapsed toolbar controls remain in keyboard navigation while invisible.**
+- [x] [ID:md-collapsed-toolbar-focus] **P2 — Collapsed toolbar controls remain in keyboard navigation while invisible.**
 
   **Location:** [index.html](../../index.html), `.toolbar.collapsed .toolbar-groups`; [editor.js](../../js/markdown/editor.js), `toggleToolbarCollapse`.
 
