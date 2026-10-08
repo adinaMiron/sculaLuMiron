@@ -1473,7 +1473,10 @@ async function saveAllModifiedChapters() {
   cloudAutoSync();
 }
 
+let wbModalReturnFocus = null;
+let wbModalFocusTimer = null;
 function openWorkbookModal() {
+  wbModalReturnFocus = document.activeElement;
   const sel = document.getElementById('wb-select');
   sel.textContent = '';
   wbBooks.slice().sort(wbByOrder).forEach(b => {
@@ -1493,12 +1496,19 @@ function openWorkbookModal() {
   if (current) document.getElementById('wb-chapter-select').value = current.id;
   onChapterSelectChange();
   document.getElementById('workbook-modal').classList.add('open');
-  setTimeout(() => {
+  wbModalFocusTimer = setTimeout(() => {
     const focusNew = sel.value === '__new__';
     document.getElementById(focusNew ? 'wb-new-name' : 'wb-chapter-title').focus();
   }, 40);
 }
-function closeWorkbookModal() { document.getElementById('workbook-modal').classList.remove('open'); }
+function closeWorkbookModal() {
+  const modal = document.getElementById('workbook-modal');
+  if (!modal.classList.contains('open')) return;
+  clearTimeout(wbModalFocusTimer);
+  modal.classList.remove('open');
+  if (wbModalReturnFocus && wbModalReturnFocus.isConnected) wbModalReturnFocus.focus();
+  wbModalReturnFocus = null;
+}
 
 function onWorkbookSelectChange() {
   const sel = document.getElementById('wb-select');

@@ -209,7 +209,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Apply editor shortcuts only when the editor owns the action; retain appropriate dialog shortcuts. Verify Ctrl+B/I/K, heading/importance shortcuts, line movement and save while focus is in each dialog field.
 
-- [ ] [ID:md-workbook-modal-escape] **P2 — Escape does not dismiss the save-to-workbook dialog.**
+- [x] [ID:md-workbook-modal-escape] **P2 — Escape does not dismiss the save-to-workbook dialog.**
 
   **Location:** [events.js](../../js/markdown/events.js), Escape handler; [workbooks.js](../../js/markdown/workbooks.js), `closeWorkbookModal`.
 

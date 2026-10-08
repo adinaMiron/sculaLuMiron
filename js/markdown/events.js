@@ -54,7 +54,7 @@ document.addEventListener('keydown', e => {
     if (gv.open) { closeGraph(); return; }
     if (gdOpen) { closeGarden(); return; }
     if (mbOpen) { closeMedia(); return; }
-    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal();
+    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal(); closeWorkbookModal();
     if (isSmallScreen()) closeAllPanels();
   }
   // Dialogs own their keys, even if focus escapes to the background editor.
