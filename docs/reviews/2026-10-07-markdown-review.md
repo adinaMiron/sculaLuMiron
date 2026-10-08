@@ -235,7 +235,7 @@ They print observations rather than asserting that the current defective behavio
 
 ## Finding: verification coverage
 
-- [ ] [ID:md-resume-test-fixture] **P2 — The reload/restoration regression suite cannot execute its restored-text cases after the script extraction.**
+- [x] [ID:md-resume-test-fixture] **P2 — The reload/restoration regression suite cannot execute its restored-text cases after the script extraction.**
 
   **Location:** [tests/wbresume.js](../../tests/wbresume.js), `openRestored` lines 84–90; relative script tags in [index.html](../../index.html).
 
