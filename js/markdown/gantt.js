@@ -80,7 +80,8 @@ function paintGantt() {
   ganttEl('gantt-notice').textContent = problems.join(' ');
   labels.append(ganttNode('div', 'gantt-label-head', t('ganttTasks') + ' (' + tasks.length + ')'));
   if (!tasks.length) { chart.append(ganttNode('div', 'gantt-empty', t('ganttEmpty'))); return; }
-  const today = ganttDay(new Date().toISOString().slice(0,10));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   for (const task of tasks) {
     task.start = ganttDay(task.dates.start);
     task.end = ganttDay(task.dates.end);

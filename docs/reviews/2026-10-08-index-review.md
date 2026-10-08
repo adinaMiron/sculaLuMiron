@@ -102,7 +102,7 @@ real Drive account or production service were changed.
 
 ## Findings — computations and boundary behavior
 
-- [ ] [ID:idx-gantt-local-today] **P2 — Undated Gantt tasks use UTC “today” instead of the user's local date.**
+- [x] [ID:idx-gantt-local-today] **P2 — Undated Gantt tasks use UTC “today” instead of the user's local date.**
 
   **Location:** [gantt.js](../../js/markdown/gantt.js), `paintGantt()`, line 85.  
   **Reproduce:** At `2026-10-08T21:30:00Z` in Europe/Bucharest, the local date is October 9. An undated task is drawn at October 8, one 38px column before an explicitly dated October 9 task. `toISOString().slice(0,10)` causes the discrepancy.  

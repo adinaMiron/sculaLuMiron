@@ -38,16 +38,32 @@ test('Gantt empty input and duplicate/missing references are handled', async ({ 
   expect(result.problems.join(' ')).toContain('#99');
 });
 
-test('Gantt today uses the local day around midnight', async ({ page }) => {
-  // Bucharest is already Oct 9, while UTC is still Oct 8.
-  await page.clock.setFixedTime(new Date('2026-10-08T21:30:00Z'));
-  await edit(page, '- [ ] Local today\n- [ ] Explicit today start@2026-10-09 end@2026-10-09');
-  const positions = await page.evaluate(() => {
-    paintGantt();
-    return [...document.querySelectorAll('.gantt-bar')].map(e => parseFloat(e.style.left));
+for (const [timezoneId, cases] of [
+  ['Europe/Bucharest', [
+    ['before midnight', '2026-10-08T20:30:00Z', '2026-10-08'],
+    ['after midnight', '2026-10-08T21:30:00Z', '2026-10-09'],
+  ]],
+  ['America/Los_Angeles', [
+    ['before midnight', '2026-10-08T06:30:00Z', '2026-10-07'],
+    ['after midnight', '2026-10-08T07:30:00Z', '2026-10-08'],
+  ]],
+]) {
+  test.describe(timezoneId, () => {
+    test.use({ timezoneId });
+    for (const [boundary, instant, date] of cases) {
+      test(`Gantt today uses the local day around midnight: ${boundary}`, { tag: '@idx-gantt-local-today' }, async ({ page }) => {
+        await page.clock.setFixedTime(new Date(instant));
+        await edit(page, `- [ ] Local today\n- [ ] Explicit today start@${date} end@${date}`);
+        const positions = await page.evaluate(() => {
+          paintGantt();
+          return [...document.querySelectorAll('.gantt-bar')].map(e => parseFloat(e.style.left));
+        });
+        expect(positions).toHaveLength(2);
+        expect(positions[0], 'undated task and explicit local today must align').toBe(positions[1]);
+      });
+    }
   });
-  expect(positions[0], 'undated task and explicit local today must align').toBe(positions[1]);
-});
+}
 
 test('Gantt reports invalid and reversed ranges instead of inventing valid bars', async ({ page }) => {
   await edit(page, '- [ ] Invalid start@2026-02-30\n- [ ] Reversed start@2026-10-10 end@2026-10-01');
