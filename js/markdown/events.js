@@ -57,6 +57,11 @@ document.addEventListener('keydown', e => {
     closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal();
     if (isSmallScreen()) closeAllPanels();
   }
+  // Dialogs own their keys, even if focus escapes to the background editor.
+  // Other editable fields keep native shortcuts instead of editing the chapter.
+  const el = document.activeElement;
+  if (document.querySelector('.image-modal.open') ||
+      (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))) return;
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyH') {
     e.preventDefault(); highlightPageMatches(e.altKey); return;
   }

@@ -201,7 +201,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Remove collapsed descendants from interaction/accessibility navigation and restore them when expanded. Verify forward/reverse Tab, focus recovery and toggle expanded-state announcement.
 
-- [ ] [ID:md-modal-editor-shortcuts] **P2 — Editing shortcuts in ordinary dialogs mutate the document behind the dialog.**
+- [x] [ID:md-modal-editor-shortcuts] **P2 — Editing shortcuts in ordinary dialogs mutate the document behind the dialog.**
 
   **Location:** [events.js](../../js/markdown/events.js), global shortcut handler, particularly lines 124–149.
 
