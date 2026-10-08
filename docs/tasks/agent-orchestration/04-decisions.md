@@ -1,5 +1,24 @@
 # Agent orchestration decisions
 
+## 2026-10-08 — Precise review-test selection
+
+The index review run stopped after `--grep 'New|P1 new-file failure'` selected
+five tests: four passing New scenarios and the separate open rename finding.
+The installed Playwright's plain grep patterns are case-insensitive, so `New`
+matched "new uncommitted filename". The agent followed the unrelated-failure
+stop rule; the wrapper correctly rejected the unchecked assignment.
+
+The review prompt now requires inspecting filtered Playwright `--list` output
+before execution and using finding tags or precise titles. The four New cases
+share `@idx-new-failed-flush`. Completion gates, failure handling, and the other
+findings' assertions remain intact. This is test-selection guidance, not a
+wrapper-enforced test inventory or an exception for ignoring failures.
+
+Verification: the tag lists exactly four tests and all pass with the preserved
+awaited-save fix. `wbstorefailure.js`, `mdundo.js`, `wbresume.js`, all 18 offline
+runner-output cases, `tests/verify.js`, Bash syntax, and whitespace checks pass.
+No live review run or remote publication was needed.
+
 ## 2026-10-07 — Browser-compatible offline command execution
 
 The reported review run stopped because Chromium crashed on Crashpad's

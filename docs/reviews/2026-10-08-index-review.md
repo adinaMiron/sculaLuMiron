@@ -44,7 +44,7 @@ real Drive account or production service were changed.
 
 ## Findings — preservation and data flow
 
-- [ ] [ID:idx-new-failed-flush] **P1 — “New” clears the editor and recovery journal before its save succeeds.**
+- [x] [ID:idx-new-failed-flush] **P1 — “New” clears the editor and recovery journal before its save succeeds.**
 
   **Location:** [files.js](../../js/markdown/files.js), `newFile()`, lines 2–9; `flushChapter()` in workbooks.js.  
   **Reproduce:** Open chapter A, type `UNSAVED IMPORTANT TEXT`, reject its IndexedDB write with `QuotaExceededError`, then click New. The editor becomes empty, `wbCurrentId` becomes `null`, and `wbDraftRead().text` becomes empty. The durable chapter still contains its old text. `newFile()` calls the async flush without awaiting/checking it and immediately resets history and detaches.  

@@ -1,6 +1,8 @@
 /* ── File operations ── */
-function newFile() {
-  if (wbCurrentId) flushChapter();
+async function newFile() {
+  if (wbCurrentId) {
+    if (!await flushChapter()) return;
+  }
   else if (editor.value && !confirm(t('confirmDiscard'))) return;
   editor.value = '';
   undoReset();

@@ -22,7 +22,7 @@ test('empty chapter is a saved revision, not replaced by previous content', asyn
   expect(await page.evaluate(async () => (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content)).toBe('');
 });
 
-test('New succeeds after persisting the previous chapter', async ({ page }) => {
+test('New succeeds after persisting the previous chapter', { tag: '@idx-new-failed-flush' }, async ({ page }) => {
   await seed(page);
   await edit(page, 'SAVE BEFORE NEW');
   await page.locator('[onclick="newFile()"]').click();
@@ -30,22 +30,84 @@ test('New succeeds after persisting the previous chapter', async ({ page }) => {
   await expect(page.locator('#editor')).toHaveValue('');
 });
 
-test('P1 new-file failure retains the chapter and recovery journal', async ({ page }) => {
+for (const inFlight of [false, true]) {
+test(`P1 new-file failure retains the chapter and recovery journal (${inFlight ? 'already-running flush' : 'immediate failure'})`, { tag: '@idx-new-failed-flush' }, async ({ page }) => {
   await seed(page);
   await edit(page, 'UNSAVED IMPORTANT TEXT');
-  await page.evaluate(() => {
+  const history = await page.evaluate(inFlight => {
     clearTimeout(wbSaveTimer);
     const original = wbTx;
-    wbTx = (store, mode, run) => store === WB_CHAPTERS && mode === 'readwrite'
-      ? Promise.reject(new DOMException('Injected full store', 'QuotaExceededError')) : original(store, mode, run);
-  });
+    window.reviewRestoreTx = () => { wbTx = original; };
+    wbTx = async (store, mode, run) => {
+      if (store !== WB_CHAPTERS || mode !== 'readwrite') return original(store, mode, run);
+      if (inFlight && !window.reviewWriteStarted) {
+        window.reviewWriteStarted = true;
+        await new Promise(resolve => { window.reviewReleaseWrite = resolve; });
+      }
+      throw new DOMException('Injected full store', 'QuotaExceededError');
+    };
+    if (inFlight) window.reviewHeldFlush = flushChapter();
+    return { undo: undoStack, redo: redoStack };
+  }, inFlight);
+  expect(history.undo.length).toBeGreaterThan(0);
   await page.locator('[onclick="newFile()"]').click();
+  if (inFlight) {
+    expect(await page.evaluate(() => ({ text: editor.value, current: wbCurrentId,
+      dirty: wbDirty, draft: wbDraftRead() }))).toMatchObject({
+      text: 'UNSAVED IMPORTANT TEXT', current: 'a', dirty: true,
+      draft: { id: 'a', text: 'UNSAVED IMPORTANT TEXT', dirty: true }
+    });
+    await page.evaluate(() => reviewReleaseWrite());
+  }
   await page.waitForFunction(() => !wbFlushPromise);
   const result = await page.evaluate(async () => ({
-    editor: editor.value, current: wbCurrentId, draft: wbDraftRead(), records: await wbAll(WB_CHAPTERS)
+    editor: editor.value, current: wbCurrentId, dirty: wbDirty, draft: wbDraftRead(),
+    history: { undo: undoStack, redo: redoStack },
+    stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content,
+    errorShown: document.getElementById('stat-wb').textContent === t('wbStoreFailed')
   }));
   expect(result, 'New must not replace editor/journal when its flush fails').toMatchObject({
-    editor: 'UNSAVED IMPORTANT TEXT', current: 'a', draft: { text: 'UNSAVED IMPORTANT TEXT' }
+    editor: 'UNSAVED IMPORTANT TEXT', current: 'a', dirty: true,
+    draft: { id: 'a', text: 'UNSAVED IMPORTANT TEXT', dirty: true },
+    history, stored: 'ORIGINAL a', errorShown: true
+  });
+  await expect(page.locator('#current-file')).toHaveText('a.md');
+  await page.evaluate(() => reviewRestoreTx());
+  await page.locator('[onclick="newFile()"]').click();
+  await expect(page.locator('#editor')).toHaveValue('');
+  expect(await page.evaluate(async () => ({ current: wbCurrentId, dirty: wbDirty,
+    draft: wbDraftRead(), history: undoStack.length + redoStack.length,
+    stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content }))).toMatchObject({
+    current: null, dirty: false, draft: { id: '', text: '' }, history: 0,
+    stored: 'UNSAVED IMPORTANT TEXT'
+  });
+});
+}
+
+test('New waits for an already-running flush and saves edits typed during it', { tag: '@idx-new-failed-flush' }, async ({ page }) => {
+  await seed(page);
+  await edit(page, 'FIRST SNAPSHOT');
+  await page.evaluate(() => {
+    const original = wbTx;
+    wbTx = async (store, mode, run) => {
+      if (store === WB_CHAPTERS && mode === 'readwrite' && !window.reviewWriteStarted) {
+        window.reviewWriteStarted = true;
+        await new Promise(resolve => { window.reviewReleaseWrite = resolve; });
+      }
+      return original(store, mode, run);
+    };
+    window.reviewHeldFlush = flushChapter();
+  });
+  await page.waitForFunction(() => window.reviewWriteStarted);
+  await edit(page, 'SECOND SNAPSHOT');
+  await page.locator('[onclick="newFile()"]').click();
+  await expect(page.locator('#editor')).toHaveValue('SECOND SNAPSHOT');
+  expect(await page.evaluate(() => wbCurrentId)).toBe('a');
+  await page.evaluate(() => reviewReleaseWrite());
+  await expect(page.locator('#editor')).toHaveValue('');
+  expect(await page.evaluate(async () => ({ current: wbCurrentId, draft: wbDraftRead(),
+    stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content }))).toMatchObject({
+    current: null, draft: { id: '', text: '' }, stored: 'SECOND SNAPSHOT'
   });
 });
 

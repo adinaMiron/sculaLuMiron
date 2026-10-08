@@ -248,6 +248,13 @@ Where practical, add a regression test that would have failed before the fix.
 
 Run relevant existing tests.
 
+Review suites may also contain failing tests for other open findings. Use a
+finding tag/ID or precise test titles, then inspect Playwright's `--list` output
+with the same filter before execution. Broad keywords can include unrelated
+findings, even through case-insensitive substring matches. Add relevant passing
+regression coverage and retain all assertions for other findings in the full
+suite. Test failures still follow `AGENTS.md`'s stop-and-report rule.
+
 Do not mark the finding complete while relevant tests fail.
 
 ---

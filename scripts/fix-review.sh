@@ -252,6 +252,19 @@ Do not change any other checkbox anywhere under docs/tasks/ or docs/reviews/.
 Do not add, remove, or move checkbox tasks or findings during this run, including through document creation/deletion.
 Do not perform unrelated refactoring, cleanup, formatting, renaming, dependency upgrades, architectural changes, or feature work.
 
+TEST SELECTION
+Review suites can contain failing regression tests for other open findings.
+Select the assigned finding's tests by a stable tag/ID or precise test titles,
+plus relevant passing regression coverage. Avoid broad keyword filters.
+Before running filtered Playwright tests, use the same command with --list and
+inspect every selected title; narrow the filter if it includes unrelated findings.
+Check the installed runner's matching rules: a plain --grep can ignore case and
+match substrings (for example, New can also select a rename test containing new).
+If you add tests for this finding, give them a shared @<finding-id> tag when supported.
+Do not skip tests, change their expected results, or hide failures to obtain a pass.
+If a test fails, follow AGENTS.md's failure rule; report the command and failing
+test titles, and leave the finding unchecked when verification is incomplete.
+
 CONTROL PLANE
 Do not modify scripts/, .github/, .githooks/, .gitattributes, or .gitmodules.
 The wrapper rejects changes to these paths, including new or ignored files.
