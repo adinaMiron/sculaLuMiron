@@ -106,14 +106,19 @@ function paintGantt() {
   const min = (scheduled.length ? Math.min(...scheduled.map(x => x.start)) : today) - GANTT_DAY_MS;
   const max = (scheduled.length ? Math.max(...scheduled.map(x => x.end)) : today) + GANTT_DAY_MS;
   const count = Math.round((max-min)/GANTT_DAY_MS) + 1;
-  const step = count <= 60 ? 38 : count <= 180 ? 23 : Math.max(7, Math.floor(3600/count));
+  // Keep daily detail for a year; longer spans use at most 60 multi-day ticks.
+  const tickDays = count <= 365 ? 1 : Math.ceil(count/60);
+  const step = tickDays > 1 ? 60/tickDays : count <= 60 ? 38 : count <= 180 ? 23 : Math.max(7, Math.floor(3600/count));
   const width = count * step;
   chart.style.width = width + 'px';
   const days = ganttNode('div', 'gantt-days');
   days.style.width = width + 'px';
-  for (let i=0; i<count; i++) {
-    const day = min + i*GANTT_DAY_MS, cell = ganttNode('div', 'gantt-day', step >= 20 || i % Math.ceil(55/step) === 0 ? ganttFormat(day) : '');
-    cell.style.width = step + 'px'; cell.title = ganttFormat(day); days.append(cell);
+  for (let i=0; i<count; i+=tickDays) {
+    const day = min + i*GANTT_DAY_MS, span = Math.min(tickDays, count-i);
+    const cell = ganttNode('div', 'gantt-day', tickDays > 1 || step >= 20 || i % Math.ceil(55/step) === 0 ? ganttFormat(day) : '');
+    cell.style.width = span * step + 'px';
+    cell.title = ganttFormat(day) + (span > 1 ? ' – ' + ganttFormat(day + (span-1)*GANTT_DAY_MS) : '');
+    days.append(cell);
   }
   chart.append(days);
   const rows = [];
@@ -123,7 +128,7 @@ function paintGantt() {
     label.append(link);
     const metadata = [task.problem, task.owners.join(', '), task.importance && '!' + task.importance, task.dates.start && t('ganttStart') + ': ' + task.dates.start, task.dates.end && t('ganttEnd') + ': ' + task.dates.end, task.inferred && t('ganttNoDate'), task.deps.length && t('ganttDepends') + ': ' + task.deps.map(n => '#' + n).join(', ')].filter(Boolean).join(' · ');
     label.append(ganttNode('small', '', metadata)); label.title = metadata; labels.append(label);
-    const row = ganttNode('div', 'gantt-row'); row.style.width = width + 'px'; row.style.backgroundSize = step + 'px 100%';
+    const row = ganttNode('div', 'gantt-row'); row.style.width = width + 'px'; row.style.backgroundSize = tickDays * step + 'px 100%';
     chart.append(row);
     if (task.problem) { rows.push(null); continue; }
     const bar = ganttNode('div', 'gantt-bar' + (task.done ? ' done' : '') + (task.importance ? ' ' + task.importance : '') + (task.inferred ? ' inferred' : ''));

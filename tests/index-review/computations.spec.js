@@ -184,8 +184,9 @@ test('Gantt fenced examples do not affect counts, dependencies or dates', { tag:
   expect(await page.evaluate(() => editor.selectionStart)).toBe(source.indexOf('- [ ] Second'));
 });
 
-test('Gantt large ranges use bounded ticks instead of one element per day', async ({ page }) => {
-  await edit(page, '- [ ] History start@1900-01-01 end@2100-01-01');
+test('Gantt large ranges use bounded ticks instead of one element per day', { tag: '@idx-gantt-range-growth' }, async ({ page }) => {
+  const source = '- [ ] History start@1900-01-01 end@2100-01-01';
+  await edit(page, source);
   const result = await page.evaluate(() => {
     const start = performance.now();
     paintGantt();
@@ -193,6 +194,79 @@ test('Gantt large ranges use bounded ticks instead of one element per day', asyn
       width: document.querySelector('.gantt-chart').style.width, ms: performance.now() - start };
   });
   expect(result.ticks, JSON.stringify(result)).toBeLessThanOrEqual(1000);
+  expect(parseFloat(result.width)).toBeLessThanOrEqual(3600);
+  await page.evaluate(() => openGantt());
+  await page.locator('#gantt-close').click({ timeout: 3000 });
+  await expect(page.locator('#gantt-modal')).not.toHaveClass(/open/);
+  await page.evaluate(() => openGantt());
+  await page.locator('.gantt-label a').click({ timeout: 3000 });
+  await expect(page.locator('#gantt-modal')).not.toHaveClass(/open/);
+  expect(await page.evaluate(() => editor.value.slice(editor.selectionStart, editor.selectionEnd))).toBe(source);
+  await edit(page, '- [ ] Corrected start@2026-10-08 end@2026-10-09');
+  await page.evaluate(() => openGantt());
+  await expect(page.locator('.gantt-day')).toHaveCount(4);
+  await expect(page.locator('.gantt-label a')).toHaveText('Corrected');
+});
+
+test('Gantt bounds extreme four-digit ranges and preserves date geometry and arrows', { tag: '@idx-gantt-range-growth' }, async ({ page }) => {
+  const source = '- [ ] History #1 start@0100-01-01 end@5000-01-01\n- [x] Future $1 start@5000-01-02 end@9999-12-31';
+  await edit(page, source);
+  const result = await page.evaluate(() => {
+    paintGantt();
+    const ticks = [...document.querySelectorAll('.gantt-day')];
+    return { ticks: ticks.length, width: parseFloat(document.querySelector('.gantt-chart').style.width),
+      tickWidths: ticks.map(tick => parseFloat(tick.style.width)),
+      first: ticks[0].title, last: ticks.at(-1).title,
+      expectedFirst: ganttFormat(ganttDay('0100-01-01') - GANTT_DAY_MS),
+      expectedLast: ganttFormat(ganttDay('9999-12-31') + GANTT_DAY_MS),
+      grid: parseFloat(document.querySelector('.gantt-row').style.backgroundSize),
+      bars: [...document.querySelectorAll('.gantt-bar')].map(bar => ({ left: parseFloat(bar.style.left), width: parseFloat(bar.style.width) })),
+      path: document.querySelector('.gantt-arrows > path').getAttribute('d'),
+      svgWidth: Number(document.querySelector('.gantt-arrows').getAttribute('width')) };
+  });
+  expect(result.ticks).toBeLessThanOrEqual(60);
+  expect(result.width).toBeLessThanOrEqual(3600);
+  expect(result.tickWidths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(result.width, 2);
+  expect(result.grid).toBeCloseTo(result.tickWidths[0], 2);
+  expect(result.first).toContain(result.expectedFirst);
+  expect(result.last).toContain(result.expectedLast);
+  const count = (Date.UTC(9999, 11, 31) - Date.UTC(100, 0, 1)) / 86400000 + 3;
+  const step = result.width / count;
+  expect(result.bars).toHaveLength(2);
+  // CSSOM serializes pixel lengths with limited significant digits.
+  expect(result.bars[0].left).toBeCloseTo(step, 2);
+  expect(result.bars[0].width).toBeCloseTo(((Date.UTC(5000, 0, 1) - Date.UTC(100, 0, 1)) / 86400000 + 1) * step, 2);
+  expect(result.bars[1].left).toBeCloseTo(result.bars[0].left + result.bars[0].width, 2);
+  expect(result.bars[1].left + result.bars[1].width).toBeCloseTo(result.width - step, 2);
+  expect(result.path).toMatch(/^M[\d.]+ 29 H[\d.]+ V97 H[\d.]+$/);
+  expect(result.svgWidth).toBeCloseTo(result.width, 2);
+  await page.evaluate(() => openGantt());
+  await expect(page.locator('#gantt-notice')).toBeEmpty();
+  await expect(page.locator('.gantt-label small').nth(1)).toContainText('9999-12-31');
+  await page.locator('.gantt-label a').nth(1).click({ timeout: 3000 });
+  expect(await page.evaluate(() => editor.selectionStart)).toBe(source.indexOf('- [x] Future'));
+});
+
+test('Gantt keeps daily detail and switches to grouped ticks at the range boundary', { tag: '@idx-gantt-range-growth' }, async ({ page }) => {
+  for (const count of [60, 61, 180, 181, 365, 366, 1000]) {
+    const end = new Date(Date.UTC(2026, 0, 1) + (count - 3) * 86400000).toISOString().slice(0, 10);
+    await edit(page, `- [ ] Task start@2026-01-01 end@${end}`);
+    const result = await page.evaluate(() => {
+      paintGantt();
+      return { ticks: document.querySelectorAll('.gantt-day').length,
+        width: parseFloat(document.querySelector('.gantt-chart').style.width),
+        bar: parseFloat(document.querySelector('.gantt-bar').style.width),
+        left: parseFloat(document.querySelector('.gantt-bar').style.left) };
+    });
+    if (count <= 365) expect(result.ticks).toBe(count);
+    else {
+      expect(result.ticks).toBeGreaterThan(0);
+      expect(result.ticks).toBeLessThanOrEqual(60);
+    }
+    expect(result.width).toBeLessThanOrEqual(4140);
+    expect(result.left / result.width).toBeCloseTo(1 / count, 4);
+    expect(result.bar / result.width).toBeCloseTo((count - 2) / count, 4);
+  }
 });
 
 test('garden durations: zero, one minute, overnight and 23h59', async ({ page }) => {

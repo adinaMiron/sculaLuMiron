@@ -123,7 +123,7 @@ real Drive account or production service were changed.
   **Required outcome:** Respect the enclosing fence's character/length and valid closing syntax, so examples do not affect task counts, dependencies or dates.  
   **Test:** `computations.spec.js` — `Gantt excludes tasks inside a longer enclosing code fence`.
 
-- [ ] [ID:idx-gantt-range-growth] **P2 — A wide date range creates an unbounded day-by-day DOM and stalls the UI.**
+- [x] [ID:idx-gantt-range-growth] **P2 — A wide date range creates an unbounded day-by-day DOM and stalls the UI.**
 
   **Location:** [gantt.js](../../js/markdown/gantt.js), `paintGantt()`, lines 96–108.  
   **Reproduce:** One task from `1900-01-01` to `2100-01-01` creates 73,052 day elements and a 511,364px chart. The initial measured synchronous paint took about four seconds on this runner. The minimum 7px step bounds neither day count nor work; larger accepted four-digit year ranges grow further.  
