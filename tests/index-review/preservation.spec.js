@@ -586,13 +586,75 @@ test('Two tabs share the folder-save lock through file close', { tag: '@idx-stal
   expect(await other.evaluate(async () => ({ pending: [...wbPendingIds], records: await wbAll(WB_PENDING) }))).toEqual({ pending: [], records: [] });
 });
 
-test('table builder preserves filled cells when increasing dimensions', async ({ page }) => {
+test('table builder preserves filled cells when increasing dimensions', { tag: '@idx-table-resize-loss' }, async ({ page }) => {
   await page.evaluate(() => openTableModal());
   await page.locator('#table-preview-grid thead input').first().fill('KEEP HEADER');
   await page.locator('#table-preview-grid input[data-row="0"]').first().fill('KEEP CELL');
+  await page.locator('#table-preview-grid .align-select').first().selectOption('center');
   await page.locator('#tbl-rows').fill('4');
+  await page.locator('#tbl-cols').fill('4');
   await expect(page.locator('#table-preview-grid thead input').first()).toHaveValue('KEEP HEADER');
   await expect(page.locator('#table-preview-grid input[data-row="0"]').first()).toHaveValue('KEEP CELL');
+  await expect(page.locator('#table-preview-grid .align-select').first()).toHaveValue('center');
+  await expect(page.locator('#table-preview-grid input[data-row="3"][data-col="3"]')).toHaveValue('');
+  await expect(page.locator('#table-preview-grid thead input').last()).toHaveValue('');
+  await expect(page.locator('#table-preview-grid .align-select').last()).toHaveValue('left');
+});
+
+test('table builder restores hidden draft values after shrinking and re-expanding', { tag: '@idx-table-resize-loss' }, async ({ page }) => {
+  await page.evaluate(() => openTableModal());
+  await page.locator('#table-preview-grid input[data-row="h"][data-col="2"]').fill('Știință 🌱');
+  await page.locator('#table-preview-grid input[data-row="2"][data-col="2"]').fill('HIDDEN CELL');
+  await page.locator('#table-preview-grid .align-select[data-col="2"]').selectOption('right');
+  await page.locator('#table-preview-grid input[data-row="0"][data-col="0"]').fill('CLEAR ME');
+  await page.locator('#tbl-rows').fill('1');
+  await page.locator('#tbl-cols').fill('1');
+  await page.locator('#table-preview-grid input[data-row="0"][data-col="0"]').fill('');
+  await page.locator('#table-preview-grid input[data-row="h"][data-col="0"]').fill('EDITED HEADER');
+  await page.locator('#table-preview-grid .align-select[data-col="0"]').selectOption('center');
+  await page.locator('#tbl-cols').fill('3');
+  await page.locator('#tbl-rows').fill('3');
+  await expect(page.locator('#table-preview-grid input[data-row="h"][data-col="2"]')).toHaveValue('Știință 🌱');
+  await expect(page.locator('#table-preview-grid input[data-row="2"][data-col="2"]')).toHaveValue('HIDDEN CELL');
+  await expect(page.locator('#table-preview-grid .align-select[data-col="2"]')).toHaveValue('right');
+  await expect(page.locator('#table-preview-grid input[data-row="0"][data-col="0"]')).toHaveValue('');
+  await expect(page.locator('#table-preview-grid input[data-row="h"][data-col="0"]')).toHaveValue('EDITED HEADER');
+  await expect(page.locator('#table-preview-grid .align-select[data-col="0"]')).toHaveValue('center');
+});
+
+for (const dimension of ['rows', 'cols']) {
+test(`table builder retains the draft while temporarily clearing ${dimension}`, { tag: '@idx-table-resize-loss' }, async ({ page }) => {
+  await page.evaluate(() => openTableModal());
+  await page.locator('#table-preview-grid input[data-row="h"][data-col="2"]').fill('LAST HEADER');
+  await page.locator('#table-preview-grid input[data-row="2"][data-col="2"]').fill('LAST CELL');
+  await page.locator('#table-preview-grid .align-select[data-col="2"]').selectOption('right');
+  await page.locator(`#tbl-${dimension}`).fill('');
+  await page.locator(`#tbl-${dimension}`).fill('3');
+  await expect(page.locator('#table-preview-grid input[data-row="h"][data-col="2"]')).toHaveValue('LAST HEADER');
+  await expect(page.locator('#table-preview-grid input[data-row="2"][data-col="2"]')).toHaveValue('LAST CELL');
+  await expect(page.locator('#table-preview-grid .align-select[data-col="2"]')).toHaveValue('right');
+});
+}
+
+test('table builder inserts the resized draft and starts the next table empty', { tag: '@idx-table-resize-loss' }, async ({ page }) => {
+  await edit(page, '');
+  await page.evaluate(() => openTableModal());
+  await page.locator('#table-preview-grid input[data-row="h"][data-col="0"]').fill('Name');
+  await page.locator('#table-preview-grid input[data-row="0"][data-col="0"]').fill('Kept');
+  await page.locator('#table-preview-grid .align-select[data-col="0"]').selectOption('right');
+  await page.locator('#tbl-rows').fill('1');
+  await page.locator('#tbl-cols').fill('1');
+  await page.locator('#table-preview-grid input[data-row="0"][data-col="0"]').fill('Updated');
+  await page.evaluate(() => insertTable());
+  await expect(page.locator('#editor')).toHaveValue('\n| Name |\n| ---: |\n| Updated |\n');
+  await expect(page.locator('#preview th')).toHaveText('Name');
+  await expect(page.locator('#preview td')).toHaveText('Updated');
+  await expect(page.locator('#preview td')).toHaveCSS('text-align', 'right');
+  await page.evaluate(() => openTableModal());
+  await page.locator('#tbl-rows').fill('3');
+  await page.locator('#tbl-cols').fill('3');
+  for (const input of await page.locator('#table-preview-grid input').all()) await expect(input).toHaveValue('');
+  for (const alignment of await page.locator('#table-preview-grid .align-select').all()) await expect(alignment).toHaveValue('left');
 });
 
 test('table builder round-trips literal pipes within a cell', async ({ page }) => {

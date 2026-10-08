@@ -86,7 +86,7 @@ real Drive account or production service were changed.
   **Required outcome:** Stop/report a failed durable deletion before deleting other copies or publishing tombstones; keep the UI consistent and make retries safe.  
   **Test:** `preservation.spec.js` — `P2 failed delete leaves both the mirror and local record intact`; external propagation is a source-traced risk, not a live-cloud experiment.
 
-- [ ] [ID:idx-table-resize-loss] **P2 — Changing table dimensions erases all text already entered in the builder.**
+- [x] [ID:idx-table-resize-loss] **P2 — Changing table dimensions erases all text already entered in the builder.**
 
   **Location:** [files.js](../../js/markdown/files.js), `rebuildTableGrid()`, lines 309–367.  
   **Reproduce:** Fill a header and first cell, then change Rows to 4. Both values become empty. Rebuilding constructs blank inputs and replaces the entire grid on each input event. A routine “add one more row” loses the table draft before it ever reaches editor undo/autosave.  

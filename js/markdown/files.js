@@ -300,18 +300,27 @@ ${bodyHtml}
 }
 
 /* ── Table builder ── */
+const tableDraft = new Map();
 function openTableModal() {
   saveSelection();
-  rebuildTableGrid();
+  rebuildTableGrid(true);
   openOrdinaryDialog('table-modal', 'tbl-rows');
 }
 function closeTableModal() {
   closeOrdinaryDialog('table-modal');
 }
-function rebuildTableGrid() {
+function rebuildTableGrid(resetDraft = false) {
   const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
   const cols = Math.min(10, Math.max(1, parseInt(document.getElementById('tbl-cols').value) || 1));
   const container = document.getElementById('table-preview-grid');
+  if (resetDraft) {
+    tableDraft.clear();
+  } else {
+    // Keep hidden cells too, so shrinking and re-expanding restores the draft.
+    container.querySelectorAll('input, select').forEach(field => {
+      tableDraft.set(`${field.dataset.row || 'a'}:${field.dataset.col}`, field.value);
+    });
+  }
   const table = document.createElement('table');
   table.className = 'tbl-builder';
 
@@ -325,6 +334,7 @@ function rebuildTableGrid() {
     inp.placeholder = `Header ${c + 1}`;
     inp.dataset.row = 'h';
     inp.dataset.col = c;
+    inp.value = tableDraft.get(`h:${c}`) ?? '';
     th.appendChild(inp);
     hrow.appendChild(th);
   }
@@ -343,6 +353,7 @@ function rebuildTableGrid() {
     [['left','⬅ Left'],['center','↔ Center'],['right','➡ Right']].forEach(([v, l]) => {
       const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
     });
+    sel.value = tableDraft.get(`a:${c}`) ?? 'left';
     td.appendChild(sel);
     arow.appendChild(td);
   }
@@ -358,6 +369,7 @@ function rebuildTableGrid() {
       inp.placeholder = `Cell`;
       inp.dataset.row = r;
       inp.dataset.col = c;
+      inp.value = tableDraft.get(`${r}:${c}`) ?? '';
       td.appendChild(inp);
       drow.appendChild(td);
     }
