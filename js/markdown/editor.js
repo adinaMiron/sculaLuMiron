@@ -678,11 +678,18 @@ async function handleEditorPaste(e) {
   const blob = clipboardImage(dt);
   if (!blob) return;
   e.preventDefault();
-  // Where the caret was before the await — decoding takes a moment.
+  // Decoding may finish after navigation, editing or moving the selection.
+  const destination = wbEditorDestination, chapter = wbCurrentId, text = editor.value;
   const start = editor.selectionStart, end = editor.selectionEnd;
+  const direction = editor.selectionDirection;
   const name = (blob.name || '').replace(/\.[^.]+$/, '').replace(/[\[\]]/g, '').trim();
   try {
     const dataUrl = await imageBlobToDataUrl(blob);
+    if (wbEditorDestination !== destination || wbCurrentId !== chapter || editor.value !== text ||
+        editor.selectionStart !== start || editor.selectionEnd !== end || editor.selectionDirection !== direction) {
+      if (typeof ScuLaFolder !== 'undefined') ScuLaFolder.toast(t('imagePasteStale'));
+      return;
+    }
     editor.focus();
     editor.setRangeText(`![${name || t('pastedImageAlt')}](${dataUrl})`, start, end, 'end');
     updatePreview(); updateStatus(); scheduleAutosave();

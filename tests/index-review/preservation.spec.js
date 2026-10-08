@@ -188,16 +188,107 @@ test('table builder round-trips literal pipes within a cell', async ({ page }) =
   await expect(page.locator('#preview tbody tr').first().locator('td').first()).toHaveText('left | right');
 });
 
-test('P1 delayed image paste must not replace text in a different chapter', async ({ page }) => {
-  await seed(page);
+const pasteImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=';
+
+async function startDelayedImagePaste(page) {
   await page.evaluate(() => {
     editor.setSelectionRange(0, 8);
+    window.reviewOriginalImageDecode = imageBlobToDataUrl;
     imageBlobToDataUrl = () => new Promise(resolve => { window.reviewFinishImage = resolve; });
+    window.reviewPasteToasts = [];
+    const originalToast = ScuLaFolder.toast;
+    ScuLaFolder.toast = message => { reviewPasteToasts.push(message); originalToast(message); };
     const dt = new DataTransfer();
     dt.items.add(new File(['test'], 'picture.png', { type: 'image/png' }));
     editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   });
+}
+
+async function finishStaleImagePaste(page) {
+  await page.evaluate(url => reviewFinishImage(url), pasteImageUrl);
+  await expect.poll(() => page.evaluate(() => reviewPasteToasts)).toEqual([
+    await page.evaluate(() => t('imagePasteStale'))
+  ]);
+}
+
+async function pasteState(page) {
+  return page.evaluate(async () => ({
+    text: editor.value, current: wbCurrentId, dirty: wbDirty,
+    selection: [editor.selectionStart, editor.selectionEnd, editor.selectionDirection],
+    undo: undoStack, redo: redoStack, draft: wbDraftRead(),
+    stored: (await wbAll(WB_CHAPTERS)).map(c => [c.id, c.content]).sort()
+  }));
+}
+
+test('P1 delayed image paste must not replace text in a different chapter', { tag: '@idx-paste-destination' }, async ({ page }) => {
+  await seed(page);
+  await startDelayedImagePaste(page);
   await page.evaluate(() => openChapter('b'));
-  await page.evaluate(() => reviewFinishImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='));
+  const before = await pasteState(page);
+  await finishStaleImagePaste(page);
   await expect(page.locator('#editor')).toHaveValue('ORIGINAL b');
+  expect(await pasteState(page)).toEqual(before);
+  expect(before.stored).toEqual([['a', 'ORIGINAL a'], ['b', 'ORIGINAL b']]);
+
+  // The original image is still available to paste again at a chosen location.
+  await page.evaluate(() => openChapter('a'));
+  await page.evaluate(async () => {
+    imageBlobToDataUrl = reviewOriginalImageDecode;
+    editor.setSelectionRange(editor.value.length, editor.value.length);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve));
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], 'retry.png', { type: 'image/png' }));
+    await handleEditorPaste(new ClipboardEvent('paste', { clipboardData: dt, cancelable: true }));
+    await flushChapter();
+  });
+  const retried = await pasteState(page);
+  expect(retried.text).toMatch(/^ORIGINAL a!\[retry\]\(data:image\/png;base64,/);
+  expect(retried.stored).toEqual([['a', retried.text], ['b', 'ORIGINAL b']]);
+});
+
+for (const change of ['text edit', 'selection offsets', 'selection direction', 'switch away and back', 'replace identical loose draft']) {
+test(`P1 delayed image paste is cancelled after ${change}`, { tag: '@idx-paste-destination' }, async ({ page }) => {
+  await seed(page);
+  if (change === 'replace identical loose draft') await page.evaluate(() => detachChapter());
+  await startDelayedImagePaste(page);
+  if (change === 'text edit') {
+    await edit(page, 'NEW TEXT a');
+    // Restore the old offsets: changed text alone must invalidate the paste.
+    await page.evaluate(async () => { editor.setSelectionRange(0, 8); await flushChapter(); });
+  } else if (change === 'selection offsets') {
+    await page.evaluate(() => editor.setSelectionRange(9, 10));
+  } else if (change === 'selection direction') {
+    await page.evaluate(() => editor.setSelectionRange(0, 8, 'backward'));
+  } else if (change === 'switch away and back') {
+    await page.evaluate(async () => { await openChapter('b'); await openChapter('a'); editor.setSelectionRange(0, 8); });
+  } else {
+    page.on('dialog', dialog => dialog.accept());
+    await page.evaluate(() => newFile());
+    await edit(page, 'ORIGINAL a');
+    await page.evaluate(() => editor.setSelectionRange(0, 8));
+  }
+  const before = await pasteState(page);
+  await finishStaleImagePaste(page);
+  expect(await pasteState(page)).toEqual(before);
+});
+}
+
+test('delayed image paste replaces an unchanged selection and supports undo, redo and autosave', { tag: '@idx-paste-destination' }, async ({ page }) => {
+  await seed(page);
+  await startDelayedImagePaste(page);
+  await page.evaluate(url => reviewFinishImage(url), pasteImageUrl);
+  const expected = `![picture](${pasteImageUrl}) a`;
+  await expect(page.locator('#editor')).toHaveValue(expected);
+  await expect(page.locator('#preview img')).toHaveAttribute('src', pasteImageUrl);
+  await expect.poll(() => page.evaluate(async () => (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content)).toBe(expected);
+  expect(await page.evaluate(() => wbDraftRead().text)).toBe(expected);
+  await page.evaluate(() => undoEdit());
+  await expect(page.locator('#editor')).toHaveValue('ORIGINAL a');
+  expect(await page.evaluate(() => [editor.selectionStart, editor.selectionEnd])).toEqual([0, 8]);
+  await page.evaluate(() => redoEdit());
+  await expect(page.locator('#editor')).toHaveValue(expected);
+  await page.evaluate(async () => { await flushChapter(); await openChapter('b'); await openChapter('a'); });
+  await expect(page.locator('#editor')).toHaveValue(expected);
 });

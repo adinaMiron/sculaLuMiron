@@ -51,7 +51,7 @@ real Drive account or production service were changed.
   **Required outcome:** Keep the chapter, dirty state, undo history and recovery text until the flush succeeds; only then replace the editor. Cover an already-running flush as well as immediate failure.  
   **Test:** `preservation.spec.js` — `P1 new-file failure retains the chapter and recovery journal`; the normal successful-New case passes separately.
 
-- [ ] [ID:idx-paste-destination] **P1 — Delayed image paste overwrites the selection offsets in whichever chapter is now open.**
+- [x] [ID:idx-paste-destination] **P1 — Delayed image paste overwrites the selection offsets in whichever chapter is now open.**
 
   **Location:** [editor.js](../../js/markdown/editor.js), `handleEditorPaste()`, lines 673–698.  
   **Reproduce:** Select characters 0–8 of chapter A, paste an image, pause decoding, open B containing `ORIGINAL b`, then finish decoding. B becomes `![picture](data:…) b`: its first eight characters are replaced and the changed B is scheduled for autosave. Only offsets are captured before the await; chapter/destination identity is not.  

@@ -206,7 +206,10 @@ absolute.
   through IndexedDB on every keypress. If the re-encode comes out bigger
   than the original, the original is used.
 - The insert goes through `setRangeText` at the caret position captured
-  *before* the decode, then `updatePreview(); updateStatus();
+  *before* the decode, only if the editor destination, text and selection
+  still match. A stale completion leaves the editor untouched and tells
+  the user to choose the insertion point and paste again. A valid insert
+  then calls `updatePreview(); updateStatus();
   scheduleAutosave()` — `setRangeText` fires no `input` event, so the
   textarea's own `oninput` chain does not run.
 
