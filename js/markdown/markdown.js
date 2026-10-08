@@ -915,6 +915,22 @@ function mdFenceHtml(codeLines, codeLang, codeStart, opts) {
   return renderCodeBlock(codeLines, codeLang, !!(opts && opts.forExport));
 }
 
+function mdTableCells(row) {
+  const cells = [''];
+  for (let i = 0; i < row.length; i++) {
+    const ch = row[i];
+    // Decode table escapes before inline rendering, including inside code.
+    if (ch === '\\' && (row[i + 1] === '\\' || row[i + 1] === '|')) {
+      cells[cells.length - 1] += row[++i];
+    } else if (ch === '|') {
+      cells.push('');
+    } else {
+      cells[cells.length - 1] += ch;
+    }
+  }
+  return cells.slice(1, -1).map(c => c.trim());
+}
+
 function parseMarkdown(md, opts) {
   const forExport = !!(opts && opts.forExport);
   let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -947,8 +963,8 @@ function parseMarkdown(md, opts) {
     const rows = tableBuffer;
     tableBuffer = [];
     if (rows.length < 2) { rows.forEach(r => out.push(`<p>${r}</p>`)); return; }
-    const headers = rows[0].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
-    const sepRow = rows[1].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
+    const headers = mdTableCells(rows[0]);
+    const sepRow = mdTableCells(rows[1]);
     const isSep = sepRow.every(c => /^:?-+:?$/.test(c));
     if (!isSep) { rows.forEach(r => out.push(`<p>${applyInline(r, opts)}</p>`)); return; }
     const aligns = sepRow.map(c => c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left');
@@ -957,7 +973,7 @@ function parseMarkdown(md, opts) {
     if (rows.length > 2) {
       out.push('<tbody>');
       for (let r = 2; r < rows.length; r++) {
-        const cells = rows[r].split('|').map(c => c.trim()).filter((_,i,a) => i>0 && i<a.length-1);
+        const cells = mdTableCells(rows[r]);
         out.push('<tr>' + cells.map((c,i) => `<td style="text-align:${aligns[i]||'left'}">${applyInline(c, opts)}</td>`).join('') + '</tr>');
       }
       out.push('</tbody>');

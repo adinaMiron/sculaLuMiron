@@ -93,7 +93,7 @@ real Drive account or production service were changed.
   **Required outcome:** Preserve overlapping cells, headers and alignments while resizing; prevent accidental loss when shrinking/re-expanding or temporarily clearing a numeric field.  
   **Test:** `preservation.spec.js` — `table builder preserves filled cells when increasing dimensions`.
 
-- [ ] [ID:idx-table-cell-delimiters] **P2 — Literal pipes entered into a table cell become extra columns.**
+- [x] [ID:idx-table-cell-delimiters] **P2 — Literal pipes entered into a table cell become extra columns.**
 
   **Location:** [files.js](../../js/markdown/files.js), `insertTable()`, lines 369–398, and Markdown table parsing.  
   **Reproduce:** Enter `left | right` in one cell and Insert. The first rendered cell says only `left`; `right` becomes another cell and shifts subsequent columns. The builder joins unescaped values with the same delimiter it accepts as content.  

@@ -657,12 +657,77 @@ test('table builder inserts the resized draft and starts the next table empty', 
   for (const alignment of await page.locator('#table-preview-grid .align-select').all()) await expect(alignment).toHaveValue('left');
 });
 
-test('table builder round-trips literal pipes within a cell', async ({ page }) => {
+test('table builder round-trips literal pipes within a cell', { tag: '@idx-table-cell-delimiters' }, async ({ page }) => {
   await edit(page, '');
   await page.evaluate(() => openTableModal());
-  await page.locator('#table-preview-grid input[data-row="0"]').first().fill('left | right');
+  const headers = ['Header | one', 'Header two', '|Header three|'];
+  const rows = [
+    ['left | right', 'next column', '|edge||'],
+    [String.raw`\| \\|`, '`code|pipe`', '**bold|pipe**'],
+    [String.raw`C:\notes\ \\`, '<script>|&', ''],
+  ];
+  for (let c = 0; c < headers.length; c++) {
+    await page.locator(`#table-preview-grid input[data-row="h"][data-col="${c}"]`).fill(headers[c]);
+    await page.locator(`#table-preview-grid .align-select[data-col="${c}"]`).selectOption(['left', 'center', 'right'][c]);
+  }
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      await page.locator(`#table-preview-grid input[data-row="${r}"][data-col="${c}"]`).fill(rows[r][c]);
+    }
+  }
   await page.evaluate(() => insertTable());
   await expect(page.locator('#preview tbody tr').first().locator('td').first()).toHaveText('left | right');
+  const expectedRows = [rows[0], [rows[1][0], 'code|pipe', 'bold|pipe'], rows[2]];
+  const readTable = root => ({
+    headers: [...root.querySelectorAll('th')].map(c => c.textContent),
+    rows: [...root.querySelectorAll('tbody tr')].map(r => [...r.querySelectorAll('td')].map(c => c.textContent)),
+    alignments: [...root.querySelectorAll('tbody tr')].map(r => [...r.querySelectorAll('td')].map(c => c.style.textAlign)),
+    code: root.querySelector('td code')?.textContent,
+    bold: root.querySelector('td strong')?.textContent,
+    scripts: root.querySelectorAll('script').length,
+  });
+  const expected = { headers, rows: expectedRows,
+    alignments: rows.map(() => ['left', 'center', 'right']), code: 'code|pipe', bold: 'bold|pipe', scripts: 0 };
+  expect(await page.locator('#preview').evaluate(readTable)).toEqual(expected);
+  const source = await page.locator('#editor').inputValue();
+  expect(source).toContain(String.raw`| left \| right | next column | \|edge\|\| |`);
+  expect(source).toContain(String.raw`| \\\| \\\\\| |`);
+  const exported = await page.evaluate(async () => {
+    const output = {};
+    const original = ScuLaFolder.save;
+    ScuLaFolder.save = (name, blob) => { output[blob.type] = blob.text(); };
+    try { exportMarkdown(); exportHtml(); } finally { ScuLaFolder.save = original; }
+    return { markdown: await output['text/markdown'], html: await output['text/html'] };
+  });
+  expect(exported.markdown).toBe(source);
+  // Read the saved HTML table without executing its unrelated copy-button script.
+  const htmlTable = await page.evaluate(html => new DOMParser().parseFromString(html, 'text/html').querySelector('table').outerHTML, exported.html);
+  const savedPage = await page.context().newPage();
+  await savedPage.setContent(htmlTable);
+  expect(await savedPage.locator('table').evaluate(readTable)).toEqual(expected);
+  await savedPage.close();
+  await edit(page, '');
+  await page.locator('#file-input').setInputFiles({ name: 'table.md', mimeType: 'text/markdown', buffer: Buffer.from(exported.markdown) });
+  await expect(page.locator('#editor')).toHaveValue(source);
+  expect(await page.locator('#preview').evaluate(readTable)).toEqual(expected);
+});
+
+test('Markdown tables distinguish escaped pipes from column separators', { tag: '@idx-table-cell-delimiters' }, async ({ page }) => {
+  const markdown = String.raw`| Escaped \| header | Plain | Empty |
+| :--- | :---: | ---: |
+| one\|two | three\\\|four | |
+| trailing\\| next | last |
+| **bold** | \path | plain |`;
+  await edit(page, markdown);
+  const expected = [['one|two', String.raw`three\|four`, ''], ['trailing\\', 'next', 'last'], ['bold', String.raw`\path`, 'plain']];
+  const readRows = root => [...root.querySelectorAll('tbody tr')].map(r => [...r.querySelectorAll('td')].map(c => c.textContent));
+  await expect(page.locator('#preview th')).toHaveText(['Escaped | header', 'Plain', 'Empty']);
+  expect(await page.locator('#preview').evaluate(readRows)).toEqual(expected);
+  const exportRows = await page.evaluate(markdown => {
+    const doc = new DOMParser().parseFromString(parseMarkdown(markdown, { forExport: true }), 'text/html');
+    return [...doc.querySelectorAll('tbody tr')].map(r => [...r.querySelectorAll('td')].map(c => c.textContent));
+  }, markdown);
+  expect(exportRows).toEqual(expected);
 });
 
 const pasteImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=';

@@ -399,7 +399,7 @@ function insertTable() {
   // Build separator row with alignment markers
   const sep = aligns.map(a => a === 'center' ? ':---:' : a === 'right' ? '---:' : ':---');
 
-  const pad = (cells) => '| ' + cells.join(' | ') + ' |';
+  const pad = (cells) => '| ' + cells.map(c => c.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')).join(' | ') + ' |';
   const lines = [
     pad(headers),
     pad(sep),
