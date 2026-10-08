@@ -1,4 +1,4 @@
-const { test, expect, seed, edit, mountDisk } = require('./helpers');
+const { test, expect, seed, edit, mountDisk, URL } = require('./helpers');
 
 test('normal edit, autosave, switch and reload preserve Unicode and blank lines', async ({ page }) => {
   await seed(page);
@@ -158,7 +158,7 @@ test('P2 failed delete leaves both the mirror and local record intact', async ({
   expect(state).toEqual({ disk: 'ORIGINAL b', local: true, visible: true });
 });
 
-test('P1 folder sync cannot mirror a stale other-tab revision', async ({ page }) => {
+test('P1 folder sync cannot mirror a stale other-tab revision', { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
   await seed(page);
   await mountDisk(page);
   // Commit through an independent connection without changing this tab's
@@ -169,6 +169,203 @@ test('P1 folder sync cannot mirror a stale other-tab revision', async ({ page })
     await syncAllToFolder({ cloud: false });
   });
   expect(await page.evaluate(() => reviewDisk.Review['b.md'])).toBe('NEWER OTHER TAB');
+  expect(await page.evaluate(async () => ({ pending: [...wbPendingIds], records: await wbAll(WB_PENDING),
+    writes: reviewDiskEvents.filter(e => e[0] === 'write' && e[2] === 'b.md') }))).toMatchObject({
+    pending: ['b'], records: [{ chapterId: 'b', content: 'NEWER OTHER TAB', updated: 2000 }], writes: []
+  });
+});
+
+test('Save all modified rejects a stale revision even with the same timestamp', { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
+  await seed(page);
+  await mountDisk(page);
+  await page.evaluate(async () => {
+    await wbPendingMark(wbChapter('b'));
+    await wbTx(WB_CHAPTERS, 'readwrite', s => s.put({ ...wbChapter('b'), content: 'NEWER OTHER TAB' }));
+    reviewDisk.Review['b.md'] = 'NEWER OTHER TAB';
+    await saveAllModifiedChapters();
+  });
+  expect(await page.evaluate(async () => ({ disk: reviewDisk.Review['b.md'],
+    pending: await wbAll(WB_PENDING), cached: wbChapter('b').content,
+    editor: editor.value, writes: reviewDiskEvents }))).toMatchObject({
+    disk: 'NEWER OTHER TAB', pending: [{ chapterId: 'b', content: 'NEWER OTHER TAB', updated: 1 }],
+    cached: 'ORIGINAL b', editor: 'ORIGINAL a', writes: []
+  });
+});
+
+for (const stage of ['directory', 'write']) {
+test(`Folder save aborts a revision changed during ${stage} preparation`, { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
+  await seed(page);
+  await mountDisk(page);
+  await page.evaluate(stage => {
+    const originalDir = ScuLaFolder.dir;
+    ScuLaFolder.dir = async (...args) => {
+      const md = await originalDir(...args);
+      if (stage === 'directory') await new Promise(resolve => { window.reviewReleaseMirror = resolve; });
+      const originalBookDir = md.getDirectoryHandle;
+      md.getDirectoryHandle = async (...args) => {
+        const dir = await originalBookDir(...args);
+        const originalFile = dir.getFileHandle;
+        dir.getFileHandle = async (...args) => {
+          const file = await originalFile(...args);
+          const originalWritable = file.createWritable;
+          file.createWritable = async () => {
+            const writable = await originalWritable();
+            writable.abort = async () => { window.reviewMirrorAborted = true; };
+            const originalWrite = writable.write;
+            writable.write = async blob => {
+              await originalWrite(blob);
+              if (stage === 'write') await new Promise(resolve => { window.reviewReleaseMirror = resolve; });
+            };
+            return writable;
+          };
+          return file;
+        };
+        return dir;
+      };
+      return md;
+    };
+    window.reviewOldMirror = wbSaveMirror(wbBook('review-book'), wbChapter('b'));
+  }, stage);
+  await page.waitForFunction(() => window.reviewReleaseMirror);
+  await page.evaluate(async () => {
+    const newer = { ...wbChapter('b'), content: 'NEWER DURING SAVE', updated: 2000 };
+    await wbTx(WB_CHAPTERS, 'readwrite', s => s.put(newer));
+    // The other tab has already committed its folder mirror.
+    reviewDisk.Review['b.md'] = newer.content;
+    reviewReleaseMirror();
+    window.reviewMirrorResult = await reviewOldMirror;
+  });
+  expect(await page.evaluate(async () => ({ result: reviewMirrorResult, aborted: reviewMirrorAborted,
+    disk: reviewDisk.Review['b.md'], pending: await wbAll(WB_PENDING), writes: reviewDiskEvents }))).toMatchObject({
+    result: { path: null, failed: true, pending: true }, aborted: true,
+    disk: 'NEWER DURING SAVE', pending: [{ chapterId: 'b', content: 'NEWER DURING SAVE', updated: 2000 }], writes: []
+  });
+});
+}
+
+test('Overlapping folder saves serialize closes and leave the newer mirror acknowledged', { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
+  await seed(page);
+  await mountDisk(page);
+  await page.evaluate(() => {
+    const originalDir = ScuLaFolder.dir;
+    let held = false;
+    ScuLaFolder.dir = async (...args) => {
+      const md = await originalDir(...args);
+      const originalBookDir = md.getDirectoryHandle;
+      md.getDirectoryHandle = async (...args) => {
+        const dir = await originalBookDir(...args);
+        const originalFile = dir.getFileHandle;
+        dir.getFileHandle = async (...args) => {
+          const file = await originalFile(...args);
+          const originalWritable = file.createWritable;
+          file.createWritable = async () => {
+            const writable = await originalWritable();
+            const originalClose = writable.close;
+            writable.close = async () => {
+              if (!held) {
+                held = true;
+                await new Promise(resolve => { window.reviewReleaseMirror = resolve; });
+              }
+              await originalClose();
+            };
+            return writable;
+          };
+          return file;
+        };
+        return dir;
+      };
+      return md;
+    };
+    window.reviewOldMirror = wbSaveMirror(wbBook('review-book'), wbChapter('b'));
+  });
+  await page.waitForFunction(() => window.reviewReleaseMirror);
+  await page.evaluate(async () => {
+    const newer = { ...wbChapter('b'), content: 'NEWER QUEUED SAVE', updated: 2000 };
+    await wbTx(WB_CHAPTERS, 'readwrite', s => s.put(newer));
+    Object.assign(wbChapter('b'), newer);
+    window.reviewNewMirror = wbSaveMirror(wbBook('review-book'), newer);
+    reviewReleaseMirror();
+    window.reviewMirrorResults = await Promise.all([reviewOldMirror, reviewNewMirror]);
+  });
+  expect(await page.evaluate(async () => ({ results: reviewMirrorResults,
+    disk: reviewDisk.Review['b.md'], pending: [...wbPendingIds], records: await wbAll(WB_PENDING) }))).toMatchObject({
+    results: [{ pending: true }, { failed: false, pending: false }],
+    disk: 'NEWER QUEUED SAVE', pending: [], records: []
+  });
+});
+
+test('Folder acknowledgement checks the durable revision after close', { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
+  await seed(page);
+  await mountDisk(page);
+  await page.evaluate(async () => {
+    const originalClear = wbPendingClear;
+    wbPendingClear = async (...args) => {
+      await wbTx(WB_CHAPTERS, 'readwrite', s => s.put({ ...wbChapter('b'), content: 'NEWER AFTER CLOSE', updated: 2000 }));
+      reviewDisk.Review['b.md'] = 'NEWER AFTER CLOSE';
+      return originalClear(...args);
+    };
+    window.reviewMirrorResult = await wbSaveMirror(wbBook('review-book'), wbChapter('b'));
+  });
+  expect(await page.evaluate(async () => ({ result: reviewMirrorResult,
+    disk: reviewDisk.Review['b.md'], pending: await wbAll(WB_PENDING) }))).toMatchObject({
+    result: { pending: true }, disk: 'NEWER AFTER CLOSE',
+    pending: [{ chapterId: 'b', content: 'NEWER AFTER CLOSE', updated: 2000 }]
+  });
+});
+
+test('Two tabs share the folder-save lock through file close', { tag: '@idx-stale-folder-mirror' }, async ({ page, context }) => {
+  await seed(page);
+  const other = await context.newPage();
+  await other.goto(URL);
+  await other.waitForFunction(() => wbDraftReady);
+  await other.waitForTimeout(1350);
+  const commits = [];
+  for (const tab of [page, other]) {
+    await mountDisk(tab);
+    await tab.exposeBinding('reviewCommitMirror', (_, text) => { commits.push(text); });
+    await tab.evaluate(hold => {
+      const originalDir = ScuLaFolder.dir;
+      ScuLaFolder.dir = async (...args) => {
+        const md = await originalDir(...args);
+        const originalBookDir = md.getDirectoryHandle;
+        md.getDirectoryHandle = async (...args) => {
+          const dir = await originalBookDir(...args);
+          const originalFile = dir.getFileHandle;
+          dir.getFileHandle = async (...args) => {
+            const file = await originalFile(...args);
+            const originalWritable = file.createWritable;
+            file.createWritable = async () => {
+              const writable = await originalWritable();
+              const originalClose = writable.close;
+              writable.close = async () => {
+                if (hold) await new Promise(resolve => { window.reviewReleaseMirror = resolve; });
+                await originalClose();
+                await reviewCommitMirror(reviewDisk.Review['b.md']);
+              };
+              return writable;
+            };
+            return file;
+          };
+          return dir;
+        };
+        return md;
+      };
+    }, tab === page);
+  }
+  await page.evaluate(() => { window.reviewOldMirror = wbSaveMirror(wbBook('review-book'), wbChapter('b')); });
+  await page.waitForFunction(() => window.reviewReleaseMirror);
+  await other.evaluate(async () => {
+    const ch = wbChapter('b');
+    Object.assign(ch, { content: 'NEWER REAL TAB', updated: 2000 });
+    await wbPut(WB_CHAPTERS, ch);
+    window.reviewNewMirror = wbSaveMirror(wbBook(ch.workbookId), ch);
+  });
+  await other.waitForFunction(async () => (await navigator.locks.query()).pending.some(lock => lock.name === WB_DB + ':mirror:b'));
+  expect(commits).toEqual([]);
+  await page.evaluate(async () => { reviewReleaseMirror(); await reviewOldMirror; });
+  await other.evaluate(() => reviewNewMirror);
+  expect(commits).toEqual(['ORIGINAL b', 'NEWER REAL TAB']);
+  expect(await other.evaluate(async () => ({ pending: [...wbPendingIds], records: await wbAll(WB_PENDING) }))).toEqual({ pending: [], records: [] });
 });
 
 test('table builder preserves filled cells when increasing dimensions', async ({ page }) => {

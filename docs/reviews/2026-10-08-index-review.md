@@ -58,7 +58,7 @@ real Drive account or production service were changed.
   **Required outcome:** Fence the paste against destination and text/selection changes. A stale completion must preserve both chapters and give the user a safe retry/recovery path.  
   **Test:** `preservation.spec.js` — `P1 delayed image paste must not replace text in a different chapter`.
 
-- [ ] [ID:idx-stale-folder-mirror] **P1 — Folder synchronization writes cached chapter text without checking the durable revision.**
+- [x] [ID:idx-stale-folder-mirror] **P1 — Folder synchronization writes cached chapter text without checking the durable revision.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbSaveMirror()` and `syncAllToFolder()`, lines 548–565 and 1335–1380.  
   **Reproduce:** Keep this tab's B at `ORIGINAL b`; commit `NEWER OTHER TAB` to B through another IndexedDB transaction and its mirror; synchronize from the stale tab while A is active. The folder's B becomes `ORIGINAL b` again while IndexedDB still has the newer text. Flushing only the active chapter does not validate other cached chapters.  

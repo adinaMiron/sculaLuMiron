@@ -353,18 +353,25 @@ async function wbPendingClear(id, saved) {
   try {
     // Compare and delete in one transaction so a newer marker cannot be
     // removed between reading its version and completing the old save.
-    await wbTx(WB_PENDING, 'readwrite', store => {
+    const db = await wbDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction([WB_CHAPTERS, WB_PENDING], 'readwrite');
+      const store = tx.objectStore(WB_PENDING);
+      const chapterReq = tx.objectStore(WB_CHAPTERS).get(id);
       const req = store.get(id);
       req.onsuccess = () => {
         const pending = req.result;
-        if (!matches()) return;
+        if (!matches() || wbChapterVersion(chapterReq.result) !== wbChapterVersion(saved)) return;
         if (pending && (pending.content !== saved.content || pending.updated !== saved.updated
           || pending.workbookId !== saved.workbookId)) return;
         store.delete(id);
         wbPendingIds.delete(id); // a later mark may re-add it while this transaction finishes
         cleared = true;
       };
-    });
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    }).finally(() => db.close());
   } catch (e) {
     if (cleared) wbPendingIds.add(id);
     return false;
@@ -529,7 +536,7 @@ function wbGuessTitle() {
 function wbFolderMode() {
   return typeof ScuLaFolder !== 'undefined' && ScuLaFolder.mode() === 'folder';
 }
-async function wbMirrorWrite(book, chapter, text) {
+async function wbMirrorWrite(book, chapter, text, validate) {
   if (!wbFolderMode()) return null;
   try {
     const md = await ScuLaFolder.dir(!wbMirrorAsked);           // <root>/markdown
@@ -538,7 +545,9 @@ async function wbMirrorWrite(book, chapter, text) {
     const bookDir = await md.getDirectoryHandle(book.folder, { create: true });
     const fh = await bookDir.getFileHandle(chapter.file, { create: true });
     const w = await fh.createWritable();
+    if (validate && !await validate()) { await w.abort(); return null; }
     await w.write(new Blob([text], { type: 'text/markdown' }));
+    if (validate && !await validate()) { await w.abort(); return null; }
     await w.close();
     return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
   } catch (e) { return null; }
@@ -551,14 +560,53 @@ async function wbSaveMirror(book, chapter) {
   chapter = { ...chapter };
   book = { ...book };
   const folder = wbFolderMode();
-  if (folder) await wbPendingMark(chapter);
-  const path = await wbMirrorWrite(book, chapter, chapter.content || '');
+  if (folder) {
+    // Serialize file commits across tabs. A newer save cannot close its file
+    // before an older writable and then be overwritten by that old close.
+    if (!navigator.locks) {
+      try { await wbMirrorPendingMark(chapter.id); } catch (e) {}
+      return { path: null, failed: true, pending: true };
+    }
+    return navigator.locks.request(WB_DB + ':mirror:' + chapter.id, async () => {
+      try { return await wbSaveMirrorVersion(book, chapter, true); }
+      catch (e) { return { path: null, failed: true, pending: true }; }
+    });
+  }
+  return wbSaveMirrorVersion(book, chapter, false);
+}
+// Refresh retry metadata from the durable record, never from a stale cache.
+async function wbMirrorPendingMark(id) {
+  const db = await wbDb();
+  let current;
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction([WB_CHAPTERS, WB_PENDING], 'readwrite');
+    const req = tx.objectStore(WB_CHAPTERS).get(id);
+    req.onsuccess = () => {
+      current = req.result;
+      if (!current) return;
+      tx.objectStore(WB_PENDING).put({ chapterId: id, workbookId: current.workbookId,
+        content: current.content, updated: current.updated });
+      wbPendingIds.add(id);
+    };
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  }).finally(() => db.close());
+  return current;
+}
+async function wbSaveMirrorVersion(book, chapter, folder) {
+  const version = wbChapterVersion(chapter);
+  const validate = async () => wbChapterVersion(await wbTx(WB_CHAPTERS, 'readonly', s => s.get(chapter.id))) === version;
+  if (folder && wbChapterVersion(await wbMirrorPendingMark(chapter.id)) !== version) {
+    return { path: null, failed: true, pending: true };
+  }
+  const path = await wbMirrorWrite(book, chapter, chapter.content || '', folder ? validate : null);
   const failed = folder && !path;
   const cleared = !failed && await wbPendingClear(chapter.id, chapter);
-  // Another save may have cleared the newer marker before this older file
-  // closed. That newer version needs mirroring again in that case.
+  // A durable edit or a dirty editor during the file write still needs a
+  // retry. Keep its authoritative marker instead of the captured old text.
   const current = wbChapter(chapter.id);
-  if (!cleared && current && !wbPendingIds.has(chapter.id)) await wbPendingMark(current);
+  if (!cleared && current) await wbMirrorPendingMark(chapter.id);
   return { path, failed, pending: !cleared };
 }
 // Best effort, and never recursive: only files this app knows it wrote are
