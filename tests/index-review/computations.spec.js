@@ -290,14 +290,46 @@ test('garden harvest converts decimal commas, grams and pieces and sums filtered
   expect(result.plant).toMatchObject({ grams: 1500, pieces: 0, n: 1 });
 });
 
-test('garden respects leap-day validity in its calendar markers', async ({ page }) => {
-  const result = await page.evaluate(() => ['2024-02-29', '2026-02-29', '2026-04-31', '2026-13-01']
-    .map(date => ({ date, calendar: ScuLaCal.findMarks('@' + date).length,
-      garden: gdScan('@' + date + '\nudat sm 10 l apa').map(r => r.date) })));
-  expect(result[0]).toMatchObject({ calendar: 1, garden: ['2024-02-29'] });
-  for (const row of result.slice(1)) {
-    expect(row.calendar).toBe(0);
-    expect(row.garden, JSON.stringify(row)).not.toContain(row.date);
+test('garden respects leap-day validity in its calendar markers', { tag: '@idx-garden-date-validation' }, async ({ page }) => {
+  const cases = [
+    ['2024-02-29', '2024-02-29'], ['2000-02-29', '2000-02-29'],
+    ['2026-04-30', '2026-04-30'], ['2026-12-31', '2026-12-31'],
+    ['29.02.2024', '2024-02-29'], ['29/2/2024', '2024-02-29'],
+    ['1.3.2026', '2026-03-01'], ['1/03/2026', '2026-03-01'],
+    ...['2026-02-29', '1900-02-29', '2026-04-31', '2026-13-01',
+      '2026-00-01', '2026-01-00', '2026-01-32', '29.02.2026',
+      '31/4/2026', '1.13.2026'].map(date => [date, null])
+  ];
+  const result = await page.evaluate(cases => cases.map(([date]) => ({
+    calendar: ScuLaCal.findMarks('@' + date).map(hit => hit.mark.date),
+    garden: gdScan('@' + date + '\nudat sm 10 l apa').map(r => r.date)
+  })), cases);
+  for (let i = 0; i < cases.length; i++) {
+    const [date, expected] = cases[i];
+    expect(result[i], date).toEqual({ calendar: expected ? [expected] : [], garden: [expected] });
+  }
+});
+
+test('garden clears the inherited date after an invalid header and resumes at a valid one', { tag: '@idx-garden-date-validation' }, async ({ page }) => {
+  const result = await page.evaluate(() => {
+    Object.assign(gdState, { from: '2024-02-28', to: '2024-03-01' });
+    return ['2026-02-29', '2026-04-31', '2026-13-01', '29.02.2026', '31/4/2026'].map(date => {
+      const records = gdScan('@2024-02-28\nudat sm 1 l apa\n@' + date +
+        '\nudat sm 10 l apa\ncules din sm: 2 kg rosii\ncosit 2 ture gg\n@1/3/2024\nudat sm 3 l apa');
+      return { dates: records.map(r => r.date), inRange: records.filter(gdInRange).map(r => r.date) };
+    });
+  });
+  for (const row of result) {
+    expect(row.dates).toEqual(['2024-02-28', null, null, null, null, '2024-03-01']);
+    expect(row.inRange).toEqual(['2024-02-28', '2024-03-01']);
+  }
+});
+
+test('garden preserves inline clock intervals when reading shared calendar markers', { tag: '@idx-garden-date-validation' }, async ({ page }) => {
+  const result = await page.evaluate(() => ['@2024-02-29', '(@29.2.2024', '[@29/02/2024']
+    .map(marker => gdScan(marker + ' 06:02 - 06:30 udat sm 10 l apa')[0]));
+  for (const record of result) {
+    expect(record).toMatchObject({ date: '2024-02-29', from: '06:02', to: '06:30', mins: 28, litres: 10 });
   }
 });
 

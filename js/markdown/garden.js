@@ -89,9 +89,6 @@ const GD_ROUNDS_RE = /(\d+)\s*(?:ture|tura|turi|rounds?)\b/i;
 const GD_MOW_N_RE = /\bcosit\s+(\d+)\b/i;
 const GD_HARVEST_RE = /\b(cules|culese|culeg|culegem|recoltat|harvested|picked|harvest)\b/i;
 const GD_FROM_RE = /^\s*(?:din|de\s+la|de\s+pe|in|în|la|from)\b\s*/i;
-/* The same "@date" the calendar reads (docs/FEATURES.md § L) — one syntax
-   per page, so a day header already written for the calendar works here. */
-const GD_DATE_RE = /(^|[\s(\[{])@(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})/;
 
 // Diacritics folded the way the search panel folds them, plus the two
 // comma-below letters NFD does not decompose on every engine.
@@ -208,15 +205,21 @@ function gdCatsOf(folded) {
    out of the tables. */
 function gdScan(text) {
   const recs = [];
+  const dateRe = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
   let day = null;
   String(text).split('\n').forEach((line, i) => {
-    const dm = GD_DATE_RE.exec(line);
+    dateRe.lastIndex = 0;
+    const dm = dateRe.exec(line);
+    let body = line;
     if (dm) {
-      const s = dm[2];
-      if (s.indexOf('-') === 4) day = s;
-      else { const p = s.split(/[./]/); day = p[2] + '-' + ('0' + p[1]).slice(-2) + '-' + ('0' + p[0]).slice(-2); }
+      const mark = ScuLaCal.readMark(dm);
+      // An invalid header ends the previous day instead of inheriting it.
+      day = mark ? mark.date : null;
+      // Keep the clock interval for Garden's duration calculation.
+      const at = dm.index + dm[1].length;
+      body = line.slice(0, at) + line.slice(at + 1 + dm[2].length);
     }
-    const body = line.replace(GD_DATE_RE, '$1').replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s*)?/, '').trim();
+    body = body.replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s*)?/, '').trim();
     if (!body || /^[#>|\-=*_\s]*$/.test(body)) return;
     const folded = gdFold(body);
     const cats = gdCatsOf(folded);

@@ -130,7 +130,7 @@ real Drive account or production service were changed.
   **Required outcome:** Bound rendering work, using an appropriate coarser scale, virtualization or an explicit supported-range limit; retain a responsive close/edit path.  
   **Test:** `computations.spec.js` — `Gantt large ranges use bounded ticks instead of one element per day`; the 1,000-tick assertion is an explicit test budget, not a pre-existing product limit.
 
-- [ ] [ID:idx-garden-date-validation] **P2 — Garden accepts dates that the shared calendar correctly rejects.**
+- [x] [ID:idx-garden-date-validation] **P2 — Garden accepts dates that the shared calendar correctly rejects.**
 
   **Location:** [garden.js](../../js/markdown/garden.js), `GD_DATE_RE` and `gdScan()`, lines 92–94 and 209–219.  
   **Reproduce:** `@2026-02-29` followed by `udat sm 10 l apa` creates a garden row dated February 29, even though `ScuLaCal.findMarks()` returns no marker. April 31 and month 13 have the same mismatch. Garden normalizes by string manipulation instead of the shared calendar parser required by FEATURES § N.  
