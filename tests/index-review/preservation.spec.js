@@ -189,22 +189,87 @@ test('Pending-marker retry keeps the previous revision until both writes commit'
     records: [{ chapterId: 'a', content: 'SECOND PENDING REVISION' }] });
 });
 
-test('P2 failed rename cannot redirect a subsequent save into a new uncommitted filename', async ({ page }) => {
+for (const action of ['chapter', 'workbook']) {
+for (const failure of ['quota', 'abort']) {
+test(`P2 failed rename cannot redirect a subsequent save into a new uncommitted filename (${action}, ${failure})`, { tag: '@idx-rename-store-rollback' }, async ({ page }) => {
   await seed(page);
   await mountDisk(page);
-  await page.evaluate(async () => {
+  const before = await page.evaluate(async ({ action, failure }) => {
+    window.reviewRenameState = async () => {
+      const draft = wbDraftRead();
+      return {
+        book: { ...wbBook('review-book') }, chapter: { ...wbChapter('a') },
+        storedBook: (await wbAll(WB_BOOKS)).find(b => b.id === 'review-book'),
+        storedChapter: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a'),
+        draft: { id: draft.id, name: draft.name, text: draft.text, dirty: draft.dirty, base: draft.base },
+        label: document.getElementById('current-file').textContent,
+        crumb: document.getElementById('wb-crumb').textContent,
+        path: document.getElementById('wb-crumb').title,
+        bookName: document.querySelector('.wb-book-name[data-wb-id="review-book"]').textContent,
+        chapterName: document.querySelector('.wb-ch-name[data-wb-id="a"]').textContent,
+        disk: structuredClone(reviewDisk), pending: [...wbPendingIds],
+        pendingRecords: await wbAll(WB_PENDING)
+      };
+    };
+    const before = await reviewRenameState();
     const original = wbTx;
-    wbTx = (store, mode, run) => store === WB_CHAPTERS && mode === 'readwrite'
-      ? Promise.reject(new DOMException('Injected rename failure', 'QuotaExceededError')) : original(store, mode, run);
-    await renameChapter('a', 'Renamed');
-    wbTx = original;
+    window.reviewRestoreRenameTx = () => { wbTx = original; };
+    wbTx = async (store, mode, run) => {
+      if (store !== (action === 'chapter' ? WB_CHAPTERS : WB_BOOKS) || mode !== 'readwrite') return original(store, mode, run);
+      window.reviewRenameStarted = true;
+      await new Promise(resolve => { window.reviewReleaseRename = resolve; });
+      if (failure === 'quota') throw new DOMException('Injected rename failure', 'QuotaExceededError');
+      return original(store, mode, s => {
+        const req = run(s);
+        s.transaction.abort();
+        return req;
+      });
+    };
+    window.reviewRename = action === 'chapter'
+      ? renameChapter('a', 'Renamed') : renameWorkbook('review-book', 'Renamed');
+    return before;
+  }, { action, failure });
+  await page.waitForFunction(() => window.reviewRenameStarted);
+  expect(await page.evaluate(() => reviewRenameState()), 'pending metadata must not become live').toEqual(before);
+  await page.evaluate(async () => {
+    reviewReleaseRename();
+    await reviewRename;
+    // Repainting and refreshing the journal must still use committed names.
+    renderWorkbooks();
+    wbDraftWrite();
+  });
+  expect(await page.evaluate(() => reviewRenameState()), 'failed rename preserves durable ownership').toEqual(before);
+  expect(await page.evaluate(() => document.getElementById('stat-wb').textContent)).toBe(await page.evaluate(() => t('wbStoreFailed')));
+  expect(await page.evaluate(() => reviewDiskEvents)).toEqual([]);
+  await page.evaluate(async () => {
+    reviewRestoreRenameTx();
     await syncAllToFolder({ cloud: false });
   });
-  expect(await page.evaluate(async () => ({ memory: wbChapter('a').file,
-    durable: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').file,
-    disk: reviewDisk.Review }))).toEqual({ memory: 'a.md', durable: 'a.md',
-    disk: { 'a.md': 'ORIGINAL a', 'b.md': 'ORIGINAL b' } });
+  expect(await page.evaluate(() => reviewRenameState()), 'sync must not create an uncommitted path').toEqual(before);
+  await page.evaluate(async action => {
+    if (action === 'chapter') await renameChapter('a', 'Renamed');
+    else await renameWorkbook('review-book', 'Renamed');
+  }, action);
+  const retried = await page.evaluate(() => reviewRenameState());
+  expect(retried.book).toEqual(retried.storedBook);
+  expect(retried.chapter).toEqual(retried.storedChapter);
+  expect(retried).toMatchObject(action === 'chapter' ? {
+    chapter: { title: 'Renamed', file: 'Renamed.md' }, label: 'Renamed.md',
+    draft: { name: 'Renamed.md', text: 'ORIGINAL a' }, path: 'Review/Renamed.md',
+    disk: { Review: { 'Renamed.md': 'ORIGINAL a', 'b.md': 'ORIGINAL b' } }
+  } : {
+    book: { name: 'Renamed', folder: 'Renamed' }, label: 'a.md',
+    draft: { name: 'a.md', text: 'ORIGINAL a' }, path: 'Renamed/a.md',
+    disk: { Renamed: { 'a.md': 'ORIGINAL a', 'b.md': 'ORIGINAL b' } }
+  });
+  expect(Object.keys(retried.disk)).toEqual([action === 'chapter' ? 'Review' : 'Renamed']);
+  expect(Object.keys(retried.disk[action === 'chapter' ? 'Review' : 'Renamed']).sort()).toEqual(
+    [action === 'chapter' ? 'Renamed.md' : 'a.md', 'b.md'].sort());
+  expect(retried.pending).toEqual([]);
+  expect(retried.pendingRecords).toEqual([]);
 });
+}
+}
 
 test('P2 failed delete leaves both the mirror and local record intact', async ({ page }) => {
   await seed(page);

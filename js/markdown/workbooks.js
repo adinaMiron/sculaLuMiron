@@ -1111,10 +1111,9 @@ async function renameWorkbook(id, preset) {
   const name = (preset != null ? String(preset) : (prompt(t('promptRenameWorkbook'), book.name) || '')).trim();
   if (!name || name === book.name) return;
   const oldFolder = book.folder;
-  book.name = name;
-  book.folder = wbUniqueFolder(name, book.id);
-  book.updated = Date.now();
-  if (!await wbPersist(WB_BOOKS, book)) return;
+  const renamed = { ...book, name, folder: wbUniqueFolder(name, book.id), updated: Date.now() };
+  if (!await wbPersist(WB_BOOKS, renamed)) return;
+  Object.assign(book, { name: renamed.name, folder: renamed.folder, updated: renamed.updated });
   if (book.folder !== oldFolder && wbFolderMode()) {
     let failed = false;
     for (const ch of wbChaptersOf(book.id)) {
@@ -1212,16 +1211,18 @@ async function renameChapter(id, preset) {
   if (!title || title === ch.title) return;
   const book = wbBook(ch.workbookId);
   const oldFile = ch.file;
-  ch.title = title;
-  ch.file = wbUniqueFile(ch.workbookId, title, ch.id);
-  ch.updated = Date.now();
-  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  const renamed = { ...ch, title, file: wbUniqueFile(ch.workbookId, title, ch.id), updated: Date.now() };
+  if (!await wbPersist(WB_CHAPTERS, renamed)) return;
+  Object.assign(ch, { title: renamed.title, file: renamed.file, updated: renamed.updated });
   if (book && ch.file !== oldFile && wbFolderMode()) {
     const result = await wbSaveMirror(book, ch);
     if (result.failed) wbSay(t('wbMirrorFailed'), true);
     else await wbMirrorRemove(book.folder, oldFile);
   }
-  if (ch.id === wbCurrentId) document.getElementById('current-file').textContent = ch.file;
+  if (ch.id === wbCurrentId) {
+    document.getElementById('current-file').textContent = ch.file;
+    wbDraftWrite();
+  }
   renderWorkbooks();
 }
 

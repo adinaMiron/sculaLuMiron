@@ -72,7 +72,7 @@ real Drive account or production service were changed.
   **Required outcome:** Persist chapter text and its pending state consistently, or retain a durable retry/recovery indication and report failure. A reload must not present a changed chapter as already mirrored.  
   **Test:** `preservation.spec.js` — `P2 pending-marker failure remains visible and survives reload`. This is a mirror-tracking defect; the test does not claim IndexedDB lost the text.
 
-- [ ] [ID:idx-rename-store-rollback] **P2 — Failed rename leaves an uncommitted path in memory and subsequent sync creates an extra file.**
+- [x] [ID:idx-rename-store-rollback] **P2 — Failed rename leaves an uncommitted path in memory and subsequent sync creates an extra file.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `renameWorkbook()` and `renameChapter()`, lines 1047–1068 and 1147–1165.  
   **Reproduce:** Reject the chapter rename write, rename A to Renamed, restore storage, and sync. Memory points to `Renamed.md`; IndexedDB still points to `a.md`; both files now exist in the mirror. The workbook variant likewise mutates the live object before persistence succeeds.  
