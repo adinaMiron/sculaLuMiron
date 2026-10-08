@@ -12,8 +12,8 @@ set -Eeuo pipefail
 # Configuration
 # ==============================================================================
 
-REVIEW="docs/reviews/2026-10-07-markdown-review.md"
-BRANCH="fix/review-2026-10-07_markdown_rev"
+REVIEW="docs/reviews/2026-10-08-index-review.md"
+BRANCH="fix/2026-10-08-index-review"
 BASE="main"
 MAX="${MAX_FINDINGS:-20}"
 CREATE_PR="${CREATE_PR:-true}"
