@@ -1,7 +1,7 @@
 /* Chapter Gantt. Read the editor directly so unsaved edits are represented. */
 const GANTT_TASK = /^[ \t]*[-*+][ \t]+\[([ xX])\](?:[ \t]+|$)(.*)$/;
 const GANTT_FLAG = /(^|[\s(\[{])([#$])(\d+)(?=$|[\s)\]},;.!?])/g;
-const GANTT_DATE = /(^|[ \t(])(start|end)@[ \t]*((?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})(?:[ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?|(?:[01]?\d|2[0-3]):[0-5]\d)(?=$|[ \t),;.!?])/giu;
+const GANTT_DATE = /(^|[ \t(])(start|end)@[ \t]*((?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})(?:[ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?|(?:[01]?\d|2[0-3]):[0-5]\d|[^ \t),;!?]*)(?=$|[ \t),;.!?])/giu;
 const GANTT_OWNER_WORD = "[\\p{L}\\p{N}][\\p{L}\\p{N}._'-]{0,20}";
 const GANTT_OWNER_PREFIX = new RegExp('^(' + GANTT_OWNER_WORD + '(?:[ \\t]+' + GANTT_OWNER_WORD + '){0,3})[ \\t]?>>(?=[ \\t])', 'u');
 const GANTT_OWNER_INLINE = new RegExp('>>(' + GANTT_OWNER_WORD + ')(?![\\p{L}\\p{N}._\'-])', 'gu');
@@ -12,8 +12,8 @@ const ganttNode = (tag, cls, value) => { const el = document.createElement(tag);
 
 function ganttDay(value) {
   if (!value) return null;
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const local = value.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?$/);
+  const local = value.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?$/);
   const parts = iso ? [+iso[1], +iso[2], +iso[3]] : local ? [+local[3], +local[2], +local[1]] : null;
   if (!parts) return null;
   const day = Date.UTC(parts[0], parts[1]-1, parts[2]);
@@ -45,15 +45,15 @@ function ganttParse(text) {
       const marks = ScuLaCal.findMarks(body);
       for (const hit of marks) {
         const m = hit.mark, interval = m.endDate !== m.date || !!m.endTime;
-        if (interval && !dates.start) dates.start = m.date + (m.allDay ? '' : ' ' + m.time);
-        if (!dates.end && (interval || m.allDay)) dates.end = m.endDate || m.date;
-        if (!interval && !m.allDay && !dates.start) dates.start = m.date + ' ' + m.time;
+        if (interval && dates.start == null) dates.start = m.date + (m.allDay ? '' : ' ' + m.time);
+        if (dates.end == null && (interval || m.allDay)) dates.end = m.endDate || m.date;
+        if (!interval && !m.allDay && dates.start == null) dates.start = m.date + ' ' + m.time;
       }
       for (let i=marks.length-1; i>=0; i--) body = body.slice(0, marks[i].index) + body.slice(marks[i].index + marks[i].length);
     }
     const plain = [...body.matchAll(/(^|[ \t(])(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})(?=$|[ \t),;.!?])/g)];
-    if (plain.length > 1 && !dates.start) dates.start = plain[0][2];
-    if (plain.length && !dates.end) dates.end = plain[plain.length-1][2];
+    if (plain.length > 1 && dates.start == null) dates.start = plain[0][2];
+    if (plain.length && dates.end == null) dates.end = plain[plain.length-1][2];
     body = body.replace(/(^|[ \t(])(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})(?=$|[ \t),;.!?])/g, '$1');
     const title = body.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target, alias) => alias || target)
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim() || line.trim();
@@ -85,13 +85,20 @@ function paintGantt() {
   for (const task of tasks) {
     task.start = ganttDay(task.dates.start);
     task.end = ganttDay(task.dates.end);
+    if ((task.dates.start != null && task.start == null) || (task.dates.end != null && task.end == null)) {
+      task.problem = t('ganttInvalidDate', task.title);
+    } else if (task.start != null && task.end != null && task.end < task.start) {
+      task.problem = t('ganttReversedRange', task.title);
+    }
+    if (task.problem) { problems.push(task.problem); continue; }
     task.inferred = task.start == null && task.end == null;
     if (task.start == null) task.start = task.end == null ? today : task.end;
     if (task.end == null) task.end = task.start;
-    if (task.end < task.start) task.end = task.start;
   }
-  const min = Math.min(...tasks.map(x => x.start)) - GANTT_DAY_MS;
-  const max = Math.max(...tasks.map(x => x.end)) + GANTT_DAY_MS;
+  ganttEl('gantt-notice').textContent = problems.join(' ');
+  const scheduled = tasks.filter(task => !task.problem);
+  const min = (scheduled.length ? Math.min(...scheduled.map(x => x.start)) : today) - GANTT_DAY_MS;
+  const max = (scheduled.length ? Math.max(...scheduled.map(x => x.end)) : today) + GANTT_DAY_MS;
   const count = Math.round((max-min)/GANTT_DAY_MS) + 1;
   const step = count <= 60 ? 38 : count <= 180 ? 23 : Math.max(7, Math.floor(3600/count));
   const width = count * step;
@@ -108,14 +115,16 @@ function paintGantt() {
     const label = ganttNode('div', 'gantt-label');
     const link = ganttNode('a', '', task.title); link.href = '#'; link.title = task.title; link.addEventListener('click', e => { e.preventDefault(); ganttOpenLine(task.lineIndex); });
     label.append(link);
-    const metadata = [task.owners.join(', '), task.importance && '!' + task.importance, task.dates.start && t('ganttStart') + ': ' + task.dates.start, task.dates.end && t('ganttEnd') + ': ' + task.dates.end, task.inferred && t('ganttNoDate'), task.deps.length && t('ganttDepends') + ': ' + task.deps.map(n => '#' + n).join(', ')].filter(Boolean).join(' · ');
+    const metadata = [task.problem, task.owners.join(', '), task.importance && '!' + task.importance, task.dates.start && t('ganttStart') + ': ' + task.dates.start, task.dates.end && t('ganttEnd') + ': ' + task.dates.end, task.inferred && t('ganttNoDate'), task.deps.length && t('ganttDepends') + ': ' + task.deps.map(n => '#' + n).join(', ')].filter(Boolean).join(' · ');
     label.append(ganttNode('small', '', metadata)); label.title = metadata; labels.append(label);
     const row = ganttNode('div', 'gantt-row'); row.style.width = width + 'px'; row.style.backgroundSize = step + 'px 100%';
+    chart.append(row);
+    if (task.problem) { rows.push(null); continue; }
     const bar = ganttNode('div', 'gantt-bar' + (task.done ? ' done' : '') + (task.importance ? ' ' + task.importance : '') + (task.inferred ? ' inferred' : ''));
     const left = (task.start-min)/GANTT_DAY_MS*step, barWidth = ((task.end-task.start)/GANTT_DAY_MS+1)*step;
     bar.style.left = left + 'px'; bar.style.width = barWidth + 'px'; bar.title = task.title + '\n' + metadata;
     if (barWidth >= 70) bar.append(ganttNode('span', '', task.title));
-    row.append(bar); chart.append(row); rows.push({ left, right:left+barWidth, y:44+index*68+29 });
+    row.append(bar); rows.push({ left, right:left+barWidth, y:44+index*68+29 });
   }
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('gantt-arrows'); svg.setAttribute('width', width); svg.setAttribute('height', tasks.length*68);
@@ -125,7 +134,9 @@ function paintGantt() {
   tasks.forEach((task, index) => task.deps.forEach(number => {
     const source = definitions.get(number), from = tasks.indexOf(source);
     if (from < 0 || from === index) return;
-    const a = rows[from], b = rows[index], sx = a.right, ex = b.left, sy = a.y-44, ey = b.y-44;
+    const a = rows[from], b = rows[index];
+    if (!a || !b) return;
+    const sx = a.right, ex = b.left, sy = a.y-44, ey = b.y-44;
     const path = document.createElementNS(svg.namespaceURI, 'path');
     const bend = ex > sx+20 ? sx + Math.max(12, (ex-sx)/2) : sx+14;
     path.setAttribute('d', `M${sx} ${sy} H${bend} V${ey} H${ex}`);

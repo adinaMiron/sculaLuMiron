@@ -65,10 +65,84 @@ for (const [timezoneId, cases] of [
   });
 }
 
-test('Gantt reports invalid and reversed ranges instead of inventing valid bars', async ({ page }) => {
+test('Gantt reports invalid and reversed ranges instead of inventing valid bars', { tag: '@idx-gantt-invalid-ranges' }, async ({ page }) => {
   await edit(page, '- [ ] Invalid start@2026-02-30\n- [ ] Reversed start@2026-10-10 end@2026-10-01');
   await page.evaluate(() => openGantt());
   await expect(page.locator('#gantt-notice')).not.toBeEmpty();
+  await expect(page.locator('.gantt-bar')).toHaveCount(0);
+  await expect(page.locator('.gantt-label a')).toHaveText(['Invalid', 'Reversed']);
+  await expect(page.locator('.gantt-row')).toHaveCount(2);
+  await expect(page.locator('.gantt-label small').nth(0)).toContainText('2026-02-30');
+  await expect(page.locator('.gantt-label small').nth(1)).toContainText('2026-10-10');
+  await expect(page.locator('.gantt-label small').nth(1)).toContainText('2026-10-01');
+  for (const language of ['en', 'ro']) {
+    await page.evaluate(language => window.dispatchEvent(new CustomEvent('scula-ui-lang', { detail: language })), language);
+    const messages = await page.evaluate(() => [t('ganttInvalidDate', 'Invalid'), t('ganttReversedRange', 'Reversed')]);
+    await expect(page.locator('#gantt-notice')).toHaveText(messages.join(' '));
+    for (const [index, message] of messages.entries()) {
+      await expect(page.locator('.gantt-label small').nth(index)).toContainText(message);
+    }
+    await expect(page.locator('.gantt-bar')).toHaveCount(0);
+  }
+  // Invalid tasks remain reachable so their original source can be corrected.
+  await page.locator('.gantt-label a').nth(1).click();
+  expect(await page.evaluate(() => editor.selectionStart)).toBe(await page.evaluate(() => editor.value.indexOf('- [ ] Reversed')));
+  await edit(page, '- [ ] Corrected start@2026-10-01 end@2026-10-10');
+  await page.evaluate(() => openGantt());
+  await expect(page.locator('#gantt-notice')).toBeEmpty();
+  await expect(page.locator('.gantt-bar')).toHaveCount(1);
+});
+
+test('Gantt rejects supplied invalid dates even when the other endpoint is valid', { tag: '@idx-gantt-invalid-ranges' }, async ({ page }) => {
+  for (const value of ['2026-02-29', '2026-04-31', '2026-00-01', '2026-13-01', '2026-01-00', '30.02.2026', '31/04/2026', '2026-02-30 09:30', '2026-10-08junk', '08/10/2026junk', 'not-a-date', '09:30', '']) {
+    for (const endpoint of ['start', 'end']) {
+      const other = endpoint === 'start' ? 'end' : 'start';
+      await edit(page, `- [ ] Bad ${other}@2026-10-08 ${endpoint}@${value}`);
+      const result = await page.evaluate(() => {
+        paintGantt();
+        return { notice: document.getElementById('gantt-notice').textContent,
+          expected: t('ganttInvalidDate', 'Bad'), bars: document.querySelectorAll('.gantt-bar').length,
+          metadata: document.querySelector('.gantt-label small').textContent, noDate: t('ganttNoDate') };
+      });
+      expect(result.notice, `${endpoint}@${value}`).toBe(result.expected);
+      expect(result.bars, `${endpoint}@${value}`).toBe(0);
+      expect(result.metadata).not.toContain(result.noDate);
+    }
+  }
+  for (const source of ['- [ ] Bad start@) 2026-10-08 2026-10-09', '- [ ] Bad end@) @2026-10-08']) {
+    await edit(page, source);
+    await page.evaluate(() => paintGantt());
+    await expect(page.locator('#gantt-notice')).not.toBeEmpty();
+    await expect(page.locator('.gantt-bar')).toHaveCount(0);
+  }
+});
+
+test('Gantt keeps valid schedules and arrows when invalid ranges share the chart', { tag: '@idx-gantt-invalid-ranges' }, async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.clock.setFixedTime(new Date('2026-10-09T09:00:00Z'));
+  await edit(page, '- [ ] Invalid #1 start@2026-01-01 end@2026-02-30\n- [ ] Valid #2 start@2026-10-08 end@2026-10-10\n- [ ] Reversed #3 $2 start@2026-10-10 end@2026-10-01\n- [ ] End only $1 $2 end@2026-10-09\n- [ ] Undated $3 $2');
+  const result = await page.evaluate(() => {
+    paintGantt();
+    const step = parseFloat(document.querySelector('.gantt-day').style.width);
+    return { rows: [...document.querySelectorAll('.gantt-row')].map(row => row.querySelectorAll('.gantt-bar').length),
+      durations: [...document.querySelectorAll('.gantt-bar')].map(bar => parseFloat(bar.style.width) / step),
+      positions: [...document.querySelectorAll('.gantt-bar')].map(bar => parseFloat(bar.style.left)),
+      inferred: [...document.querySelectorAll('.gantt-bar')].map(bar => bar.classList.contains('inferred')),
+      days: document.querySelectorAll('.gantt-day').length, paths: document.querySelectorAll('.gantt-arrows > path').length };
+  });
+  expect(result.rows).toEqual([0, 1, 0, 1, 1]);
+  expect(result.durations).toEqual([3, 1, 1]);
+  expect(result.positions[1]).toBe(result.positions[2]);
+  expect(result.inferred).toEqual([false, false, true]);
+  expect(result.days).toBe(5);
+  expect(result.paths).toBe(2);
+  expect(errors).toEqual([]);
+  // Full timestamps and local date syntax remain valid single-day schedules.
+  await edit(page, '- [ ] Start only start@08.10.2026 09:30\n- [ ] End only end@2026-10-08 10:30');
+  await page.evaluate(() => paintGantt());
+  await expect(page.locator('#gantt-notice')).toBeEmpty();
+  await expect(page.locator('.gantt-bar')).toHaveCount(2);
 });
 
 test('Gantt excludes tasks inside a longer enclosing code fence', async ({ page }) => {

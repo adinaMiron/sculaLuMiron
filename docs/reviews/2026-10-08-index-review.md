@@ -109,7 +109,7 @@ real Drive account or production service were changed.
   **Required outcome:** Derive today's civil date locally while retaining timezone-independent day-distance calculations. Verify both sides of midnight and positive/negative offsets.  
   **Test:** `computations.spec.js` — `Gantt today uses the local day around midnight`.
 
-- [ ] [ID:idx-gantt-invalid-ranges] **P2 — Invalid and reversed Gantt dates silently become plausible bars.**
+- [x] [ID:idx-gantt-invalid-ranges] **P2 — Invalid and reversed Gantt dates silently become plausible bars.**
 
   **Location:** [gantt.js](../../js/markdown/gantt.js), `ganttDay()` and `paintGantt()`, lines 13–21 and 86–94.  
   **Reproduce:** `start@2026-02-30` is treated like no date and placed today; `start@2026-10-10 end@2026-10-01` is shortened to October 10. The notice is empty and the metadata still shows the supplied dates. The validator itself correctly rejects impossible dates, but rendering hides that rejection.  

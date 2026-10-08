@@ -326,6 +326,7 @@ const I18N = {
     ganttBtn:"▤ Gantt", ganttTip:"Arată diagrama Gantt pentru sarcinile din acest capitol",
     ganttTitle:"Diagrama Gantt a capitolului", ganttHelp:"Pune #1 pe sarcina de care depind altele și $1 pe fiecare sarcină dependentă. Date: start@2026-09-24 și end@2026-09-30.",
     ganttTasks:"Sarcini", ganttEmpty:"Nu există sarcini în acest capitol. Adaugă o linie „- [ ]”.", ganttNoDate:"fără dată · afișată astăzi", ganttStart:"Început", ganttEnd:"Sfârșit", ganttDepends:"Depinde de", ganttMissing:n=>`Nu există o sarcină #${n} în acest capitol.`, ganttDuplicate:n=>`Marcajul #${n} apare pe mai multe sarcini.`,
+    ganttInvalidDate:title=>`Dată invalidă pentru „${title}”; corectează data pentru a afișa bara.`, ganttReversedRange:title=>`Sfârșitul este înaintea începutului pentru „${title}”; corectează intervalul pentru a afișa bara.`,
     calSynced:([n, gone]) => (n === 1 ? "1 dată trimisă în calendar" : n + " date trimise în calendar") +
                              (gone ? ", " + gone + " șterse" : "") + ".",
     calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
@@ -788,6 +789,7 @@ const I18N = {
     ganttBtn:"▤ Gantt", ganttTip:"Show this chapter's tasks as a Gantt chart",
     ganttTitle:"Chapter Gantt chart", ganttHelp:"Put #1 on a prerequisite task and $1 on each task that depends on it. Dates: start@2026-09-24 and end@2026-09-30.",
     ganttTasks:"Tasks", ganttEmpty:"No tasks in this chapter. Add a “- [ ]” line.", ganttNoDate:"undated · shown today", ganttStart:"Start", ganttEnd:"End", ganttDepends:"Depends on", ganttMissing:n=>`No task #${n} exists in this chapter.`, ganttDuplicate:n=>`Marker #${n} is on multiple tasks.`,
+    ganttInvalidDate:title=>`Invalid date for “${title}”; correct the date to show its bar.`, ganttReversedRange:title=>`End precedes start for “${title}”; correct the range to show its bar.`,
     calSynced:([n, gone]) => (n === 1 ? "1 date sent to the calendar" : n + " dates sent to the calendar") +
                              (gone ? ", " + gone + " removed" : "") + ".",
     calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
