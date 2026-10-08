@@ -1412,14 +1412,32 @@
   @media (max-width: 420px) {
     .logo span { display: none; }
     #status-bar span:nth-child(3) { display: none; }  /* drop char count */
-    .btn { font-size: 10px; padding: 7px 4px; letter-spacing: 0; }
+    .btn { padding: 7px 4px; letter-spacing: 0; }
+  }
+
+  /* Actual hitboxes, including compact actions and native color inputs.
+     Keep formatting inside its bounded scroller to preserve writing space. */
+  @media (max-width: 1024px) {
+    header { max-height: 25dvh; overflow-y: auto; }
+    .btn, .tb-btn, .tb-select, .panel-close {
+      min-width: 44px;
+      min-height: 44px;
+      flex-shrink: 0;
+    }
+    .toolbar, .toolbar-groups { gap: 4px; }
+    .tb-color-control { padding-top: 0; padding-bottom: 0; }
+    .tb-color-control input[type="color"] { width: 44px; height: 44px; flex-shrink: 0; }
+    .toolbar-filters { padding-top: 0; padding-bottom: 0; }
   }
 
   /* A keyboard or short landscape viewport also needs room below the chrome.
      Scroll header actions rather than letting them consume the writing area. */
   @media (max-width: 1024px) and (max-height: 500px) {
-    header { max-height: 20dvh; overflow-y: auto; }
-    .toolbar-groups { max-height: max(32px, 10dvh); }
+    header { max-height: max(56px, 17dvh); }
+    #wb-save-sync-row { padding-top: 2px; padding-bottom: 2px; }
+    .toolbar { padding-top: 4px; padding-bottom: 4px; }
+    .toolbar-groups { max-height: max(46px, 10dvh); }
+    .pane-header { display: none; }
   }
 
   /* Landscape phones: reclaim vertical space */

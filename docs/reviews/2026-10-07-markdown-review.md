@@ -185,7 +185,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Improve functional text/status colors against their actual backgrounds and retain distinct importance/error meaning. Verify normal, hover, selected and warning states; keep genuinely disabled/decorative elements separate from active labels.
 
-- [ ] [ID:md-touch-targets] **P2 — Frequently used mobile controls are substantially smaller than the repository's 44px touch-target floor.**
+- [x] [ID:md-touch-targets] **P2 — Frequently used mobile controls are substantially smaller than the repository's 44px touch-target floor.**
 
   **Location:** [index.html](../../index.html), phone `.btn`, `.tb-btn`, `.tb-select`, `.tb-color-control input` and close-control rules.
 
