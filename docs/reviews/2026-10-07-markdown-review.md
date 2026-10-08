@@ -225,7 +225,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Provide accessible names/semantics, focus containment and return to the invoking control for ordinary dialogs. Verify Tab/Shift+Tab, close, stacked UI and screen-reader navigation.
 
-- [ ] [ID:md-markdown-export-shortcut] **P2 — The documented Ctrl+Shift+S “export file” shortcut has no implementation.**
+- [x] [ID:md-markdown-export-shortcut] **P2 — The documented Ctrl+Shift+S “export file” shortcut has no implementation.**
 
   **Location:** [events.js](../../js/markdown/events.js), save shortcut handling; [i18n.js](../../js/markdown/i18n.js), help lines 447 and 898; [README.md](../../README.md), editor shortcut table.
 
