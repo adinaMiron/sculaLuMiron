@@ -249,15 +249,17 @@ function wbDb() {
     r.onerror = () => rej(r.error);
   });
 }
-function wbTx(store, mode, run) {
+function wbTx(store, mode, run, scope) {
   return wbDb().then(db => new Promise((res, rej) => {
     // Chapter saves can commit their mirror retry marker in the same write.
-    const stores = store === WB_CHAPTERS && mode === 'readwrite' ? [WB_CHAPTERS, WB_PENDING] : store;
+    const stores = scope || (store === WB_CHAPTERS && mode === 'readwrite' ? [WB_CHAPTERS, WB_PENDING] : store);
     const tx = db.transaction(stores, mode);
-    const req = run(tx.objectStore(store));
+    let req;
     tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
     tx.onerror = () => { db.close(); rej(tx.error); };
     tx.onabort = () => { db.close(); rej(tx.error); };
+    try { req = run(tx.objectStore(store)); }
+    catch (e) { tx.abort(); db.close(); rej(e); }
   }));
 }
 const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
@@ -1132,13 +1134,11 @@ async function deleteWorkbook(id) {
   if (!book) return;
   if (!confirm(t('confirmDeleteWorkbook', book.name))) return;
   const chapters = wbChaptersOf(book.id);
+  if (!await wbDeleteLocal(chapters, book)) return;
   for (const ch of chapters) {
-    try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
-    await wbPendingClear(ch.id);
     await wbMirrorRemove(book.folder, ch.file);
   }
   await wbMirrorRemove(book.folder, null);
-  try { await wbDrop(WB_BOOKS, book.id); } catch (e) {}
   // A grave per record, so the delete travels instead of being undone by the
   // next sync pulling it back from another browser — docs/FEATURES.md § O.
   for (const ch of chapters) await cloudTombstone(ch.id);
@@ -1226,6 +1226,30 @@ async function renameChapter(id, preset) {
   renderWorkbooks();
 }
 
+// Commit all local deletions before removing mirrors or publishing graves.
+// A workbook failure must roll back its children and their retry markers too.
+async function wbDeleteLocal(chapters, book) {
+  try {
+    const store = book ? WB_BOOKS : WB_CHAPTERS;
+    const scope = book ? [WB_BOOKS, WB_CHAPTERS, WB_PENDING] : [WB_CHAPTERS, WB_PENDING];
+    await wbTx(store, 'readwrite', s => {
+      const children = s.transaction.objectStore(WB_CHAPTERS);
+      const pending = s.transaction.objectStore(WB_PENDING);
+      for (const ch of chapters) {
+        children.delete(ch.id);
+        pending.delete(ch.id);
+      }
+      if (book) s.delete(book.id);
+    }, scope);
+  } catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
+  for (const ch of chapters) {
+    wbChapterVersions.delete(ch.id);
+    wbConflictCopies.delete(ch.id);
+    wbPendingIds.delete(ch.id);
+  }
+  return true;
+}
+
 async function deleteChapter(id) {
   const ch = wbChapter(id);
   if (!ch) return;
@@ -1233,8 +1257,7 @@ async function deleteChapter(id) {
   const book = wbBook(ch.workbookId);
   const wbPanel = document.getElementById('wb-panel');
   const keepOpen = !isSmallScreen() && !wbPanel.classList.contains('collapsed');
-  try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
-  await wbPendingClear(ch.id);
+  if (!await wbDeleteLocal([ch])) return;
   if (book) await wbMirrorRemove(book.folder, ch.file);
   wbChapters = wbChapters.filter(c => c.id !== ch.id);
   if (ch.id === wbCurrentId) detachChapter();

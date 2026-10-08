@@ -79,7 +79,7 @@ real Drive account or production service were changed.
   **Required outcome:** Commit staged metadata only after storage accepts it, or roll it back on failure; rendering, draft names and folder writes must agree with durable ownership.  
   **Test:** `preservation.spec.js` — `P2 failed rename cannot redirect a subsequent save into a new uncommitted filename`; workbook path is additionally inspected in source.
 
-- [ ] [ID:idx-delete-store-failure] **P2 — Failed local deletion still removes the mirror, hides the chapter and creates a cloud tombstone.**
+- [x] [ID:idx-delete-store-failure] **P2 — Failed local deletion still removes the mirror, hides the chapter and creates a cloud tombstone.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `deleteWorkbook()` and `deleteChapter()`, lines 1070–1092 and 1167–1192.  
   **Reproduce:** Reject the chapter-store delete and confirm deleting B. B remains in IndexedDB, disappears from the current tree, and its mirror is removed. The code catches the failure and continues through tombstoning and the success message. Workbook deletion can similarly proceed after only some child operations succeed.  

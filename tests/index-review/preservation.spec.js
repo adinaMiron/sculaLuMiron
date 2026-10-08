@@ -271,7 +271,7 @@ test(`P2 failed rename cannot redirect a subsequent save into a new uncommitted 
 }
 }
 
-test('P2 failed delete leaves both the mirror and local record intact', async ({ page }) => {
+test('P2 failed delete leaves both the mirror and local record intact', { tag: '@idx-delete-store-failure' }, async ({ page }) => {
   await seed(page);
   await mountDisk(page);
   page.on('dialog', d => d.accept());
@@ -285,6 +285,96 @@ test('P2 failed delete leaves both the mirror and local record intact', async ({
     local: (await wbAll(WB_CHAPTERS)).some(c => c.id === 'b'), visible: !!wbChapter('b') }));
   expect(state).toEqual({ disk: 'ORIGINAL b', local: true, visible: true });
 });
+
+for (const scenario of [
+  { action: 'chapter', target: 'a', store: 'chapters', key: 'a' },
+  { action: 'chapter', target: 'b', store: 'chapters', key: 'b' },
+  { action: 'chapter', target: 'a', store: 'pending', key: 'a' },
+  { action: 'workbook', target: 'review-book', store: 'chapters', key: 'a' },
+  { action: 'workbook', target: 'review-book', store: 'chapters', key: 'b' },
+  { action: 'workbook', target: 'review-book', store: 'pending', key: 'b' },
+  { action: 'workbook', target: 'review-book', store: 'workbooks', key: 'review-book' }
+]) {
+for (const failure of ['throw', 'abort']) {
+test(`Failed ${scenario.action} deletion rolls back and can retry (${scenario.store}/${scenario.key}, ${failure})`, { tag: '@idx-delete-store-failure' }, async ({ page }) => {
+  await seed(page);
+  await mountDisk(page);
+  page.on('dialog', d => d.accept());
+  await page.evaluate(async () => {
+    for (const ch of wbChapters) await wbPendingMark(ch);
+    window.reviewDeleteGraves = [];
+    window.reviewDeleteSyncs = 0;
+    const tombstone = cloudTombstone;
+    cloudTombstone = async id => { reviewDeleteGraves.push(id); await tombstone(id); };
+    cloudAutoSync = () => { reviewDeleteSyncs++; };
+    window.reviewDeleteState = async () => ({
+      books: structuredClone(wbBooks), chapters: structuredClone(wbChapters),
+      storedBooks: await wbAll(WB_BOOKS), storedChapters: await wbAll(WB_CHAPTERS),
+      pending: [...wbPendingIds], storedPending: await wbAll(WB_PENDING),
+      current: wbCurrentId, dirty: wbDirty, editor: editor.value, draft: wbDraftRead(),
+      undo: structuredClone(undoStack), redo: structuredClone(redoStack),
+      tree: document.getElementById('wb-tree').innerHTML,
+      disk: structuredClone(reviewDisk), events: structuredClone(reviewDiskEvents),
+      graves: { ...gsGraves }, storedGraves: await wbMetaGet('deleted'),
+      tombstones: [...reviewDeleteGraves], syncs: reviewDeleteSyncs,
+      versions: [...wbChapterVersions]
+    });
+  });
+  await edit(page, 'UNSAVED DELETE RECOVERY');
+  const before = await page.evaluate(async ({ store, key, failure }) => {
+    clearTimeout(wbSaveTimer);
+    clearTimeout(wbDraftTimer);
+    wbDraftWrite();
+    const before = await reviewDeleteState();
+    const original = IDBObjectStore.prototype.delete;
+    window.reviewRestoreDelete = () => { IDBObjectStore.prototype.delete = original; };
+    IDBObjectStore.prototype.delete = function(id) {
+      if (this.name !== store || id !== key) return original.call(this, id);
+      window.reviewDeleteFailed = true;
+      if (failure === 'throw') throw new DOMException('Injected delete failure', 'AbortError');
+      const req = original.call(this, id);
+      // Abort after earlier sibling/marker deletes have already been queued.
+      this.transaction.abort();
+      return req;
+    };
+    return before;
+  }, { ...scenario, failure });
+  await page.evaluate(async ({ action, target }) => {
+    if (action === 'chapter') await deleteChapter(target);
+    else await deleteWorkbook(target);
+  }, scenario);
+  expect(await page.evaluate(() => reviewDeleteFailed)).toBe(true);
+  expect(await page.evaluate(() => reviewDeleteState())).toEqual(before);
+  expect(await page.locator('#stat-wb').textContent()).toBe(await page.evaluate(() => t('wbStoreFailed')));
+
+  await page.evaluate(async ({ action, target }) => {
+    reviewRestoreDelete();
+    if (action === 'chapter') await deleteChapter(target);
+    else await deleteWorkbook(target);
+  }, scenario);
+  const after = await page.evaluate(() => reviewDeleteState());
+  const removed = scenario.action === 'chapter' ? [scenario.target] : ['a', 'b', 'review-book'];
+  const remaining = scenario.action === 'workbook' ? [] : [scenario.target === 'a' ? 'b' : 'a'];
+  expect(after.chapters.map(ch => ch.id)).toEqual(remaining);
+  expect(after.storedChapters.map(ch => ch.id)).toEqual(remaining);
+  expect(after.books.map(book => book.id)).toEqual(scenario.action === 'workbook' ? [] : ['review-book']);
+  expect(after.storedBooks.map(book => book.id)).toEqual(after.books.map(book => book.id));
+  expect(after.pending).toEqual(remaining);
+  expect(after.storedPending.map(record => record.chapterId)).toEqual(remaining);
+  expect(after.tombstones).toEqual(removed);
+  expect(Object.keys(after.graves).sort()).toEqual([...removed].sort());
+  expect(after.storedGraves).toEqual(after.graves);
+  expect(after.syncs).toBe(1);
+  expect(after.current).toBe(scenario.action === 'chapter' && scenario.target === 'b' ? 'a' : null);
+  expect(after.editor).toBe('UNSAVED DELETE RECOVERY');
+  expect(after.disk).toEqual(scenario.action === 'workbook' ? {} : {
+    Review: { [remaining[0] + '.md']: 'ORIGINAL ' + remaining[0] }
+  });
+  expect(after.versions.some(([id]) => removed.includes(id))).toBe(false);
+  expect(await page.locator('#stat-wb').textContent()).toBe(await page.evaluate(() => t('wbRemoved')));
+});
+}
+}
 
 test('P1 folder sync cannot mirror a stale other-tab revision', { tag: '@idx-stale-folder-mirror' }, async ({ page }) => {
   await seed(page);
