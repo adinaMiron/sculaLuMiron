@@ -111,19 +111,82 @@ test('New waits for an already-running flush and saves edits typed during it', {
   });
 });
 
-test('P2 pending-marker failure remains visible and survives reload', async ({ page }) => {
+for (const failure of ['abort', 'request error']) {
+test(`P2 pending-marker failure remains visible and survives reload (${failure})`, { tag: '@idx-pending-write-failure' }, async ({ page }) => {
   await seed(page);
+  await mountDisk(page);
   await edit(page, 'CHANGED SINCE DISK SAVE');
-  await page.evaluate(async () => {
-    const original = wbTx;
-    wbTx = (store, mode, run) => store === WB_PENDING && mode === 'readwrite'
-      ? Promise.reject(new DOMException('Injected pending failure', 'QuotaExceededError')) : original(store, mode, run);
-    await flushChapter();
-  });
+  const result = await page.evaluate(async failure => {
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(value, ...args) {
+      const req = original.call(this, value, ...args);
+      if (this.name === WB_PENDING) {
+        window.reviewPendingWriteFailed = true;
+        if (failure === 'abort') this.transaction.abort();
+        // A duplicate key produces a real failed request and aborts the write.
+        else this.add(value);
+      }
+      return req;
+    };
+    const saved = await flushChapter();
+    return { saved, injected: reviewPendingWriteFailed, dirty: wbDirty,
+      draft: wbDraftRead(), memory: wbChapter('a').content,
+      stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content,
+      pending: await wbAll(WB_PENDING),
+      errorShown: document.getElementById('stat-wb').textContent === t('wbStoreFailed'),
+      disk: reviewDisk.Review['a.md'] };
+  }, failure);
+  expect(result).toMatchObject({ saved: false, injected: true, dirty: true,
+    draft: { id: 'a', text: 'CHANGED SINCE DISK SAVE', dirty: true },
+    memory: 'ORIGINAL a', stored: 'ORIGINAL a', pending: [],
+    errorShown: true, disk: 'ORIGINAL a' });
   await page.reload();
-  await page.waitForFunction(() => wbDraftReady);
+  await page.waitForFunction(() => wbDraftReady && !wbDirty);
   await expect(page.locator('#editor')).toHaveValue('CHANGED SINCE DISK SAVE');
   expect(await page.evaluate(() => [...wbPendingIds]), 'Save all modified must still find the changed chapter').toContain('a');
+  expect(await page.evaluate(async () => ({
+    text: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content,
+    pending: await wbAll(WB_PENDING)
+  }))).toMatchObject({ text: 'CHANGED SINCE DISK SAVE',
+    pending: [{ chapterId: 'a', content: 'CHANGED SINCE DISK SAVE' }] });
+  await mountDisk(page);
+  await page.evaluate(() => saveAllModifiedChapters());
+  expect(await page.evaluate(async () => ({ disk: reviewDisk.Review['a.md'],
+    pending: [...wbPendingIds], records: await wbAll(WB_PENDING) }))).toEqual({
+    disk: 'CHANGED SINCE DISK SAVE', pending: [], records: []
+  });
+});
+}
+
+test('Pending-marker retry keeps the previous revision until both writes commit', { tag: '@idx-pending-write-failure' }, async ({ page }) => {
+  await seed(page);
+  await edit(page, 'FIRST PENDING REVISION');
+  expect(await page.evaluate(() => flushChapter())).toBe(true);
+  await edit(page, 'SECOND PENDING REVISION');
+  const failed = await page.evaluate(async () => {
+    const original = IDBObjectStore.prototype.put;
+    window.reviewRestorePendingPut = () => { IDBObjectStore.prototype.put = original; };
+    IDBObjectStore.prototype.put = function(value, ...args) {
+      const req = original.call(this, value, ...args);
+      if (this.name === WB_PENDING) this.transaction.abort();
+      return req;
+    };
+    return { saved: await flushChapter(), dirty: wbDirty,
+      stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content,
+      records: await wbAll(WB_PENDING), pending: [...wbPendingIds] };
+  });
+  expect(failed).toMatchObject({ saved: false, dirty: true,
+    stored: 'FIRST PENDING REVISION', pending: ['a'],
+    records: [{ chapterId: 'a', content: 'FIRST PENDING REVISION' }] });
+  const retried = await page.evaluate(async () => {
+    reviewRestorePendingPut();
+    return { saved: await flushChapter(), dirty: wbDirty,
+      stored: (await wbAll(WB_CHAPTERS)).find(c => c.id === 'a').content,
+      records: await wbAll(WB_PENDING) };
+  });
+  expect(retried).toMatchObject({ saved: true, dirty: false,
+    stored: 'SECOND PENDING REVISION',
+    records: [{ chapterId: 'a', content: 'SECOND PENDING REVISION' }] });
 });
 
 test('P2 failed rename cannot redirect a subsequent save into a new uncommitted filename', async ({ page }) => {

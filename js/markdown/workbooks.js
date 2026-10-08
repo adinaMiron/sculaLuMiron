@@ -251,7 +251,9 @@ function wbDb() {
 }
 function wbTx(store, mode, run) {
   return wbDb().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(store, mode);
+    // Chapter saves can commit their mirror retry marker in the same write.
+    const stores = store === WB_CHAPTERS && mode === 'readwrite' ? [WB_CHAPTERS, WB_PENDING] : store;
+    const tx = db.transaction(stores, mode);
     const req = run(tx.objectStore(store));
     tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
     tx.onerror = () => { db.close(); rej(tx.error); };
@@ -276,7 +278,7 @@ const wbDrop = async (store, k) => {
 const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
-async function wbPersist(store, value) {
+async function wbPersist(store, value, pending = false) {
   try {
     if (store !== WB_CHAPTERS) { await wbPut(store, value); return true; }
     const saved = { ...value };
@@ -289,7 +291,11 @@ async function wbPersist(store, value) {
     await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
       const req = chapters.get(saved.id);
       req.onsuccess = () => {
-        if (wbChapterVersion(req.result) === expected) { chapters.put(saved); return; }
+        if (wbChapterVersion(req.result) === expected) {
+          chapters.put(saved);
+          if (pending) chapters.transaction.objectStore(WB_PENDING).put(wbPendingRecord(saved));
+          return;
+        }
         const previous = wbConflictCopies.get(saved.id);
         if (previous && previous.version === conflictVersion) conflict = previous.chapter;
         else {
@@ -303,7 +309,10 @@ async function wbPersist(store, value) {
         }
         // Preserve both texts before reporting failure, even if this tab closes.
         createdConflict = conflict !== (previous && previous.chapter);
-        if (createdConflict) chapters.add(conflict);
+        if (createdConflict) {
+          chapters.add(conflict);
+          chapters.transaction.objectStore(WB_PENDING).put(wbPendingRecord(conflict));
+        }
       };
       return req;
     });
@@ -312,7 +321,7 @@ async function wbPersist(store, value) {
       if (createdConflict) {
         wbChapters.push({ ...conflict });
         wbChapterVersions.set(conflict.id, wbChapterVersion(conflict));
-        await wbPendingMark(conflict);
+        wbPendingIds.add(conflict.id);
       }
       renderWorkbooks();
       wbDraftWrite();
@@ -320,6 +329,7 @@ async function wbPersist(store, value) {
       return false;
     }
     wbChapterVersions.set(saved.id, wbChapterVersion(saved));
+    if (pending) wbPendingIds.add(saved.id);
     wbRecordResponsibles(saved.content);
     return true;
   }
@@ -332,9 +342,12 @@ async function wbPersist(store, value) {
    their .md file was last written — in memory and in the `pending` store,
    so the list survives a reload. A marker is dropped when that chapter's
    file is written by saveToWorkbook() or saveAllModifiedChapters(). */
+function wbPendingRecord(ch) {
+  return { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() };
+}
 async function wbPendingMark(ch) {
   wbPendingIds.add(ch.id);
-  try { await wbPut(WB_PENDING, { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() }); }
+  try { await wbPut(WB_PENDING, wbPendingRecord(ch)); }
   catch (e) {}
 }
 async function wbPendingClear(id, saved) {
@@ -1449,13 +1462,12 @@ async function flushChapter(force = false) {
   wbDirty = true;
   wbDraftWrite();            // keep recovery even if the store rejects this write
   wbFlushPromise = (async () => {
-    if (!await wbPersist(WB_CHAPTERS, saved)) return false;
+    const wasPending = wbPendingIds.has(ch.id);
+    if (!await wbPersist(WB_CHAPTERS, saved, true)) return false;
     Object.assign(ch, saved);
     // Typing while the write was in flight still needs its own save.
     if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
     wbDraftWrite();
-    const wasPending = wbPendingIds.has(ch.id);
-    await wbPendingMark(saved);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot
     if (!wbDirty) wbSay(t('wbAutosaved'));
     cloudAutoSync();                      // and, debounced, up to Drive — § O

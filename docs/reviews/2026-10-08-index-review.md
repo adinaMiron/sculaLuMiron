@@ -65,7 +65,7 @@ real Drive account or production service were changed.
   **Required outcome:** Validate/reload the authoritative revision before mirroring each chapter, including Save all modified, and protect against another write during the operation. Preserve newer mirror content and correct pending markers.  
   **Test:** `preservation.spec.js` — `P1 folder sync cannot mirror a stale other-tab revision`.
 
-- [ ] [ID:idx-pending-write-failure] **P2 — A failed pending-marker write is silently forgotten after reload.**
+- [x] [ID:idx-pending-write-failure] **P2 — A failed pending-marker write is silently forgotten after reload.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbPendingMark()` at lines 335–339 and `flushChapter()`.  
   **Reproduce:** Allow the chapter text write but reject writes to `WB_PENDING`; edit and flush, then reload. The changed text survives, but `wbPendingIds` is empty. Save all modified can therefore skip the stale folder copy. The empty catch hides the loss of synchronization metadata.  

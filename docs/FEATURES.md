@@ -701,9 +701,12 @@ of *which* chapters were behind. `wbPendingIds` (a `Set`, mirrored to the
 `pending` object store in `scula-md` — the reason `WB_VER` is now **2**)
 is that record.
 
-- `flushChapter()` calls `wbPendingMark(ch)` every time it writes a chapter
-  back to the store, so editing anything — the open chapter, or a chapter
-  you edit then switch away from — leaves a marker that survives a reload.
+- `flushChapter()` writes the chapter and its pending marker in one IndexedDB
+  transaction, so editing anything — the open chapter, or a chapter you edit
+  then switch away from — leaves a marker that survives a reload. If either
+  write fails, neither commits; the editor stays dirty, the recovery journal
+  retains the text, and the storage error is shown. Conflict copies also
+  commit with their pending markers.
 - The workbook panel shows it: a `•` after the chapter name (`.wb-ch-row.modified`)
   and after its workbook's name (`.wb-book-row.has-modified`).
 - **`saveAllModifiedChapters()`** (header button `📚 Save all modified`,
