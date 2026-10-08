@@ -268,17 +268,14 @@ function openIdeaModal() {
   ideaSetPick(open ? { id: open.id, how: 'open' } : null, open ? open.title : '');
   ideaSel = 0;
   ideaRenderChapterList();
-  document.getElementById('idea-modal').classList.add('open');
   ideaPaintHint();
-  setTimeout(() => {
-    const el = document.getElementById('idea-text');
-    el.focus();
-    el.selectionStart = el.selectionEnd = el.value.length;
-  }, 40);
+  openOrdinaryDialog('idea-modal', 'idea-text');
+  const el = document.getElementById('idea-text');
+  el.selectionStart = el.selectionEnd = el.value.length;
 }
 function closeIdeaModal() {
   ideaDictationDestination++;
-  document.getElementById('idea-modal').classList.remove('open');
+  closeOrdinaryDialog('idea-modal');
   if (document.getElementById('btn-idea-dictate').classList.contains('active')) toggleIdeaDictation();
 }
 

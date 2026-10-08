@@ -4029,9 +4029,9 @@ Use the toolbar above to insert formatting.
 </details>
 
 <!-- Image URL modal -->
-<div class="image-modal" id="image-modal">
+<div class="image-modal" id="image-modal" role="dialog" aria-modal="true" aria-labelledby="image-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleInsertImage">Insert Image</div>
+    <div class="modal-title" id="image-dialog-title" data-i="modalTitleInsertImage">Insert Image</div>
     <div class="field">
       <label data-i="lblImageUrl">Image URL or file path</label>
       <div style="display:flex;gap:8px;align-items:center">
@@ -4062,9 +4062,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Save-to-workbook modal -->
-<div class="image-modal" id="workbook-modal">
+<div class="image-modal" id="workbook-modal" role="dialog" aria-modal="true" aria-labelledby="workbook-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleSaveWorkbook">Save to workbook</div>
+    <div class="modal-title" id="workbook-dialog-title" data-i="modalTitleSaveWorkbook">Save to workbook</div>
     <div class="field">
       <label data-i="lblWorkbook">Workbook</label>
       <select id="wb-select" onchange="onWorkbookSelectChange()"></select>
@@ -4095,9 +4095,9 @@ Use the toolbar above to insert formatting.
      date. A chapter picker above it (title search, pre-filled with the open
      chapter, × clears) overrides that routing. Ctrl+Alt+I opens it,
      Ctrl+Enter files it. -->
-<div class="image-modal" id="idea-modal">
+<div class="image-modal" id="idea-modal" role="dialog" aria-modal="true" aria-labelledby="idea-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleIdea">Quick idea</div>
+    <div class="modal-title" id="idea-dialog-title" data-i="modalTitleIdea">Quick idea</div>
     <div class="field">
       <label for="idea-chapter" data-i="lblIdeaChapter">Chapter</label>
       <div class="idea-chapter-row">
@@ -4244,9 +4244,9 @@ Use the toolbar above to insert formatting.
 <button type="button" id="img-draw-btn" class="img-draw-btn" data-i-title="skDrawOnTip" hidden>✎</button>
 
 <!-- Link modal -->
-<div class="image-modal" id="link-modal">
+<div class="image-modal" id="link-modal" role="dialog" aria-modal="true" aria-labelledby="link-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleInsertLink">Insert Link</div>
+    <div class="modal-title" id="link-dialog-title" data-i="modalTitleInsertLink">Insert Link</div>
     <div class="field">
       <label data-i="lblUrl">URL</label>
       <input type="text" id="link-url" placeholder="https://example.com" />
@@ -4267,9 +4267,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Table builder modal -->
-<div class="image-modal" id="table-modal">
+<div class="image-modal" id="table-modal" role="dialog" aria-modal="true" aria-labelledby="table-dialog-title" tabindex="-1">
   <div class="table-modal-box">
-    <div class="modal-title" data-i="modalTitleTableBuilder">Table Builder</div>
+    <div class="modal-title" id="table-dialog-title" data-i="modalTitleTableBuilder">Table Builder</div>
     <div class="table-controls">
       <label data-i="lblRows">Rows</label>
       <input type="number" class="num-input" id="tbl-rows" value="3" min="1" max="20" oninput="rebuildTableGrid()">
@@ -4285,9 +4285,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Help -->
-<div class="image-modal" id="help-modal">
+<div class="image-modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" tabindex="-1">
   <div class="modal-box help-modal-box">
-    <div class="modal-title" data-i="modalTitleHelp">Help — Markdown editor</div>
+    <div class="modal-title" id="help-dialog-title" data-i="modalTitleHelp">Help — Markdown editor</div>
     <div class="help-body" id="help-body"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeHelpModal()" data-i="closeBtn">Close</button>
@@ -4504,9 +4504,9 @@ Use the toolbar above to insert formatting.
 
 <!-- Note-link modal: the pointing-device route to a [[wikilink]]. Typing
      "[[" in the editor opens the same candidate list inline instead. -->
-<div class="image-modal" id="wiki-modal">
+<div class="image-modal" id="wiki-modal" role="dialog" aria-modal="true" aria-labelledby="wiki-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleNoteLink">Link to a note</div>
+    <div class="modal-title" id="wiki-dialog-title" data-i="modalTitleNoteLink">Link to a note</div>
     <div class="field">
       <label data-i="lblLinkTarget">Target</label>
       <input type="text" id="wiki-filter" oninput="renderWikiPicker()" data-i-placeholder="wikiFilterPlaceholder" placeholder="Filter notes, sections and blocks…">

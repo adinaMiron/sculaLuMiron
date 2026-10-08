@@ -217,7 +217,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Dismiss the dialog consistently and return focus to its invoking control without changing the loose draft. Verify Escape at each field and cancellation after validation errors.
 
-- [ ] [ID:md-dialog-focus-semantics] **P2 — Ordinary dialogs lack modal semantics and allow focus to leave the visible dialog.**
+- [x] [ID:md-dialog-focus-semantics] **P2 — Ordinary dialogs lack modal semantics and allow focus to leave the visible dialog.**
 
   **Location:** [index.html](../../index.html), image/workbook/idea/link/table/help/wiki modal markup; their open/close functions in [files.js](../../js/markdown/files.js), [editor.js](../../js/markdown/editor.js) and [workbooks.js](../../js/markdown/workbooks.js).
 

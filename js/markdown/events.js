@@ -46,6 +46,9 @@ document.getElementById('idea-chapter').addEventListener('keydown', function(e) 
   e.stopPropagation();
 });
 document.addEventListener('keydown', e => {
+  // A fullscreen dialog may have just closed while handling this Escape.
+  // Do not also dismiss the ordinary dialog underneath it.
+  if (e.key === 'Escape' && e.defaultPrevented) return;
   if (typeof dgIsOpen === 'function' && dgIsOpen()) return;   // the diagram modal owns every key
   if (typeof skIsOpen === 'function' && skIsOpen()) return;   // so does the sketch modal
   if (e.key === 'Escape') {

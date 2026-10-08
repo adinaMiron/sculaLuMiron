@@ -296,11 +296,11 @@ ${bodyHtml}
 /* ── Table builder ── */
 function openTableModal() {
   saveSelection();
-  document.getElementById('table-modal').classList.add('open');
   rebuildTableGrid();
+  openOrdinaryDialog('table-modal', 'tbl-rows');
 }
 function closeTableModal() {
-  document.getElementById('table-modal').classList.remove('open');
+  closeOrdinaryDialog('table-modal');
 }
 function rebuildTableGrid() {
   const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
@@ -423,11 +423,10 @@ function openLinkModal() {
   saveSelection();
   const sel = editor.value.substring(editor.selectionStart, editor.selectionEnd);
   if (sel) document.getElementById('link-text').value = sel;
-  document.getElementById('link-modal').classList.add('open');
-  document.getElementById('link-url').focus();
+  openOrdinaryDialog('link-modal', 'link-url');
 }
 function closeLinkModal() {
-  document.getElementById('link-modal').classList.remove('open');
+  closeOrdinaryDialog('link-modal');
   ['link-url','link-text','link-title'].forEach(id => document.getElementById(id).value = '');
 }
 function insertLink() {
@@ -441,6 +440,6 @@ function insertLink() {
 
 /* ── Help modal ── */
 function paintHelp() { document.getElementById('help-body').innerHTML = t('helpBody'); }
-function openHelpModal() { paintHelp(); document.getElementById('help-modal').classList.add('open'); }
-function closeHelpModal() { document.getElementById('help-modal').classList.remove('open'); }
+function openHelpModal() { paintHelp(); openOrdinaryDialog('help-modal'); }
+function closeHelpModal() { closeOrdinaryDialog('help-modal'); }
 

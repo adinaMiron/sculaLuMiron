@@ -14,7 +14,7 @@ const chords = [
 
 async function reset(page) {
   await page.evaluate(md => {
-    document.querySelectorAll('.image-modal.open').forEach(el => el.classList.remove('open'));
+    Object.values(ordinaryDialogClosers).forEach(name => window[name]());
     editor.value = md;
     editor.focus();
     editor.setSelectionRange(6, 16);
@@ -74,8 +74,6 @@ async function isolated(page, target, label, localEnter = false) {
     ]) {
       await reset(page);
       await page.evaluate(name => window[name](), open);
-      // Workbook/wiki opening schedules initial focus after 40ms.
-      await page.waitForTimeout(80);
       const fields = page.locator(`#${id} input:visible, #${id} textarea:visible, #${id} select:visible`);
       for (let i = 0; i < await fields.count(); i++) {
         // Idea Ctrl+Enter intentionally files an idea; its local handler is
@@ -83,10 +81,10 @@ async function isolated(page, target, label, localEnter = false) {
         await isolated(page, fields.nth(i), `${id} field ${i}`, id === 'idea-modal');
       }
       await isolated(page, page.locator(`#${id} button:visible`).first(), `${id} button`);
-      // Ordinary dialogs currently allow focus to escape. An open dialog
-      // must still protect the source if focus lands on the editor behind it.
+      // Attempted background focus stays in the dialog and protects the source.
       await isolated(page, page.locator('#editor'), `${id} background editor`);
-      console.log(`PASS ${id}: all fields, buttons and escaped focus isolated`);
+      assert(await page.locator('#' + id).evaluate(el => el.contains(document.activeElement)));
+      console.log(`PASS ${id}: all fields, buttons and attempted background focus isolated`);
     }
 
     await reset(page);

@@ -44,11 +44,10 @@ function openWikiModal() {
   const sel = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
   document.getElementById('wiki-filter').value = '';
   document.getElementById('wiki-alias').value = sel;
-  document.getElementById('wiki-modal').classList.add('open');
   renderWikiPicker();
-  setTimeout(() => document.getElementById('wiki-filter').focus(), 40);
+  openOrdinaryDialog('wiki-modal', 'wiki-filter');
 }
-function closeWikiModal() { document.getElementById('wiki-modal').classList.remove('open'); }
+function closeWikiModal() { closeOrdinaryDialog('wiki-modal'); }
 
 function renderWikiPicker() {
   const box = document.getElementById('wiki-picker');
