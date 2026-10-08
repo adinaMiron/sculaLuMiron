@@ -12,7 +12,9 @@ function openFile() { document.getElementById('file-input').click(); }
 function handleFileOpen(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
+    // Resolve the current work after reading, including edits made meanwhile.
+    if (!canLeaveEditor() || !await flushChapter()) return;
     editor.value = e.target.result;
     undoReset();
     detachChapter();
@@ -42,7 +44,7 @@ function handleDocxImport(event) {
       // Convert the HTML output to Markdown
       const md = htmlToMarkdown(result.value);
 
-      if (editor.value.trim() && !confirm(t('confirmReplace'))) {
+      if ((editor.value.trim() && !confirm(t('confirmReplace'))) || !await flushChapter()) {
         event.target.value = '';
         return;
       }
@@ -171,6 +173,10 @@ function htmlToMarkdown(html) {
 // download. It reports the outcome in the shared toast itself.
 const saveOut = (filename, blob) => ScuLaFolder.save(filename, blob);
 
+function exportMarkdown() {
+  return saveOut(wbFileLabel() || 'untitled.md', new Blob([editor.value], { type: 'text/markdown' }));
+}
+
 function exportHtml() {
   const mdFilename = document.getElementById('current-file').textContent || 'document.md';
   const htmlFilename = mdFilename.replace(/\.(md|txt)$/i, '') + '.html';
@@ -294,11 +300,11 @@ ${bodyHtml}
 /* ── Table builder ── */
 function openTableModal() {
   saveSelection();
-  document.getElementById('table-modal').classList.add('open');
   rebuildTableGrid();
+  openOrdinaryDialog('table-modal', 'tbl-rows');
 }
 function closeTableModal() {
-  document.getElementById('table-modal').classList.remove('open');
+  closeOrdinaryDialog('table-modal');
 }
 function rebuildTableGrid() {
   const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
@@ -421,11 +427,10 @@ function openLinkModal() {
   saveSelection();
   const sel = editor.value.substring(editor.selectionStart, editor.selectionEnd);
   if (sel) document.getElementById('link-text').value = sel;
-  document.getElementById('link-modal').classList.add('open');
-  document.getElementById('link-url').focus();
+  openOrdinaryDialog('link-modal', 'link-url');
 }
 function closeLinkModal() {
-  document.getElementById('link-modal').classList.remove('open');
+  closeOrdinaryDialog('link-modal');
   ['link-url','link-text','link-title'].forEach(id => document.getElementById(id).value = '');
 }
 function insertLink() {
@@ -439,6 +444,6 @@ function insertLink() {
 
 /* ── Help modal ── */
 function paintHelp() { document.getElementById('help-body').innerHTML = t('helpBody'); }
-function openHelpModal() { paintHelp(); document.getElementById('help-modal').classList.add('open'); }
-function closeHelpModal() { document.getElementById('help-modal').classList.remove('open'); }
+function openHelpModal() { paintHelp(); openOrdinaryDialog('help-modal'); }
+function closeHelpModal() { closeOrdinaryDialog('help-modal'); }
 

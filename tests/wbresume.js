@@ -20,6 +20,7 @@
 //   node wbresume.js        # from tests/
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 
 const CHROME = process.env.PW_CHROME_PATH || undefined;
@@ -81,7 +82,11 @@ const RESTORED = path.join(__dirname, '.restored.html');
 async function openRestored(page, text) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  fs.writeFileSync(RESTORED, src.replace('"></textarea>', '">' + escaped + '</textarea>'));
+  // The copy lives in tests/, but its assets must resolve beside index.html.
+  const base = pathToFileURL(path.join(__dirname, '..') + path.sep).href;
+  const restored = src.replace('<head>', '<head>\n<base href="' + base + '">')
+    .replace('"></textarea>', '">' + escaped + '</textarea>');
+  fs.writeFileSync(RESTORED, restored);
   await page.goto('file://' + RESTORED);
   await page.waitForTimeout(600);
 }
@@ -114,6 +119,9 @@ const type = (page, text) => page.evaluate(t => {
     try {
       const plant = localStorage.getItem('__plant');
       if (plant) {
+        // Plant a legacy recovery journal (or no journal at all), including
+        // clearing the editor's newer tab-specific recovery journal.
+        sessionStorage.removeItem('scula:md:draft');
         if (plant === 'REMOVE') localStorage.removeItem('scula:md:draft');
         else localStorage.setItem('scula:md:draft', plant);
         localStorage.removeItem('__plant');

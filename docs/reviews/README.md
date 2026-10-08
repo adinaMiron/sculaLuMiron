@@ -175,6 +175,16 @@ logs. The runner prints each absolute log path, normally under
 `.git/automation-logs/`. Linked worktrees use their own Git administrative
 directory. Logs stay out of commits and remain available after a stopped run.
 
+Both runners use Codex's network proxy sandbox with an empty destination and
+host Unix socket allowlist. This permits local Chromium/Playwright IPC while
+blocking outbound connections. Strict `network_access=false` blocks Chromium's
+Crashpad `setsockopt` operation on the verified CLI, preventing browser tests
+from starting. The shared configuration therefore enables the enforced proxy
+alongside command networking, disables upstream proxies, and keeps approvals
+disabled. It never retries blocked tests outside the sandbox or treats an
+unchecked finding as completed. See the real local sandbox probe in
+[`tests/README.md`](../../tests/README.md).
+
 The intended flow is:
 
 ```text

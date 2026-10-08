@@ -112,22 +112,23 @@ async function ideaAppendTo(ch, line) {
   if (!book) return null;
   const open = ch.id === wbCurrentId;
   const before = (open ? editor.value : (ch.content || '')).replace(/\s+$/, '');
-  ch.content = (before ? before + '\n' : '') + line + '\n';
-  ch.updated = Date.now();
+  const next = { ...ch, content: (before ? before + '\n' : '') + line + '\n', updated: Date.now() };
   if (open) {
     clearTimeout(wbSaveTimer);
-    editor.value = ch.content;
+    editor.value = next.content;
     undoReset();               // the idea is already written out; undoing it
-    wbDirty = false;           // here would lose it on the next autosave
+    wbDirty = true;            // retain the attempted append until persistence succeeds
 
     updatePreview(); updateStatus(); updateNav();
   }
-  if (!await wbPersist(WB_CHAPTERS, ch)) return null;
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
+  if (!await wbPersist(WB_CHAPTERS, next)) return null;
+  Object.assign(ch, next);
+  if (open && editor.value === next.content) wbDirty = false;
+  if (open) wbDraftWrite();
+  const saved = await wbSaveMirror(book, ch);
   wbOpenBooks.add(book.id);
   renderWorkbooks();
-  return { book, chapter: ch, path };
+  return { book, chapter: ch, ...saved };
 }
 
 /* ── The chapter picker ──
@@ -267,16 +268,14 @@ function openIdeaModal() {
   ideaSetPick(open ? { id: open.id, how: 'open' } : null, open ? open.title : '');
   ideaSel = 0;
   ideaRenderChapterList();
-  document.getElementById('idea-modal').classList.add('open');
   ideaPaintHint();
-  setTimeout(() => {
-    const el = document.getElementById('idea-text');
-    el.focus();
-    el.selectionStart = el.selectionEnd = el.value.length;
-  }, 40);
+  openOrdinaryDialog('idea-modal', 'idea-text');
+  const el = document.getElementById('idea-text');
+  el.selectionStart = el.selectionEnd = el.value.length;
 }
 function closeIdeaModal() {
-  document.getElementById('idea-modal').classList.remove('open');
+  ideaDictationDestination++;
+  closeOrdinaryDialog('idea-modal');
   if (document.getElementById('btn-idea-dictate').classList.contains('active')) toggleIdeaDictation();
 }
 
@@ -308,6 +307,7 @@ function ideaPaintHint() {
 // True while a save is awaiting its writes: a second Ctrl+Enter or a
 // double-click on Save would otherwise append the same idea twice.
 let ideaSaving = false;
+let ideaDictationDestination = 0; // a filed/closed idea is no longer the recording's draft
 
 async function saveIdea() {
   if (ideaSaving) return;
@@ -317,21 +317,26 @@ async function saveIdea() {
 
 async function ideaSaveNow() {
   const el = document.getElementById('idea-text');
+  const submitted = el.value;
   const r = ideaResolve();
   if (!r.body) { wbSay(t('ideaEmpty'), true); el.focus(); return; }
+  ideaDictationDestination++;
   let target = r.chapter;
   if (!target) {
     const book = await ideaEnsureBook();
     target = book && await ideaEnsureChapter(book, ideaToday());
   }
   const done = target && await ideaAppendTo(target, r.line);
-  if (!done) { wbSay(t('ideaFailed'), true); return; }
-  el.value = '';
-  ideaSetPick(null);
-  ideaRenderChapterList();
-  closeIdeaModal();
+  if (!done) { wbSay(t(wbConflictCopies.has(target?.id) ? 'wbConflict' : 'ideaFailed'), true); return; }
+  // Only retire the submitted draft; typing during either write stays available.
+  if (el.value === submitted) {
+    el.value = '';
+    ideaSetPick(null);
+    ideaRenderChapterList();
+    closeIdeaModal();
+  }
   const info = { book: done.book.name, chapter: done.chapter.title, path: done.path };
-  wbSay(done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
+  wbSay(done.failed ? t('wbMirrorFailed') : done.path ? t('ideaSavedTo', info) : t('ideaSaved', info), true);
 }
 
 /* ── Boot: load the tree, then reopen whatever was last edited ── */
@@ -340,6 +345,7 @@ async function loadWorkbooks() {
     const [books, chapters] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS)]);
     wbBooks = (books || []).sort(wbByOrder);
     wbChapters = (chapters || []).sort(wbByOrder);
+    wbChapters.forEach(ch => wbChapterVersions.set(ch.id, wbChapterVersion(ch)));
     try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }
   try {
@@ -358,8 +364,9 @@ async function loadWorkbooks() {
 
   let last = null;
   try { last = await wbMetaGet('last'); } catch (e) {}
-  const ch = last ? wbChapter(last) : null;
   const draft = wbDraftRead();
+  // The shared "last" metadata belongs to whichever tab navigated last.
+  const ch = wbChapter(draft && draft.tab ? draft.id : last);
   // Text nobody has typed into is the browser's own form restoration: a
   // reload, or a tab that was discarded while idle and came back. Resuming
   // *over* it is the point — an "untouched editor" used to mean an empty one,
@@ -371,19 +378,34 @@ async function loadWorkbooks() {
   if (ch && untouched) {
     wbOpenBooks.add(ch.workbookId);
     loadChapterIntoEditor(ch);
-    // Whichever is ahead of the record wins: the journal when it carries this
-    // chapter's keystrokes, otherwise the text the browser put back on screen
-    // (that is what was last seen, and it cannot be older than the record).
+    // Recover this tab's unflushed text. Browser-restored text can be used
+    // directly only while its journal's base still matches the record.
     const ahead = wbDraftAhead(draft, ch);
     const boardLink = new URLSearchParams(location.search).has('chapter');
-    const back = !boardLink && wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
+    const back = (!draft?.tab || draft.base === wbChapterVersion(ch)) && !boardLink
+      && wbBootText.trim() && wbBootText !== (ch.content || '') ? wbBootText : null;
     const recovered = ahead != null ? ahead : back;
     if (recovered != null) {
-      editor.value = recovered;
-      wbDirty = true;
-      updatePreview(); updateStatus(); updateNav();
-      await flushChapter();
-      wbSay(t('wbRecovered'), true);
+      if (draft?.base && draft.base !== wbChapterVersion(ch)) {
+        let copy = wbChapter(draft.conflictId);
+        if (!copy || copy.content !== recovered) {
+          wbChapterVersions.set(ch.id, draft.base);
+          await wbPersist(WB_CHAPTERS, { ...ch, content: recovered, updated: Date.now() });
+          copy = wbConflictCopies.get(ch.id)?.chapter;
+        }
+        if (copy) {
+          loadChapterIntoEditor(copy);
+          wbSay(t('wbConflict'), true);
+        } else {
+          editor.value = recovered; wbDirty = true;
+          updatePreview(); updateStatus(); updateNav();
+        }
+      } else {
+        editor.value = recovered;
+        wbDirty = true;
+        updatePreview(); updateStatus(); updateNav();
+        if (await flushChapter()) wbSay(t('wbRecovered'), true);
+      }
     } else {
       wbSay(t('wbRestored', ch.title));
     }
@@ -442,7 +464,13 @@ window.addEventListener('scula-folder', () => { wbMirrorAsked = false; });
 /* Leaving, hiding, being frozen or being discarded: the journal is written
    synchronously each time, because an IndexedDB write started here is not
    guaranteed to finish, and `beforeunload` alone never fires on a discard. */
-function wbPark() { wbDraftWrite(); flushChapter(); }
+function wbPark(event) {
+  wbDraftWrite(); flushChapter();
+  if (event && event.type === 'beforeunload' && wbDraftUnavailable()) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+}
 document.addEventListener('visibilitychange', () => { if (document.hidden) wbPark(); });
 // A Kanban tab writes the same chapter store. Pull its changed line into an
 // open editor before the next autosave can restore the previous task state.
@@ -462,7 +490,10 @@ window.addEventListener('storage', async event => {
   } else {
     try {
       const latest = await wbTx(WB_CHAPTERS, 'readonly', store => store.get(ch.id));
-      if (latest) Object.assign(ch, latest);
+      if (latest) {
+        Object.assign(ch, latest);
+        wbChapterVersions.set(ch.id, wbChapterVersion(latest));
+      }
       renderWorkbooks();
       cloudAutoSync();
     } catch (e) {}

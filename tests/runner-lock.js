@@ -47,7 +47,7 @@ function start(repo, runner, label, extra = {}) {
     const child = spawn('bash', [path.join(repo, 'scripts', runner),
         ...(runner === runners[0] ? ['probe'] : [])], {
         cwd: repo, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
+        env: { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
             PROBE_LOG: log, PROBE_RUNNER: runner, PROBE_GATES: '', PROBE_FAIL: '',
             BASE: 'main', TASK_BRANCH: 'feat/probe', MAX_TASKS: '1', MAX_FINDINGS: '1',
             CREATE_PR: 'true', FINAL_REVIEW: 'true', ...extra }

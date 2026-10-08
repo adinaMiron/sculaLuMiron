@@ -35,13 +35,13 @@ have. Copy one of their `:root` blocks when starting a new page.
 | `--border` | `#2E4739` | `#2E4739` | `#2E4739` |
 | `--text` | `#F3EEE1` | `#F3EEE1` | `#F3EEE1` |
 | `--text-2` | `#9FB3A5` | `#9FB3A5` | `#9FB3A5` |
-| `--text-3` | — | `#5A6A60` | `#5A6A60` |
+| `--text-3` | — | `#5A6A60` | `var(--text-2)` (`#9FB3A5`) |
 | `--on-text` | `#20261E` | — | — |
 | `--accent` | `#C1BB45` | `#C1BB45` | `#C1BB45` |
 | `--accent-2` | — | `#D3CD7C` | `#D3CD7C` |
 | `--accent-soft` | — | `color-mix(in srgb, var(--accent) 16%, var(--surface))` | — |
 | `--on-accent` | `#1A2117` | `#1A2117` | `#1A2117` |
-| `--danger` | `#C4643C` | `#C4643C` | `#C4643C` |
+| `--danger` | `#C4643C` | `#C4643C` | `#EAA07F` |
 | `--radius` | `14px` | `0.714rem` | — (uses `--panel-w` instead, unrelated) |
 | `--shadow` | — | `0 2px 10px rgba(0,0,0,.35)` | — |
 | `--graph-*` | — | — | 13 node-role tokens, see below |
@@ -63,13 +63,21 @@ a chart pasted into it. They are tokens rather than literals for one
 reason: the canvas resolves them **once**, and the day a light theme lands
 they are the only thirteen values that need a `[data-theme="light"]` entry.
 
-`index.html` also carries `--imp-nice` `#6E9E8A` / `--imp-important`
-`#D9A441` / `--imp-vital` `#C4643C` — the three importance markers
+`index.html` also carries `--imp-nice` `#8FBAA7` / `--imp-important`
+`#D9A441` / `--imp-vital` `#EAA07F` — the three importance markers
 (`docs/FEATURES.md` § C), drawn from the same palette: the mossy teal the
 tags already use, an amber sitting between it and the accent, and the
-shared terracotta. Each level's CSS class sets these into an `--imp-c`
+readable terracotta. Each level's CSS class sets these into an `--imp-c`
 custom property, which is what lets one rule colour both the pill and the
 block around it. Same reasoning as `--graph-*` for keeping them tokens.
+
+Markdown functional small labels use the secondary text color; disabled
+controls retain separate opacity styling. Its status and importance text
+use lighter earth-palette variants to meet 4.5:1 on dark surfaces and
+tinted pills, including hover. Importance-pill hover tint is limited to
+18%, and filled terracotta controls use dark `--on-accent` text. These
+changes are local to `index.html`; graph colors and document swatches
+retain their existing values. Verify with `node tests/mdcontrast.js`.
 
 `map.html` carries its own four: `--pin-coord` (the olive — written as
 coordinates, nothing to look up), `--pin-found` (the mossy teal — the

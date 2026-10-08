@@ -131,7 +131,7 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
             const admin = git(cwd, 'rev-parse', '--absolute-git-dir');
             const logsDir = path.join(admin, 'automation-logs');
             if (mode === 'log-error') write(logsDir, 'not a directory');
-            const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
+            const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_DOC: doc, PROBE_MODE: mode, CREATE_PR: mode === 'success' ? 'true' : 'false', FINAL_REVIEW: 'true',
                 PROBE_PUBLICATION: path.join(tmp, runner + '-' + mode + '-publication.log'),
                 MAX_TASKS: '2', MAX_FINDINGS: '2', BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '1' };

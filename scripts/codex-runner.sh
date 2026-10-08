@@ -14,8 +14,59 @@ case "$CODEX_EFFORT" in
     *) die "CODEX_EFFORT must be none, minimal, low, medium, high, xhigh, max, or ultra (or unset for the model default)" ;;
 esac
 
+BROWSER_PREFLIGHT="${BROWSER_PREFLIGHT:-true}"
+[[ "$BROWSER_PREFLIGHT" == true || "$BROWSER_PREFLIGHT" == false ]] \
+    || die "BROWSER_PREFLIGHT must be true or false"
+
 TOML_REPO_ROOT="${REPO_ROOT//\\/\\\\}"
 TOML_REPO_ROOT="${TOML_REPO_ROOT//\"/\\\"}"
+
+# Agent commands inherit only core variables plus these. The proxy sandbox
+# exports HTTP(S)_PROXY/ALL_PROXY with an empty NO_PROXY and
+# NODE_USE_ENV_PROXY=1 after this table is applied, and Codex terminates any
+# command whose request its proxy blocks, even for 127.0.0.1. Chromium and Node
+# therefore connect directly: the sandbox's network namespace has only its own
+# loopback, so test pages' internet requests fail as on a disconnected machine
+# while test servers inside the sandbox keep working. Chromium on Linux prefers
+# auto_proxy to the *_proxy variables; this PAC answers DIRECT for every URL.
+# Only Node versions that use NODE_USE_ENV_PROXY accept --no-use-env-proxy.
+# PLAYWRIGHT_BROWSERS_PATH passes through so pre-installed browsers are found.
+CODEX_COMMAND_ENV='auto_proxy="data:application/x-ns-proxy-autoconfig,function FindProxyForURL(url,host){return \"DIRECT\"}"'
+if NODE_OPTIONS=--no-use-env-proxy node -e 0 >/dev/null 2>&1; then
+    CODEX_COMMAND_ENV+=',NODE_OPTIONS="--no-use-env-proxy"'
+fi
+if [[ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
+    [[ "$PLAYWRIGHT_BROWSERS_PATH" =~ ^[A-Za-z0-9._/+@,:=-]+$ ]] \
+        || die "PLAYWRIGHT_BROWSERS_PATH must be a path without spaces, quotes, or backslashes"
+    CODEX_COMMAND_ENV+=",PLAYWRIGHT_BROWSERS_PATH=\"$PLAYWRIGHT_BROWSERS_PATH\""
+fi
+
+# Policy shared by agent sessions and the browser preflight's `codex sandbox`.
+CODEX_POLICY_ARGS=(
+    # Strict network_access=false denies socket calls Chromium cannot start
+    # without (Crashpad setsockopt, sandbox-host shutdown). Use the enforced
+    # proxy sandbox instead: its network namespace has no route out, its proxy
+    # allows no destination, and Unix sockets cannot be created. Port 0 avoids
+    # local listener conflicts. Full Chrome still needs a process-singleton Unix
+    # socket, so browser tests use Playwright's bundled headless shell.
+    -c 'sandbox_workspace_write.network_access=true'
+    -c 'features.network_proxy={enabled=true,domains={},unix_sockets={},allow_upstream_proxy=false,allow_local_binding=false,dangerously_allow_non_loopback_proxy=false,dangerously_allow_all_unix_sockets=false,enable_socks5=false,enable_socks5_udp=false,proxy_url="http://127.0.0.1:0"}'
+    -c 'web_search="disabled"'
+    -c 'check_for_update_on_startup=false'
+    -c 'analytics.enabled=false'
+    -c 'shell_environment_policy.inherit="core"'
+    -c 'shell_environment_policy.ignore_default_excludes=false'
+    -c "shell_environment_policy.set={$CODEX_COMMAND_ENV}"
+    -c 'allow_login_shell=false'
+    -c "projects.\"$TOML_REPO_ROOT\".trust_level=\"untrusted\""
+    --disable apps
+    --disable plugins
+    --disable remote_plugin
+    --disable multi_agent
+    --disable hooks
+    --disable goals
+    --disable memories
+)
 
 CODEX_SAFE_ARGS=(
     --ask-for-approval never
@@ -26,21 +77,7 @@ CODEX_SAFE_ARGS=(
     --ignore-user-config
     --ignore-rules
     --sandbox workspace-write
-    -c 'sandbox_workspace_write.network_access=false'
-    -c 'web_search="disabled"'
-    -c 'check_for_update_on_startup=false'
-    -c 'analytics.enabled=false'
-    -c 'shell_environment_policy.inherit="core"'
-    -c 'shell_environment_policy.ignore_default_excludes=false'
-    -c 'allow_login_shell=false'
-    -c "projects.\"$TOML_REPO_ROOT\".trust_level=\"untrusted\""
-    --disable apps
-    --disable plugins
-    --disable remote_plugin
-    --disable multi_agent
-    --disable hooks
-    --disable goals
-    --disable memories
+    "${CODEX_POLICY_ARGS[@]}"
 )
 
 if [[ -n "$CODEX_MODEL" ]]; then
@@ -257,5 +294,56 @@ preflight_codex() {
     if [[ "$status" != 1 || "${output##*$'\n'}" != 'No prompt provided via stdin.' ]]; then
         printf '%s\n' "$output" >&2
         die "Codex CLI/configuration preflight failed (exit $status); no Git changes were made. The installed CLI must support the runner's strict configuration and empty-stdin validation contract (verified with codex-cli 0.160.0)."
+    fi
+}
+
+# Every agent prompt includes this. Repository docs show system Chrome for
+# manual runs; inside the sandbox only the bundled headless shell can start.
+CODEX_SANDBOX_GUIDANCE='SANDBOX AND BROWSER TESTS
+Your commands run in a sandbox with no internet access and no access to host services.
+Run Playwright tests with Playwright'"'"'s bundled headless Chromium: invoke them without
+PW_CHROME_PATH, for example `node tests/wbstorefailure.js`. Notes in this repository
+that show PW_CHROME_PATH=/usr/bin/google-chrome-stable describe manual runs outside this
+sandbox; system Chrome cannot start here (its Unix socket setup is denied).
+Browser and Node requests to the internet fail as on a disconnected machine, while local
+test servers on 127.0.0.1 inside the sandbox work. Codex terminates any command that
+sends traffic to its network proxy (curl, wget, pip, npm install and similar tools).
+If a required browser test still cannot start, leave the item unchecked and report the
+exact error.'
+
+# Launch the bundled headless Chromium once under the agent command policy
+# before any Git change, so a missing browser or an incompatible CLI sandbox
+# stops the run instead of every agent session. `codex sandbox` cannot take
+# exec's --sandbox option; this explicit profile is its workspace-write
+# equivalent. tests/runner-browser-sandbox.js checks the real exec path.
+BROWSER_SMOKE='
+const { chromium } = require(process.argv[1]);
+(async () => {
+    const browser = await chromium.launch(process.env.PW_CHROME_PATH
+        ? { executablePath: process.env.PW_CHROME_PATH } : {});
+    try {
+        const page = await browser.newPage();
+        await page.goto("data:text/html,<title>runner browser preflight</title>");
+        if (await page.title() !== "runner browser preflight") throw new Error("Unexpected page title");
+    } finally {
+        await browser.close();
+    }
+    console.log("BROWSER_PREFLIGHT_OK");
+})().catch(error => { console.error(error.message); process.exit(1); });
+'
+
+preflight_browser() {
+    [[ "$BROWSER_PREFLIGHT" == true ]] || return 0
+    local output status=0 playwright="$REPO_ROOT/tests/node_modules/playwright"
+    local install='cd tests && npm install && npx playwright install chromium-headless-shell'
+    [[ -d "$playwright" ]] \
+        || die "Browser preflight failed: Playwright is not installed; run: $install (or set BROWSER_PREFLIGHT=false for runs without browser tests)"
+    printf 'Checking that browser tests can start in the Codex sandbox...\n'
+    output="$(timeout 120 codex sandbox "${CODEX_POLICY_ARGS[@]}" \
+        -c 'permissions.runner_browser={filesystem={":root"="read",":workspace_roots"="write",":tmpdir"="write","/tmp"="write"},network={enabled=true}}' \
+        -P runner_browser -- node -e "$BROWSER_SMOKE" "$playwright" </dev/null 2>&1)" || status=$?
+    if [[ "$status" != 0 || "${output##*$'\n'}" != BROWSER_PREFLIGHT_OK ]]; then
+        printf '%s\n' "$output" | tail -n 12 >&2
+        die "Browser preflight failed (exit $status); no Git changes were made. Playwright's bundled headless Chromium must start inside the Codex sandbox; install it with: $install (or set BROWSER_PREFLIGHT=false for runs without browser tests)"
     fi
 }

@@ -37,7 +37,7 @@ They print observations rather than asserting that the current defective behavio
 
 ## Findings: preservation and data flow
 
-- [ ] [ID:md-format-autosave] **P1 — Formatting-only edits bypass chapter autosave and disappear on chapter switching.**
+- [x] [ID:md-format-autosave] **P1 — Formatting-only edits bypass chapter autosave and disappear on chapter switching.**
 
   **Location:** [editor.js](../../js/markdown/editor.js), lines 95–122, 141–174 and 866–873; [files.js](../../js/markdown/files.js), lines 397–416; [workbooks.js](../../js/markdown/workbooks.js), lines 1223–1249.
 
@@ -45,7 +45,9 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Every document mutation, including formatting, inserted links/images/tables/code and Tab indentation, must participate in autosave. Verify persistence and chapter switching after startup has settled, without requiring a subsequent typed character.
 
-- [ ] [ID:md-failed-store-navigation] **P1 — A failed store write clears the dirty flag and permits leaving the chapter, destroying its recovery draft.**
+  **Verified:** The existing shared `editor.setRangeText` override journals and schedules autosave for programmatic edits. `mdautosave.js`, `mdundo.js`, `wbsaveall.js`, and `wbresume.js` pass with the installed Chrome. The reload test's copied-page fixture now resolves assets from the repository root. See [verification details](2026-10-07-markdown-evidence/autosave-verification.md).
+
+- [x] [ID:md-failed-store-navigation] **P1 — A failed store write clears the dirty flag and permits leaving the chapter, destroying its recovery draft.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `flushChapter`, `saveToWorkbook`, `openChapter`, `canLeaveEditor` and `loadChapterIntoEditor`.
 
@@ -53,7 +55,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Retain failed edits and retry state; a failed flush must prevent destructive navigation or preserve a recoverable independent draft before navigation proceeds. Verify quota/aborted-write failure followed by switch and reload.
 
-- [ ] [ID:md-import-replaces-edits] **P1 — Opening a Markdown file replaces existing work without flushing or guarding it. DOCX replacement also drops pending chapter edits.**
+- [x] [ID:md-import-replaces-edits] **P1 — Opening a Markdown file replaces existing work without flushing or guarding it. DOCX replacement also drops pending chapter edits.**
 
   **Location:** [files.js](../../js/markdown/files.js), `handleFileOpen` (lines 12–24), `handleDocxImport` (lines 36–56); [workbooks.js](../../js/markdown/workbooks.js), `detachChapter`.
 
@@ -61,7 +63,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Resolve preservation before replacing the editor and do not proceed after a failed flush. Test attached and loose text, delayed file reads, confirmed/canceled DOCX replacement and storage failure.
 
-- [ ] [ID:md-mirror-failure-markers] **P1 — Failed folder saves clear pending markers and can claim that chapters were saved.**
+- [x] [ID:md-mirror-failure-markers] **P1 — Failed folder saves clear pending markers and can claim that chapters were saved.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbMirrorWrite`, `saveToWorkbook`, `saveAllModifiedChapters`, `syncAllToFolder`, `confirmSaveToWorkbook`; [idea.js](../../js/markdown/idea.js), `ideaAppendTo`.
 
@@ -69,7 +71,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Distinguish successful mirror writes, intentionally local-only saves, and failed requested folder writes. Clear only confirmed mirrored versions and report partial failure accurately. Test permission denial, disk/quota error and unavailable folder, then retry after reload.
 
-- [ ] [ID:md-rename-failed-copy] **P1 — Rename removes the old mirror even when writing its replacement failed.**
+- [x] [ID:md-rename-failed-copy] **P1 — Rename removes the old mirror even when writing its replacement failed.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `renameWorkbook` (lines 906–923) and `renameChapter` (lines 1002–1016).
 
@@ -77,7 +79,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Remove the source only after a confirmed destination write; retain recoverable correspondence and pending state on failure. Verify failed and partially successful chapter/workbook renames.
 
-- [ ] [ID:md-save-version-race] **P1 — An older save completing after a newer edit clears the newer edit's pending marker.**
+- [x] [ID:md-save-version-race] **P1 — An older save completing after a newer edit clears the newer edit's pending marker.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `saveToWorkbook` and the unconditional `wbPendingClear` calls in save/sync paths.
 
@@ -85,7 +87,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Tie write completion and marker clearing to the exact saved revision. Verify edits arriving during delayed saves and full-folder syncs remain pending until that version is mirrored.
 
-- [ ] [ID:md-multi-tab-overwrite] **P1 — Two editor tabs silently overwrite each other's chapters.**
+- [x] [ID:md-multi-tab-overwrite] **P1 — Two editor tabs silently overwrite each other's chapters.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbPersist`, `flushChapter`; [idea.js](../../js/markdown/idea.js), `loadWorkbooks` and the storage listener.
 
@@ -93,7 +95,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Detect stale writes and preserve the competing text before overwrite. Test two real same-origin contexts/pages, including edits, reload and background/foreground transitions.
 
-- [ ] [ID:md-drive-failed-download] **P1 — A failed chapter download removes that remote chapter from the next Drive manifest.**
+- [x] [ID:md-drive-failed-download] **P1 — A failed chapter download removes that remote chapter from the next Drive manifest.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync`, chapter download and `outChaps` construction (lines 372–432).
 
@@ -101,7 +103,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Abort publication or preserve untouched remote entries when required downloads fail. Verify retry discovers the same chapter without duplicates or metadata regression.
 
-- [ ] [ID:md-drive-unreadable-manifest] **P1 — An unreadable or malformed Drive manifest is treated as an empty workspace and overwritten.**
+- [x] [ID:md-drive-unreadable-manifest] **P1 — An unreadable or malformed Drive manifest is treated as an empty workspace and overwritten.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync`, lines 291–301 and 435–441.
 
@@ -109,7 +111,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Distinguish “no manifest exists” from “existing manifest could not be read/validated”; the latter must not publish a replacement. Verify transient failure, invalid JSON, unsupported schema and successful retry.
 
-- [ ] [ID:md-drive-pull-edit-race] **P1 — A delayed Drive pull overwrites edits typed while its download is in flight.**
+- [x] [ID:md-drive-pull-edit-race] **P1 — A delayed Drive pull overwrites edits typed while its download is in flight.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), `cloudSync` lines 374–391; [workbooks.js](../../js/markdown/workbooks.js), `loadChapterIntoEditor`.
 
@@ -117,7 +119,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Revalidate the local revision after asynchronous downloads; preserve both versions when local work changed. Test a slow pull with typing, formatting and chapter switching during the request.
 
-- [ ] [ID:md-cloud-mirror-name-collision] **P1 — Independently created cloud notes can acquire the same local mirror path and overwrite each other on folder sync.**
+- [x] [ID:md-cloud-mirror-name-collision] **P1 — Independently created cloud notes can acquire the same local mirror path and overwrite each other on folder sync.**
 
   **Location:** [drive.js](../../js/markdown/drive.js), remote workbook/chapter adoption; [workbooks.js](../../js/markdown/workbooks.js), `wbUniqueFolder`, `wbUniqueFile`, `wbMirrorWrite`.
 
@@ -125,7 +127,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Preserve distinct, stable mirror ownership on remote adoption and renaming. Verify same-name workbooks/chapters from independent device IDs reach separate disk files and survive reload/repeated sync.
 
-- [ ] [ID:md-active-content-injection] **P1 — Markdown span attributes execute JavaScript in the editor's origin.**
+- [x] [ID:md-active-content-injection] **P1 — Markdown span attributes execute JavaScript in the editor's origin.**
 
   **Location:** [markdown.js](../../js/markdown/markdown.js), `parseMarkdown` lines 887–894 and `updatePreview`'s `innerHTML` assignment.
 
@@ -133,7 +135,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Permit only the intended formatting attributes/styles and reject event handlers and unsafe URLs throughout rendering/export. Verify malicious imported, synchronized and exported content while preserving supported color/highlight/font-size spans. The proof here used only a harmless local marker.
 
-- [ ] [ID:md-dictation-destination] **P1 — A delayed transcription is inserted into whichever chapter is currently in the editor, rather than the chapter that was recorded.**
+- [x] [ID:md-dictation-destination] **P1 — A delayed transcription is inserted into whichever chapter is currently in the editor, rather than the chapter that was recorded.**
 
   **Location:** [dictation.js](../../js/markdown/dictation.js), `target`, `beginInsert`, `enqueue`, `pump`, `emit`.
 
@@ -141,7 +143,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Bind pending transcription to its recording destination/session and handle navigation explicitly. Verify delayed responses after chapter changes, idea filing/closure and another recording; no text should be silently misfiled.
 
-- [ ] [ID:md-loose-draft-storage-failure] **P1 — Failure of the loose-file draft journal is silent and loses all loose text on reload.**
+- [x] [ID:md-loose-draft-storage-failure] **P1 — Failure of the loose-file draft journal is silent and loses all loose text on reload.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `wbDraftWrite` lines 305–313 and `scheduleAutosave` lines 1223–1229.
 
@@ -149,7 +151,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Keep editing usable but surface that recovery is unavailable and preserve an alternative recovery/export route. Verify blocked storage and quota failure on loose files containing text and embedded images.
 
-- [ ] [ID:md-idea-save-input-race] **P2 — Quick idea saving clears text entered after the save started.**
+- [x] [ID:md-idea-save-input-race] **P2 — Quick idea saving clears text entered after the save started.**
 
   **Location:** [idea.js](../../js/markdown/idea.js), `saveIdea` and `ideaSaveNow` lines 312–334.
 
@@ -157,7 +159,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Preserve edits made during an in-flight submission, or clearly lock the submitted input until completion. Verify delayed successful and failed submissions followed by more typing/dictation.
 
-- [ ] [ID:md-export-stale-editor] **P2 — Chapter export can omit the latest visible edits.**
+- [x] [ID:md-export-stale-editor] **P2 — Chapter export can omit the latest visible edits.**
 
   **Location:** [workbooks.js](../../js/markdown/workbooks.js), `exportChapter` lines 1151–1157.
 
@@ -167,7 +169,7 @@ They print observations rather than asserting that the current defective behavio
 
 ## Findings: UI, accessibility and workflow
 
-- [ ] [ID:md-mobile-writing-space] **P2 — The default expanded mobile toolbar can leave no usable writing area.**
+- [x] [ID:md-mobile-writing-space] **P2 — The default expanded mobile toolbar can leave no usable writing area.**
 
   **Location:** [index.html](../../index.html), toolbar/mobile rules around lines 1248–1415; [editor.js](../../js/markdown/editor.js), `initToolbarCollapse`.
 
@@ -175,7 +177,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Ensure a useful writing area exists on first mobile load and after opening formatting tools, including short landscape and keyboard-reduced viewports. Keep access to all accepted controls. See [390px expanded](2026-10-07-markdown-evidence/ui-390-ro.png), [320px expanded](2026-10-07-markdown-evidence/ui-320-ro.png) and [390px collapsed](2026-10-07-markdown-evidence/ui-390-collapsed.png).
 
-- [ ] [ID:md-chrome-contrast] **P2 — Small functional labels and status text fail the documented contrast target.**
+- [x] [ID:md-chrome-contrast] **P2 — Small functional labels and status text fail the documented contrast target.**
 
   **Location:** [index.html](../../index.html), `--text-3`, `.panel-title`, `.tb-label`, `.file-name`, `#wb-where`, `#wb-cloud-where`, `#status-bar` and status/importance colors.
 
@@ -183,7 +185,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Improve functional text/status colors against their actual backgrounds and retain distinct importance/error meaning. Verify normal, hover, selected and warning states; keep genuinely disabled/decorative elements separate from active labels.
 
-- [ ] [ID:md-touch-targets] **P2 — Frequently used mobile controls are substantially smaller than the repository's 44px touch-target floor.**
+- [x] [ID:md-touch-targets] **P2 — Frequently used mobile controls are substantially smaller than the repository's 44px touch-target floor.**
 
   **Location:** [index.html](../../index.html), phone `.btn`, `.tb-btn`, `.tb-select`, `.tb-color-control input` and close-control rules.
 
@@ -191,7 +193,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Provide adequate actual hit areas and spacing without recreating the writing-space failure. Measure touch hitboxes, not just glyph dimensions, at 320/390px in both languages.
 
-- [ ] [ID:md-collapsed-toolbar-focus] **P2 — Collapsed toolbar controls remain in keyboard navigation while invisible.**
+- [x] [ID:md-collapsed-toolbar-focus] **P2 — Collapsed toolbar controls remain in keyboard navigation while invisible.**
 
   **Location:** [index.html](../../index.html), `.toolbar.collapsed .toolbar-groups`; [editor.js](../../js/markdown/editor.js), `toggleToolbarCollapse`.
 
@@ -199,7 +201,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Remove collapsed descendants from interaction/accessibility navigation and restore them when expanded. Verify forward/reverse Tab, focus recovery and toggle expanded-state announcement.
 
-- [ ] [ID:md-modal-editor-shortcuts] **P2 — Editing shortcuts in ordinary dialogs mutate the document behind the dialog.**
+- [x] [ID:md-modal-editor-shortcuts] **P2 — Editing shortcuts in ordinary dialogs mutate the document behind the dialog.**
 
   **Location:** [events.js](../../js/markdown/events.js), global shortcut handler, particularly lines 124–149.
 
@@ -207,7 +209,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Apply editor shortcuts only when the editor owns the action; retain appropriate dialog shortcuts. Verify Ctrl+B/I/K, heading/importance shortcuts, line movement and save while focus is in each dialog field.
 
-- [ ] [ID:md-workbook-modal-escape] **P2 — Escape does not dismiss the save-to-workbook dialog.**
+- [x] [ID:md-workbook-modal-escape] **P2 — Escape does not dismiss the save-to-workbook dialog.**
 
   **Location:** [events.js](../../js/markdown/events.js), Escape handler; [workbooks.js](../../js/markdown/workbooks.js), `closeWorkbookModal`.
 
@@ -215,7 +217,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Dismiss the dialog consistently and return focus to its invoking control without changing the loose draft. Verify Escape at each field and cancellation after validation errors.
 
-- [ ] [ID:md-dialog-focus-semantics] **P2 — Ordinary dialogs lack modal semantics and allow focus to leave the visible dialog.**
+- [x] [ID:md-dialog-focus-semantics] **P2 — Ordinary dialogs lack modal semantics and allow focus to leave the visible dialog.**
 
   **Location:** [index.html](../../index.html), image/workbook/idea/link/table/help/wiki modal markup; their open/close functions in [files.js](../../js/markdown/files.js), [editor.js](../../js/markdown/editor.js) and [workbooks.js](../../js/markdown/workbooks.js).
 
@@ -223,7 +225,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Provide accessible names/semantics, focus containment and return to the invoking control for ordinary dialogs. Verify Tab/Shift+Tab, close, stacked UI and screen-reader navigation.
 
-- [ ] [ID:md-markdown-export-shortcut] **P2 — The documented Ctrl+Shift+S “export file” shortcut has no implementation.**
+- [x] [ID:md-markdown-export-shortcut] **P2 — The documented Ctrl+Shift+S “export file” shortcut has no implementation.**
 
   **Location:** [events.js](../../js/markdown/events.js), save shortcut handling; [i18n.js](../../js/markdown/i18n.js), help lines 447 and 898; [README.md](../../README.md), editor shortcut table.
 
@@ -233,7 +235,7 @@ They print observations rather than asserting that the current defective behavio
 
 ## Finding: verification coverage
 
-- [ ] [ID:md-resume-test-fixture] **P2 — The reload/restoration regression suite cannot execute its restored-text cases after the script extraction.**
+- [x] [ID:md-resume-test-fixture] **P2 — The reload/restoration regression suite cannot execute its restored-text cases after the script extraction.**
 
   **Location:** [tests/wbresume.js](../../tests/wbresume.js), `openRestored` lines 84–90; relative script tags in [index.html](../../index.html).
 

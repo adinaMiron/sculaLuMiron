@@ -18,8 +18,15 @@ var wbBooted = false;        // var: applyUILang() reads it before this runs
 let wbBooks = [];            // [{ id, name, folder, created, updated, order }]
 let wbChapters = [];         // [{ id, workbookId, title, file, content, … }]
 let wbCurrentId = null;      // open chapter, or null for a loose file
+let wbEditorDestination = 0; // distinguishes replaced loose drafts for dictation
 let wbDirty = false;
 let wbSaveTimer = 0;
+let wbFlushPromise = null;   // serialize writes, including a switch during autosave
+const wbChapterVersions = new Map(); // immutable versions this tab actually read/wrote
+const wbConflictCopies = new Map();
+function wbChapterVersion(ch) {
+  return ch ? JSON.stringify([ch.updated, ch.content || '', ch.workbookId, ch.file, ch.title, ch.order]) : null;
+}
 let wbUserEdited = false;    // has anyone actually typed since this page loaded?
 // The browser's own "Edit files?" permission prompt is asked at most once per
 // page load: past that, a granted handle needs no more asking, and a denied
@@ -155,11 +162,12 @@ function wbTaskHasImportance(line, level) {
   }
   return false;
 }
-function wbChapterHasImportanceTask(text, level, openOnly = false, responsible = '') {
+function wbChapterHasImportanceTask(text, level, openOnly = false, responsible = '', status = '') {
   let fenced = false;
   for (const line of String(text || '').split('\n')) {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; continue; }
     if (fenced || !wbTaskHasImportance(line, level)) continue;
+    if (status && !wbTaskHasStatus(line, status)) continue;
     if (openOnly && !WB_OPEN_TASK_RE.test(line)) continue;
     if (responsible) {
       if (!wbLineResponsibles(line).some(name => wbResponsibleKey(name) === responsible)) continue;
@@ -251,16 +259,68 @@ function wbTx(store, mode, run) {
   }));
 }
 const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
-const wbPut = (store, v) => wbTx(store, 'readwrite', s => s.put(v));
-const wbDrop = (store, k) => wbTx(store, 'readwrite', s => s.delete(k));
+const wbPut = async (store, v) => {
+  const version = store === WB_CHAPTERS ? wbChapterVersion(v) : null;
+  const result = await wbTx(store, 'readwrite', s => s.put(v));
+  if (store === WB_CHAPTERS) wbChapterVersions.set(v.id, version);
+  return result;
+};
+const wbDrop = async (store, k) => {
+  await wbTx(store, 'readwrite', s => s.delete(k));
+  if (store === WB_CHAPTERS) {
+    wbChapterVersions.delete(k);
+    wbConflictCopies.delete(k);
+  }
+};
 // The meta store has no keyPath — put(value, key), get(key).
 const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
 async function wbPersist(store, value) {
   try {
-    await wbPut(store, value);
-    if (store === WB_CHAPTERS) wbRecordResponsibles(value.content);
+    if (store !== WB_CHAPTERS) { await wbPut(store, value); return true; }
+    const saved = { ...value };
+    const expected = wbChapterVersions.get(saved.id) || null;
+    let conflict = null;
+    let createdConflict = false;
+    const conflictVersion = wbChapterVersion({ ...saved, updated: 0 });
+    // IndexedDB serializes read/write transactions across tabs. Comparing
+    // inside the write transaction also catches simultaneous autosaves.
+    await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+      const req = chapters.get(saved.id);
+      req.onsuccess = () => {
+        if (wbChapterVersion(req.result) === expected) { chapters.put(saved); return; }
+        const previous = wbConflictCopies.get(saved.id);
+        if (previous && previous.version === conflictVersion) conflict = previous.chapter;
+        else {
+          const id = wbNewId('ch_'), title = t('wbConflictTitle', saved.title);
+          conflict = {
+            ...saved, id, title,
+            // Other tabs may already own the same visible conflict title.
+            file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
+            created: Date.now(), updated: Date.now(), order: wbChaptersOf(saved.workbookId).length
+          };
+        }
+        // Preserve both texts before reporting failure, even if this tab closes.
+        createdConflict = conflict !== (previous && previous.chapter);
+        if (createdConflict) chapters.add(conflict);
+      };
+      return req;
+    });
+    if (conflict) {
+      wbConflictCopies.set(saved.id, { version: conflictVersion, chapter: conflict });
+      if (createdConflict) {
+        wbChapters.push({ ...conflict });
+        wbChapterVersions.set(conflict.id, wbChapterVersion(conflict));
+        await wbPendingMark(conflict);
+      }
+      renderWorkbooks();
+      wbDraftWrite();
+      wbSay(t('wbConflict'), true);
+      return false;
+    }
+    wbChapterVersions.set(saved.id, wbChapterVersion(saved));
+    wbRecordResponsibles(saved.content);
     return true;
   }
   catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
@@ -277,9 +337,39 @@ async function wbPendingMark(ch) {
   try { await wbPut(WB_PENDING, { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() }); }
   catch (e) {}
 }
-async function wbPendingClear(id) {
-  wbPendingIds.delete(id);
-  try { await wbDrop(WB_PENDING, id); } catch (e) {}
+async function wbPendingClear(id, saved) {
+  if (!saved) {
+    wbPendingIds.delete(id);
+    try { await wbDrop(WB_PENDING, id); } catch (e) {}
+    return true;
+  }
+  let cleared = false;
+  const matches = () => {
+    const current = wbChapter(id);
+    return current && current.content === saved.content && current.updated === saved.updated
+      && current.workbookId === saved.workbookId && current.file === saved.file
+      && !(id === wbCurrentId && wbDirty && editor.value !== saved.content);
+  };
+  try {
+    // Compare and delete in one transaction so a newer marker cannot be
+    // removed between reading its version and completing the old save.
+    await wbTx(WB_PENDING, 'readwrite', store => {
+      const req = store.get(id);
+      req.onsuccess = () => {
+        const pending = req.result;
+        if (!matches()) return;
+        if (pending && (pending.content !== saved.content || pending.updated !== saved.updated
+          || pending.workbookId !== saved.workbookId)) return;
+        store.delete(id);
+        wbPendingIds.delete(id); // a later mark may re-add it while this transaction finishes
+        cleared = true;
+      };
+    });
+  } catch (e) {
+    if (cleared) wbPendingIds.add(id);
+    return false;
+  }
+  return cleared && matches();
 }
 
 /* ── The draft journal ──
@@ -290,12 +380,30 @@ async function wbPendingClear(id) {
    after a few minutes, then reload it when you come back.
 
    So every change also lands in localStorage, synchronously, tagged with the
-   chapter it belongs to ('' for a loose file) and when it was written. It is
-   a journal, not a store: boot compares it against the record and keeps
-   whichever is newer, and the next keystroke overwrites it. § E. */
+   chapter it belongs to ('' for a loose file) and its base revision. Each
+   tab also keeps an isolated sessionStorage journal. Boot recovers edits
+   against that base, preserving conflicts separately. § E. */
 const WB_DRAFT_KEY = 'scula:md:draft';
 let wbDraftTimer = 0;
 let wbDraftReady = false;    // boot reconciles first; until then, nothing is written
+let wbDraftFailed = false;   // the tab's reload recovery could not be updated
+
+function wbDraftUnavailable() { return wbDraftFailed && !wbCurrentId && !!editor.value; }
+function wbPaintDraftWarning() {
+  const el = document.getElementById('wb-draft-warning');
+  if (el) el.hidden = !wbDraftUnavailable();
+}
+// A direct download stays usable even when browser storage is blocked/full.
+function wbExportLooseDraft() {
+  const url = URL.createObjectURL(new Blob([editor.value], { type: 'text/markdown;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = wbFileLabel() || 'untitled.md';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 
 // The header's file name, read or written in one place.
 function wbFileLabel(text) {
@@ -307,24 +415,35 @@ function wbFileLabel(text) {
 function wbDraftWrite() {
   clearTimeout(wbDraftTimer);
   if (!wbDraftReady) return;
+  const draft = JSON.stringify({
+    id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now(),
+    base: wbChapterVersions.get(wbCurrentId) || null,
+    dirty: wbDirty || !!(wbCurrentId && editor.value !== (wbChapter(wbCurrentId)?.content || '')),
+    conflictId: wbConflictCopies.get(wbCurrentId)?.chapter.id || null, tab: true
+  });
+  // sessionStorage survives reload/discard and is isolated from other tabs.
+  // A shared journal failure must not prevent this tab from recovering.
   try {
-    localStorage.setItem(WB_DRAFT_KEY, JSON.stringify({
-      id: wbCurrentId || '', name: wbFileLabel(), text: editor.value, at: Date.now()
-    }));
-  } catch (e) {}             // a full quota is not a reason to block typing
+    sessionStorage.setItem(WB_DRAFT_KEY, draft);
+    wbDraftFailed = false;
+  } catch (e) { wbDraftFailed = true; }
+  // Keep the shared journal for other readers, but never resume another tab's.
+  try { localStorage.setItem(WB_DRAFT_KEY, draft); } catch (e) {}
+  wbPaintDraftWarning();     // failure is visible without blocking editing/export
 }
 function wbDraftRead() {
-  try {
-    const d = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null');
-    return d && typeof d.text === 'string' ? d : null;
-  } catch (e) { return null; }
+  let own = null, shared = null;
+  try { own = JSON.parse(sessionStorage.getItem(WB_DRAFT_KEY) || 'null'); } catch (e) {}
+  try { shared = JSON.parse(localStorage.getItem(WB_DRAFT_KEY) || 'null'); } catch (e) {}
+  const d = shared && !shared.tab && (!own || shared.at > own.at) ? shared : own;
+  return d && typeof d.text === 'string' ? d : null;
 }
-/* The journal's text when it is this chapter's and ahead of the record —
-   keystrokes the autosave never got to. Otherwise null. A record that is
-   newer (a Drive pull, an edit in another tab) always wins. */
+/* Unflushed text from this tab's journal. Boot checks its base before writing
+   it back; older journals without a base retain the timestamp comparison. */
 function wbDraftAhead(draft, ch) {
   if (!draft || !ch || draft.id !== ch.id) return null;
   if (draft.text === (ch.content || '')) return null;
+  if (draft.base) return draft.dirty ? draft.text : null;
   if ((draft.at || 0) <= (ch.updated || 0)) return null;
   return draft.text;
 }
@@ -332,6 +451,7 @@ function wbDraftAhead(draft, ch) {
    that is where this hangs: one hook for the journal and for the flag. */
 function wbEditorChanged() {
   wbPaintAttach();
+  wbPaintDraftWarning();
   if (!wbDraftReady) return;
   clearTimeout(wbDraftTimer);
   wbDraftTimer = setTimeout(wbDraftWrite, 700);
@@ -367,19 +487,22 @@ function wbSlug(name, fallback) {
   if (s.length > 60) s = s.slice(0, 60).replace(/-+$/, '');
   return s || fallback;
 }
-function wbUniqueFolder(name, exceptId) {
-  const base = wbSlug(name, t('untitledWorkbook'));
+// Preserve cloud mirror names unless another ID already owns them here.
+function wbUniqueFolder(name, exceptId, folder) {
+  const base = folder || wbSlug(name, t('untitledWorkbook'));
   const taken = new Set(wbBooks.filter(b => b.id !== exceptId).map(b => b.folder.toLowerCase()));
   let n = base, i = 1;
   while (taken.has(n.toLowerCase())) n = base + '-' + (++i);
   return n;
 }
-function wbUniqueFile(workbookId, title, exceptId) {
-  const base = wbSlug(title, t('untitledChapter'));
+function wbUniqueFile(workbookId, title, exceptId, file) {
+  const dot = file ? file.lastIndexOf('.') : -1;
+  const base = file ? (dot > 0 ? file.slice(0, dot) : file) : wbSlug(title, t('untitledChapter'));
+  const ext = file ? (dot > 0 ? file.slice(dot) : '') : '.md';
   const taken = new Set(wbChapters.filter(c => c.workbookId === workbookId && c.id !== exceptId)
                                   .map(c => c.file.toLowerCase()));
-  let n = base + '.md', i = 1;
-  while (taken.has(n.toLowerCase())) n = base + '-' + (++i) + '.md';
+  let n = base + ext, i = 1;
+  while (taken.has(n.toLowerCase())) n = base + '-' + (++i) + ext;
   return n;
 }
 function wbSay(msg, alsoToast) {
@@ -419,6 +542,24 @@ async function wbMirrorWrite(book, chapter, text) {
     await w.close();
     return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
   } catch (e) { return null; }
+}
+// Explicit saves accept a local-only route, but a requested folder write
+// must keep its retry marker until the writable has closed successfully.
+async function wbSaveMirror(book, chapter) {
+  // Chapter objects are updated in place by autosave. Keep the exact body
+  // and revision handed to this write across every asynchronous step.
+  chapter = { ...chapter };
+  book = { ...book };
+  const folder = wbFolderMode();
+  if (folder) await wbPendingMark(chapter);
+  const path = await wbMirrorWrite(book, chapter, chapter.content || '');
+  const failed = folder && !path;
+  const cleared = !failed && await wbPendingClear(chapter.id, chapter);
+  // Another save may have cleared the newer marker before this older file
+  // closed. That newer version needs mirroring again in that case.
+  const current = wbChapter(chapter.id);
+  if (!cleared && current && !wbPendingIds.has(chapter.id)) await wbPendingMark(current);
+  return { path, failed, pending: !cleared };
 }
 // Best effort, and never recursive: only files this app knows it wrote are
 // removed, and an empty workbook folder is dropped only if the FS agrees it
@@ -741,7 +882,7 @@ function renderWorkbooks() {
     const shownChapters = chapters.filter(ch => {
       const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
       if (wbTaskStatusFilter && !wbChapterHasTaskStatus(content, wbTaskStatusFilter)) return false;
-      if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter);
+      if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter, wbTaskStatusFilter);
       return (!todoFiltered || wbChapterHasOpenTask(ch, content)) &&
         (!wbResponsibleFilter || wbNamesForChapter(ch).has(wbResponsibleFilter));
     });
@@ -914,11 +1055,14 @@ async function renameWorkbook(id, preset) {
   book.updated = Date.now();
   if (!await wbPersist(WB_BOOKS, book)) return;
   if (book.folder !== oldFolder && wbFolderMode()) {
+    let failed = false;
     for (const ch of wbChaptersOf(book.id)) {
-      await wbMirrorWrite(book, ch, ch.content || '');
-      await wbMirrorRemove(oldFolder, ch.file);
+      const result = await wbSaveMirror(book, ch);
+      if (result.failed) failed = true;
+      else await wbMirrorRemove(oldFolder, ch.file);
     }
-    await wbMirrorRemove(oldFolder, null);
+    if (failed) wbSay(t('wbMirrorFailed'), true);
+    else await wbMirrorRemove(oldFolder, null);
   }
   renderWorkbooks();
 }
@@ -954,7 +1098,7 @@ async function newChapter(workbookId) {
   const title = (prompt(t('promptNewChapter'), t('defaultChapterName')) || '').trim();
   if (!title) return;
   if (!canLeaveEditor()) return;
-  await flushChapter();
+  if (!await flushChapter()) return;
   const ch = {
     id: wbNewId('ch_'), workbookId: book.id, title,
     file: wbUniqueFile(book.id, title), content: '',
@@ -968,6 +1112,7 @@ async function newChapter(workbookId) {
 }
 
 function loadChapterIntoEditor(ch) {
+  wbEditorDestination++;
   wbCurrentId = ch.id;
   wbDirty = false;
   clearTimeout(wbSaveTimer);
@@ -985,7 +1130,7 @@ async function openChapter(id) {
   const ch = wbChapter(id);
   if (!ch || ch.id === wbCurrentId) return;
   if (!canLeaveEditor()) return;
-  await flushChapter();
+  if (!await flushChapter()) return;
   loadChapterIntoEditor(ch);
   if (isSmallScreen()) closeAllPanels();
 }
@@ -1011,8 +1156,9 @@ async function renameChapter(id, preset) {
   ch.updated = Date.now();
   if (!await wbPersist(WB_CHAPTERS, ch)) return;
   if (book && ch.file !== oldFile && wbFolderMode()) {
-    await wbMirrorWrite(book, ch, ch.content || '');
-    await wbMirrorRemove(book.folder, oldFile);
+    const result = await wbSaveMirror(book, ch);
+    if (result.failed) wbSay(t('wbMirrorFailed'), true);
+    else await wbMirrorRemove(book.folder, oldFile);
   }
   if (ch.id === wbCurrentId) document.getElementById('current-file').textContent = ch.file;
   renderWorkbooks();
@@ -1089,7 +1235,7 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
   if (targetId && (!target || target.workbookId !== bookId)) return;
   wbMovingChapter = true;
   try {
-    if (id === wbCurrentId) await flushChapter();
+    if (id === wbCurrentId && !await flushChapter()) return;
     const oldBook = wbBook(ch.workbookId);
     const oldFile = ch.file;
     const changingBooks = ch.workbookId !== bookId;
@@ -1113,18 +1259,33 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
     if (!changes.length) return;
     const pending = changingBooks && wbPendingIds.has(id)
       ? { chapterId: id, workbookId: bookId, content: ch.content, updated: now } : null;
+    const expectedVersions = new Map(changes.map(item => [item.id, wbChapterVersions.get(item.id)]));
+    let stale = false;
     try {
       const db = await wbDb();
       await new Promise((resolve, reject) => {
         const tx = db.transaction(pending ? [WB_CHAPTERS, WB_PENDING] : [WB_CHAPTERS], 'readwrite');
-        changes.forEach(item => tx.objectStore(WB_CHAPTERS).put(item));
+        const chapters = tx.objectStore(WB_CHAPTERS);
+        changes.forEach(item => {
+          const req = chapters.get(item.id);
+          req.onsuccess = () => {
+            if (stale) return;
+            if (wbChapterVersion(req.result) !== expectedVersions.get(item.id)) {
+              stale = true;
+              tx.abort();
+            } else chapters.put(item);
+          };
+        });
         if (pending) tx.objectStore(WB_PENDING).put(pending);
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
         tx.onabort = () => reject(tx.error);
       }).finally(() => db.close());
-    } catch (e) { wbSay(t('wbStoreFailed'), true); return; }
-    changes.forEach(item => Object.assign(wbChapter(item.id), item));
+    } catch (e) { wbSay(t(stale ? 'wbStaleMove' : 'wbStoreFailed'), true); return; }
+    changes.forEach(item => {
+      Object.assign(wbChapter(item.id), item);
+      wbChapterVersions.set(item.id, wbChapterVersion(item));
+    });
     if (changingBooks) {
       wbOpenBooks.add(bookId);
       if (id === wbCurrentId) {
@@ -1132,12 +1293,9 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
         wbDraftWrite();
       }
       if (wbFolderMode()) {
-        const written = await wbMirrorWrite(book, ch, ch.content || '');
-        if (written) {
+        const saved = await wbSaveMirror(book, ch);
+        if (saved.path) {
           await wbMirrorRemove(oldBook.folder, oldFile);
-          if (pending) await wbPendingClear(id);
-        } else {
-          await wbPendingMark(ch);
         }
       }
     }
@@ -1153,7 +1311,8 @@ function exportChapter(id) {
   if (!ch) return;
   const book = wbBook(ch.workbookId);
   const name = (book ? book.folder + '-' : '') + ch.file;
-  ScuLaFolder.save(name, new Blob([ch.content || ''], { type: 'text/markdown' }));
+  const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
+  ScuLaFolder.save(name, new Blob([content], { type: 'text/markdown' }));
 }
 
 /* Every direction in one press, in this order: read the folder for
@@ -1189,7 +1348,7 @@ async function syncAllToFolder(opts) {
     } finally { gsInteractive = false; paintCloud(); }
   }
 
-  await flushChapter();
+  if (!await flushChapter()) return;
   const found = await wbAdoptFromFolder();
 
   if (cloud) {
@@ -1202,16 +1361,17 @@ async function syncAllToFolder(opts) {
     }
   }
 
-  let n = 0;
+  let n = 0, failed = 0;
   for (const book of wbBooks) {
     for (const ch of wbChaptersOf(book.id)) {
-      if (await wbMirrorWrite(book, ch, ch.content || '')) n++;
+      const saved = await wbSaveMirror(book, ch);
+      if (saved.path) n++;
+      if (saved.failed) failed++;
     }
   }
-  for (const id of [...wbPendingIds]) await wbPendingClear(id);   // everything is on disk now
   renderWorkbooks();
 
-  let msg = t('wbSynced', n);
+  let msg = t(failed ? 'wbSyncedSome' : 'wbSynced', n);
   if (found.books || found.chapters) msg = t('wbAdopted', found) + ' ' + msg;
   if (cloudMsg) msg += ' ' + cloudMsg;
   wbSay(msg, true);
@@ -1231,23 +1391,33 @@ function scheduleAutosave() {
   clearTimeout(wbSaveTimer);
   wbSaveTimer = setTimeout(() => { flushChapter(); }, 800);
 }
-async function flushChapter() {
+async function flushChapter(force = false) {
   clearTimeout(wbSaveTimer);
-  if (!wbCurrentId || !wbDirty) return;
+  while (wbFlushPromise) await wbFlushPromise;
+  if (!wbCurrentId || (!wbDirty && !force)) return true;
   const ch = wbChapter(wbCurrentId);
-  if (!ch) { wbDirty = false; return; }
-  ch.content = editor.value;
-  ch.updated = Date.now();
-  wbDirty = false;
-  if (await wbPersist(WB_CHAPTERS, ch)) {
+  if (!ch) return false;
+  const saved = { ...ch, content: editor.value, updated: Date.now() };
+  wbDirty = true;
+  wbDraftWrite();            // keep recovery even if the store rejects this write
+  wbFlushPromise = (async () => {
+    if (!await wbPersist(WB_CHAPTERS, saved)) return false;
+    Object.assign(ch, saved);
+    // Typing while the write was in flight still needs its own save.
+    if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
+    wbDraftWrite();
     const wasPending = wbPendingIds.has(ch.id);
-    await wbPendingMark(ch);
+    await wbPendingMark(saved);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot
-    wbSay(t('wbAutosaved'));
+    if (!wbDirty) wbSay(t('wbAutosaved'));
     cloudAutoSync();                      // and, debounced, up to Drive — § O
-  }
+    return wbCurrentId === ch.id && !wbDirty;
+  })();
+  try { return await wbFlushPromise; }
+  finally { wbFlushPromise = null; }
 }
 function detachChapter() {
+  wbEditorDestination++;
   clearTimeout(wbSaveTimer);
   wbCurrentId = null;
   wbDirty = false;
@@ -1257,8 +1427,8 @@ function detachChapter() {
   wbSay('');
   renderWorkbooks();
 }
-// A chapter is always safe to leave (autosave already stored it); a loose
-// file with text in it is not.
+// Attached chapters must also pass the caller's awaited flush before leaving.
+// A loose file needs confirmation because it has no chapter store.
 function canLeaveEditor() {
   if (wbCurrentId) return true;
   if (!editor.value.trim()) return true;
@@ -1271,15 +1441,11 @@ async function saveToWorkbook() {
   const ch = wbChapter(wbCurrentId);
   const book = ch && wbBook(ch.workbookId);
   if (!ch || !book) { detachChapter(); openWorkbookModal(); return; }
-  clearTimeout(wbSaveTimer);
-  ch.content = editor.value;
-  ch.updated = Date.now();
-  wbDirty = false;
-  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  if (!await flushChapter(true)) return;
   // Finish both IndexedDB and the local file before cloud sign-in can open.
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
-  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  const saved = await wbSaveMirror(book, ch);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.pending ? t(wbDirty ? 'wbEditing' : 'wbAutosaved')
+    : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
 }
@@ -1287,7 +1453,7 @@ async function saveToWorkbook() {
 /* Save every chapter edited since its last save — write each one's .md
    file, then drop its pending marker. Header button + Ctrl+Alt+S. */
 async function saveAllModifiedChapters() {
-  await flushChapter();                       // fold in the open chapter's latest edits
+  if (!await flushChapter()) return;          // fold in the open chapter's latest edits
   const ids = [...wbPendingIds];
   if (!ids.length) { wbSay(t('wbNoModified'), true); return; }
   let done = 0, failed = 0;
@@ -1297,9 +1463,9 @@ async function saveAllModifiedChapters() {
     const book = wbBook(ch.workbookId);
     if (!book) { failed++; continue; }
     try {
-      await wbMirrorWrite(book, ch, ch.content || '');
-      await wbPendingClear(id);
-      done++;
+      const saved = await wbSaveMirror(book, ch);
+      if (saved.failed) failed++;
+      else done++;
     } catch (e) { failed++; }
   }
   wbSay(failed ? t('wbSavedSomeModified', done) : t('wbSavedAllModified', done), true);
@@ -1326,13 +1492,13 @@ function openWorkbookModal() {
   onWorkbookSelectChange();
   if (current) document.getElementById('wb-chapter-select').value = current.id;
   onChapterSelectChange();
-  document.getElementById('workbook-modal').classList.add('open');
-  setTimeout(() => {
-    const focusNew = sel.value === '__new__';
-    document.getElementById(focusNew ? 'wb-new-name' : 'wb-chapter-title').focus();
-  }, 40);
+  openOrdinaryDialog('workbook-modal', sel.value === '__new__' ? 'wb-new-name' : 'wb-chapter-title');
 }
-function closeWorkbookModal() { document.getElementById('workbook-modal').classList.remove('open'); }
+function closeWorkbookModal() {
+  const modal = document.getElementById('workbook-modal');
+  if (!modal.classList.contains('open')) return;
+  closeOrdinaryDialog('workbook-modal');
+}
 
 function onWorkbookSelectChange() {
   const sel = document.getElementById('wb-select');
@@ -1422,8 +1588,9 @@ async function confirmSaveToWorkbook() {
   closeWorkbookModal();
   renderWorkbooks();
   // Cancelling the later cloud sign-in must not cancel either local write.
-  const path = await wbMirrorWrite(book, ch, ch.content);
-  await wbPendingClear(ch.id);
-  wbSay(path ? t('wbSavedTo', path) : t('wbSavedLocal'), true);
+  const saved = await wbSaveMirror(book, ch);
+  wbSay(saved.failed ? t('wbMirrorFailed') : saved.pending ? t(wbDirty ? 'wbEditing' : 'wbAutosaved')
+    : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
+  renderWorkbooks();
   await cloudSyncAfterSave();
 }

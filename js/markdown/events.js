@@ -46,6 +46,9 @@ document.getElementById('idea-chapter').addEventListener('keydown', function(e) 
   e.stopPropagation();
 });
 document.addEventListener('keydown', e => {
+  // A fullscreen dialog may have just closed while handling this Escape.
+  // Do not also dismiss the ordinary dialog underneath it.
+  if (e.key === 'Escape' && e.defaultPrevented) return;
   if (typeof dgIsOpen === 'function' && dgIsOpen()) return;   // the diagram modal owns every key
   if (typeof skIsOpen === 'function' && skIsOpen()) return;   // so does the sketch modal
   if (e.key === 'Escape') {
@@ -54,9 +57,14 @@ document.addEventListener('keydown', e => {
     if (gv.open) { closeGraph(); return; }
     if (gdOpen) { closeGarden(); return; }
     if (mbOpen) { closeMedia(); return; }
-    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal();
+    closeImageModal(); closeLinkModal(); closeTableModal(); closeWikiModal(); closeIdeaModal(); closeHelpModal(); closeWorkbookModal();
     if (isSmallScreen()) closeAllPanels();
   }
+  // Dialogs own their keys, even if focus escapes to the background editor.
+  // Other editable fields keep native shortcuts instead of editing the chapter.
+  const el = document.activeElement;
+  if (document.querySelector('.image-modal.open') ||
+      (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))) return;
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyH') {
     e.preventDefault(); highlightPageMatches(e.altKey); return;
   }
@@ -132,6 +140,7 @@ document.addEventListener('keydown', e => {
   // Plain Ctrl+F is left alone: the browser's own find still has a job here.
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'F') { e.preventDefault(); toggleFind(); }
   if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyS') { e.preventDefault(); saveAllModifiedChapters(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && e.code === 'KeyS') { e.preventDefault(); exportMarkdown(); return; }
   if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveToWorkbook(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*','*'); }

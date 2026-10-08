@@ -10,6 +10,10 @@ const ROW_BUTTONS = [
   '[data-i="saveToWorkbookBtn"]', '#btn-wb-sync', '#btn-wb-cloud', '#btn-save-all-modified',
 ];
 
+test.beforeEach(async ({ page }) => {
+  await page.route(/^https?:/, route => route.abort());
+});
+
 // Apply state after the language switch and its asynchronous Drive repaint.
 async function fixture(page, lang, stress = false) {
   await page.goto(URL);
@@ -234,15 +238,15 @@ for (const [width, height] of [[1024, 900], [700, 900], [420, 900], [360, 900], 
     expect(before.wrap).toBe('nowrap');
     expect(before.overflow).toBe('auto');
     expect(before.padding).toBe(width <= 420 ? '4px' : width <= 700 ? '6px' : '10px');
-    expect(before.font).toBe(width <= 420 ? '10px' : '11px');
+    expect(before.font).toBe('11px');
     expect(before.toggle).not.toBe('none');
     if (width <= 420) expect(before.scroll).toBe(true);
     await page.locator('#btn-toolbar-toggle').click();
     await page.waitForFunction(() => document.getElementById('toolbar-groups').getBoundingClientRect().height < 5);
     for (const selector of ROW_BUTTONS) {
       const dimensions = await page.locator(selector).evaluate(e => ({ width: e.getBoundingClientRect().width, height: e.getBoundingClientRect().height }));
-      expect(dimensions.width).toBeGreaterThan(0);
-      expect(dimensions.height).toBeGreaterThan(0);
+      expect(dimensions.width).toBeGreaterThanOrEqual(44);
+      expect(dimensions.height).toBeGreaterThanOrEqual(44);
     }
     expect(await page.locator('#wb-save-sync-row').evaluate(e => e.getBoundingClientRect().height)).toBe(before.rowHeight);
     if (before.scroll) {

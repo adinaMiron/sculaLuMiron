@@ -475,14 +475,104 @@ function insertFontSize(size) {
   document.getElementById('size-select').value = '';
 }
 
+/* Ordinary dialogs share focus ownership and hide the covered page from
+   keyboard and assistive-technology navigation. Higher fullscreen dialogs
+   keep their own key handlers when they cover an ordinary dialog. */
+const ordinaryDialogs = [];
+const dialogInertState = new Map();
+let activeOrdinaryLayer = null;
+function dialogTabStops(modal) {
+  return [...modal.querySelectorAll('button, input, select, textarea, a[href], [tabindex], [contenteditable="true"]')]
+    .filter(el => el.tabIndex >= 0 && !el.disabled && !el.closest('[inert]') &&
+      el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+}
+function refreshOrdinaryDialogs() {
+  const open = ordinaryDialogs.filter(entry => entry.modal.classList.contains('open'));
+  let top = open.length ? open[open.length - 1].modal : null;
+  if (top) {
+    // Follow the visible stacking order, including graph/diagram/sketch UI.
+    for (const layer of document.body.children) {
+      if (layer.matches('[role="dialog"][aria-modal="true"]') && layer.getClientRects().length &&
+          +getComputedStyle(layer).zIndex > +getComputedStyle(top).zIndex) top = layer;
+    }
+    for (const child of document.body.children) {
+      if (child.matches('script, style')) continue;
+      if (!dialogInertState.has(child)) dialogInertState.set(child, child.inert);
+      child.inert = child === top ? dialogInertState.get(child) : true;
+    }
+  } else {
+    for (const [child, inert] of dialogInertState) child.inert = inert;
+    dialogInertState.clear();
+  }
+  activeOrdinaryLayer = top;
+  if (top && !top.contains(document.activeElement)) {
+    (dialogTabStops(top)[0] || top).focus();
+  }
+  return top;
+}
+function openOrdinaryDialog(id, focusId) {
+  const modal = document.getElementById(id);
+  if (!modal.classList.contains('open')) {
+    ordinaryDialogs.push({ modal, invoker: document.activeElement, zIndex: modal.style.zIndex });
+    // Newly opened siblings must also appear above older ordinary dialogs.
+    ordinaryDialogs.forEach((entry, index) => { entry.modal.style.zIndex = String(100 + (index + 1) / 10); });
+    modal.classList.add('open');
+  }
+  refreshOrdinaryDialogs();
+  if (activeOrdinaryLayer === modal) {
+    (document.getElementById(focusId) || dialogTabStops(modal)[0] || modal).focus();
+  }
+}
+function closeOrdinaryDialog(id) {
+  const index = ordinaryDialogs.findIndex(entry => entry.modal.id === id);
+  const modal = document.getElementById(id);
+  modal.classList.remove('open');
+  if (index < 0) return;
+  const [entry] = ordinaryDialogs.splice(index, 1);
+  modal.style.zIndex = entry.zIndex;
+  const ownedFocus = activeOrdinaryLayer === modal;
+  const top = refreshOrdinaryDialogs();
+  if (ownedFocus && entry.invoker.isConnected && !entry.invoker.closest('[inert]') &&
+      (!top || top.contains(entry.invoker))) entry.invoker.focus();
+}
+const ordinaryDialogClosers = {
+  'image-modal': 'closeImageModal', 'workbook-modal': 'closeWorkbookModal',
+  'idea-modal': 'closeIdeaModal', 'link-modal': 'closeLinkModal',
+  'table-modal': 'closeTableModal', 'help-modal': 'closeHelpModal', 'wiki-modal': 'closeWikiModal'
+};
+document.addEventListener('keydown', e => {
+  const top = refreshOrdinaryDialogs();
+  if (!top || !ordinaryDialogClosers[top.id]) return;
+  if (e.key === 'Escape') {
+    e.preventDefault(); e.stopImmediatePropagation();
+    window[ordinaryDialogClosers[top.id]]();
+  } else if (e.key === 'Tab') {
+    const stops = dialogTabStops(top);
+    const index = stops.indexOf(document.activeElement);
+    if (!stops.length || index < 0 || (e.shiftKey ? index === 0 : index === stops.length - 1)) {
+      e.preventDefault();
+      (stops[e.shiftKey ? stops.length - 1 : 0] || top).focus();
+    }
+  }
+}, true);
+document.addEventListener('focusin', () => {
+  if (activeOrdinaryLayer) refreshOrdinaryDialogs();
+});
+// Fullscreen UI can open/close through its own controls while dialogs are
+// stacked. Observe only page layers, not the changing editor/preview content.
+const ordinaryDialogObserver = new MutationObserver(() => refreshOrdinaryDialogs());
+for (const layer of document.body.children) {
+  ordinaryDialogObserver.observe(layer, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+}
+ordinaryDialogObserver.observe(document.body, { childList: true });
+
 /* ── Image URL modal ── */
 function openImageModal() {
   saveSelection();
-  document.getElementById('image-modal').classList.add('open');
-  document.getElementById('img-url').focus();
+  openOrdinaryDialog('image-modal', 'img-url');
 }
 function closeImageModal() {
-  document.getElementById('image-modal').classList.remove('open');
+  closeOrdinaryDialog('image-modal');
   ['img-url','img-alt','img-title'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pick-name').textContent = t('noFileChosen');
   const thumb = document.getElementById('img-thumb');
@@ -680,11 +770,25 @@ function toggleNav() { togglePanelById('nav-panel'); }
 
 const TB_COLLAPSED_KEY = 'scula:toolbar-collapsed';
 
-function toggleToolbarCollapse() {
+function setToolbarCollapsed(collapsed) {
   const bar = document.querySelector('.toolbar');
   const btn = document.getElementById('btn-toolbar-toggle');
-  const collapsed = bar.classList.toggle('collapsed');
+  const groups = document.getElementById('toolbar-groups');
+  if (collapsed && isSmallScreen() && groups.contains(document.activeElement)) btn.focus();
+  bar.classList.toggle('collapsed', collapsed);
+  groups.inert = collapsed && isSmallScreen();
   btn.classList.toggle('active', !collapsed);
+  btn.setAttribute('aria-expanded', String(!groups.inert));
+}
+
+// Desktop always shows the groups, even with a saved mobile collapse preference.
+window.matchMedia('(max-width: 1024px)').addEventListener('change', () => {
+  setToolbarCollapsed(document.querySelector('.toolbar').classList.contains('collapsed'));
+});
+
+function toggleToolbarCollapse() {
+  const collapsed = !document.querySelector('.toolbar').classList.contains('collapsed');
+  setToolbarCollapsed(collapsed);
   if (isSmallScreen()) {
     try { store.set(TB_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
   }
@@ -694,9 +798,7 @@ async function initToolbarCollapse() {
   if (!isSmallScreen()) return;
   let saved = null;
   try { saved = await store.get(TB_COLLAPSED_KEY); } catch (e) {}
-  const collapsed = saved === '1';
-  document.querySelector('.toolbar').classList.toggle('collapsed', collapsed);
-  document.getElementById('btn-toolbar-toggle').classList.toggle('active', !collapsed);
+  setToolbarCollapsed(saved === '1');
 }
 // Opening the search panel is always a request to search: refresh what is in
 // it and put the cursor in the query box. A keyboard shortcut fired while it

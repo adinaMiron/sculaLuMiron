@@ -261,23 +261,24 @@ one word each and rendered as a coloured pill with an icon:
 
 | Marker | Icon | Token | Hex | i18n label |
 |---|---|---|---|---|
-| `!nice` | 🌱 | `--imp-nice` | `#6E9E8A` | `impNice` |
+| `!nice` | 🌱 | `--imp-nice` | `#8FBAA7` | `impNice` |
 | `!important` | ⭐ | `--imp-important` | `#D9A441` | `impImportant` |
-| `!vital` | 🔥 | `--imp-vital` | `#C4643C` | `impVital` |
+| `!vital` | 🔥 | `--imp-vital` | `#EAA07F` | `impVital` |
 
 **Adding and changing markers.** `Ctrl+Alt+1/2/3` marks the caret's line or
 every line a selection touches; `Ctrl+Alt+0` clears. The
 `#importance-insert-select` inserts a marker at the cursor, and markers can
 also be typed. Marking a line again replaces its leading marker.
 
-**Filtering tasks.** The toolbar's `#importance-select` (next to the todo
-buttons) chooses an importance level across every workbook and chapter.
+**Filtering tasks.** The toolbar's `#importance-select` (next to the task
+controls) chooses an importance level across every workbook and chapter.
 The workbook panel shows only chapters with a checklist task containing that
 exact marker, and the open chapter's preview shows only matching task lines.
 Checked and unchecked tasks both count; fenced code and prose do not. The
 editor source is untouched, and choosing “All importance” restores the full
-list and preview. This filter combines with the responsible and tasks-only
-filters on the same task line.
+list and preview. This filter combines with the responsible and task-state
+filters on the same task line, including all five states. Editing the open
+chapter updates its visibility immediately when that combined match changes.
 
 `impSetLine()` puts the marker **after** whatever legally leads the line —
 the bullet, the number, the `[ ]` of a task, the hashes of a heading, and
@@ -587,6 +588,12 @@ actually rejects (`\ / : * ? " < > |`, controls) are replaced.
   folder* all run inside a click, so they can call
   `ScuLaFolder.dir(true)` and write the file.
 
+Chapter writes are serialized and keep the editor dirty until IndexedDB
+confirms the saved text. A quota error or aborted transaction retains the
+chapter's recovery journal and blocks chapter switching; saving or switching
+again retries the write. Edits typed during a write remain dirty until their
+own snapshot is saved.
+
 `wbMirrorRemove()` is deliberately **never recursive**: it removes files
 this app knows it wrote, and drops a workbook folder only if the file
 system agrees it's empty. Nothing a person put in that folder by hand is
@@ -605,12 +612,14 @@ moments are outside it, and both used to end in lost text:
    when you come back, which is how "the page was open for a while" turns
    into "the page reloaded without being asked".
 
-So every editor change also lands in **`localStorage`** under
+So every editor change also lands in **`sessionStorage`**, isolated per tab,
+and in **`localStorage`** for other readers, under
 `scula:md:draft`, tagged with the chapter it belongs to (`''` for a loose
 file) and when it was written:
 
 ```js
-{ id: 'ch_…' | '', name: 'mecanica.md', text: '…', at: 1712345678901 }
+{ id: 'ch_…' | '', name: 'mecanica.md', text: '…', at: 1712345678901,
+  base: '…', dirty: true, conflictId: null, tab: true }
 ```
 
 It is a **journal, not a store**: the record in IndexedDB is still the truth,
@@ -620,6 +629,13 @@ is not guaranteed to finish — and it hangs off `updateStatus()`, which every
 path that changes the editor already ends in, so no future action can forget
 it. `wbPark()` writes it again on `visibilitychange`, `freeze`, `pagehide`
 **and** `beforeunload`: `beforeunload` alone never fires on a discard.
+
+The two journals are read and written independently, so a blocked or full
+`localStorage` does not hide the tab's recovery snapshot. If the tab journal
+cannot be updated, a loose file shows a persistent recovery warning and a
+direct Markdown download of the current text, including embedded images.
+Editing stays usable; closing or reloading asks for confirmation while
+recovery is unavailable. Saving into a workbook still writes to IndexedDB.
 
 ### Coming back: the resume, and the race it used to lose
 
@@ -643,17 +659,24 @@ progress, so the chapter is re-attached **over** it. Typing that started
 while IndexedDB was still opening is the one case that still wins over the
 resume — and the journal is what keeps it.
 
-Nothing that was on screen is thrown away. Once the chapter is attached, the
-newest of the three wins:
+The tab's journal selects its own chapter on reload, independently of other
+tabs' navigation. Recovery uses the saved base revision:
 
 | Source | Wins when |
 |---|---|
-| the journal (`wbDraftAhead`) | it is this chapter's and its `at` is newer than the record's `updated` |
-| the restored text (`wbBootText`) | there is no such journal entry and it differs from the record |
-| the record | otherwise — including a Drive pull or another tab having written it since (§ O) |
+| the journal (`wbDraftAhead`) | it carries unflushed edits for this chapter; legacy journals use `at > updated` |
+| the restored text (`wbBootText`) | there is no pending journal text, the base still matches (or the journal is legacy), and it differs from the record |
+| the record | otherwise, including a newer revision in another tab with no pending local edits |
 
-and whatever is recovered is flushed straight back into the chapter. With no
-chapter to resume at all, a journalled loose file is put back with its name.
+Recovered text is flushed back only when the base still matches. Chapter
+writes compare the tab's last known revision with IndexedDB inside a single
+read/write transaction. A stale write keeps the existing chapter and saves
+the competing text as a separate chapter with `(conflict)` in its title and
+a distinct file path. The editor reports the conflict and blocks switching;
+reload opens the preserved copy. Unflushed recovery against a changed base
+also creates a conflict copy. With no chapter to resume, a journalled loose
+file is put back with its name. `tests/wbmultitab.js` covers concurrent saves,
+same timestamps, ideas, reload, closing tabs, and background transitions.
 
 Which side of the race a browser lands on is not ours to choose, so the other
 side is handled too: `wbSettleRestore()` looks once, 1.2 s after boot, for an
@@ -1361,7 +1384,7 @@ Run: `/apptest find`.
 ## J. Quick idea capture (`index.html`)
 
 A thought arrives while you are writing about something else. The 💡 button
-in `.header-actions` — immediately right of **New** — and **Ctrl+Alt+I** open
+in `.header-actions` — after **New** and **Help** — and **Ctrl+Alt+I** open
 one textarea, and what you type is filed into the chapter it belongs to
 without ever leaving the chapter you were in.
 
@@ -1469,7 +1492,7 @@ early, for the same reason the importance chords do — `Alt` does not change
 
 ### Testing
 
-`tests/idea.js`. The button's position next to New, `Ctrl+Alt+I` and
+`tests/idea.js`. The **New → Help → Idea** button order, `Ctrl+Alt+I` and
 `Escape`, the hint, filing by `Ctrl+Enter`, the prefix stripped only on a
 match, a folded name (`retete` → `Rețete`), the editor moving when the
 target is the open chapter, the `Idei`/today fallback created and then
@@ -1485,9 +1508,16 @@ voice dictation engine — same Caiet vocal settings, same `PROVIDERS`/queue/
 Web Speech code, same status pill — through `window.toggleIdeaDictation()`,
 which calls `window.toggleDictation(targetEl)` with `#idea-text` as the
 target instead of the default editor. See `docs/MAP.md` § "Voice dictation"
-for how the shared engine's `target` swap works. Closing the modal
-(`closeIdeaModal()`) stops an active dictation so it never keeps recording
-into a hidden box.
+for the shared engine. Each recording owns its destination and insertion
+state, including queued segments and late Web Speech results. A delayed
+chapter transcript updates the recorded chapter even after navigation;
+that chapter stays marked modified until its file is saved. Closing the
+modal (`closeIdeaModal()`) stops active idea dictation and invalidates its
+draft destination, as does submitting the idea. Transcripts for a closed or
+submitted idea, a replaced loose draft, a deleted chapter, or a failed
+chapter write appear in a labelled recovery panel for copying instead of
+being inserted into another draft. Recovery text remains on this page
+until reload; copy it before leaving.
 
 While the mic is on, the recording button (`#btn-dictate` or `#btn-idea-dictate`,
 only the one recording) reads "⏹ Oprește înregistrarea" / "⏹ Stop recording"

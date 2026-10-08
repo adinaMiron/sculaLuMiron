@@ -23,8 +23,8 @@ set -Eeuo pipefail
 # Set your preferred model and effort here, for example "gpt-6.1-sol" and "high".
 # Empty defaults use the CLI/model defaults. Environment values take precedence;
 # an explicitly empty environment value also restores the CLI/model default.
-DEFAULT_CODEX_MODEL=""
-DEFAULT_CODEX_EFFORT=""
+DEFAULT_CODEX_MODEL="gpt-6.1-sol"
+DEFAULT_CODEX_EFFORT="high"
 CODEX_MODEL="${CODEX_MODEL-$DEFAULT_CODEX_MODEL}"
 CODEX_EFFORT="${CODEX_EFFORT-$DEFAULT_CODEX_EFFORT}"
 
@@ -45,6 +45,7 @@ Optional environment variables:
   MAX_TASKS=50
   CREATE_PR=true
   FINAL_REVIEW=true
+  BROWSER_PREFLIGHT=true
   CODEX_MODEL=<OpenAI model identifier> (unset: script default)
   CODEX_EFFORT=none|minimal|low|medium|high|xhigh|max|ultra (unset: script default)
 
@@ -55,6 +56,10 @@ Edit DEFAULT_CODEX_MODEL and DEFAULT_CODEX_EFFORT in the configuration section.
 Environment values override those defaults; empty values use CLI/model defaults.
 Choose an effort supported by your model and installed Codex CLI.
 Model/effort selections apply to tasks, retries, and final review.
+Before any Git change, the runner checks that Playwright's bundled headless
+Chromium starts inside the Codex sandbox (install it with: cd tests &&
+npm install && npx playwright install chromium-headless-shell).
+BROWSER_PREFLIGHT=false skips that check for runs without browser tests.
 Progress is concise; detailed per-task and final-review logs are in
 .git/automation-logs/ (linked worktrees use their own Git directory).
 TXT
@@ -321,7 +326,7 @@ FINAL_REVIEW="${FINAL_REVIEW:-true}"
 [[ "$CREATE_PR" != "true" || "$FINAL_REVIEW" == "true" ]] ||
     die "CREATE_PR=true requires FINAL_REVIEW=true; set CREATE_PR=false to skip final review"
 
-for cmd in git grep sed find sort awk cmp diff codex tr; do
+for cmd in git grep sed find sort awk cmp diff codex tr timeout; do
     require_command "$cmd"
 done
 
@@ -344,7 +349,10 @@ esac
 # Git and create the PR.  Every Codex child process gets a stricter policy:
 #
 #   - workspace writes allowed;
-#   - outbound network for agent-executed commands denied;
+#   - local browser IPC via the enforced network proxy sandbox, with no
+#     allowed outbound destinations from agent-executed commands;
+#   - Chromium and Node bypass that proxy, so their internet requests fail
+#     offline instead of terminating the command;
 #   - no interactive permission escalation;
 #   - hosted web search disabled;
 #   - apps/connectors/plugins/hooks/multi-agent features disabled;
@@ -369,6 +377,7 @@ if [[ "$FINAL_REVIEW" == "true" ]]; then
 else
     preflight_codex
 fi
+preflight_browser
 
 validate_task_graph
 
@@ -495,9 +504,12 @@ The wrapper rejects changes to these paths, including new or ignored files.
 Control-plane maintenance requires a separate human-reviewed change.
 
 NETWORK / EXTERNAL-TOOL POLICY
-Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,
+Do not use web search, browser MCP tools, apps/connectors, plugins, MCP tools, curl, wget,
 network package installation, remote APIs, or any command that requires outbound network access.
 Use only repository files, installed local tooling, and local tests.
+Local Playwright tests are required where relevant; see the next section.
+
+$CODEX_SANDBOX_GUIDANCE
 
 GIT OWNERSHIP
 The shell wrapper owns Git history and remotes.
@@ -610,9 +622,11 @@ Run appropriate regression tests.
 
 STRICT REVIEW-ONLY ROLE
 Do not edit source, tests, docs, checkbox state, Git staging/history/branches/remotes, or PRs.
-Do not use web search, browser tools, apps/connectors, plugins, MCP tools, curl, wget,
+Do not use web search, browser MCP tools, apps/connectors, plugins, MCP tools, curl, wget,
 network package installation, remote APIs, or any command that requires outbound network access.
 Use only repository files and already-installed local tooling.
+
+$CODEX_SANDBOX_GUIDANCE
 
 At the very end output exactly one line:
 VERDICT: PASS

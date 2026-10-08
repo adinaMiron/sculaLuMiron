@@ -265,6 +265,33 @@ async function cloudTombstone(id) {
    One pass: read the manifest, merge it against IndexedDB record by record,
    move only what differs, write the manifest back. Returns {up, down} so the
    caller can say what happened. */
+function gsValidateManifest(man) {
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const stamp = value => Number.isFinite(value) && value >= 0;
+  const strings = (record, fields) => fields.every(field => typeof record[field] === 'string');
+  const ids = new Set(), books = new Set();
+  const record = (value, fields) => object(value) && strings(value, fields)
+    && value.id && !ids.has(value.id) && stamp(value.updated)
+    && (value.created === undefined || stamp(value.created))
+    && (value.order === undefined || Number.isFinite(value.order));
+  const invalid = () => { throw new Error('Invalid Drive manifest'); };
+  if (!object(man)) invalid();
+  if (man.v !== 1) throw new Error('Unsupported Drive manifest version');
+  if (!Array.isArray(man.books) || !Array.isArray(man.chapters) || !object(man.deleted)
+      || (man.updated !== undefined && !stamp(man.updated))) invalid();
+  for (const book of man.books) {
+    if (!record(book, ['id', 'name', 'folder', 'driveId']) || !book.driveId || !book.folder) invalid();
+    ids.add(book.id); books.add(book.id);
+  }
+  for (const chapter of man.chapters) {
+    if (!record(chapter, ['id', 'workbookId', 'title', 'file', 'driveId'])
+        || !books.has(chapter.workbookId) || !chapter.file || !chapter.driveId) invalid();
+    ids.add(chapter.id);
+  }
+  if (!Object.values(man.deleted).every(stamp)) invalid();
+  return man;
+}
+
 async function cloudSync(interactive) {
   if (gsBusy) return null;
   if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
@@ -281,7 +308,9 @@ async function cloudSync(interactive) {
     const found = await gsChild(GSYNC.MANIFEST, rootId, false);
     if (found) {
       manId = found.id;
-      try { man = JSON.parse(await gsDownload(found.id)) || man; } catch (e) {}
+      // Only an absent index means an empty workspace. An unreadable or
+      // invalid existing index must stop the pass before any merge or write.
+      man = gsValidateManifest(JSON.parse(await gsDownload(found.id)));
     }
     const remBooks = new Map((man.books || []).map(b => [b.id, b]));
     const remChaps = new Map((man.chapters || []).map(c => [c.id, c]));
@@ -328,13 +357,14 @@ async function cloudSync(interactive) {
     for (const rb of remBooks.values()) {
       const lb = wbBook(rb.id);
       if (!lb) {
-        const book = { id: rb.id, name: rb.name, folder: rb.folder, created: rb.created || Date.now(),
+        const book = { id: rb.id, name: rb.name, folder: wbUniqueFolder(rb.name, rb.id, rb.folder), created: rb.created || Date.now(),
                        updated: rb.updated || Date.now(), order: rb.order || 0 };
         wbBooks.push(book);
         await wbPersist(WB_BOOKS, book);
         down++;
       } else if ((rb.updated || 0) > (lb.updated || 0)) {
-        lb.name = rb.name; lb.folder = rb.folder; lb.order = rb.order || 0; lb.updated = rb.updated;
+        lb.name = rb.name; lb.folder = wbUniqueFolder(rb.name, rb.id, rb.folder);
+        lb.order = rb.order || 0; lb.updated = rb.updated;
         await wbPersist(WB_BOOKS, lb);
         down++;
       }
@@ -375,18 +405,56 @@ async function cloudSync(interactive) {
       const lc = wbChapter(rc.id);
       if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
       if (!wbBook(rc.workbookId)) continue;                          // its workbook is gone here
-      let text = '';
-      try { text = await gsDownload(rc.driveId); } catch (e) { continue; }
-      const ch = lc || { id: rc.id, workbookId: rc.workbookId, created: rc.created || Date.now(), order: 0 };
+      const base = wbChapterVersion(lc), baseText = lc?.content || '';
+      const unchanged = () => wbChapterVersion(wbChapter(rc.id)) === base
+        && !(rc.id === wbCurrentId && (wbDirty || editor.value !== baseText))
+        && !wbFlushPromise;
+      // A required pull must succeed before publishing a manifest built from
+      // local chapters, or remote-only entries and newer metadata would be lost.
+      const text = await gsDownload(rc.driveId);
+      let ch = { ...(lc || { id: rc.id, created: rc.created || Date.now() }) };
       ch.workbookId = rc.workbookId;
-      ch.title = rc.title; ch.file = rc.file;
+      ch.title = rc.title; ch.file = wbUniqueFile(rc.workbookId, rc.title, rc.id, rc.file);
       ch.order = rc.order || 0;
       ch.content = text;
       ch.updated = rc.updated || Date.now();
-      if (!lc) wbChapters.push(ch);
-      if (!await wbPersist(WB_CHAPTERS, ch)) continue;
-      await wbPendingMark(ch);          // so the markdown folder catches up too
+      const competing = () => {
+        const id = wbNewId('ch_'), title = t('wbConflictTitle', rc.title);
+        return { ...ch, id, title, file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
+          created: Date.now(), updated: Date.now(), order: wbChaptersOf(rc.workbookId).length };
+      };
+      let conflict = false;
+      // Recheck both the editor and the durable revision in the transaction:
+      // an autosave or another tab can finish while the body is downloading.
+      await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+        const req = chapters.get(rc.id);
+        req.onsuccess = () => {
+          conflict = !unchanged() || wbChapterVersion(req.result) !== base;
+          if (conflict) { ch = competing(); chapters.add(ch); }
+          else chapters.put(ch);
+        };
+        return req;
+      });
+      wbChapterVersions.set(ch.id, wbChapterVersion(ch));
+      // Typing can also occur between the transaction's request and commit.
+      // Preserve the downloaded body before a later autosave replaces it.
+      if (!conflict && !unchanged()) {
+        ch = competing();
+        if (!await wbPersist(WB_CHAPTERS, ch)) throw new Error(t('wbStoreFailed'));
+        conflict = true;
+      }
+      wbRecordResponsibles(ch.content);
+      if (conflict) {
+        wbChapters.push(ch);
+        await wbPendingMark(ch);
+        renderWorkbooks();
+        throw new Error(t('cloudPullConflict'));
+      }
+      if (lc) Object.assign(lc, ch);
+      else wbChapters.push(ch);
+      // No await between the final revision check and replacing the editor.
       if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
+      await wbPendingMark(ch);          // so the markdown folder catches up too
       down++;
     }
     const outChaps = [];
@@ -501,7 +569,7 @@ async function cloudButton() {
     if (r && r.down && wbFolderMode() && await ScuLaFolder.dir(false)) {
       for (const id of [...wbPendingIds]) {
         const ch = wbChapter(id), book = ch && wbBook(ch.workbookId);
-        if (book && await wbMirrorWrite(book, ch, ch.content || '')) await wbPendingClear(id);
+        if (book) await wbSaveMirror(book, ch);
       }
       renderWorkbooks();
     }

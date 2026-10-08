@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#14201A">
 <title>Markdown Editor</title>
 <style>
@@ -17,10 +17,10 @@
     --on-accent: #1A2117;
     --text: #F3EEE1;
     --text-2: #9FB3A5;
-    --text-3: #5A6A60;
-    /* the shared terracotta status colour, same hex as voice.html and
-       editor.html — see docs/THEME.md */
-    --danger: #C4643C;
+    /* Functional small labels must remain readable on raised/hover surfaces.
+       Disabled controls use opacity separately. See docs/THEME.md. */
+    --text-3: var(--text-2);
+    --danger: #EAA07F; /* readable terracotta status text on dark surfaces */
     --panel-w: 260px;
     --font-mono: 'Courier New', monospace;
     --font-ui: 'Trebuchet MS', sans-serif;
@@ -49,12 +49,12 @@
 
     /* Importance markers (!nice / !important / !vital). Three escalating
        levels, drawn from the same earth palette: the mossy teal the tags
-       use, an amber between it and the accent, and the shared terracotta.
+       use, an amber between it and the accent, and readable terracotta.
        Tokens for the same reason as --graph-*: a light theme changes these
        three values and nothing else. See docs/FEATURES.md § C. */
-    --imp-nice: #6E9E8A;
+    --imp-nice: #8FBAA7;
     --imp-important: #D9A441;
-    --imp-vital: #C4643C;
+    --imp-vital: #EAA07F;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -300,7 +300,7 @@
     color: var(--on-accent);
     border-color: var(--accent);
   }
-  #btn-wb-cloud.syncing { opacity: 0.65; }
+  #btn-wb-cloud.syncing { border-style: dashed; }
   #wb-cloud-where {
     font-size: 11px;
     color: var(--text-3);
@@ -406,6 +406,7 @@
   #btn-garden[hidden] { display: none; }
 
   #stat-wb { color: var(--text-2); }
+  #wb-draft-warning { padding: 8px 16px; color: var(--danger); background: var(--surface); flex-shrink: 0; }
 
   /* ── Tree ── */
   #tree-container {
@@ -644,7 +645,7 @@
   .gantt-row { position: relative; height: 68px; border-bottom: 1px solid var(--border); background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); }
   .gantt-bar { position: absolute; top: 15px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--bg); z-index: 2; min-width: 8px; }
   .gantt-bar.done { background: var(--imp-nice); }
-  .gantt-bar.vital { background: var(--imp-vital); color: white; }
+  .gantt-bar.vital { background: var(--imp-vital); color: var(--on-accent); }
   .gantt-bar.important { background: var(--imp-important); }
   .gantt-bar.inferred { opacity: .72; border: 2px dashed var(--text); }
   .gantt-bar span { display: block; padding: 4px 7px; font-size: 11px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -915,7 +916,7 @@
     font: inherit; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; cursor: pointer;
     background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
   }
-  .nav-task-chip.off { opacity: 0.4; text-decoration: line-through; }
+  .nav-task-chip.off { text-decoration: line-through; border-style: dashed; }
   .nav-task-chip:hover { border-color: var(--accent); }
   .nav-task .nav-label { font-size: 12px; color: var(--text); }
   .nav-task-icon {
@@ -951,7 +952,14 @@
   #dictate-pill .dictate-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); flex: 0 0 auto; animation: dictate-blink 1s ease-in-out infinite; }
   #dictate-pill #dictate-pill-interim { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @keyframes dictate-blink { 50% { opacity: 0.25; } }
-  #btn-dictate.active { background: var(--danger); color: var(--text); }
+  #btn-dictate.active { background: var(--danger); color: var(--on-accent); }
+  #dictate-recovery {
+    position: fixed; right: 16px; bottom: 80px; z-index: 9991;
+    width: min(80vw, 420px); padding: 12px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  }
+  #dictate-recovery[hidden] { display: none; }
+  #dictate-recovery textarea { width: 100%; margin-top: 8px; }
 
   /* ── Mobile view tabs (hidden on desktop) ── */
   #view-tabs {
@@ -1088,7 +1096,7 @@
   }
   .find-chip:hover { color: var(--text); }
   .find-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .find-chip .find-n { font-family: var(--font-mono); opacity: 0.65; margin-left: 4px; }
+  .find-chip .find-n { font-family: var(--font-mono); margin-left: 4px; }
 
   #find-results { flex: 1; overflow-y: auto; padding: 2px 0; }
   #find-results::-webkit-scrollbar { width: 4px; }
@@ -1247,6 +1255,7 @@
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
   @media (max-width: 1024px) {
     :root { --panel-w: 240px; }
+    body { height: 100dvh; }
 
     header { height: auto; flex-wrap: wrap; gap: 8px; padding: 8px 14px; }
     .header-actions { flex-wrap: wrap; gap: 6px; }
@@ -1255,17 +1264,19 @@
 
     .wb-save-sync-row { padding: 6px 14px; gap: 6px; }
 
-    .toolbar { padding: 5px 10px; gap: 1px; flex-wrap: wrap; align-items: flex-start; }
+    .toolbar { padding: 5px 10px; gap: 1px; flex-wrap: nowrap; align-items: flex-start; }
     .tb-toggle { display: inline-flex; align-items: center; justify-content: center; }
     .toolbar-groups {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 1px;
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-width: 0;
-      max-height: 400px;
-      overflow: hidden;
+      /* Keep writing space while every formatting control remains scrollable. */
+      max-height: min(200px, 20dvh);
+      overflow-x: hidden;
+      overflow-y: auto;
       transition: max-height 0.2s ease, opacity 0.2s ease;
     }
     .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; }
@@ -1336,7 +1347,7 @@
     .btn { flex: 1 1 auto; min-width: 0; text-align: center; padding: 8px 6px; font-size: 11px; }
     .wb-save-sync-row { padding: 6px 12px; }
 
-    /* Toolbar wraps to show every button; give up vertical space instead */
+    /* Formatting controls wrap inside their bounded, scrollable group. */
     .toolbar { padding: 6px 10px; }
     .tb-btn { padding: 8px 9px; font-size: 13px; }  /* bigger tap targets */
     #btn-dictate.active { font-size: 0; }  /* recording: icon only, aria-label keeps the meaning */
@@ -1401,7 +1412,32 @@
   @media (max-width: 420px) {
     .logo span { display: none; }
     #status-bar span:nth-child(3) { display: none; }  /* drop char count */
-    .btn { font-size: 10px; padding: 7px 4px; letter-spacing: 0; }
+    .btn { padding: 7px 4px; letter-spacing: 0; }
+  }
+
+  /* Actual hitboxes, including compact actions and native color inputs.
+     Keep formatting inside its bounded scroller to preserve writing space. */
+  @media (max-width: 1024px) {
+    header { max-height: 25dvh; overflow-y: auto; }
+    .btn, .tb-btn, .tb-select, .panel-close {
+      min-width: 44px;
+      min-height: 44px;
+      flex-shrink: 0;
+    }
+    .toolbar, .toolbar-groups { gap: 4px; }
+    .tb-color-control { padding-top: 0; padding-bottom: 0; }
+    .tb-color-control input[type="color"] { width: 44px; height: 44px; flex-shrink: 0; }
+    .toolbar-filters { padding-top: 0; padding-bottom: 0; }
+  }
+
+  /* A keyboard or short landscape viewport also needs room below the chrome.
+     Scroll header actions rather than letting them consume the writing area. */
+  @media (max-width: 1024px) and (max-height: 500px) {
+    header { max-height: max(56px, 17dvh); }
+    #wb-save-sync-row { padding-top: 2px; padding-bottom: 2px; }
+    .toolbar { padding-top: 4px; padding-bottom: 4px; }
+    .toolbar-groups { max-height: max(46px, 10dvh); }
+    .pane-header { display: none; }
   }
 
   /* Landscape phones: reclaim vertical space */
@@ -1504,7 +1540,7 @@
   .md-geo .geo-note { color: var(--text-3); font-style: italic; }
 
   /* "Name>> " — the name of whoever a task is handed to, picked out from
-     the surrounding text. Reuses --danger (the shared terracotta status
+     the surrounding text. Reuses --danger (the terracotta status
      colour) rather than minting a new token, since it needs to read as an
      attention colour, not another link kind. */
   .md-assignee { color: var(--danger); font-weight: 600; }
@@ -1530,7 +1566,7 @@
     background: color-mix(in srgb, var(--imp-c) 16%, transparent);
     border: 1px solid color-mix(in srgb, var(--imp-c) 42%, transparent);
   }
-  .md-imp:hover { background: color-mix(in srgb, var(--imp-c) 30%, transparent); }
+  .md-imp:hover { background: color-mix(in srgb, var(--imp-c) 18%, transparent); }
   /* Same id-specificity fight as .md-tag above. */
   #preview a.md-imp { color: var(--imp-c); border-bottom: 0; }
   .md-imp-ico { margin-right: 4px; }
@@ -3737,7 +3773,7 @@
 </div>
 
 <div class="toolbar">
-  <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
+  <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" aria-controls="toolbar-groups" aria-expanded="true" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
 
   <div class="toolbar-groups" id="toolbar-groups">
   <button class="tb-btn" id="btn-undo" onclick="undoEdit()" data-i="undoBtn" data-i-title="undoTip" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
@@ -3856,6 +3892,11 @@
 <div id="view-tabs">
   <button id="tab-source" class="active" onclick="setView('source')" data-i="tabSource">✎ Source</button>
   <button id="tab-preview" onclick="setView('preview')" data-i="tabPreview">👁 Preview</button>
+</div>
+
+<div id="wb-draft-warning" role="alert" hidden>
+  <span data-i="wbDraftFailed">Reload recovery is unavailable. Save the text to a workbook or download the file before closing this page.</span>
+  <button class="btn" onclick="wbExportLooseDraft()" data-i="wbDraftDownload">Download .md file</button>
 </div>
 
 <div id="panel-backdrop" onclick="closeAllPanels()"></div>
@@ -3982,11 +4023,15 @@ Use the toolbar above to insert formatting.
   <span id="dictate-pill-state"></span>
   <span id="dictate-pill-interim"></span>
 </div>
+<details id="dictate-recovery" hidden>
+  <summary data-i="dictateRecovery">Dictation could not be inserted. Copy the recovered text below.</summary>
+  <textarea id="dictate-recovery-text" rows="6" readonly data-i-aria="dictateRecoveredText" aria-label="Recovered dictation"></textarea>
+</details>
 
 <!-- Image URL modal -->
-<div class="image-modal" id="image-modal">
+<div class="image-modal" id="image-modal" role="dialog" aria-modal="true" aria-labelledby="image-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleInsertImage">Insert Image</div>
+    <div class="modal-title" id="image-dialog-title" data-i="modalTitleInsertImage">Insert Image</div>
     <div class="field">
       <label data-i="lblImageUrl">Image URL or file path</label>
       <div style="display:flex;gap:8px;align-items:center">
@@ -4017,9 +4062,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Save-to-workbook modal -->
-<div class="image-modal" id="workbook-modal">
+<div class="image-modal" id="workbook-modal" role="dialog" aria-modal="true" aria-labelledby="workbook-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleSaveWorkbook">Save to workbook</div>
+    <div class="modal-title" id="workbook-dialog-title" data-i="modalTitleSaveWorkbook">Save to workbook</div>
     <div class="field">
       <label data-i="lblWorkbook">Workbook</label>
       <select id="wb-select" onchange="onWorkbookSelectChange()"></select>
@@ -4050,9 +4095,9 @@ Use the toolbar above to insert formatting.
      date. A chapter picker above it (title search, pre-filled with the open
      chapter, × clears) overrides that routing. Ctrl+Alt+I opens it,
      Ctrl+Enter files it. -->
-<div class="image-modal" id="idea-modal">
+<div class="image-modal" id="idea-modal" role="dialog" aria-modal="true" aria-labelledby="idea-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleIdea">Quick idea</div>
+    <div class="modal-title" id="idea-dialog-title" data-i="modalTitleIdea">Quick idea</div>
     <div class="field">
       <label for="idea-chapter" data-i="lblIdeaChapter">Chapter</label>
       <div class="idea-chapter-row">
@@ -4199,9 +4244,9 @@ Use the toolbar above to insert formatting.
 <button type="button" id="img-draw-btn" class="img-draw-btn" data-i-title="skDrawOnTip" hidden>✎</button>
 
 <!-- Link modal -->
-<div class="image-modal" id="link-modal">
+<div class="image-modal" id="link-modal" role="dialog" aria-modal="true" aria-labelledby="link-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleInsertLink">Insert Link</div>
+    <div class="modal-title" id="link-dialog-title" data-i="modalTitleInsertLink">Insert Link</div>
     <div class="field">
       <label data-i="lblUrl">URL</label>
       <input type="text" id="link-url" placeholder="https://example.com" />
@@ -4222,9 +4267,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Table builder modal -->
-<div class="image-modal" id="table-modal">
+<div class="image-modal" id="table-modal" role="dialog" aria-modal="true" aria-labelledby="table-dialog-title" tabindex="-1">
   <div class="table-modal-box">
-    <div class="modal-title" data-i="modalTitleTableBuilder">Table Builder</div>
+    <div class="modal-title" id="table-dialog-title" data-i="modalTitleTableBuilder">Table Builder</div>
     <div class="table-controls">
       <label data-i="lblRows">Rows</label>
       <input type="number" class="num-input" id="tbl-rows" value="3" min="1" max="20" oninput="rebuildTableGrid()">
@@ -4240,9 +4285,9 @@ Use the toolbar above to insert formatting.
 </div>
 
 <!-- Help -->
-<div class="image-modal" id="help-modal">
+<div class="image-modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" tabindex="-1">
   <div class="modal-box help-modal-box">
-    <div class="modal-title" data-i="modalTitleHelp">Help — Markdown editor</div>
+    <div class="modal-title" id="help-dialog-title" data-i="modalTitleHelp">Help — Markdown editor</div>
     <div class="help-body" id="help-body"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeHelpModal()" data-i="closeBtn">Close</button>
@@ -4459,9 +4504,9 @@ Use the toolbar above to insert formatting.
 
 <!-- Note-link modal: the pointing-device route to a [[wikilink]]. Typing
      "[[" in the editor opens the same candidate list inline instead. -->
-<div class="image-modal" id="wiki-modal">
+<div class="image-modal" id="wiki-modal" role="dialog" aria-modal="true" aria-labelledby="wiki-dialog-title" tabindex="-1">
   <div class="modal-box">
-    <div class="modal-title" data-i="modalTitleNoteLink">Link to a note</div>
+    <div class="modal-title" id="wiki-dialog-title" data-i="modalTitleNoteLink">Link to a note</div>
     <div class="field">
       <label data-i="lblLinkTarget">Target</label>
       <input type="text" id="wiki-filter" oninput="renderWikiPicker()" data-i-placeholder="wikiFilterPlaceholder" placeholder="Filter notes, sections and blocks…">
