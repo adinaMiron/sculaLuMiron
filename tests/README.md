@@ -29,6 +29,13 @@ nine applications never reference it and retain their dependency-free runtime.
 Each script is self-contained, prints `PASS`/`FAIL` lines per check, and
 exits non-zero if anything failed.
 
+`node tests/mdcontrast.js` checks Markdown functional text against computed
+backgrounds, including translucent tints and normal, hover, selected and
+warning states, in Romanian and English. It uses bundled headless Chromium
+and blocks external requests. `node tests/importance.js` also checks that
+importance, task state and responsible filters match the same task, with
+immediate workbook-tree updates while editing.
+
 `node tests/runner-output.js` (or `npm run test:runner-output` from `tests/`)
 checks concise terminal progress and readable per-task/per-finding logs in both
 runners. It verifies suppression of source excerpts, commands, raw event JSON,

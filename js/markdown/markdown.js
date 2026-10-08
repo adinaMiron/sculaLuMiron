@@ -1089,7 +1089,7 @@ function updatePreview() {
     wbResponsibleFilter && current ? wbNamesForChapter(current).has(wbResponsibleFilter) : null,
     wbTaskStatusFilter ? wbChapterHasTaskStatus(editor.value, wbTaskStatusFilter) : null,
     currentTodoFiltered ? WB_OPEN_TASK_RE.test(editor.value) : null,
-    wbImportanceFilter && current ? wbChapterHasImportanceTask(editor.value, wbImportanceFilter, currentTodoFiltered, wbResponsibleFilter) : null
+    wbImportanceFilter && current ? wbChapterHasImportanceTask(editor.value, wbImportanceFilter, currentTodoFiltered, wbResponsibleFilter, wbTaskStatusFilter) : null
   ]);
   if (responsibleChanged || treeState !== wbPreviewTreeState) renderWorkbooks();
   wbPreviewTreeState = treeState;

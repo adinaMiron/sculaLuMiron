@@ -177,7 +177,7 @@ They print observations rather than asserting that the current defective behavio
 
   **Correction/verification:** Ensure a useful writing area exists on first mobile load and after opening formatting tools, including short landscape and keyboard-reduced viewports. Keep access to all accepted controls. See [390px expanded](2026-10-07-markdown-evidence/ui-390-ro.png), [320px expanded](2026-10-07-markdown-evidence/ui-320-ro.png) and [390px collapsed](2026-10-07-markdown-evidence/ui-390-collapsed.png).
 
-- [ ] [ID:md-chrome-contrast] **P2 — Small functional labels and status text fail the documented contrast target.**
+- [x] [ID:md-chrome-contrast] **P2 — Small functional labels and status text fail the documented contrast target.**
 
   **Location:** [index.html](../../index.html), `--text-3`, `.panel-title`, `.tb-label`, `.file-name`, `#wb-where`, `#wb-cloud-where`, `#status-bar` and status/importance colors.
 

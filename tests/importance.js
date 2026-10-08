@@ -66,9 +66,9 @@ const pick = (page, v) => page.evaluate(level => setImportance(level), v);
   });
   check('the preview renders a vital pill', !!pill && pill.level === 'vital' && /md-imp-vital/.test(pill.cls), pill);
   check('with its icon and its label', !!pill && pill.ico === '\u{1F525}' && /Vital/.test(pill.text), pill && pill.text);
-  check('coloured terracotta (--imp-vital #C4643C)', !!pill && pill.colour === 'rgb(196, 100, 60)', pill && pill.colour);
+  check('coloured readable terracotta (--imp-vital #EAA07F)', !!pill && pill.colour === 'rgb(234, 160, 127)', pill && pill.colour);
   check('and the paragraph gets the matching edge',
-    !!pill && pill.edge === 'rgb(196, 100, 60)' && pill.edgeWidth === '3px', pill && { e: pill.edge, w: pill.edgeWidth });
+    !!pill && pill.edge === 'rgb(234, 160, 127)' && pill.edgeWidth === '3px', pill && { e: pill.edge, w: pill.edgeWidth });
 
   // Editing markers does not change the separate importance filter.
   check('editing leaves the importance filter at All',
@@ -79,7 +79,7 @@ const pick = (page, v) => page.evaluate(level => setImportance(level), v);
   check('a second pick replaces the marker rather than stacking',
     (await src(page)).split('\n')[0] === '!nice buy the tickets', (await src(page)).split('\n')[0]);
   const niceCol = await page.evaluate(() => getComputedStyle(preview.querySelector('.md-imp')).color);
-  check('and repaints in the "nice to have" green (#6E9E8A)', niceCol === 'rgb(110, 158, 138)', niceCol);
+  check('and repaints in the "nice to have" green (#8FBAA7)', niceCol === 'rgb(143, 186, 167)', niceCol);
   await pick(page, 'none');
   check('"Remove" clears it',
     (await src(page)).split('\n')[0] === 'buy the tickets', (await src(page)).split('\n')[0]);
@@ -244,15 +244,74 @@ const pick = (page, v) => page.evaluate(level => setImportance(level), v);
   });
   check('adding the marker brings the chapter back without reselecting',
     (await page.locator('.wb-ch-name').allTextContents()).some(s => s.includes('Mixed')));
-  await page.locator('#btn-filter-todo').click();
-  check('tasks-only combines with importance to keep only open vital tasks',
-    (await page.locator('.wb-ch-name').allTextContents()).length === 1 &&
-    (await page.locator('.wb-ch-name').first().textContent()).includes('Other book') &&
-    await page.locator('#preview li.task-list-item').count() === 0);
-  await page.locator('#btn-filter-todo').click();
+  // The former tasks-only button is now a task-state dropdown.
+  await page.selectOption('#btn-filter-todo', 'todo');
+  filtered = await page.evaluate(() => ({
+    chapters: [...document.querySelectorAll('.wb-ch-name')].map(el => el.textContent.trim()),
+    tasks: [...preview.querySelectorAll('li.task-list-item')].map(el => el.textContent.trim()),
+    source: editor.value,
+    importance: wbImportanceFilter,
+    state: wbTaskStatusFilter
+  }));
+  check('the to-do state combines with importance to keep only open vital tasks',
+    filtered.chapters.length === 1 && filtered.chapters[0].includes('Other book') &&
+    filtered.tasks.length === 0, filtered);
+  await page.selectOption('#btn-filter-todo', '');
   await page.selectOption('#importance-select', '');
   check('All restores every workbook chapter and the full preview',
     await page.locator('.wb-ch-name').count() === 4 && await page.locator('#preview li.task-list-item').count() === 4);
+
+  // State, importance and responsible must match one task in both saved and
+  // live chapters. Moving markers between tasks keeps each individual filter
+  // true, so this also detects a stale tree after editing the combined match.
+  for (const state of ['todo', 'inwork', 'onhold', 'blocked', 'done']) {
+    const task = (status, text) => status === 'done' ? '- [x] ' + text :
+      '- [ ] ' + (status === 'todo' ? '' : '~' + status + ' ') + text;
+    const otherState = state === 'done' ? 'todo' : 'done';
+    const matching = task(state, 'Ana>> !vital urgent') + '\n' + task(otherState, 'Ana>> !nice later');
+    const split = task(state, 'Ana>> !nice urgent') + '\n' + task(otherState, 'Ana>> !vital later');
+    const wrongOwner = split + '\n' + task(state, 'Bob>> !vital assigned elsewhere');
+    await page.evaluate(({ matching, split, wrongOwner }) => {
+      wbTaskStatusFilter = ''; wbImportanceFilter = ''; wbResponsibleFilter = '';
+      wbBooks = [{ id: 'combined', name: 'Combined filters', folder: 'combined', order: 0 }];
+      wbChapters = [
+        { id: 'live', title: 'Live match', content: matching },
+        { id: 'saved', title: 'Saved match', content: matching },
+        { id: 'split', title: 'Split match', content: split },
+        { id: 'owner', title: 'Different responsible', content: wrongOwner },
+        { id: 'fenced', title: 'Fenced match', content: '```\n' + matching + '\n```\n' + split }
+      ].map((ch, order) => ({ ...ch, workbookId: 'combined', file: ch.id + '.md', order }));
+      wbCurrentId = 'live'; editor.value = matching;
+      wbOpenBooks.add('combined');
+      renderWorkbooks(); updatePreview();
+    }, { matching, split, wrongOwner });
+    await page.selectOption('#importance-select', 'vital');
+    await page.selectOption('#btn-filter-todo', state);
+    const shown = () => page.locator('.wb-ch-name').allTextContents();
+    let chapters = await shown();
+    check(state + ' and vital exclude separate-line and fenced matches',
+      chapters.length === 3 && chapters.some(s => s.includes('Live match')) &&
+      chapters.some(s => s.includes('Saved match')) &&
+      chapters.some(s => s.includes('Different responsible')), chapters);
+    await page.selectOption('#responsible-select', 'ana');
+    chapters = await shown();
+    check(state + ', vital and Ana must all match the same task',
+      chapters.length === 2 && chapters.some(s => s.includes('Live match')) &&
+      chapters.some(s => s.includes('Saved match')) &&
+      await page.locator('#preview li.task-list-item').count() === 1, chapters);
+    await page.evaluate(split => { editor.value = split; updatePreview(); }, split);
+    chapters = await shown();
+    check(state + ' live edits remove the last combined match immediately',
+      chapters.length === 1 && chapters[0].includes('Saved match') &&
+      await page.locator('#preview li.task-list-item').count() === 0 &&
+      await src(page) === split, chapters);
+    await page.evaluate(matching => { editor.value = matching; updatePreview(); }, matching);
+    chapters = await shown();
+    check(state + ' live edits restore a combined match without reselecting',
+      chapters.length === 2 && chapters.some(s => s.includes('Live match')) &&
+      await page.locator('#preview li.task-list-item').count() === 1 &&
+      await src(page) === matching, chapters);
+  }
 
   check('no page errors', errors.length === 0, errors);
   await browser.close();

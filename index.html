@@ -17,10 +17,10 @@
     --on-accent: #1A2117;
     --text: #F3EEE1;
     --text-2: #9FB3A5;
-    --text-3: #5A6A60;
-    /* the shared terracotta status colour, same hex as voice.html and
-       editor.html — see docs/THEME.md */
-    --danger: #C4643C;
+    /* Functional small labels must remain readable on raised/hover surfaces.
+       Disabled controls use opacity separately. See docs/THEME.md. */
+    --text-3: var(--text-2);
+    --danger: #EAA07F; /* readable terracotta status text on dark surfaces */
     --panel-w: 260px;
     --font-mono: 'Courier New', monospace;
     --font-ui: 'Trebuchet MS', sans-serif;
@@ -49,12 +49,12 @@
 
     /* Importance markers (!nice / !important / !vital). Three escalating
        levels, drawn from the same earth palette: the mossy teal the tags
-       use, an amber between it and the accent, and the shared terracotta.
+       use, an amber between it and the accent, and readable terracotta.
        Tokens for the same reason as --graph-*: a light theme changes these
        three values and nothing else. See docs/FEATURES.md § C. */
-    --imp-nice: #6E9E8A;
+    --imp-nice: #8FBAA7;
     --imp-important: #D9A441;
-    --imp-vital: #C4643C;
+    --imp-vital: #EAA07F;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -300,7 +300,7 @@
     color: var(--on-accent);
     border-color: var(--accent);
   }
-  #btn-wb-cloud.syncing { opacity: 0.65; }
+  #btn-wb-cloud.syncing { border-style: dashed; }
   #wb-cloud-where {
     font-size: 11px;
     color: var(--text-3);
@@ -645,7 +645,7 @@
   .gantt-row { position: relative; height: 68px; border-bottom: 1px solid var(--border); background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); }
   .gantt-bar { position: absolute; top: 15px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--bg); z-index: 2; min-width: 8px; }
   .gantt-bar.done { background: var(--imp-nice); }
-  .gantt-bar.vital { background: var(--imp-vital); color: white; }
+  .gantt-bar.vital { background: var(--imp-vital); color: var(--on-accent); }
   .gantt-bar.important { background: var(--imp-important); }
   .gantt-bar.inferred { opacity: .72; border: 2px dashed var(--text); }
   .gantt-bar span { display: block; padding: 4px 7px; font-size: 11px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -916,7 +916,7 @@
     font: inherit; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; cursor: pointer;
     background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
   }
-  .nav-task-chip.off { opacity: 0.4; text-decoration: line-through; }
+  .nav-task-chip.off { text-decoration: line-through; border-style: dashed; }
   .nav-task-chip:hover { border-color: var(--accent); }
   .nav-task .nav-label { font-size: 12px; color: var(--text); }
   .nav-task-icon {
@@ -952,7 +952,7 @@
   #dictate-pill .dictate-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); flex: 0 0 auto; animation: dictate-blink 1s ease-in-out infinite; }
   #dictate-pill #dictate-pill-interim { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @keyframes dictate-blink { 50% { opacity: 0.25; } }
-  #btn-dictate.active { background: var(--danger); color: var(--text); }
+  #btn-dictate.active { background: var(--danger); color: var(--on-accent); }
   #dictate-recovery {
     position: fixed; right: 16px; bottom: 80px; z-index: 9991;
     width: min(80vw, 420px); padding: 12px;
@@ -1096,7 +1096,7 @@
   }
   .find-chip:hover { color: var(--text); }
   .find-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .find-chip .find-n { font-family: var(--font-mono); opacity: 0.65; margin-left: 4px; }
+  .find-chip .find-n { font-family: var(--font-mono); margin-left: 4px; }
 
   #find-results { flex: 1; overflow-y: auto; padding: 2px 0; }
   #find-results::-webkit-scrollbar { width: 4px; }
@@ -1522,7 +1522,7 @@
   .md-geo .geo-note { color: var(--text-3); font-style: italic; }
 
   /* "Name>> " — the name of whoever a task is handed to, picked out from
-     the surrounding text. Reuses --danger (the shared terracotta status
+     the surrounding text. Reuses --danger (the terracotta status
      colour) rather than minting a new token, since it needs to read as an
      attention colour, not another link kind. */
   .md-assignee { color: var(--danger); font-weight: 600; }
@@ -1548,7 +1548,7 @@
     background: color-mix(in srgb, var(--imp-c) 16%, transparent);
     border: 1px solid color-mix(in srgb, var(--imp-c) 42%, transparent);
   }
-  .md-imp:hover { background: color-mix(in srgb, var(--imp-c) 30%, transparent); }
+  .md-imp:hover { background: color-mix(in srgb, var(--imp-c) 18%, transparent); }
   /* Same id-specificity fight as .md-tag above. */
   #preview a.md-imp { color: var(--imp-c); border-bottom: 0; }
   .md-imp-ico { margin-right: 4px; }

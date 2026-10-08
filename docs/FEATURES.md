@@ -261,23 +261,24 @@ one word each and rendered as a coloured pill with an icon:
 
 | Marker | Icon | Token | Hex | i18n label |
 |---|---|---|---|---|
-| `!nice` | 🌱 | `--imp-nice` | `#6E9E8A` | `impNice` |
+| `!nice` | 🌱 | `--imp-nice` | `#8FBAA7` | `impNice` |
 | `!important` | ⭐ | `--imp-important` | `#D9A441` | `impImportant` |
-| `!vital` | 🔥 | `--imp-vital` | `#C4643C` | `impVital` |
+| `!vital` | 🔥 | `--imp-vital` | `#EAA07F` | `impVital` |
 
 **Adding and changing markers.** `Ctrl+Alt+1/2/3` marks the caret's line or
 every line a selection touches; `Ctrl+Alt+0` clears. The
 `#importance-insert-select` inserts a marker at the cursor, and markers can
 also be typed. Marking a line again replaces its leading marker.
 
-**Filtering tasks.** The toolbar's `#importance-select` (next to the todo
-buttons) chooses an importance level across every workbook and chapter.
+**Filtering tasks.** The toolbar's `#importance-select` (next to the task
+controls) chooses an importance level across every workbook and chapter.
 The workbook panel shows only chapters with a checklist task containing that
 exact marker, and the open chapter's preview shows only matching task lines.
 Checked and unchecked tasks both count; fenced code and prose do not. The
 editor source is untouched, and choosing “All importance” restores the full
-list and preview. This filter combines with the responsible and tasks-only
-filters on the same task line.
+list and preview. This filter combines with the responsible and task-state
+filters on the same task line, including all five states. Editing the open
+chapter updates its visibility immediately when that combined match changes.
 
 `impSetLine()` puts the marker **after** whatever legally leads the line —
 the bullet, the number, the `[ ]` of a task, the hashes of a heading, and

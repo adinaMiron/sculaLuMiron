@@ -162,11 +162,12 @@ function wbTaskHasImportance(line, level) {
   }
   return false;
 }
-function wbChapterHasImportanceTask(text, level, openOnly = false, responsible = '') {
+function wbChapterHasImportanceTask(text, level, openOnly = false, responsible = '', status = '') {
   let fenced = false;
   for (const line of String(text || '').split('\n')) {
     if (/^[ \t]*```/.test(line)) { fenced = !fenced; continue; }
     if (fenced || !wbTaskHasImportance(line, level)) continue;
+    if (status && !wbTaskHasStatus(line, status)) continue;
     if (openOnly && !WB_OPEN_TASK_RE.test(line)) continue;
     if (responsible) {
       if (!wbLineResponsibles(line).some(name => wbResponsibleKey(name) === responsible)) continue;
@@ -881,7 +882,7 @@ function renderWorkbooks() {
     const shownChapters = chapters.filter(ch => {
       const content = ch.id === wbCurrentId ? editor.value : ch.content || '';
       if (wbTaskStatusFilter && !wbChapterHasTaskStatus(content, wbTaskStatusFilter)) return false;
-      if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter);
+      if (wbImportanceFilter) return wbChapterHasImportanceTask(content, wbImportanceFilter, todoFiltered, wbResponsibleFilter, wbTaskStatusFilter);
       return (!todoFiltered || wbChapterHasOpenTask(ch, content)) &&
         (!wbResponsibleFilter || wbNamesForChapter(ch).has(wbResponsibleFilter));
     });
