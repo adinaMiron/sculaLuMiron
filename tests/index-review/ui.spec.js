@@ -215,23 +215,55 @@ test('Gantt Escape alone restores focus to its opener', { tag: '@idx-gantt-dialo
   await expect(page.locator('#btn-gantt')).toBeFocused();
 });
 
-test('table placeholders meet the documented small-text contrast floor', async ({ page }, info) => {
+for (const palette of ['default', 'light tokens']) {
+test(`table placeholders meet the documented small-text contrast floor${palette === 'default' ? '' : ' with light tokens'}`, { tag: '@idx-table-placeholder-contrast' }, async ({ page }, info) => {
+  if (palette === 'light tokens') {
+    // The page currently has only a dark theme. Override its semantic tokens
+    // to verify placeholder colors follow the palette without adding a theme.
+    await page.evaluate(() => {
+      for (const [name, value] of Object.entries({
+        '--bg': '#F3EEE1', '--surface': '#F3EEE1', '--surface-2': '#E8E5D6', '--text-2': '#526357',
+      })) document.documentElement.style.setProperty(name, value);
+    });
+  }
   await page.evaluate(() => openTableModal());
-  const result = await page.locator('#table-preview-grid input[data-row="0"]').first().evaluate(el => {
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
-    const ctx = canvas.getContext('2d');
-    const color = value => { ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = value; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
-    const fg = color(getComputedStyle(el, '::placeholder').color);
-    const bg = color(getComputedStyle(el.closest('.table-modal-box')).backgroundColor);
-    const luminance = c => c.slice(0, 3).map(x => x / 255).map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)
-      .reduce((s, x, i) => s + x * [0.2126, 0.7152, 0.0722][i], 0);
-    const a = luminance(fg), b = luminance(bg);
-    return { fg, bg, opacity: getComputedStyle(el, '::placeholder').opacity,
-      ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
-  });
-  await info.attach('placeholder-contrast', { body: JSON.stringify(result), contentType: 'application/json' });
-  expect(result.ratio, JSON.stringify(result)).toBeGreaterThanOrEqual(4.5);
+  const results = [];
+  for (const row of ['h', '0']) {
+    const input = page.locator(`#table-preview-grid input[data-row="${row}"]`).first();
+    await expect(input).toHaveValue('');
+    await expect(input).toHaveAttribute('placeholder', /.+/);
+    for (const focused of [false, true]) {
+      if (focused) await input.focus();
+      else await input.evaluate(el => el.blur());
+      const result = await input.evaluate(el => {
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        const paint = value => { ctx.fillStyle = value; ctx.fillRect(0, 0, 1, 1); };
+        // Composite all real backgrounds, including the header surface and
+        // translucent input focus tint, before measuring placeholder ink.
+        paint('#fff');
+        const ancestors = [];
+        for (let node = el; node; node = node.parentElement) ancestors.unshift(node);
+        for (const node of ancestors) paint(getComputedStyle(node).backgroundColor);
+        const bg = [...ctx.getImageData(0, 0, 1, 1).data];
+        const placeholder = getComputedStyle(el, '::placeholder');
+        ctx.globalAlpha = Number(placeholder.opacity);
+        paint(placeholder.color);
+        const fg = [...ctx.getImageData(0, 0, 1, 1).data];
+        const luminance = c => c.slice(0, 3).map(x => x / 255).map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)
+          .reduce((s, x, i) => s + x * [0.2126, 0.7152, 0.0722][i], 0);
+        const a = luminance(fg), b = luminance(bg);
+        return { fg, bg, opacity: placeholder.opacity, focused: document.activeElement === el,
+          ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+      });
+      results.push({ row, ...result });
+      expect(result.focused).toBe(focused);
+    }
+  }
+  await info.attach('placeholder-contrast', { body: JSON.stringify(results), contentType: 'application/json' });
+  for (const result of results) expect(result.ratio, JSON.stringify(result)).toBeGreaterThanOrEqual(4.5);
 });
+}
 
 test.describe('touch table builder', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });

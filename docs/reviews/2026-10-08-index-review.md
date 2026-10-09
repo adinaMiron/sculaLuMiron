@@ -181,7 +181,7 @@ real Drive account or production service were changed.
   **Required outcome:** Handle the search panel's own shortcut while its query is focused, keeping unrelated editing shortcuts isolated.  
   **Test:** `ui.spec.js` — `Find keyboard shortcut can close and reopen search while its query has focus`; the existing `tests/find.js` also fails its related reopen assertion.
 
-- [ ] [ID:idx-table-placeholder-contrast] **P2 — Table placeholders fail the documented text-contrast floor.**
+- [x] [ID:idx-table-placeholder-contrast] **P2 — Table placeholders fail the documented text-contrast floor.**
 
   **Location:** [index.html](../../index.html), table builder input styles around lines 765–777; placeholder styling is absent.  
   **Reproduce:** Open Table. Chromium renders a cell's placeholder as RGB(117,117,117) on RGB(27,42,34), a measured **3.25:1** ratio, below the repository's 4.5:1 requirement. These small labels are the guidance for entering data.  
