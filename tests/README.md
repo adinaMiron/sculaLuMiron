@@ -604,3 +604,15 @@ Node v26.8.1 and bundled Playwright Chromium 1243. The extended composition brow
 suite's separate rerun, including quota/retry and read-only-tab assertions, also
 exited 0; `git diff --check` passed. GitHub Actions and the manual physical-device,
 DAW and independent listening checks were not run.
+
+### Song adversarial review (2026-10-09)
+
+`python3 scripts/run-tests.py song-review` runs the real page through Playwright
+with WAV boundary fixtures, silence/manual notes, invalid numeric edits,
+quantization, undo/redo, source-byte preservation, backup validation, deletion,
+keyboard focus, RO/EN responsive layouts and computed contrast checks.
+It writes screenshots and `results.json` to `test-results/song-review/` and
+returns nonzero for open desired-behavior assertions (no skips or expected-failure
+exemptions). See [the review](../docs/reviews/2026-10-09-song-review.md) for findings,
+existing regression evidence and limitations. It is separate from the existing
+Song regression entrypoint and adds no application dependency.
