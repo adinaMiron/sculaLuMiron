@@ -331,7 +331,7 @@ function rebuildTableGrid(resetDraft = false) {
     const th = document.createElement('th');
     const inp = document.createElement('input');
     inp.type = 'text';
-    inp.placeholder = `Header ${c + 1}`;
+    inp.placeholder = t('tblHeader', c + 1);
     inp.dataset.row = 'h';
     inp.dataset.col = c;
     inp.value = tableDraft.get(`h:${c}`) ?? '';
@@ -350,8 +350,8 @@ function rebuildTableGrid(resetDraft = false) {
     const sel = document.createElement('select');
     sel.className = 'align-select';
     sel.dataset.col = c;
-    [['left','⬅ Left'],['center','↔ Center'],['right','➡ Right']].forEach(([v, l]) => {
-      const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
+    [['left','tblAlignLeft'],['center','tblAlignCenter'],['right','tblAlignRight']].forEach(([v, key]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = t(key); sel.appendChild(o);
     });
     sel.value = tableDraft.get(`a:${c}`) ?? 'left';
     td.appendChild(sel);
@@ -366,7 +366,7 @@ function rebuildTableGrid(resetDraft = false) {
       const td = document.createElement('td');
       const inp = document.createElement('input');
       inp.type = 'text';
-      inp.placeholder = `Cell`;
+      inp.placeholder = t('tblCell');
       inp.dataset.row = r;
       inp.dataset.col = c;
       inp.value = tableDraft.get(`${r}:${c}`) ?? '';

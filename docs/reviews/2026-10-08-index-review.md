@@ -195,7 +195,7 @@ real Drive account or production service were changed.
   **Required outcome:** Supply adequate interactive target sizes and spacing for the table's own controls while retaining access to all supported rows/columns.  
   **Test:** `ui.spec.js` — `dynamic table cells and alignment selects meet the 44px touch floor`.
 
-- [ ] [ID:idx-table-romanian-labels] **P3 — The Romanian table builder retains English controls and generated headings.**
+- [x] [ID:idx-table-romanian-labels] **P3 — The Romanian table builder retains English controls and generated headings.**
 
   **Location:** [files.js](../../js/markdown/files.js), `rebuildTableGrid()` and `insertTable()`, lines 325, 343, 359 and 376.  
   **Reproduce:** Set Romanian and open Table. `Header 1`, `Cell`, `Left`, `Center`, and `Right` remain English. Empty headers are inserted into the document from those English placeholders.  

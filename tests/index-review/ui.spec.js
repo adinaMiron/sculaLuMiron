@@ -141,12 +141,40 @@ test('Gantt recovers focus after covered dialogs close one layer at a time', { t
   await expect(page.locator('#btn-gantt')).toBeFocused();
 });
 
-test('Romanian table controls are localized', async ({ page }) => {
-  await page.evaluate(() => { UI = 'ro'; applyUILang(); openTableModal(); });
-  const labels = await page.locator('#table-preview-grid input, #table-preview-grid option').evaluateAll(elements =>
-    elements.map(e => e.placeholder || e.textContent));
-  expect(labels.filter(x => /Header|Cell|Left|Center|Right/.test(x))).toEqual([]);
+for (const [language, name, header, cell, alignments] of [
+  ['ro', 'Romanian', 'Antet', 'Celulă', ['⬅ Stânga', '↔ Centru', '➡ Dreapta']],
+  ['en', 'English', 'Header', 'Cell', ['⬅ Left', '↔ Center', '➡ Right']],
+]) {
+test(`${name} table controls are localized`, { tag: '@idx-table-romanian-labels' }, async ({ page }) => {
+  await edit(page, '');
+  await page.evaluate(language => { UI = language; applyUILang(); openTableModal(); }, language);
+  await page.locator('#tbl-cols').fill('4');
+  await page.locator('#tbl-rows').fill('1');
+  const headers = page.locator('#table-preview-grid thead input');
+  expect(await headers.evaluateAll(inputs => inputs.map(input => input.placeholder)))
+    .toEqual([1, 2, 3, 4].map(n => `${header} ${n}`));
+  const cells = page.locator('#table-preview-grid input[data-row="0"]');
+  expect(await cells.evaluateAll(inputs => inputs.map(input => input.placeholder)))
+    .toEqual(Array(4).fill(cell));
+  const selects = page.locator('#table-preview-grid .align-select');
+  for (const select of await selects.all()) {
+    await expect(select.locator('option')).toHaveText(alignments);
+    expect(await select.locator('option').evaluateAll(options => options.map(option => option.value)))
+      .toEqual(['left', 'center', 'right']);
+  }
+
+  await headers.first().fill('User Header / Antet personalizat');
+  await cells.first().fill('User Cell / Celulă personalizată');
+  await selects.nth(1).selectOption('center');
+  await selects.nth(2).selectOption('right');
+  await page.locator('[onclick="insertTable()"]').click();
+  await expect(page.locator('#editor')).toHaveValue(
+    `\n| User Header / Antet personalizat | ${header} 2 | ${header} 3 | ${header} 4 |\n` +
+    '| :--- | :---: | ---: | :--- |\n| User Cell / Celulă personalizată |   |   |   |\n');
+  await expect(page.locator('#preview th')).toHaveText(
+    ['User Header / Antet personalizat', `${header} 2`, `${header} 3`, `${header} 4`]);
 });
+}
 
 test('table dialog remains usable at its supported maximum dimensions on a phone', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
