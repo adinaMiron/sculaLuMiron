@@ -83,10 +83,12 @@ const GD_TIME_SRC = '(?:[01]?\\d|2[0-3]):[0-5]\\d';
 const GD_INTERVAL_RE = new RegExp('\\b(' + GD_TIME_SRC + ')\\s*[-–—]\\s*(' + GD_TIME_SRC + ')\\b');
 /* Litres only count when the line says they are water: "150 l de apa" is
    used, "am ramas cu 60 l" is what was left in the tank. */
-const GD_LITRE_RE = /(\d+(?:[.,]\d+)?)\s*(?:l|litri|litre|liters?)\b[\s.]*(?:de\s+)?ap[aă]\b/gi;
-const GD_QTY_RE = /(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|g|gr|grame|gram|buc|bucati|bucăți|bucata)\b/i;
-const GD_ROUNDS_RE = /(\d+)\s*(?:ture|tura|turi|rounds?)\b/i;
-const GD_MOW_N_RE = /\bcosit\s+(\d+)\b/i;
+// Preserve signs consistently: negative quantities subtract from totals.
+// The boundary prevents matching a positive suffix of a signed decimal.
+const GD_LITRE_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+(?:[.,]\d+)?)\s*(?:l|litri|litre|liters?)\b[\s.]*(?:de\s+)?ap[aă]\b/gi;
+const GD_QTY_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|g|gr|grame|gram|buc|bucati|bucăți|bucata)\b/i;
+const GD_ROUNDS_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+)\s*(?:ture|tura|turi|rounds?)\b/i;
+const GD_MOW_N_RE = /\bcosit\s+([+\-−]?\s*\d+)\b/i;
 const GD_HARVEST_RE = /\b(cules|culese|culeg|culegem|recoltat|harvested|picked|harvest)\b/i;
 const GD_FROM_RE = /^\s*(?:din|de\s+la|de\s+pe|in|în|la|from)\b\s*/i;
 
@@ -95,7 +97,7 @@ const GD_FROM_RE = /^\s*(?:din|de\s+la|de\s+pe|in|în|la|from)\b\s*/i;
 function gdFold(s) {
   return fdFold(String(s)).replace(/ș/g, 's').replace(/ț/g, 't').toLowerCase();
 }
-function gdNum(s) { return parseFloat(String(s).replace(',', '.')); }
+function gdNum(s) { return parseFloat(String(s).replace(/\s/g, '').replace('−', '-').replace(',', '.')); }
 function gdEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 const GD_PLACE_ALIASES = (() => {
@@ -246,7 +248,7 @@ function gdScan(text) {
     let rounds = 0;
     if (isMow) {
       const r = GD_ROUNDS_RE.exec(body) || GD_MOW_N_RE.exec(body);
-      rounds = r ? +r[1] : 0;
+      rounds = r ? gdNum(r[1]) : 0;
     }
     const places = gdPlacesIn(body);
     // A mowing line with neither a count, a place nor a clock is prose

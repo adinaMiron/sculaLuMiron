@@ -414,9 +414,92 @@ test('garden totals and CSV contain only real rows outside fenced examples', { t
   }
 });
 
-test('garden does not reinterpret a negative quantity as positive harvest', async ({ page }) => {
+test('garden does not reinterpret a negative quantity as positive harvest', { tag: '@idx-garden-negative-values' }, async ({ page }) => {
   const items = await page.evaluate(() => gdParseHarvest('cules din sm: -2 kg rosii').items);
-  expect(items.reduce((n, item) => n + item.grams, 0)).toBeLessThanOrEqual(0);
+  expect(items).toEqual([{ plant: 'rosii', plantLabel: 'Roșii', grams: -2000, pieces: 0 }]);
+});
+
+test('garden preserves signs in harvest units, item orders and colonless entries', { tag: '@idx-garden-negative-values' }, async ({ page }) => {
+  const cases = [
+    ['cules din sm -12,5 kg rosii', 'rosii', -12500, 0],
+    ['cules din sm: rosii -250 g', 'rosii', -250, 0],
+    ['sm: -2 buc dovlecel', 'dovlecel', 0, -2],
+    ['cules din sm: - 1.25 kg rosii', 'rosii', -1250, 0],
+    ['cules din sm: −2 kg rosii', 'rosii', -2000, 0],
+    ['cules din sm: +2 kg rosii', 'rosii', 2000, 0],
+    ['cules din sm: + 2 buc dovlecel', 'dovlecel', 0, 2],
+    ['cules din sm: 0 g rosii', 'rosii', 0, 0],
+  ];
+  const result = await page.evaluate(cases => cases.map(([line]) => gdParseHarvest(line)), cases);
+  for (let i = 0; i < cases.length; i++) {
+    const [line, plant, grams, pieces] = cases[i];
+    expect(result[i].places, line).toEqual([{ key: 'sm', label: 'Solar mare' }]);
+    expect(result[i].items, line).toHaveLength(1);
+    expect(result[i].items[0], line).toMatchObject({ plant, grams, pieces });
+  }
+  const items = await page.evaluate(() => gdItems('-2 kg rosii, 250 g ardei; -3 buc dovlecel si +1,5 kg castraveti'));
+  expect(items.map(item => [item.plant, item.grams, item.pieces])).toEqual([
+    ['rosii', -2000, 0], ['ardei', 250, 0], ['dovlecel', 0, -3], ['castraveti', 1500, 0]
+  ]);
+});
+
+test('garden preserves signs in water litres and both mowing count forms', { tag: '@idx-garden-negative-values' }, async ({ page }) => {
+  const result = await page.evaluate(() => [
+    'udat sm -12,5 l apa, 2 l de apa', 'udat sm - 2.5 litri apa',
+    'udat sm −2 l apa', 'udat sm + 2 l apa',
+    'cosit -12 ture gg', 'cosit - 2 gn', 'cosit −2 rounds gg', 'cosit + 2 gn'
+  ].map(line => {
+    const row = gdScan(line)[0];
+    return [row.litres, row.rounds];
+  }));
+  expect(result).toEqual([[-10.5, 0], [-2.5, 0], [-2, 0], [2, 0], [0, -12], [0, -2], [0, -2], [0, 2]]);
+});
+
+test('garden keeps signed quantities in tables, grouped totals and CSV', { tag: '@idx-garden-negative-values' }, async ({ page }) => {
+  await edit(page, [
+    '@2026-10-01', 'cules din sm: -2 kg rosii, -3 buc dovlecel',
+    'cules din sm 500 g rosii', 'udat sm -12,5 l apa, 2 l de apa', 'cosit -2 ture gg', 'cosit 1 gg'
+  ].join('\n'));
+  const result = await page.evaluate(async () => {
+    Object.assign(gdState, { scope: 'note', from: '', to: '', place: '', plant: '', cat: '', q: '' });
+    const realSave = ScuLaFolder.save;
+    let blob;
+    ScuLaFolder.save = (name, data) => { blob = data; return Promise.resolve(); };
+    try {
+      const result = {};
+      for (const tab of ['act', 'harvest', 'mow']) {
+        result[tab] = {};
+        for (const group of ['none', 'day']) {
+          Object.assign(gdState, { tab, group });
+          gdRender();
+          gdCsv();
+          result[tab][group] = { totals: structuredClone(gdLast.totals),
+            groups: structuredClone(gdLast.groups), table: document.getElementById('gd-table').textContent,
+            csv: await blob.text() };
+        }
+      }
+      return result;
+    } finally {
+      ScuLaFolder.save = realSave;
+    }
+  });
+  for (const group of ['none', 'day']) {
+    expect(result.act[group].totals).toMatchObject({ n: 5, litres: -10.5 });
+    expect(result.harvest[group].totals).toMatchObject({ n: 3, grams: -1500, pieces: -3 });
+    expect(result.mow[group].totals).toMatchObject({ n: 2, rounds: -1 });
+  }
+  expect(result.act.day.groups).toMatchObject([{ litres: -10.5 }]);
+  expect(result.harvest.day.groups).toMatchObject([{ grams: -1500, pieces: -3 }]);
+  expect(result.mow.day.groups).toMatchObject([{ rounds: -1 }]);
+  expect(result.harvest.none.table).toContain('-2000 g');
+  expect(result.harvest.day.table).toContain('-1500 g');
+  expect(result.act.day.table).toContain('-10.5 l');
+  expect(result.harvest.none.csv).toContain(';Roșii;-2;');
+  expect(result.harvest.none.csv).toContain(';Dovlecel;-3;');
+  expect(result.harvest.day.csv).toContain(';3;-1,5\n');
+  expect(result.act.day.csv).toContain(';-10,5\n');
+  expect(result.mow.none.csv).toContain(';GG;-2;');
+  expect(result.mow.day.csv).toContain(';2;-1\n');
 });
 
 test('timeline valid dates stay ordered and duplicate dates share a position', async ({ page }) => {

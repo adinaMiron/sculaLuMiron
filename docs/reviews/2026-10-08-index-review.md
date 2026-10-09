@@ -144,7 +144,7 @@ real Drive account or production service were changed.
   **Required outcome:** Exclude fenced example content, including date markers inside it, from the interpreted log.  
   **Test:** `computations.spec.js` — `garden ignores examples inside fenced code`.
 
-- [ ] [ID:idx-garden-negative-values] **P2 — A negative harvest quantity is silently counted as positive.**
+- [x] [ID:idx-garden-negative-values] **P2 — A negative harvest quantity is silently counted as positive.**
 
   **Location:** [garden.js](../../js/markdown/garden.js), quantity patterns, `gdItems()` and `gdParseHarvest()`, lines 85–89 and 151–196.  
   **Reproduce:** `cules din sm: -2 kg rosii` contributes positive 2,000 grams. The quantity regex starts at the digit and discards the sign. Related litres/rounds patterns also lack a signed-number boundary.  
