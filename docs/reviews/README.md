@@ -209,11 +209,15 @@ The agent must stop after that finding.
 
 The orchestration script then validates the result before creating the commit.
 
-If an agent returns with the review document unchanged and the assigned finding
-still unchecked, the runner reports incomplete implementation or verification
-and directs you to the agent summary in the log. It preserves partial changes
-and stops before staging, committing, or publishing. Unauthorized document or
-other checkbox changes remain validation failures.
+If an agent returns successfully with the review document unchanged and the
+assigned finding still unchecked, the runner requests a repair of that same
+finding, supplying the diagnostic log path and preserving partial changes.
+`CODEX_REPAIR_ATTEMPTS=2` allows two additional invocations by default; `0`
+disables recovery, and integers up to `10` change the cap. Exhaustion reports
+incomplete verification and stops before staging, committing, or publishing.
+Unauthorized document or other checkbox changes remain immediate validation
+failures, including during retries. The original sealed evidence and lock are
+retained throughout recovery.
 
 ---
 
@@ -248,7 +252,21 @@ Where practical, add a regression test that would have failed before the fix.
 
 Run relevant existing tests.
 
+Review suites may also contain failing tests for other open findings. Use a
+finding tag/ID or precise test titles, then inspect Playwright's `--list` output
+with the same filter before execution. Broad keywords can include unrelated
+findings, even through case-insensitive substring matches. Add relevant passing
+regression coverage and retain all assertions for other findings in the full
+suite. Unrelated pre-existing failures still follow `AGENTS.md`'s stop-and-report rule.
+
 Do not mark the finding complete while relevant tests fail.
+
+Agents should diagnose and repair failures within the assigned scope before
+returning. A demonstrably incorrect assertion, including one introduced by the
+agent, can be corrected against required behavior or an independently inspected
+format contract. Explain the correction and rerun relevant checks. Never skip
+tests, weaken required behavior, or hide failures to obtain a pass. Unrelated
+pre-existing failures and unavailable dependencies remain blockers.
 
 ---
 
@@ -300,9 +318,22 @@ Recognized reset times receive a five-second buffer; missing, stale, or unknown
 times use `CODEX_USAGE_RETRY_SECONDS` (default `300`, a positive integer of up
 to six digits). Repeated limits keep waiting; other errors still stop the run.
 Retries use fresh ephemeral invocations and do not consume another
-`MAX_FINDINGS` slot. Leave the runner running to recover automatically, or use
-Ctrl+C to cancel and preserve partial edits. A manual restart still requires a
-clean working tree. See [recovery details](../tasks/agent-orchestration/04-decisions.md).
+`MAX_FINDINGS` slot. Usage-limit waits do not consume the separate incomplete-work
+repair budget. Ordinary CLI errors, final-review failures, and integrity
+violations are not candidates for automatic repair. Leave the runner running to
+recover automatically, or use Ctrl+C to cancel and preserve partial edits. A
+manual restart still requires a clean working tree. See
+[recovery details](../tasks/agent-orchestration/04-decisions.md).
+
+For example, allow three additional repair invocations for each finding:
+
+```sh
+CODEX_REPAIR_ATTEMPTS=3 ./scripts/fix-review.sh
+```
+
+Repair invocations read the previous log and diff, fix in-scope mistakes, rerun
+tests, and mark completion only when verified. The wrapper still verifies its
+document/integrity gates; it does not independently execute every relevant test.
 
 Typical mapping:
 

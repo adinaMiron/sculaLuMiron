@@ -249,13 +249,17 @@ function wbDb() {
     r.onerror = () => rej(r.error);
   });
 }
-function wbTx(store, mode, run) {
+function wbTx(store, mode, run, scope) {
   return wbDb().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(store, mode);
-    const req = run(tx.objectStore(store));
+    // Chapter saves can commit their mirror retry marker in the same write.
+    const stores = scope || (store === WB_CHAPTERS && mode === 'readwrite' ? [WB_CHAPTERS, WB_PENDING] : store);
+    const tx = db.transaction(stores, mode);
+    let req;
     tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
     tx.onerror = () => { db.close(); rej(tx.error); };
     tx.onabort = () => { db.close(); rej(tx.error); };
+    try { req = run(tx.objectStore(store)); }
+    catch (e) { tx.abort(); db.close(); rej(e); }
   }));
 }
 const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
@@ -276,7 +280,7 @@ const wbDrop = async (store, k) => {
 const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
-async function wbPersist(store, value) {
+async function wbPersist(store, value, pending = false) {
   try {
     if (store !== WB_CHAPTERS) { await wbPut(store, value); return true; }
     const saved = { ...value };
@@ -289,7 +293,11 @@ async function wbPersist(store, value) {
     await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
       const req = chapters.get(saved.id);
       req.onsuccess = () => {
-        if (wbChapterVersion(req.result) === expected) { chapters.put(saved); return; }
+        if (wbChapterVersion(req.result) === expected) {
+          chapters.put(saved);
+          if (pending) chapters.transaction.objectStore(WB_PENDING).put(wbPendingRecord(saved));
+          return;
+        }
         const previous = wbConflictCopies.get(saved.id);
         if (previous && previous.version === conflictVersion) conflict = previous.chapter;
         else {
@@ -303,7 +311,10 @@ async function wbPersist(store, value) {
         }
         // Preserve both texts before reporting failure, even if this tab closes.
         createdConflict = conflict !== (previous && previous.chapter);
-        if (createdConflict) chapters.add(conflict);
+        if (createdConflict) {
+          chapters.add(conflict);
+          chapters.transaction.objectStore(WB_PENDING).put(wbPendingRecord(conflict));
+        }
       };
       return req;
     });
@@ -312,7 +323,7 @@ async function wbPersist(store, value) {
       if (createdConflict) {
         wbChapters.push({ ...conflict });
         wbChapterVersions.set(conflict.id, wbChapterVersion(conflict));
-        await wbPendingMark(conflict);
+        wbPendingIds.add(conflict.id);
       }
       renderWorkbooks();
       wbDraftWrite();
@@ -320,6 +331,7 @@ async function wbPersist(store, value) {
       return false;
     }
     wbChapterVersions.set(saved.id, wbChapterVersion(saved));
+    if (pending) wbPendingIds.add(saved.id);
     wbRecordResponsibles(saved.content);
     return true;
   }
@@ -332,9 +344,12 @@ async function wbPersist(store, value) {
    their .md file was last written — in memory and in the `pending` store,
    so the list survives a reload. A marker is dropped when that chapter's
    file is written by saveToWorkbook() or saveAllModifiedChapters(). */
+function wbPendingRecord(ch) {
+  return { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() };
+}
 async function wbPendingMark(ch) {
   wbPendingIds.add(ch.id);
-  try { await wbPut(WB_PENDING, { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() }); }
+  try { await wbPut(WB_PENDING, wbPendingRecord(ch)); }
   catch (e) {}
 }
 async function wbPendingClear(id, saved) {
@@ -353,18 +368,25 @@ async function wbPendingClear(id, saved) {
   try {
     // Compare and delete in one transaction so a newer marker cannot be
     // removed between reading its version and completing the old save.
-    await wbTx(WB_PENDING, 'readwrite', store => {
+    const db = await wbDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction([WB_CHAPTERS, WB_PENDING], 'readwrite');
+      const store = tx.objectStore(WB_PENDING);
+      const chapterReq = tx.objectStore(WB_CHAPTERS).get(id);
       const req = store.get(id);
       req.onsuccess = () => {
         const pending = req.result;
-        if (!matches()) return;
+        if (!matches() || wbChapterVersion(chapterReq.result) !== wbChapterVersion(saved)) return;
         if (pending && (pending.content !== saved.content || pending.updated !== saved.updated
           || pending.workbookId !== saved.workbookId)) return;
         store.delete(id);
         wbPendingIds.delete(id); // a later mark may re-add it while this transaction finishes
         cleared = true;
       };
-    });
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    }).finally(() => db.close());
   } catch (e) {
     if (cleared) wbPendingIds.add(id);
     return false;
@@ -529,7 +551,7 @@ function wbGuessTitle() {
 function wbFolderMode() {
   return typeof ScuLaFolder !== 'undefined' && ScuLaFolder.mode() === 'folder';
 }
-async function wbMirrorWrite(book, chapter, text) {
+async function wbMirrorWrite(book, chapter, text, validate) {
   if (!wbFolderMode()) return null;
   try {
     const md = await ScuLaFolder.dir(!wbMirrorAsked);           // <root>/markdown
@@ -538,7 +560,9 @@ async function wbMirrorWrite(book, chapter, text) {
     const bookDir = await md.getDirectoryHandle(book.folder, { create: true });
     const fh = await bookDir.getFileHandle(chapter.file, { create: true });
     const w = await fh.createWritable();
+    if (validate && !await validate()) { await w.abort(); return null; }
     await w.write(new Blob([text], { type: 'text/markdown' }));
+    if (validate && !await validate()) { await w.abort(); return null; }
     await w.close();
     return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
   } catch (e) { return null; }
@@ -551,14 +575,53 @@ async function wbSaveMirror(book, chapter) {
   chapter = { ...chapter };
   book = { ...book };
   const folder = wbFolderMode();
-  if (folder) await wbPendingMark(chapter);
-  const path = await wbMirrorWrite(book, chapter, chapter.content || '');
+  if (folder) {
+    // Serialize file commits across tabs. A newer save cannot close its file
+    // before an older writable and then be overwritten by that old close.
+    if (!navigator.locks) {
+      try { await wbMirrorPendingMark(chapter.id); } catch (e) {}
+      return { path: null, failed: true, pending: true };
+    }
+    return navigator.locks.request(WB_DB + ':mirror:' + chapter.id, async () => {
+      try { return await wbSaveMirrorVersion(book, chapter, true); }
+      catch (e) { return { path: null, failed: true, pending: true }; }
+    });
+  }
+  return wbSaveMirrorVersion(book, chapter, false);
+}
+// Refresh retry metadata from the durable record, never from a stale cache.
+async function wbMirrorPendingMark(id) {
+  const db = await wbDb();
+  let current;
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction([WB_CHAPTERS, WB_PENDING], 'readwrite');
+    const req = tx.objectStore(WB_CHAPTERS).get(id);
+    req.onsuccess = () => {
+      current = req.result;
+      if (!current) return;
+      tx.objectStore(WB_PENDING).put({ chapterId: id, workbookId: current.workbookId,
+        content: current.content, updated: current.updated });
+      wbPendingIds.add(id);
+    };
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  }).finally(() => db.close());
+  return current;
+}
+async function wbSaveMirrorVersion(book, chapter, folder) {
+  const version = wbChapterVersion(chapter);
+  const validate = async () => wbChapterVersion(await wbTx(WB_CHAPTERS, 'readonly', s => s.get(chapter.id))) === version;
+  if (folder && wbChapterVersion(await wbMirrorPendingMark(chapter.id)) !== version) {
+    return { path: null, failed: true, pending: true };
+  }
+  const path = await wbMirrorWrite(book, chapter, chapter.content || '', folder ? validate : null);
   const failed = folder && !path;
   const cleared = !failed && await wbPendingClear(chapter.id, chapter);
-  // Another save may have cleared the newer marker before this older file
-  // closed. That newer version needs mirroring again in that case.
+  // A durable edit or a dirty editor during the file write still needs a
+  // retry. Keep its authoritative marker instead of the captured old text.
   const current = wbChapter(chapter.id);
-  if (!cleared && current && !wbPendingIds.has(chapter.id)) await wbPendingMark(current);
+  if (!cleared && current) await wbMirrorPendingMark(chapter.id);
   return { path, failed, pending: !cleared };
 }
 // Best effort, and never recursive: only files this app knows it wrote are
@@ -1050,10 +1113,9 @@ async function renameWorkbook(id, preset) {
   const name = (preset != null ? String(preset) : (prompt(t('promptRenameWorkbook'), book.name) || '')).trim();
   if (!name || name === book.name) return;
   const oldFolder = book.folder;
-  book.name = name;
-  book.folder = wbUniqueFolder(name, book.id);
-  book.updated = Date.now();
-  if (!await wbPersist(WB_BOOKS, book)) return;
+  const renamed = { ...book, name, folder: wbUniqueFolder(name, book.id), updated: Date.now() };
+  if (!await wbPersist(WB_BOOKS, renamed)) return;
+  Object.assign(book, { name: renamed.name, folder: renamed.folder, updated: renamed.updated });
   if (book.folder !== oldFolder && wbFolderMode()) {
     let failed = false;
     for (const ch of wbChaptersOf(book.id)) {
@@ -1072,13 +1134,11 @@ async function deleteWorkbook(id) {
   if (!book) return;
   if (!confirm(t('confirmDeleteWorkbook', book.name))) return;
   const chapters = wbChaptersOf(book.id);
+  if (!await wbDeleteLocal(chapters, book)) return;
   for (const ch of chapters) {
-    try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
-    await wbPendingClear(ch.id);
     await wbMirrorRemove(book.folder, ch.file);
   }
   await wbMirrorRemove(book.folder, null);
-  try { await wbDrop(WB_BOOKS, book.id); } catch (e) {}
   // A grave per record, so the delete travels instead of being undone by the
   // next sync pulling it back from another browser — docs/FEATURES.md § O.
   for (const ch of chapters) await cloudTombstone(ch.id);
@@ -1151,17 +1211,43 @@ async function renameChapter(id, preset) {
   if (!title || title === ch.title) return;
   const book = wbBook(ch.workbookId);
   const oldFile = ch.file;
-  ch.title = title;
-  ch.file = wbUniqueFile(ch.workbookId, title, ch.id);
-  ch.updated = Date.now();
-  if (!await wbPersist(WB_CHAPTERS, ch)) return;
+  const renamed = { ...ch, title, file: wbUniqueFile(ch.workbookId, title, ch.id), updated: Date.now() };
+  if (!await wbPersist(WB_CHAPTERS, renamed)) return;
+  Object.assign(ch, { title: renamed.title, file: renamed.file, updated: renamed.updated });
   if (book && ch.file !== oldFile && wbFolderMode()) {
     const result = await wbSaveMirror(book, ch);
     if (result.failed) wbSay(t('wbMirrorFailed'), true);
     else await wbMirrorRemove(book.folder, oldFile);
   }
-  if (ch.id === wbCurrentId) document.getElementById('current-file').textContent = ch.file;
+  if (ch.id === wbCurrentId) {
+    document.getElementById('current-file').textContent = ch.file;
+    wbDraftWrite();
+  }
   renderWorkbooks();
+}
+
+// Commit all local deletions before removing mirrors or publishing graves.
+// A workbook failure must roll back its children and their retry markers too.
+async function wbDeleteLocal(chapters, book) {
+  try {
+    const store = book ? WB_BOOKS : WB_CHAPTERS;
+    const scope = book ? [WB_BOOKS, WB_CHAPTERS, WB_PENDING] : [WB_CHAPTERS, WB_PENDING];
+    await wbTx(store, 'readwrite', s => {
+      const children = s.transaction.objectStore(WB_CHAPTERS);
+      const pending = s.transaction.objectStore(WB_PENDING);
+      for (const ch of chapters) {
+        children.delete(ch.id);
+        pending.delete(ch.id);
+      }
+      if (book) s.delete(book.id);
+    }, scope);
+  } catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
+  for (const ch of chapters) {
+    wbChapterVersions.delete(ch.id);
+    wbConflictCopies.delete(ch.id);
+    wbPendingIds.delete(ch.id);
+  }
+  return true;
 }
 
 async function deleteChapter(id) {
@@ -1171,8 +1257,7 @@ async function deleteChapter(id) {
   const book = wbBook(ch.workbookId);
   const wbPanel = document.getElementById('wb-panel');
   const keepOpen = !isSmallScreen() && !wbPanel.classList.contains('collapsed');
-  try { await wbDrop(WB_CHAPTERS, ch.id); } catch (e) {}
-  await wbPendingClear(ch.id);
+  if (!await wbDeleteLocal([ch])) return;
   if (book) await wbMirrorRemove(book.folder, ch.file);
   wbChapters = wbChapters.filter(c => c.id !== ch.id);
   if (ch.id === wbCurrentId) detachChapter();
@@ -1401,13 +1486,12 @@ async function flushChapter(force = false) {
   wbDirty = true;
   wbDraftWrite();            // keep recovery even if the store rejects this write
   wbFlushPromise = (async () => {
-    if (!await wbPersist(WB_CHAPTERS, saved)) return false;
+    const wasPending = wbPendingIds.has(ch.id);
+    if (!await wbPersist(WB_CHAPTERS, saved, true)) return false;
     Object.assign(ch, saved);
     // Typing while the write was in flight still needs its own save.
     if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
     wbDraftWrite();
-    const wasPending = wbPendingIds.has(ch.id);
-    await wbPendingMark(saved);
     if (!wasPending) renderWorkbooks();   // show the "modified" dot
     if (!wbDirty) wbSay(t('wbAutosaved'));
     cloudAutoSync();                      // and, debounced, up to Drive — § O

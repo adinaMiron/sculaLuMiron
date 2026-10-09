@@ -442,8 +442,33 @@ retries the same requirement or final review. It uses a recognized reset time
 plus five seconds; if the time is missing, stale, or unrecognized, it retries
 every five minutes. Set `CODEX_USAGE_RETRY_SECONDS` to a positive integer of up
 to six digits to change that fallback interval. Repeated usage limits keep
-waiting until an attempt succeeds or you cancel with Ctrl+C. Other failures
+waiting until an attempt succeeds or you cancel with Ctrl+C. Other CLI failures
 still stop the run.
+
+If Codex exits successfully but leaves the assigned requirement unchecked, the
+runner sends the same assignment back with the diagnostic log path and preserved
+edits. `CODEX_REPAIR_ATTEMPTS=2` is the default: one initial invocation and up to
+two additional repair invocations per requirement. Set it to `0` to disable this
+recovery, or an integer up to `10` to change the cap, for example:
+
+```sh
+CODEX_REPAIR_ATTEMPTS=3 ./scripts/implement-tasks.sh song-creation
+```
+
+The repair prompt asks the agent to inspect the previous failure, correct
+in-scope implementation or test mistakes, explain any changed expectation, and
+rerun relevant checks. Incorrect new assertions may be corrected against the
+required behavior or an independently inspected format contract; tests must not
+be skipped or weakened to obtain a pass. Unrelated pre-existing failures remain
+blockers. Exhaustion leaves the assignment unchecked and preserves the log and
+partial edits without staging or publication.
+
+Every repair keeps the original sealed evidence and passes the same Git,
+document, other-checkbox, and control-plane checks. Violations stop immediately,
+as do ordinary CLI errors; final-review failures are not repairable assignments.
+Usage-limit waits do not consume the repair budget. Completion still relies on
+the agent running and reporting the relevant tests: the wrapper verifies its
+existing document/integrity gates, not an independent universal test suite.
 
 Keep the process running: recovery retains the repository lock, original
 validation evidence, and partial working-tree changes in the current run.

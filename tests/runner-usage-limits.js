@@ -180,6 +180,7 @@ if os.environ['PROBE_MODE'].startswith('cancel'): time.sleep(300)
         const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
             PROBE_LOG: log, PROBE_MODE: mode, PROBE_DOC: doc, REAL_GIT: realGit,
             CODEX_USAGE_RETRY_SECONDS: '17', CREATE_PR: 'false', FINAL_REVIEW: mode.startsWith('final-') ? 'true' : 'false',
+            CODEX_REPAIR_ATTEMPTS: '0', // Isolate usage retries; runner-repair.js tests both loops together.
             BASE: 'main', TASK_BRANCH: 'feat/probe', MAX_TASKS: '1', MAX_FINDINGS: '1',
             CODEX_MODEL: 'gpt-6.1-sol', CODEX_EFFORT: 'high' };
         return { repo, log, doc, env, args: [path.join(repo, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])] };

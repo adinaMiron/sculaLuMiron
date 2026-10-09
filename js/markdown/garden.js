@@ -83,22 +83,21 @@ const GD_TIME_SRC = '(?:[01]?\\d|2[0-3]):[0-5]\\d';
 const GD_INTERVAL_RE = new RegExp('\\b(' + GD_TIME_SRC + ')\\s*[-–—]\\s*(' + GD_TIME_SRC + ')\\b');
 /* Litres only count when the line says they are water: "150 l de apa" is
    used, "am ramas cu 60 l" is what was left in the tank. */
-const GD_LITRE_RE = /(\d+(?:[.,]\d+)?)\s*(?:l|litri|litre|liters?)\b[\s.]*(?:de\s+)?ap[aă]\b/gi;
-const GD_QTY_RE = /(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|g|gr|grame|gram|buc|bucati|bucăți|bucata)\b/i;
-const GD_ROUNDS_RE = /(\d+)\s*(?:ture|tura|turi|rounds?)\b/i;
-const GD_MOW_N_RE = /\bcosit\s+(\d+)\b/i;
+// Preserve signs consistently: negative quantities subtract from totals.
+// The boundary prevents matching a positive suffix of a signed decimal.
+const GD_LITRE_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+(?:[.,]\d+)?)\s*(?:l|litri|litre|liters?)\b[\s.]*(?:de\s+)?ap[aă]\b/gi;
+const GD_QTY_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|g|gr|grame|gram|buc|bucati|bucăți|bucata)\b/i;
+const GD_ROUNDS_RE = /(?<![\d.,+\-−])([+\-−]?\s*\d+)\s*(?:ture|tura|turi|rounds?)\b/i;
+const GD_MOW_N_RE = /\bcosit\s+([+\-−]?\s*\d+)\b/i;
 const GD_HARVEST_RE = /\b(cules|culese|culeg|culegem|recoltat|harvested|picked|harvest)\b/i;
 const GD_FROM_RE = /^\s*(?:din|de\s+la|de\s+pe|in|în|la|from)\b\s*/i;
-/* The same "@date" the calendar reads (docs/FEATURES.md § L) — one syntax
-   per page, so a day header already written for the calendar works here. */
-const GD_DATE_RE = /(^|[\s(\[{])@(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})/;
 
 // Diacritics folded the way the search panel folds them, plus the two
 // comma-below letters NFD does not decompose on every engine.
 function gdFold(s) {
   return fdFold(String(s)).replace(/ș/g, 's').replace(/ț/g, 't').toLowerCase();
 }
-function gdNum(s) { return parseFloat(String(s).replace(',', '.')); }
+function gdNum(s) { return parseFloat(String(s).replace(/\s/g, '').replace('−', '-').replace(',', '.')); }
 function gdEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 const GD_PLACE_ALIASES = (() => {
@@ -208,15 +207,31 @@ function gdCatsOf(folded) {
    out of the tables. */
 function gdScan(text) {
   const recs = [];
-  let day = null;
+  const dateRe = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
+  let day = null, fence = null;
   String(text).split('\n').forEach((line, i) => {
-    const dm = GD_DATE_RE.exec(line);
-    if (dm) {
-      const s = dm[2];
-      if (s.indexOf('-') === 4) day = s;
-      else { const p = s.split(/[./]/); day = p[2] + '-' + ('0' + p[1]).slice(-2) + '-' + ('0' + p[0]).slice(-2); }
+    // Skip examples before interpreting either their dates or activities.
+    const marker = line.match(/^[ \t]*(`{3,}|~{3,})([^\n]*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence.character && marker[1].length >= fence.length && /^[ \t\r]*$/.test(marker[2])) fence = null;
+      return;
     }
-    const body = line.replace(GD_DATE_RE, '$1').replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s*)?/, '').trim();
+    if (marker && (marker[1][0] === '~' || !marker[2].includes('`'))) {
+      fence = { character: marker[1][0], length: marker[1].length };
+      return;
+    }
+    dateRe.lastIndex = 0;
+    const dm = dateRe.exec(line);
+    let body = line;
+    if (dm) {
+      const mark = ScuLaCal.readMark(dm);
+      // An invalid header ends the previous day instead of inheriting it.
+      day = mark ? mark.date : null;
+      // Keep the clock interval for Garden's duration calculation.
+      const at = dm.index + dm[1].length;
+      body = line.slice(0, at) + line.slice(at + 1 + dm[2].length);
+    }
+    body = body.replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s*)?/, '').trim();
     if (!body || /^[#>|\-=*_\s]*$/.test(body)) return;
     const folded = gdFold(body);
     const cats = gdCatsOf(folded);
@@ -233,7 +248,7 @@ function gdScan(text) {
     let rounds = 0;
     if (isMow) {
       const r = GD_ROUNDS_RE.exec(body) || GD_MOW_N_RE.exec(body);
-      rounds = r ? +r[1] : 0;
+      rounds = r ? gdNum(r[1]) : 0;
     }
     const places = gdPlacesIn(body);
     // A mowing line with neither a count, a place nor a clock is prose

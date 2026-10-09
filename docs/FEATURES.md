@@ -206,7 +206,10 @@ absolute.
   through IndexedDB on every keypress. If the re-encode comes out bigger
   than the original, the original is used.
 - The insert goes through `setRangeText` at the caret position captured
-  *before* the decode, then `updatePreview(); updateStatus();
+  *before* the decode, only if the editor destination, text and selection
+  still match. A stale completion leaves the editor untouched and tells
+  the user to choose the insertion point and paste again. A valid insert
+  then calls `updatePreview(); updateStatus();
   scheduleAutosave()` — `setRangeText` fires no `input` event, so the
   textarea's own `oninput` chain does not run.
 
@@ -698,9 +701,12 @@ of *which* chapters were behind. `wbPendingIds` (a `Set`, mirrored to the
 `pending` object store in `scula-md` — the reason `WB_VER` is now **2**)
 is that record.
 
-- `flushChapter()` calls `wbPendingMark(ch)` every time it writes a chapter
-  back to the store, so editing anything — the open chapter, or a chapter
-  you edit then switch away from — leaves a marker that survives a reload.
+- `flushChapter()` writes the chapter and its pending marker in one IndexedDB
+  transaction, so editing anything — the open chapter, or a chapter you edit
+  then switch away from — leaves a marker that survives a reload. If either
+  write fails, neither commits; the editor stays dirty, the recovery journal
+  retains the text, and the storage error is shown. Conflict copies also
+  commit with their pending markers.
 - The workbook panel shows it: a `•` after the chapter name (`.wb-ch-row.modified`)
   and after its workbook's name (`.wb-book-row.has-modified`).
 - **`saveAllModifiedChapters()`** (header button `📚 Save all modified`,
@@ -734,6 +740,13 @@ and the panel at once (`navStep()` in `markdown.js`, key handler in
 clicks the panel's own item, so it behaves exactly like a mouse jump, and it
 steps through what the panel currently lists (state chips and the task-state
 select narrow it). Position is the editor caret's line; it wraps at the ends.
+
+On phones, clicking a navigation heading or task (including keyboard stepping)
+keeps the active tab and closes the navigation panel. **Source** selects,
+focuses and scrolls to the source line; **Preview** scrolls and flashes the
+rendered target without changing the source selection or focusing the editor.
+`tests/nav.js` covers both tabs and desktop jumps with real clicks and waits
+for the preview to reach its destination.
 
 **Ctrl+Shift+7 / 8 / 9** set the task at the caret to **to do / in work /
 done** (`TASK_SHORTCUTS` in `editor.js` → `setTaskStatus()`, handled in
@@ -773,8 +786,9 @@ indented further, fenced code and empty boxes skipped. Above the list,
 `#nav-tasks` shows "2 of 6 done", a bar, and one chip per state in use with
 its count; a chip hides or shows that state (`navTaskHidden`, kept in
 `localStorage` under `scula:navTaskHidden` — a view preference, never part of
-the chapter). Clicking a task selects its line in the source and flashes its
-`<li>` in the preview (`previewTaskItem()` maps through `wbPreviewLineMap`
+the chapter). On desktop, clicking a task selects its line in the source and
+flashes its `<li>` in the preview (on phones, it follows the active-tab behavior
+above; `previewTaskItem()` maps through `wbPreviewLineMap`
 when a toolbar filter narrows the preview; `gotoPreviewEl()` is the jump
 `gotoPreviewAnchor()` now shares). Clicking the **icon** moves the task on —
 to do → in work → done → to do; on hold and blocked go back to in work —

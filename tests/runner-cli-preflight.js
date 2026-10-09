@@ -87,7 +87,8 @@ default: console.error('WARNING: harmless startup diagnostic\\nNo prompt provide
         const argv = [path.join(repo, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])];
         for (const [key, values] of [
             ['CODEX_MODEL', ['--model', 'gpt model', 'gpt/model', 'gpt"model', 'gpt\nmodel', '$(false)', '`false`']],
-            ['CODEX_EFFORT', ['HIGH', 'unknown', 'high low', 'high\n', '"high"', '$(false)']]
+            ['CODEX_EFFORT', ['HIGH', 'unknown', 'high low', 'high\n', '"high"', '$(false)']],
+            ['CODEX_REPAIR_ATTEMPTS', ['', '-1', '1.5', '01', '11', '1000000', '$(false)', 'abc']]
         ]) {
             for (const value of values) {
                 write(log, '');

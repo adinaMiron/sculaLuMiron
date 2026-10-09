@@ -122,7 +122,11 @@ async function contrast(locator, label) {
           await contrast(elements.nth(i), lang + ' active ' + selector);
         }
       }
-      await page.locator('#contrast-fixture .find-chip').evaluate(e => e.classList.add('on'));
+      await page.locator('#contrast-fixture .find-chip').evaluate(async e => {
+        e.classList.add('on');
+        // Measure the selected steady state after its CSS transitions finish.
+        await Promise.all(e.getAnimations({ subtree: true }).map(animation => animation.finished));
+      });
       await contrast(page.locator('#contrast-fixture .find-n'), lang + ' selected search count');
       await page.locator('#contrast-fixture .wb-ch-row').hover();
       await page.waitForTimeout(200);

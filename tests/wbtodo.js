@@ -4,6 +4,8 @@
 // act button (☑) in its row. Toggling it hides every chapter that has no
 // unchecked Markdown box ("- [ ]") until it is toggled off again. Workbooks
 // without "TODO" in the name never get the button.
+// The toolbar state select filters every workbook and combines with the
+// per-book open-task filter, importance and responsible filters.
 //
 // Drives the real panel off disk like wbrename.js / find.js, and asserts on
 // the real DOM and module state.
@@ -17,7 +19,7 @@ const URL = process.env.MD_URL || 'file://' + path.join(__dirname, '..', 'index.
 
 let failed = 0;
 function check(name, ok, extra) {
-  console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok || extra === undefined ? '' : '  -> ' + JSON.stringify(extra)));
+  console.log((ok ? 'PASS ' : 'FAIL ') + '@idx-todo-test-contract ' + name + (ok || extra === undefined ? '' : '  -> ' + JSON.stringify(extra)));
   if (!ok) failed++;
 }
 
@@ -63,6 +65,7 @@ function check(name, ok, extra) {
 
   const filterBtn = () => page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_todo"]) .wb-act', { hasText: '☑' });
   const plainFilterBtn = () => page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_plain"]) .wb-act', { hasText: '☑' });
+  const bookRows = wbId => page.locator('.wb-book:has(.wb-book-name[data-wb-id="' + wbId + '"])');
   const shownChapters = wbId => page.$$eval('.wb-book', (els, id) => {
     const book = els.find(el => el.querySelector('.wb-book-name[data-wb-id="' + id + '"]'));
     return Array.from(book.querySelectorAll('.wb-ch-name')).map(n => n.textContent.replace(/^\S+\s/, ''));
@@ -108,40 +111,78 @@ function check(name, ok, extra) {
   check('no open tasks → the empty line, no rows',
     (await shownChapters('wb_todo')).length === 0 && (await hasEmptyLine('wb_todo')));
 
-  // ── the toolbar "▣ Tasks only" button: one global switch over every workbook ──
+  // ── the toolbar state select filters every workbook; fences are examples ──
   await page.evaluate(() => {
     wbTodoOnly.clear();
-    wbChapter('ch_open').content = '# Deschis\n\n- [x] gata\n- [ ] de facut\n';   // open box back
+    wbChapter('ch_open').content = '# Deschis\n\n- [x] Ana>> !vital gata\n- [ ] Bob>> !vital de facut\n- [ ] Ana>> !nice mai tarziu\n';
+    wbChapter('ch_phys').content = '- [ ] Ana>> !vital tema';
+    wbChapter('ch_prose').content = '```md\n- [ ] exemplu\n- [ ] ~inwork exemplu\n- [ ] ~onhold exemplu\n- [ ] ~blocked exemplu\n- [x] exemplu\n```';
+    for (const state of ['inwork', 'onhold', 'blocked', 'done']) {
+      wbChapters.push({ id: 'ch_' + state, workbookId: 'wb_plain', title: state, file: state + '.md',
+        content: state === 'done' ? '- [x] gata' : '- [ ] ~' + state + ' tema',
+        created: 1, updated: 1, order: wbChapters.length });
+    }
     renderWorkbooks();
   });
   await page.waitForTimeout(100);
-  check('a global filter button sits in the toolbar', await page.locator('#btn-filter-todo').count() === 1);
-  check('both workbooks show unfiltered', (await shownChapters('wb_todo')).length === 3 && (await shownChapters('wb_plain')).length === 1);
+  const stateSelect = page.locator('select#btn-filter-todo');
+  check('a global task-state select sits in the toolbar', await stateSelect.count() === 1);
+  check('both workbooks show unfiltered', (await shownChapters('wb_todo')).length === 3 && (await shownChapters('wb_plain')).length === 5);
 
-  await page.locator('#btn-filter-todo').click();
-  await page.waitForTimeout(150);
+  for (const state of ['todo', 'inwork', 'onhold', 'blocked', 'done']) {
+    await stateSelect.selectOption(state);
+    check(state + ' is selected in the toolbar and module state',
+      await stateSelect.inputValue() === state && await page.evaluate(() => wbTaskStatusFilter) === state);
+    shown = await shownChapters('wb_plain');
+    check(state + ' keeps only the matching state in the plain book',
+      JSON.stringify(shown) === JSON.stringify([state === 'todo' ? 'Mecanica' : state]), shown);
+    if (state === 'todo' || state === 'done') {
+      shown = await shownChapters('wb_todo');
+      check(state + ' excludes fenced examples and keeps matching TODO chapters',
+        JSON.stringify(shown) === JSON.stringify(state === 'todo' ? ['Deschis'] : ['Deschis', 'Terminat']), shown);
+    } else {
+      check(state + ' removes a book whose only matching tasks are fenced', await bookRows('wb_todo').count() === 0);
+    }
+  }
+
+  await stateSelect.selectOption('todo');
   check('global filter trims the TODO book to its open chapter',
     JSON.stringify(await shownChapters('wb_todo')) === JSON.stringify(['Deschis']));
   check('global filter also trims the plain book',
     JSON.stringify(await shownChapters('wb_plain')) === JSON.stringify(['Mecanica']));
-  check('the toolbar button carries the .active style',
-    await page.locator('#btn-filter-todo').evaluate(el => el.classList.contains('active')));
-  check('the per-book ☑ act button is hidden while the global filter is on', await filterBtn().count() === 0);
+  check('the per-book filter remains available with a global state selected', await filterBtn().count() === 1);
+  await filterBtn().click();
+  await stateSelect.selectOption('done');
+  check('the per-book open-task filter intersects the global done-state filter',
+    JSON.stringify(await shownChapters('wb_todo')) === JSON.stringify(['Deschis']) &&
+    await filterBtn().evaluate(el => el.classList.contains('on')));
+  await filterBtn().click();
+  check('clearing the per-book filter preserves the selected global state',
+    await stateSelect.inputValue() === 'done' &&
+    JSON.stringify(await shownChapters('wb_todo')) === JSON.stringify(['Deschis', 'Terminat']));
 
-  // a book with nothing open disappears entirely
+  await stateSelect.selectOption('todo');
+  await page.selectOption('#importance-select', 'vital');
+  await page.selectOption('#responsible-select', 'ana');
+  check('state, importance and responsible must match the same task',
+    await bookRows('wb_todo').count() === 0 &&
+    JSON.stringify(await shownChapters('wb_plain')) === JSON.stringify(['Mecanica']));
+  await page.selectOption('#responsible-select', '');
+  await page.selectOption('#importance-select', '');
+
+  // A book with no tasks in the selected to-do state disappears entirely.
   await page.evaluate(() => { wbChapter('ch_phys').content = '- [x] tema gata'; renderWorkbooks(); });
   await page.waitForTimeout(120);
-  check('a book with no open task drops out of the list',
+  check('a book with no task in the selected state drops out of the list',
     await page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_plain"])').count() === 0);
 
-  await page.locator('#btn-filter-todo').click();
-  await page.waitForTimeout(150);
-  check('toggling the toolbar button off restores every book',
+  await stateSelect.selectOption('');
+  check('selecting all task states restores every book and chapter',
     (await shownChapters('wb_todo')).length === 3
-    && await page.locator('.wb-book:has(.wb-book-name[data-wb-id="wb_plain"])').count() === 1);
-  check('the toolbar button drops the .active style',
-    await page.locator('#btn-filter-todo').evaluate(el => !el.classList.contains('active')));
-  check('the per-book ☑ act button is back', await filterBtn().count() === 1);
+    && (await shownChapters('wb_plain')).length === 5);
+  check('all task states clears the toolbar and module selection',
+    await stateSelect.inputValue() === '' && await page.evaluate(() => wbTaskStatusFilter) === '');
+  check('the per-book filter remains available with all states selected', await filterBtn().count() === 1);
 
   check('no page errors', errors.length === 0, errors);
 

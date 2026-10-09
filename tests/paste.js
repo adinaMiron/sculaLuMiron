@@ -55,6 +55,7 @@ const HELPERS = `
 (async () => {
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  await ctx.route(/^https?:/, route => route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));

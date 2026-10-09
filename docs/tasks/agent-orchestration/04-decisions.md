@@ -1,5 +1,74 @@
 # Agent orchestration decisions
 
+## 2026-10-08 — Bounded repair of incomplete assignments
+
+The Garden review attempt implemented fence exclusion but stopped because its
+new CSV assertion forgot the existing blank separator before totals. The
+wrapper correctly rejected the unchecked finding, but required the user to
+request another investigation. The review prompt's blanket prohibition on
+changing expected results also discouraged legitimate corrections to new tests.
+
+Both implementation runners now wrap assignment execution in a shared bounded
+repair loop. A successful CLI exit with the exact original assigned document
+qualifies after all integrity checks pass. A completed document returns to the
+existing completion gates. Any other assigned-document change, unrelated
+checkbox mutation, control-plane violation, staged files, or Git history/branch
+change stops immediately. Original sealed evidence and the existing repository
+lock remain in place; recovery never refreshes evidence from agent edits.
+
+`CODEX_REPAIR_ATTEMPTS` defaults to two additional invocations per item and
+accepts integers from zero (disabled) through ten. The cap bounds additional
+repair sessions, not tokens or elapsed time. Usage-limit waits remain separate,
+and do not consume repair slots. Ordinary CLI failures and final-review failures
+retain their existing stop behavior. Exhaustion falls through to the original
+incomplete-assignment diagnostic without staging or publication.
+
+Each repair is a fresh ephemeral invocation with the original assignment and
+the same log's absolute path. The agent inspects the recent summary, failed
+commands, and preserved diff. Log text is diagnostic context, never trusted
+control input for retry or completion decisions. No arbitrary command from a
+log is executed by the wrapper. This uses the existing
+[non-interactive Codex invocation](https://learn.chatgpt.com/docs/non-interactive-mode)
+contract; no persisted conversation or automatic live runner restart is needed.
+
+`AGENTS.md` and both initial prompts explicitly allow diagnosing and fixing
+in-scope implementation defects and demonstrably incorrect tests, requiring
+independent justification of changed expectations and successful re-verification.
+Unrelated defects and unavailable dependencies remain blockers. The wrapper
+does not prove tests were run or that an agent's test correction is sound;
+completion retains the existing agent verification and wrapper integrity gates.
+
+Regression coverage lives in `tests/runner-repair.js`, with fake agent/remotes
+and a real failing/passing CSV assertion, alongside the existing output,
+usage-limit, preflight, lock, Markdown parser, and control-plane suites.
+
+Verification passed: 46 repair cases, 18 output cases, 33 usage-limit cases,
+30 concurrency probes, 157 control-plane cases, CLI preflight fixtures, Markdown
+parser checks, and repository verification. Bash/JavaScript syntax and diff
+whitespace checks passed; implementation and documentation diffs were inspected.
+Usage-only and output fixtures explicitly disable repairs to retain their
+separate contracts; the repair suite covers interaction between both retry
+loops. No live model session, real remote operation, or publication was run.
+
+## 2026-10-08 — Precise review-test selection
+
+The index review run stopped after `--grep 'New|P1 new-file failure'` selected
+five tests: four passing New scenarios and the separate open rename finding.
+The installed Playwright's plain grep patterns are case-insensitive, so `New`
+matched "new uncommitted filename". The agent followed the unrelated-failure
+stop rule; the wrapper correctly rejected the unchecked assignment.
+
+The review prompt now requires inspecting filtered Playwright `--list` output
+before execution and using finding tags or precise titles. The four New cases
+share `@idx-new-failed-flush`. Completion gates, failure handling, and the other
+findings' assertions remain intact. This is test-selection guidance, not a
+wrapper-enforced test inventory or an exception for ignoring failures.
+
+Verification: the tag lists exactly four tests and all pass with the preserved
+awaited-save fix. `wbstorefailure.js`, `mdundo.js`, `wbresume.js`, all 18 offline
+runner-output cases, `tests/verify.js`, Bash syntax, and whitespace checks pass.
+No live review run or remote publication was needed.
+
 ## 2026-10-07 — Browser-compatible offline command execution
 
 The reported review run stopped because Chromium crashed on Crashpad's

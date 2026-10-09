@@ -6,6 +6,7 @@
   "scripts": {
     "test:runner-browser": "node runner-browser-sandbox.js",
     "test:runner-output": "node runner-output.js",
+    "test:runner-repair": "node runner-repair.js",
     "test:runner-usage": "node runner-usage-limits.js",
     "test:runner-lock": "node runner-lock.js",
     "test:runner-markdown": "node runner-markdown-tasks.js",

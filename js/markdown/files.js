@@ -1,6 +1,8 @@
 /* ── File operations ── */
-function newFile() {
-  if (wbCurrentId) flushChapter();
+async function newFile() {
+  if (wbCurrentId) {
+    if (!await flushChapter()) return;
+  }
   else if (editor.value && !confirm(t('confirmDiscard'))) return;
   editor.value = '';
   undoReset();
@@ -298,18 +300,27 @@ ${bodyHtml}
 }
 
 /* ── Table builder ── */
+const tableDraft = new Map();
 function openTableModal() {
   saveSelection();
-  rebuildTableGrid();
+  rebuildTableGrid(true);
   openOrdinaryDialog('table-modal', 'tbl-rows');
 }
 function closeTableModal() {
   closeOrdinaryDialog('table-modal');
 }
-function rebuildTableGrid() {
+function rebuildTableGrid(resetDraft = false) {
   const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tbl-rows').value) || 1));
   const cols = Math.min(10, Math.max(1, parseInt(document.getElementById('tbl-cols').value) || 1));
   const container = document.getElementById('table-preview-grid');
+  if (resetDraft) {
+    tableDraft.clear();
+  } else {
+    // Keep hidden cells too, so shrinking and re-expanding restores the draft.
+    container.querySelectorAll('input, select').forEach(field => {
+      tableDraft.set(`${field.dataset.row || 'a'}:${field.dataset.col}`, field.value);
+    });
+  }
   const table = document.createElement('table');
   table.className = 'tbl-builder';
 
@@ -320,9 +331,10 @@ function rebuildTableGrid() {
     const th = document.createElement('th');
     const inp = document.createElement('input');
     inp.type = 'text';
-    inp.placeholder = `Header ${c + 1}`;
+    inp.placeholder = t('tblHeader', c + 1);
     inp.dataset.row = 'h';
     inp.dataset.col = c;
+    inp.value = tableDraft.get(`h:${c}`) ?? '';
     th.appendChild(inp);
     hrow.appendChild(th);
   }
@@ -338,9 +350,10 @@ function rebuildTableGrid() {
     const sel = document.createElement('select');
     sel.className = 'align-select';
     sel.dataset.col = c;
-    [['left','⬅ Left'],['center','↔ Center'],['right','➡ Right']].forEach(([v, l]) => {
-      const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
+    [['left','tblAlignLeft'],['center','tblAlignCenter'],['right','tblAlignRight']].forEach(([v, key]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = t(key); sel.appendChild(o);
     });
+    sel.value = tableDraft.get(`a:${c}`) ?? 'left';
     td.appendChild(sel);
     arow.appendChild(td);
   }
@@ -353,9 +366,10 @@ function rebuildTableGrid() {
       const td = document.createElement('td');
       const inp = document.createElement('input');
       inp.type = 'text';
-      inp.placeholder = `Cell`;
+      inp.placeholder = t('tblCell');
       inp.dataset.row = r;
       inp.dataset.col = c;
+      inp.value = tableDraft.get(`${r}:${c}`) ?? '';
       td.appendChild(inp);
       drow.appendChild(td);
     }
@@ -385,7 +399,7 @@ function insertTable() {
   // Build separator row with alignment markers
   const sep = aligns.map(a => a === 'center' ? ':---:' : a === 'right' ? '---:' : ':---');
 
-  const pad = (cells) => '| ' + cells.join(' | ') + ' |';
+  const pad = (cells) => '| ' + cells.map(c => c.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')).join(' | ') + ' |';
   const lines = [
     pad(headers),
     pad(sep),

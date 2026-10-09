@@ -14,8 +14,23 @@ installed browser. The application itself gains no dependencies or build step.
 These tests assert **correct behavior**, including behavior the current page
 does not satisfy. A nonzero exit is expected until the corresponding review
 findings are fixed. There are no expected-failure annotations or skipped tests
-that would turn a reproduced defect into a passing result. Use `--grep` with a
-test title to work on an individual finding.
+that would turn a reproduced defect into a passing result. Select an individual
+finding with its `@<finding-id>` tag where available, or precise test titles.
+First inspect the same command with `--list` to confirm every selected case is
+relevant. The installed Playwright treats plain `--grep` patterns as
+case-insensitive regular expressions: `--grep 'New'` also selects the open rename finding
+whose title contains "new uncommitted filename".
+
+For `idx-new-failed-flush`, these commands select exactly four New scenarios
+(success, immediate failure, in-flight failure, and edits during a flush):
+
+```sh
+node node_modules/@playwright/test/cli.js test --config tests/index-review/playwright.config.js --grep '@idx-new-failed-flush' --list
+node node_modules/@playwright/test/cli.js test --config tests/index-review/playwright.config.js --grep '@idx-new-failed-flush'
+```
+
+Run relevant passing regression coverage as well. Keep other open findings
+visible in the full suite; do not skip or weaken their assertions.
 
 - `preservation.spec.js`: normal autosave/reload and empty documents, failed
   writes, pending markers, rename/delete failures, stale folder mirrors,

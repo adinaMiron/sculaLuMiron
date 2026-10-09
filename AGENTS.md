@@ -352,6 +352,13 @@ Add or update tests when necessary to demonstrate the requirement.
 
 Do not mark a requirement complete while relevant tests are failing.
 
+A failing test is part of the implementation cycle, not automatically a reason
+to stop. Diagnose and fix defects within the assigned requirement, including
+demonstrably incorrect tests introduced during the attempt, then rerun the
+failing tests and relevant regressions. Derive expected values from the required
+behavior or an independently inspected format contract and explain corrections.
+Never skip tests, weaken required behavior, or hide failures to manufacture a pass.
+
 If tests fail because of an unrelated pre-existing problem:
 
 - leave the requirement unchecked;
@@ -525,6 +532,13 @@ If assigned work cannot be completed safely:
 5. do not continue automatically to unrelated work.
 
 Never mark a checkbox complete merely to allow automation to proceed.
+
+The task/review wrappers may automatically reassign the same incomplete item
+with its diagnostic log and preserved changes, within `CODEX_REPAIR_ATTEMPTS`
+(default two additional invocations; zero disables recovery). Inspect the
+previous failure and continue only that assignment. Each invocation must still
+honor all scope, test, and safety rules. A retry is not permission to ignore a
+blocker or to change unrelated requirements.
 
 ---
 

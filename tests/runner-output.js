@@ -134,7 +134,8 @@ print(json.dumps({'type': 'turn.completed'}), flush=True)
             const env = { ...process.env, BROWSER_PREFLIGHT: 'false', PATH: bin + path.delimiter + process.env.PATH,
                 PROBE_DOC: doc, PROBE_MODE: mode, CREATE_PR: mode === 'success' ? 'true' : 'false', FINAL_REVIEW: 'true',
                 PROBE_PUBLICATION: path.join(tmp, runner + '-' + mode + '-publication.log'),
-                MAX_TASKS: '2', MAX_FINDINGS: '2', BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '1' };
+                MAX_TASKS: '2', MAX_FINDINGS: '2', BASE: 'main', TASK_BRANCH: 'feat/probe', CODEX_USAGE_RETRY_SECONDS: '1',
+                CODEX_REPAIR_ATTEMPTS: '0' }; // This suite also retains the explicit no-repair contract.
             const result = run('bash', [path.join(cwd, 'scripts', runner), ...(runner === 'implement-tasks.sh' ? ['probe'] : [])], cwd, env);
             const terminal = result.stdout + result.stderr;
             assert.equal(result.status, stopped || mode === 'log-error' ? 1 : 0, terminal);

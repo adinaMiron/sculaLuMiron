@@ -46,6 +46,7 @@ Optional environment variables:
   CREATE_PR=true
   FINAL_REVIEW=true
   BROWSER_PREFLIGHT=true
+  CODEX_REPAIR_ATTEMPTS=2 (additional attempts for an unchecked assignment; 0 disables)
   CODEX_MODEL=<OpenAI model identifier> (unset: script default)
   CODEX_EFFORT=none|minimal|low|medium|high|xhigh|max|ultra (unset: script default)
 
@@ -56,6 +57,8 @@ Edit DEFAULT_CODEX_MODEL and DEFAULT_CODEX_EFFORT in the configuration section.
 Environment values override those defaults; empty values use CLI/model defaults.
 Choose an effort supported by your model and installed Codex CLI.
 Model/effort selections apply to tasks, retries, and final review.
+Incomplete assignments retry with their log and preserved edits, up to the repair cap.
+CLI failures and integrity violations stop immediately; usage-limit waits are separate.
 Before any Git change, the runner checks that Playwright's bundled headless
 Chromium starts inside the Codex sandbox (install it with: cd tests &&
 npm install && npx playwright install chromium-headless-shell).
@@ -486,6 +489,8 @@ WORKFLOW
 6. Run relevant tests and appropriate regression tests.
 7. Inspect the final diff and verify the exact requirement is satisfied.
 
+$CODEX_TEST_GUIDANCE
+
 SCOPE LIMITS
 Do not perform unrelated refactoring, cleanup, formatting, renaming, dependency upgrades, architecture changes, or feature additions.
 Do not work on another unchecked requirement.
@@ -524,7 +529,7 @@ Leave implementation/tests/documentation changes unstaged, leave exactly this re
 PROMPT
 )"
 
-    if ! run_codex_with_usage_retry assert_task_retry_state "$prompt"; then
+    if ! run_codex_with_assignment_repair assert_task_retry_state "$TARGET_FILE" "$prompt"; then
         die "Codex failed; working tree preserved for inspection"
     fi
 
