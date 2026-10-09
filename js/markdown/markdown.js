@@ -578,14 +578,18 @@ function tlDateValue(raw) {
     }
   }
   if (!m) return null;
-  const y = +m[1], mo = m[2] ? Math.min(12, Math.max(1, +m[2])) : 1;
-  const d = m[3] ? Math.min(31, Math.max(1, +m[3])) : 1;
+  const y = +m[1], mo = m[2] ? +m[2] : 1;
+  const d = m[3] ? +m[3] : 1;
+  if (mo < 1 || mo > 12 || d < 1) return null;
+  const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (d > days[mo - 1]) return null;
   return y + ((mo - 1) + (d - 1) / 31) / 12;
 }
 
 function parseTimelineLine(line) {
   const m = line.match(TIMELINE_RE);
-  return m ? { date: m[1], body: m[2] } : null;
+  return m && tlDateValue(m[1]) !== null ? { date: m[1], body: m[2] } : null;
 }
 
 /* What the "!" opens. The marker doubles as the "!" of an image, so a picture

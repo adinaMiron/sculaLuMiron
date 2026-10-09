@@ -509,9 +509,59 @@ test('timeline valid dates stay ordered and duplicate dates share a position', a
   expect(v[2]).toBe(v[3]);
 });
 
-test('timeline rejects nonexistent dates instead of silently clamping them', async ({ page }) => {
-  const values = await page.evaluate(() => ['2026-02-30', '2026-13-01', '2026-00-00'].map(tlDateValue));
-  expect(values).toEqual([null, null, null]);
+test('timeline rejects nonexistent dates instead of silently clamping them', { tag: '@idx-timeline-invalid-dates' }, async ({ page }) => {
+  const dates = [
+    '2026-02-30', '2026-13-01', '2026-00-00', '2026-01-00', '2026-01-32',
+    '2026-02-29', '1900-02-29', '2100-02-29', '2026-04-31', '2026-06-31',
+    '2026-09-31', '2026-11-31', '2026.02.30', '2026/02/30', '30.02.2026',
+    '31/04/2026', '00.01.2026', '01/13/2026', '2026-00', '2026-13', '00.2026', '13/2026'
+  ];
+  const values = await page.evaluate(dates => dates.map(tlDateValue), dates);
+  expect(values).toEqual(dates.map(() => null));
+  expect(await page.evaluate(dates => dates.map(date => parseTimelineLine(`#${date} - !invalid`)), dates))
+    .toEqual(dates.map(() => null));
+});
+
+test('timeline preserves valid year, month and civil date forms', { tag: '@idx-timeline-invalid-dates' }, async ({ page }) => {
+  const groups = [
+    ['1969', '1969-01', '01.1969', '1969-01-01'],
+    ['2026-09', '2026.09', '2026/9', '09.2026', '9/2026', '2026-09-01'],
+    ['2024-02-29', '2024.2.29', '2024/02/29', '29.02.2024', '29/2/2024'],
+    ['2000-02-29', '29.02.2000'],
+    ['400-02-29', '0400-02-29', '29/2/400'],
+    ['2026-04-30', '30/04/2026'],
+    ['2026-12-31', '31.12.2026']
+  ];
+  for (const dates of groups) {
+    const values = await page.evaluate(dates => dates.map(tlDateValue), dates);
+    expect(values[0]).not.toBeNull();
+    expect(values).toEqual(dates.map(() => values[0]));
+    expect(await page.evaluate(dates => dates.map(date => parseTimelineLine(`#${date} - !valid`)), dates))
+      .toEqual(dates.map(date => ({ date, body: '!valid' })));
+  }
+  const values = await page.evaluate(() => ['2026', '2026-09', '2026-09-21'].map(tlDateValue));
+  expect(values[0]).toBeLessThan(values[1]);
+  expect(values[1]).toBeLessThan(values[2]);
+});
+
+test('timeline leaves invalid entries readable without plotting them in preview or export', { tag: '@idx-timeline-invalid-dates' }, async ({ page }) => {
+  const invalid = ['#2026-02-30 - !Impossible day', '#2026-13-01 - !Impossible month', '#2026-00-00 - !Zero date'];
+  const source = ['#2024-02-29 - !Valid leap day', ...invalid, '#2026-09 - !Valid month'].join('\n');
+  await edit(page, source);
+  await expect(page.locator('#preview .tl-when')).toHaveText(['2024-02-29', '2026-09']);
+  await expect(page.locator('#preview .tl-dot')).toHaveCount(2);
+  await expect(page.locator('#preview > p')).toHaveText(invalid);
+  expect(await page.locator('#editor').inputValue()).toBe(source);
+  const exported = await page.evaluate(source => {
+    const root = document.createElement('div');
+    root.innerHTML = parseMarkdown(source, { forExport: true });
+    return {
+      dates: [...root.querySelectorAll('.tl-when')].map(e => e.textContent),
+      dots: root.querySelectorAll('.tl-dot').length,
+      paragraphs: [...root.querySelectorAll(':scope > p')].map(e => e.textContent)
+    };
+  }, source);
+  expect(exported).toEqual({ dates: ['2024-02-29', '2026-09'], dots: 2, paragraphs: invalid });
 });
 
 test('table dimension bounds clamp empty, negative and excessive inputs', async ({ page }) => {

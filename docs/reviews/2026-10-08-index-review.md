@@ -151,7 +151,7 @@ real Drive account or production service were changed.
   **Required outcome:** Reject unsupported signed quantities clearly or interpret them consistently; never turn a negative value into positive consumption/harvest. Adding correction-entry functionality is not required by this finding.  
   **Test:** `computations.spec.js` — `garden does not reinterpret a negative quantity as positive harvest`.
 
-- [ ] [ID:idx-timeline-invalid-dates] **P2 — Timeline assigns positions to impossible dates by clamping month/day values.**
+- [x] [ID:idx-timeline-invalid-dates] **P2 — Timeline assigns positions to impossible dates by clamping month/day values.**
 
   **Location:** [markdown.js](../../js/markdown/markdown.js), `tlDateValue()`, lines 570–585.  
   **Reproduce:** `2026-02-30`, `2026-13-01` and `2026-00-00` all produce numeric positions. Month 13 becomes December; month/day zero becomes January 1. The displayed label remains the original invalid date, so the visible label and calculated position disagree.  
