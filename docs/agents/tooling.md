@@ -2,6 +2,7 @@
 
 Read this when changing agent tooling or connecting a new harness, not at every
 prompt. The [dated research note](history.md) explains the evidence behind it.
+For first-time harness setup, use [onboarding](onboarding.md).
 Local tools use Python 3.9+ and Node (the existing tests use Node 22 in CI).
 Playwright is needed only for browser/spec tests, from the existing dev packages.
 
@@ -87,11 +88,17 @@ was launched. Installed CLI during research: codex-cli 0.161.0.
 ## Test runner contract
 
 `scripts/run-tests.py` runs existing suites via argv arrays, never shell eval.
-Standalone suites run from tests/; specs run from repository root with their
+Standalone Node/Python suites run from tests/; specs run from repository root with their
 own config or the root's explicit testMatch inventory. `--grep`/`--list` apply
 only to specs. Reporter override prevents `--list` from replacing JSON evidence.
 Zero passing spec cases is incomplete, not success. Full logs include argv/cwd
 and stdout/stderr; default output is status, path and a bounded failure tail.
+
+Python suites use explicit `.py` filenames and the runner's Python interpreter;
+for example `python3 scripts/run-tests.py agent-tools.py verify`. Python checks
+and the known static `verify.js` suite skip browser discovery. Other JavaScript
+suites retain discovery; `--doctor` explicitly requests it. `--grep`/`--list`
+remain spec-only. Python browser setup, if ever needed, belongs to that suite.
 
 Options: named suites, `--preset header|dictation|verify`, `--doctor`,
 `--discover`, `--grep`, `--list`, `--timeout` (default 240 seconds per suite),
@@ -110,7 +117,7 @@ argument aliases; its historical success-on-known-failure behavior is removed.
 
 ## Verification and growth
 
-Run `python3 tests/agent-tools.py`, `node tests/verify.js`, and
+Run `python3 scripts/run-tests.py agent-tools.py verify` and
 `python3 scripts/setup-agent-links.py --check`. Changes to task parsing or trusted
 runners also require their own regressions; don't launch live wrappers as tests.
 The existing unattended wrappers remain Codex-specific. Cross-provider unattended

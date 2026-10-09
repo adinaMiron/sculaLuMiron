@@ -46,3 +46,19 @@ commands and event/decision contracts were tested locally.
 Outstanding orchestration confinement/provider work in agent-orchestration is
 unchanged. Existing implement-tasks/fix-review wrappers remain Codex-specific;
 the shared docs, skills, local checks and hook protocol are harness-independent.
+
+
+## 2026-10-09 — Follow-up validation at fc3830a
+
+Reused the existing six skills and hook adapters. Added harness onboarding,
+removed duplicated conditional root guidance, corrected stale test/module docs,
+and enabled explicit Python suites in the compact runner. Offline Python/static
+checks bypass browser discovery; browser suite selection and explicit doctor
+still request it. No trusted unattended runner or app behavior changed.
+
+Validation: `python3 scripts/run-tests.py agent-tools.py verify` passes 20
+workflow regressions plus static verification; seven adapter links and skill
+metadata pass `setup-agent-links.py --check`. The updated maintenance skill
+passes the installed skill-creator validator. Full logs are retained under
+`test-results/agent/`; this follow-up uses offline fixture coverage for browser
+selection and does not claim a new native harness or browser session test.

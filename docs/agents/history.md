@@ -41,3 +41,31 @@ CLAUDE.md from 355 lines / 4,027 words to an 11-line / 65-word import adapter.
 Together: 6,016 → 595 words (about 90% less root instruction text), with task
 policy and feature detail moved to conditional references. These are whitespace
 word counts, excluding skill discovery metadata and conditionally loaded docs.
+
+
+## Follow-up audit at fc3830a — 2026-10-09
+
+Reviewed initial and recent Git history, path frequencies, the September
+retrospective, current task/review policy, skills/adapters, test inventories,
+ordered Markdown modules and representative shared save/calendar/audio code.
+The existing workflow implementation was already present; reuse it rather than
+create another framework. Frequency evidence remains commit-path counts, not
+private shell history or measured model tokens.
+
+Verified gaps and responses:
+
+- Static verification still entered browser discovery, so an invalid browser
+  override could prevent an offline check. The runner now skips discovery for
+  the known static verifier and Python checks; browser suites retain discovery.
+- Python tooling tests lacked the shared runner's compact output/full logs.
+  Explicit `.py` suite selection now supplies both, with failure status retained.
+- Task/wrapper details were duplicated in root instructions and task policy.
+  Root files now route to that policy: 595 → 484 whitespace-delimited words
+  (about 19% further reduction). This is not a token/cost benchmark.
+- The test guide advertised a nonexistent `/apptest all` and implicit setup;
+  it now documents the actual runner and explicit browser setup behavior.
+- Markdown's module table omitted Gantt and still said eight total pages;
+  corrected against current script tags and the nine-page verifier.
+
+First-time harness setup now has a separate onboarding page; it is not startup
+context. Native hook activation remains dependent on harness version and trust.

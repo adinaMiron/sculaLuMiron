@@ -1,0 +1,11 @@
+approvals_reviewer = "auto_review"
+[projects."/home/cipmiron/work/hahadina/sculaLuMiron"]
+trust_level = "trusted"
+
+[hooks.state]
+
+[hooks.state."/home/cipmiron/work/hahadina/sculaLuMiron/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:ef0acb3ef0fe1300655299173118e334a123a3038935aa1d964e8647df46c159"
+
+[hooks.state."/home/cipmiron/work/hahadina/sculaLuMiron/.codex/hooks.json:post_tool_use:0:0"]
+trusted_hash = "sha256:5220e0bb39c45443ec375e972d1f4480a5fce8e6319401b1058fa189b098d3a4"

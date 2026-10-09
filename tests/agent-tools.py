@@ -40,7 +40,7 @@ class Routing(unittest.TestCase):
                     self.assertTrue((ROOT / doc).is_file(), doc)
                 self.assertTrue((ROOT / ".claude/skills" / skill / "SKILL.md").is_file())
                 for suite in suites:
-                    self.assertTrue((ROOT / "tests" / suite).is_dir() or
+                    self.assertTrue((ROOT / "tests" / suite).exists() or
                                     (ROOT / "tests" / (suite + ".js")).is_file(), suite)
                 card = router.card(topic)
                 self.assertLess(len(card), 2000)
@@ -238,6 +238,35 @@ class TestRunner(unittest.TestCase):
         (self.root / "tests/escape.js").symlink_to(self.root / "outside.js")
         with self.assertRaises(ValueError):
             runner.suite_command("escape")
+
+    def test_python_selection_and_offline_checks_without_browser_setup(self):
+        script = self.root / "tests/check.py"
+        script.write_text("print('PASS offline')")
+        command, cwd, spec = runner.suite_command("tests/check.py")
+        self.assertEqual(command, [sys.executable, str(script)])
+        self.assertEqual(cwd, self.root / "tests")
+        self.assertFalse(spec)
+        for options in ({"grep": "tag"}, {"listing": True}):
+            with self.assertRaises(ValueError):
+                runner.suite_command("check.py", **options)
+        (self.root / "tests/verify.js").write_text("console.log('PASS syntax')")
+        out = io.StringIO()
+        with mock.patch.object(runner, "browser_environment", side_effect=AssertionError("browser probe")), contextlib.redirect_stdout(out):
+            self.assertEqual(runner.main(["check.py", "verify"]), 0)
+        self.assertIn("PASS check.py", out.getvalue())
+        logs = list((self.root / "test-results/agent").glob("*/*check.py.log"))
+        self.assertEqual(len(logs), 1)
+        self.assertIn("PASS offline", logs[0].read_text())
+        script.write_text("raise SystemExit(7)")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.main(["check.py"]), 1)
+
+    def test_browser_suites_and_doctor_still_use_discovery(self):
+        (self.root / "tests/browser.js").write_text("// fixture")
+        for args in (["browser"], ["--doctor"], ["--doctor", "--list"]):
+            with mock.patch.object(runner, "browser_environment", side_effect=ValueError("setup blocked")) as probe, contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(runner.main(args), 3 if "--doctor" in args else 2)
+            probe.assert_called_once()
 
     def test_failures_and_skipped_only_never_pass(self):
         log = self.root / "output.log"

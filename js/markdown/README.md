@@ -13,6 +13,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `markdown.js` | Wikilink/date/place/importance/timeline rendering, Markdown parser, preview, navigation |
 | `diagram.js` | ` ```flow ` / ` ```mindmap ` / ` ```sequence ` diagrams: parsers, serializers, ports, SVG layout, SVG/PNG download and the diagram modal — loaded right after `markdown.js` ([FEATURES § U](../../docs/FEATURES.md)) |
 | `sketch.js` | Freehand sketch modal and the ✎ on preview pictures — loaded right after `diagram.js` ([FEATURES § U](../../docs/FEATURES.md)) |
+| `gantt.js` | Chapter Gantt task/date/dependency parsing, chart rendering and dialog |
 | `workbooks.js` | IndexedDB, workbooks and chapters, folder mirroring, pending edits, autosave and restore |
 | `idea.js` | Quick idea capture and chapter routing |
 | `graph.js` | Knowledge graph, causality diagram, graph canvas and settings |
@@ -27,7 +28,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `startup.js` | Initial rendering, layout and workbook boot (after Drive is defined) |
 
 The shared navigation script (`ScuLaFolder`, `ScuLaCal`, `ScuLaGeo`) remains
-inside the common toolbar block in `index.html`, as in the other seven pages.
+inside the common toolbar block in `index.html`, as in the other eight pages.
 The new files contain the editor script verbatim. Startup loads last so the
 workbook boot can call the Drive functions. See
 [`docs/MAP.md`](../../docs/MAP.md) for feature entry points.

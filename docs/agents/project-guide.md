@@ -71,7 +71,7 @@ Read task docs and current review requirements before historical advice.
 | A review tag | `python3 scripts/run-tests.py index-review --grep @idx-nav-test-contract` |
 | Discover existing suite entrypoints | `python3 scripts/run-tests.py --discover` |
 | Read executable task manifest | `python3 scripts/markdown-tasks.py manifest docs/tasks/<module>` |
-| Workflow tooling regression | `python3 tests/agent-tools.py` |
+| Workflow tooling regression | `python3 scripts/run-tests.py agent-tools.py` |
 | Check skill links and hook adapters | `python3 scripts/setup-agent-links.py --check` |
 
 Root `npm test` covers only the three configured task spec directories.

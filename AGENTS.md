@@ -38,21 +38,11 @@ stay byte-identical in all nine pages. See
 ## Tasks, reviews and unattended runs
 
 Read [task policy](docs/agents/task-policy.md) before authoring requirements,
-executing Markdown assignments or reviewing implementations. Requirements go in
-`docs/tasks/<module>/`, findings in `docs/reviews/`. Every independently
-actionable accepted requirement uses `- [ ]`, preferably with stable
-`[ID:...]` and genuine `[DEPENDS:...]`. Ideas/questions use normal bullets.
-Only mark `[x]` after implementation, inspection, relevant passing tests and
-diff review, with no blocker.
-
-When a runner assigns one requirement, implement/test/review only it, mark only
-it complete and stop. Do not add executable scope during that assignment.
-**The wrapper owns Git and external actions:** no agent staging, commits,
-branch changes, restore/reset/stash, merge/rebase/cherry-pick, pushes or PRs.
-Read-only Git is allowed. Leave changes unstaged. Do not initiate networking or
-external side effects without both user and environment authorization; stricter
-runner restrictions win. Maintain protected runner code outside automated runs.
-Retries continue the same assignment with existing diagnostics.
+executing Markdown assignments, reviewing implementations or using unattended
+runners. It owns task formats, completion evidence and wrapper restrictions.
+Mark tasks complete only after implementation, inspection and relevant passing
+checks. Under a wrapper, work only its assigned item, leave changes unstaged,
+and stop; the wrapper owns Git and external actions.
 
 ## Reuse and improve
 

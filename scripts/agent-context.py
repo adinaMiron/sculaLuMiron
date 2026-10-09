@@ -43,7 +43,7 @@ ROUTES = {
                    [("docs/agents/task-policy.md", "Unattended"), ("docs/tasks/agent-orchestration/04-decisions.md", "")],
                    ["runner-markdown-tasks", "runner-cli-preflight", "runner-control-plane"], "task-workflow"),
     "tooling": (["scripts/agent-context.py", "scripts/run-tests.py", "scripts/agent-hook.py"],
-                [("docs/agents/tooling.md", "")], [], "workflow-maintenance"),
+                [("docs/agents/tooling.md", "")], ["agent-tools.py", "verify"], "workflow-maintenance"),
 }
 ALIASES = {"index": "markdown", "retete": "recipes", "rețete": "recipes", "harta": "map",
            "hartă": "map", "drawing": "editor", "mazgaleste": "editor", "caiet vocal": "voice",

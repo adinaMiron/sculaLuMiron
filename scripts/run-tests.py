@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run selected Node/Playwright suites with compact output and complete local logs."""
+"""Run selected Node/Python/Playwright suites with compact output and complete local logs."""
 import argparse
 import json
 import os
@@ -45,11 +45,11 @@ def browser_environment():
 
 def suite_command(name, grep=None, listing=False):
     key = name.removeprefix("tests/")
-    if not re.fullmatch(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*(?:\.spec)?(?:\.js)?", key):
+    if not re.fullmatch(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*(?:\.spec)?(?:\.js|\.py)?", key):
         raise ValueError("Use a suite name or relative path under tests/: " + name)
     tests = ROOT / "tests"
     target = tests / key
-    if not target.is_dir() and not key.endswith(".js"):
+    if not target.is_dir() and not key.endswith((".js", ".py")):
         target = tests / (key + ".js")
     if not target.resolve().is_relative_to(tests.resolve()) or not target.exists():
         raise ValueError("Suite not found under tests/: " + name)
@@ -57,7 +57,8 @@ def suite_command(name, grep=None, listing=False):
     if not spec:
         if grep or listing:
             raise ValueError("--grep/--list apply only to Playwright Test specs, not " + name)
-        return ["node", str(target)], tests, False
+        executable = sys.executable if target.suffix == ".py" else "node"
+        return [executable, str(target)], tests, False
     folder = target if target.is_dir() else target.parent
     if target.is_dir() and not any(target.glob("*.spec.js")):
         raise ValueError("No *.spec.js files in " + name)
@@ -148,6 +149,7 @@ def discover():
         if folder.is_dir() and any(folder.glob("*.spec.js")):
             config = "own config" if (folder / "playwright.config.js").is_file() else "check root testMatch"
             print(f"  {folder.name}: {config}")
+    print("Python checks: use an explicit filename, e.g. agent-tools.py.")
     print("Other standalone suites: python3 scripts/run-tests.py <name>; see tests/README.md.")
 
 
@@ -176,7 +178,12 @@ def main(argv=None):
     try:
         # Validate every selection before executing any of them.
         selections = [(name, *suite_command(name, args.grep, args.list)) for name in names]
-        env = os.environ.copy() if args.list else browser_environment()
+        # Known offline checks must not depend on browser installation/config.
+        # Other JS suites retain discovery; do not guess from their source text.
+        needs_browser = doctor or (not args.list and any(
+            spec or (Path(command[1]).suffix != ".py" and Path(command[1]) != ROOT / "tests/verify.js")
+            for _, command, _, spec in selections))
+        env = browser_environment() if needs_browser else os.environ.copy()
         if doctor:
             code = ("const {chromium}=require('playwright');"
                     "chromium.launch(process.env.PW_CHROME_PATH?{executablePath:process.env.PW_CHROME_PATH}:{})"

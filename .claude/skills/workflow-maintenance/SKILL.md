@@ -16,7 +16,8 @@ description: Capture a repeated repository workflow or verified costly gotcha in
    success. Never auto-install dependencies, approve permissions, start agents,
    run the whole test suite per edit, or claim hooks provide confinement.
 5. Add meaningful fixture coverage for executable behavior. Run
-   `python3 tests/agent-tools.py`; validate skill frontmatter and links with
+   `python3 scripts/run-tests.py agent-tools.py verify` for compact output and
+   retained logs; validate skill frontmatter and links with
    `python3 scripts/setup-agent-links.py --check`. Use `--write` for missing
    links when filesystem permissions allow. Never overwrite personal config.
 6. Update the relevant router/doc instead of adding another root instruction

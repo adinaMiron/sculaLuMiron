@@ -221,19 +221,23 @@ recognition service's accuracy or latency.
 cd tests
 npm install                 # pulls in Playwright only
 node flow.js                 # one file at a time, or:
-npm test                     # every script, stops at the first failure
+npm test                     # curated package loop, stops at the first failure
 ```
 
-**From a Claude Code session, use `/apptest <name>` (or `/apptest all`)** —
-it runs the install check and sets `PW_CHROME_PATH` to the system Chrome.
-This repo's dev machine has no Playwright-managed browser (see the env var
-note below).
+From the repository root, use `python3 scripts/run-tests.py <suite> ...` for
+selected tests with compact output and retained logs. Claude's `/apptest` is a
+thin alias; it does not install dependencies and has no `all` selection. Use
+`--discover` to inspect available entrypoints and `--doctor` once for browser
+setup trouble. Do not assume the current machine has a particular browser.
 
-Playwright needs a Chromium build. `npm install` fetches Playwright's own
-managed browser and `chromium.launch()` uses it automatically — nothing else
-to configure on a normal machine or in CI. Two environment variables exist
-for sandboxes that pre-install Chromium somewhere Playwright doesn't expect
-(this repo was developed under one):
+Workflow/static checks: `python3 scripts/run-tests.py agent-tools.py verify`.
+These do not need browser discovery. Details: [agent tooling](../docs/agents/tooling.md).
+
+Browser suites need Playwright and a Chromium build. Package installation alone
+is not proof that a browser is available: use an existing system/browser-cache
+Chrome, or install the matching browser explicitly when authorized. The shared
+runner discovers available browsers; it never installs packages or browsers.
+Two environment variables are used by the standalone helpers:
 
 - `PW_CHROME_PATH` — explicit path to a Chromium/Chrome executable, passed
   straight to `chromium.launch({ executablePath })`.
