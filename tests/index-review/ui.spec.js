@@ -162,7 +162,7 @@ test('table dialog remains usable at its supported maximum dimensions on a phone
   await expect(button).toBeInViewport();
 });
 
-test('Find keyboard shortcut can close and reopen search while its query has focus', async ({ page }) => {
+test('Find keyboard shortcut can close and reopen search while its query has focus', { tag: '@idx-find-keyboard-toggle' }, async ({ page }) => {
   await page.locator('#editor').focus();
   await page.keyboard.press('Control+4');
   await expect(page.locator('#find-q')).toBeFocused();
@@ -170,6 +170,42 @@ test('Find keyboard shortcut can close and reopen search while its query has foc
   await expect(page.locator('#find-panel')).toHaveClass(/collapsed/);
   await page.keyboard.press('Control+4');
   await expect(page.locator('#find-panel')).not.toHaveClass(/collapsed/);
+  await expect(page.locator('#find-q')).toBeFocused();
+});
+
+for (const shortcut of ['Meta+4', 'Control+Shift+F', 'Meta+Shift+F']) {
+  test(`Find ${shortcut} focuses an open query, closes it and reopens search`, { tag: '@idx-find-keyboard-toggle' }, async ({ page }) => {
+    await page.locator('#editor').focus();
+    await page.keyboard.press(shortcut);
+    await expect(page.locator('#find-q')).toBeFocused();
+    await page.locator('#editor').focus();
+    await page.keyboard.press(shortcut);
+    await expect(page.locator('#find-panel')).not.toHaveClass(/collapsed/);
+    await expect(page.locator('#find-q')).toBeFocused();
+    await page.keyboard.press(shortcut);
+    await expect(page.locator('#find-panel')).toHaveClass(/collapsed/);
+    await page.keyboard.press(shortcut);
+    await expect(page.locator('#find-panel')).not.toHaveClass(/collapsed/);
+    await expect(page.locator('#find-q')).toBeFocused();
+  });
+}
+
+test('Find shortcuts leave other editable fields and dialogs alone', { tag: '@idx-find-keyboard-toggle' }, async ({ page }) => {
+  await page.evaluate(() => {
+    const input = document.createElement('input');
+    input.id = 'review-other-input';
+    document.body.append(input);
+  });
+  for (const target of ['#review-other-input', '#link-url', '#link-modal button']) {
+    if (target === '#link-url') await page.evaluate(() => openLinkModal());
+    await page.locator(target).first().focus();
+    for (const shortcut of ['Control+4', 'Meta+4', 'Control+Shift+F', 'Meta+Shift+F']) {
+      await page.keyboard.press(shortcut);
+      await expect(page.locator('#find-panel')).toHaveClass(/collapsed/);
+      await expect(page.locator(target).first()).toBeFocused();
+    }
+  }
+  await expect(page.locator('#link-modal')).toHaveClass(/open/);
 });
 
 test('Gantt Escape alone restores focus to its opener', { tag: '@idx-gantt-dialog-focus' }, async ({ page }) => {

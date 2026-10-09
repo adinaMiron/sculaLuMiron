@@ -63,8 +63,13 @@ document.addEventListener('keydown', e => {
   // Dialogs own their keys, even if focus escapes to the background editor.
   // Other editable fields keep native shortcuts instead of editing the chapter.
   const el = document.activeElement;
-  if (document.querySelector('.image-modal.open') ||
-      (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))) return;
+  if (document.querySelector('.image-modal.open')) return;
+  // The search query owns its panel toggles, but keeps other editing keys.
+  if (el === document.getElementById('find-q') && (e.ctrlKey || e.metaKey) &&
+      (e.key === '4' || (e.shiftKey && e.key === 'F'))) {
+    e.preventDefault(); toggleFind(); return;
+  }
+  if (el && el !== editor && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyH') {
     e.preventDefault(); highlightPageMatches(e.altKey); return;
   }

@@ -174,7 +174,7 @@ real Drive account or production service were changed.
   **Required outcome:** Give Gantt consistent Tab/Shift+Tab ownership, background isolation, Escape behavior and opener restoration.  
   **Tests:** `ui.spec.js` — `Gantt Tab stays within the dialog and Escape restores the opener` and `Gantt Escape alone restores focus to its opener`.
 
-- [ ] [ID:idx-find-keyboard-toggle] **P2 — Ctrl+4 stops working after it puts focus in the search query.**
+- [x] [ID:idx-find-keyboard-toggle] **P2 — Ctrl+4 stops working after it puts focus in the search query.**
 
   **Location:** [events.js](../../js/markdown/events.js), editable-field early return at lines 65–68 versus shortcut handling at line 136; [editor.js](../../js/markdown/editor.js), `toggleFind()`.  
   **Reproduce:** Focus the editor and press Ctrl+4: search opens and focuses the query. Press Ctrl+4 again: nothing closes because the global handler returns for the focused input before reaching the search shortcut. This contradicts the search toggle behavior and forces a mouse/extra focus move.  
