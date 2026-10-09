@@ -211,7 +211,7 @@ real Drive account or production service were changed.
   **Required outcome:** Settle/finish the relevant animations before evaluating the selected steady state, and keep any intended transition-contrast audit separate. Do not weaken the 4.5:1 threshold.  
   **Verification:** Repeated original runs and a diagnostic run inserting a 250ms wait at this assertion; see validation notes. The new suite contains a settled-state check using real search chips.
 
-- [ ] [ID:idx-todo-test-contract] **P2 — The TODO regression suite still treats the task-state select as the removed toggle button.**
+- [x] [ID:idx-todo-test-contract] **P2 — The TODO regression suite still treats the task-state select as the removed toggle button.**
 
   **Location:** [tests/wbtodo.js](../../tests/wbtodo.js), global-filter checks.  
   **Evidence:** Four assertions fail: global filtering, `.active` styling, per-book button hiding and removal of books without open tasks. They call/click `#btn-filter-todo` as a button; current requirements define a state select. `tests/taskstatus.js` and the corrected combined-filter `tests/importance.js` pass. This is already noted in CLAUDE.md but remains executable stale coverage.  
