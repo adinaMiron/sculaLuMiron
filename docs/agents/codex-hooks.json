@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/agent-hook.py\"",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hook.py\"",
             "timeout": 5
           }
         ]
@@ -14,11 +14,11 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "Edit|Write|MultiEdit|apply_patch",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/agent-hook.py\"",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hook.py\"",
             "timeout": 20
           }
         ]

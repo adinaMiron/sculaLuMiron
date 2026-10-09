@@ -1,69 +1,23 @@
 ---
 name: app-change
-description: Make a change to one of the nine standalone browser apps (voice.html / editor.html / index.html / recipes.html / calendar.html / transfer.html / map.html / kanban.html / song.html). Use when the user says "work on the markdown page", "in retete", "in editor.html", "on the voice page", "in calendar", "on the transfer page", "on the map page", etc. — a feature, button, fix, or styling change inside one app file. Song projects/capture route to song.html; Voice dictation and its existing melody panel remain in voice.html.
+description: Implement a feature, fix or UI change in this repository's standalone HTML apps or their shared Markdown/audio helpers.
 ---
 
-# Changing one of the nine apps
+1. Read the assigned requirement/review. Route with
+   `python3 scripts/agent-context.py <page-or-topic>`; find symbols with `rg -n`
+   and read a narrow range. App names/contracts: `docs/agents/project-guide.md`.
+2. Inspect nearby code and tests before making a small patch. Preserve classic
+   script order, theme tokens, RO/EN labels and diacritics. Read THEME/I18N only
+   for the affected contract. Use existing undo and storage/destination guards.
+3. Nav/shared-folder/calendar/geo edits must reach all nine nav copies.
+   Save through ScuLaFolder and test the phone share route when exports change.
+   Shared PCM/analysis/synthesis changes need relevant Voice AND Song coverage.
+4. Run `node tests/verify.js` and selected suites through
+   `python3 scripts/run-tests.py <suite>`. Reuse existing fixtures; use the
+   focused-tests skill only when test selection/setup needs more guidance.
+5. Update changed helpBody translations and affected doc sections/anchors.
+   Inspect the diff and run `git diff --check`. Follow AGENTS for task evidence
+   and Git ownership.
 
-Nine standalone HTML files, no build step. See `CLAUDE.md` for the hard rules.
-This skill is the repeatable loop for a change request.
-
-## 1. Which file
-
-| User says | File | nav label |
-|---|---|---|
-| "markdown page", "markdown editor" | `index.html` | Markdown |
-| "retete", "rețete", "recipe(s) page" | `recipes.html` | Rețete |
-| "voice", "caiet vocal", "dictation" | `voice.html` | Caiet vocal |
-| "editor.html", "image marker", "mazgaleste", "drawing/canvas page" | `editor.html` | Mazgaleste (was "Editor") |
-| "song", "Song Creation", "creează melodie", "humming workstation" | `song.html` | Creează melodie / Song Creation |
-| "kanban", "task board" | `kanban.html` | Kanban |
-| "calendar", "calendarul" | `calendar.html` | Calendar |
-| "transfer", "sync", "trimite pe alt dispozitiv" | `transfer.html` | Transfer |
-| "harta", "hartă", "locatii", "map page" | `map.html` | Hartă |
-
-## 2. Locate before reading — never read a whole app file
-
-`recipes.html` is ~84k tokens, `index.html` ~58k. Reading one blows the
-budget.
-
-1. Read `docs/MAP.md` for the section's line anchors. Its numbers **drift** —
-   trust the name in the right-hand column, not the range.
-2. `grep -n "functionName\|#elementId" <file>` to pin the real location.
-3. Read only that narrow range.
-4. Route to the one doc the task touches (`docs/THEME.md`, `docs/I18N.md`,
-   `docs/FEATURES.md`, `docs/RECIPES.md`, `HANDOFF.md`) — not the others.
-
-## 3. Edit
-
-- `str_replace` / Edit only — never rewrite a file.
-- Theme tokens, not hex. i18n keys (RO + EN both), not hardcoded strings.
-  Preserve diacritics ă â î ș ț.
-- `rem` for chrome in `editor.html` (except inside `(pointer:coarse)` blocks).
-- Voice and Song share `js/audio/pcm.js` (24-bit packer/header); preserve both and run `/apptest voice` and `/apptest melody` after touching it. Song architecture: `docs/FEATURES.md` § V.
-- For Song project/capture changes, run `/apptest song`; preserve master WAV bytes through rename/reload, keep failed-storage audio exportable, and retain music constraints when recovering an unavailable microphone. Export names must fit filesystem byte limits while retaining project/recording IDs.
-- Save via `ScuLaFolder.save(name, blob)` — never a hand-rolled `<a download>`.
-- **Touching the `<nav id="site-nav">` block? Apply the identical change to all
-  nine files** — it is byte-identical across them.
-
-## 4. Verify — run `/verify`
-
-Parse-checks the JS in all nine files and diffs the nav block. A PostToolUse
-hook already parse-checks the file you edited on each save, but run `/verify`
-before calling the change done. For behaviour changes, `/apptest <name>`.
-
-## 5. Sync docs in the same change
-
-If the edit moved line ranges, added an i18n key, changed a theme token, or
-touched the nav — update the matching doc (`docs/MAP.md` anchors,
-`docs/I18N.md`, `docs/THEME.md`, or the nav note) now, not later.
-
-If you hit friction that will recur (a stale MAP.md anchor, a flow worth a
-command, a convention the user had to explain), fix it now — see `CLAUDE.md`
-§ "Keep this current".
-
-## 6. Commit only when asked
-
-Then: branch if on `main` is not required here (repo works on `main`), stage
-just the files you changed, commit with a message describing the feature, and
-push only if the user said to.
+Expected output: behavior changed, checks/results, affected documentation and any
+remaining blocker/manual coverage. Do not report a whole-app pass from syntax alone.

@@ -7,7 +7,7 @@ column** if a range looks wrong. Re-verify with `grep -n` when in doubt.
 **When a range in here is off by more than a few lines, fix it in the same
 change** — a stale anchor costs the next session a wasted read. Same for any
 flow you find yourself repeating: promote it to a `/command`, a skill, or a
-hook rather than re-typing it (see `CLAUDE.md` § "Keep this current").
+hook rather than re-typing it (see [workflow maintenance](agents/tooling.md)).
 
 Shared shape of all nine files:
 

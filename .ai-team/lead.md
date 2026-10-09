@@ -40,7 +40,8 @@
 - Run `run_suites.py --discovery` to confirm that the new suite is
   registered with the right `npm test`.
 - Read the hook's `HYGIENE` line or run `git diff main --stat`; any
-  `.config/` or symlink path blocks the merge (task-01 round 1). The
+  machine-state `.config/` or unexpected symlink path blocks the merge.
+  Declared relative skill/hook links are intentional repository content. The
   tracked Chrome `Crash Reports/settings.dat` predates the run: not a
   finding unless the diff touches it.
 - A historical failure name cannot waive a failure in behaviour the task

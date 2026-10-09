@@ -14,14 +14,11 @@
 - Write the implementation report right after the required checks.
   Separate the checks you ran from the ones left to the tester or the hook.
   The first task-01 attempt ran out of its turn cap without a report.
-- Commit with separate plain `git add <named paths>` and `git commit`
-  commands; the compound `cd … && git add … && git commit` was refused.
-  Never `git add -A`: it committed the sandbox's `.config/pulse/` symlink
-  twice and cost task-01 a full review round. Check `git status --short`
-  first. If the commit fails on `.git/index.lock`, note it and stop. The
-  orchestrator commits.
-- The hook's `HYGIENE FAIL` line means machine state is in the diff:
-  `git rm --cached <path>` (never `rm`) and commit.
+- Under repository wrappers, leave changes unstaged; the wrapper owns Git.
+  Outside wrappers, commit only when authorized and stage named paths.
+  Never stage machine state such as `.config/pulse/` runtime symlinks.
+- The hook's `HYGIENE FAIL` line means machine state is in the diff; report it
+  and follow the current execution environment's Git ownership rules.
 - When the spec supersedes an earlier task's assertion, edit that
   assertion as the spec says. Don't revert the CSS to make an old suite
   pass (task-02 / `row.js`).

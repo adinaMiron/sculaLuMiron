@@ -51,7 +51,10 @@ the exact filenames.
 
 ## Contributing
 
-Start with [`CLAUDE.md`](CLAUDE.md) — repo conventions and constraints.
+Start with [`AGENTS.md`](AGENTS.md) — shared repo conventions for any harness.
+Claude imports that file through `CLAUDE.md`. Use the
+[agent project guide](docs/agents/project-guide.md) for focused code/doc/test
+routing and [tooling guide](docs/agents/tooling.md) for reusable skills and hooks.
 Deeper references live in [`docs/`](docs/) and [`HANDOFF.md`](HANDOFF.md).
 
 ---

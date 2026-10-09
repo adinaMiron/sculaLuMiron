@@ -13,18 +13,19 @@ commands or interpret baseline failures.
   dictation (`js/markdown/dictation.js`, the 💡 idea box's 🎤,
   `voice.html`'s engine copy): invariants, test harness, stub gotchas.
 - `scripts/run_suites.py`: use it for every test run instead of
-  hand-built `node`/`npx` commands. It finds the browser, tags known
-  failures, and runs Node suites and `*.spec.js` folders alike.
+  hand-built `node`/`npx` commands. It delegates to the harness-independent
+  `../scripts/run-tests.py`, finds the browser, keeps full logs, and runs Node
+  suites and `*.spec.js` folders alike. Every failure remains nonzero.
 - `hooks/after-implement.py`: runs automatically after implementing.
-  `HYGIENE FAIL` on `.config/`/symlink/`test-results/` paths in the diff,
+  `HYGIENE FAIL` on `.config/`/unexpected symlink/`test-results/` paths in the diff,
   browser preflight, verify, `tests/<TASK_SLUG>/*.spec.js` if present, the
   dictation guards when `dictation.js` changed, the header guards when
   `index.html`, other `js/markdown/` or `tests/` changed (≤ ~155 s).
 - `CHANGELOG.md`: what changed in these files, and why.
 
-Run from the repository root (sandbox verified working 2026-09-29):
+Run from the repository root in any harness:
 ```
-python3 /adina/programming/ai_generated/ai_orchestra/orchestrator/sandbox.py .ai-team/scripts/run_suites.py ARGS
+python3 scripts/run-tests.py ARGS
 ```
 ARGS:
 - `--preset header`: verify, 7 header guards and the task-02 specs, ~80 s.
@@ -34,7 +35,7 @@ ARGS:
 - `--discovery`: which task folders each `npm test` covers.
 - `--preset browser-check`: prints `BROWSER: OK|BLOCKED`.
 
-The runner also takes `--verbose`, `--timeout` and `--budget` (≤240 s).
-Exit codes: 0 = complete, with only passes or KNOWN-ONLY failures;
+The runner also takes `--verbose`, `--timeout` and `--budget`.
+Exit codes: 0 = complete pass (or successful listing/discovery);
 1 = a failure, a timeout, a missing suite or an unfinished run;
 2 = bad arguments; 3 = the browser cannot launch (ENVIRONMENT).

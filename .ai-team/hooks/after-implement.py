@@ -2,13 +2,13 @@
 """After every implementer step: repo hygiene, verify.js, the task's own
 spec folder, and the suites the diff touches.
 
-Output goes to the tester, so it answers up front the question the task-02
-tester burned ~30 turns on: "was this failure already there?" (failures on
-main are tagged KNOWN by run_suites.py).
+Output goes to the tester; full logs are retained by scripts/run-tests.py.
+Every failure remains nonzero; historical notes never waive a current failure.
 
 Env: TASK_ID, TASK_SLUG, TASK_SPEC, BASE_BRANCH. Must finish within 300 s.
 """
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -28,6 +28,17 @@ DICTATION = ["dictate", "idea", "01-for-index-html-page-in-idee"]
 # Paths that are sandbox/machine state, never repo content. The pulse runtime
 # symlink was committed twice by `git add -A` and cost a review round.
 JUNK = re.compile(r"^(\.config/|test-results/|playwright-report/|node_modules/|tests/node_modules/)")
+
+
+def workflow_link(path):
+    """Only the repository's intentional, relative skill/hook adapter links."""
+    target = Path(path)
+    if not target.is_symlink():
+        return False
+    if target.parent == Path(".agents/skills"):
+        return os.readlink(target) == "../../.claude/skills/" + target.name and target.is_dir()
+    return (path == ".codex/hooks.json" and
+            os.readlink(target) == "../docs/agents/codex-hooks.json" and target.is_file())
 
 
 def suites_for(path):
@@ -73,10 +84,10 @@ def main():
         return 1
     print("Changed vs " + base + ": " + (", ".join(changed) if changed else "(nothing)"))
 
-    junk = [c for c in changed if JUNK.match(c) or os.path.islink(c)]
+    junk = [c for c in changed if JUNK.match(c) or (os.path.islink(c) and not workflow_link(c))]
     if junk:
         print("HYGIENE FAIL: machine/sandbox state in the diff (likely `git add -A`): " + ", ".join(junk))
-        print("  fix: `git rm --cached <path>` (keeps the file on disk) and commit; do not rm it.")
+        print("  report the machine-state paths; follow AGENTS.md Git ownership before changing the index.")
 
     suites = ["verify"]
     own = own_spec_dir(slug)

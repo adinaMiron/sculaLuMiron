@@ -1,5 +1,11 @@
 # tests/
 
+For any harness, prefer `python3 scripts/run-tests.py <suite>` from the repository
+root: browser discovery, focused selection, compact results and retained logs.
+Run `--doctor` once for browser setup; `--discover` shows entrypoint coverage.
+See [agent testing commands](../docs/agents/project-guide.md#commands-and-test-selection).
+Agent tooling itself is tested with `python3 tests/agent-tools.py`.
+
 Ad-hoc Playwright checks for `editor.html` (including `infinite.js`, the
 infinite canvas and what an export's size is) and `recipes.html` (with
 `mealplan.js` for its day composer — the flags, the HTML page read back, and

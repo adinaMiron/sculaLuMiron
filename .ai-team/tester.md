@@ -3,7 +3,7 @@
 - Start from the hook output. It prints `HYGIENE FAIL` for machine state
   in the diff (a bug to report), then `BROWSER: OK|BLOCKED`, then verify,
   `tests/<TASK_SLUG>/*.spec.js` if it exists (fix rounds), and the guards
-  for what changed, with KNOWN tags. Don't rerun what it already ran
+  for what changed, with full log paths. Don't rerun what it already ran
   green. If BLOCKED: the report `status` is `"fail"` and the summary
   starts with `ENVIRONMENT:`, with no invented bugs.
 - Dictation tests: reuse `tests/01-for-index-html-page-in-idee/helpers.js`
@@ -25,9 +25,8 @@
 - Layout work: the worst-case fixture and geometry gotchas are in
   `skills/header-layout/SKILL.md`. Test both sides of every changed
   breakpoint, plus 1920.
-- No throwaway files in task folders: task-02 ran `_scratch.js` eight times
-  and couldn't delete it (`rm`/`mv` are refused). Put diagnostics in the
-  real suite and use `--verbose`. No baseline worktrees either
-  (`git worktree` is refused). The KNOWN tags already answer "was it
-  failing on main?".
-- Timeouts count as failures. KNOWN-ONLY is not a pass. List it separately.
+- Put disposable diagnostics in ignored `test-results/` and preserve meaningful
+  assertions in the real suite. Follow the current harness's permissions;
+  historical sandbox refusals are not universal command restrictions.
+- Timeouts and historical known failures remain failures. Establish a baseline
+  from current evidence when it matters, not from an old label.
