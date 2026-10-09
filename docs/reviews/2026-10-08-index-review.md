@@ -204,7 +204,7 @@ real Drive account or production service were changed.
 
 ## Findings — verification coverage
 
-- [ ] [ID:idx-contrast-test-transition] **P2 — The existing selected-search contrast assertion samples an active CSS transition and is nondeterministic.**
+- [x] [ID:idx-contrast-test-transition] **P2 — The existing selected-search contrast assertion samples an active CSS transition and is nondeterministic.**
 
   **Location:** [tests/mdcontrast.js](../../tests/mdcontrast.js), lines 125–126; `.find-chip` has a 0.12-second color/background transition.  
   **Evidence:** The first run passed both languages. Two later unmodified runs failed at the selected count with different ratios, 4.12:1 and 1.10:1. The test adds `.on` and immediately measures, unlike its other state checks which wait for transitions.  
