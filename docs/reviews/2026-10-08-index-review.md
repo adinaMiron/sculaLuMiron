@@ -167,7 +167,7 @@ real Drive account or production service were changed.
   **Required outcome:** Provide a responsive label/chart arrangement that exposes a usable timeline at the supported phone widths without repeatedly panning through a sliver.  
   **Test:** `ui.spec.js` — `Gantt at 320px leaves a visible, usable timeline beside the labels`.
 
-- [ ] [ID:idx-gantt-dialog-focus] **P2 — Gantt declares itself modal but lets focus escape and fails to restore the opener.**
+- [x] [ID:idx-gantt-dialog-focus] **P2 — Gantt declares itself modal but lets focus escape and fails to restore the opener.**
 
   **Location:** [gantt.js](../../js/markdown/gantt.js), `openGantt()` / `closeGantt()`, lines 136–139; [editor.js](../../js/markdown/editor.js), ordinary-dialog registration.  
   **Reproduce:** Open Gantt with one task; after two Tabs, focus leaves the dialog. Separately open it and press Escape: focus is not restored to the Gantt button. Its custom class toggle bypasses the ordinary-dialog focus/inert mechanism.  

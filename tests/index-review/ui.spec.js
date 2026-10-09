@@ -84,12 +84,58 @@ for (const width of [320, 390, 700, 701, 1440]) {
   });
 }
 
-test('Gantt Tab stays within the dialog and Escape restores the opener', async ({ page }) => {
+test('Gantt Tab stays within the dialog and Escape restores the opener', { tag: '@idx-gantt-dialog-focus' }, async ({ page }) => {
   await edit(page, '- [ ] A task start@2026-10-01 end@2026-10-03');
+  await page.locator('#file-input').evaluate(el => { el.inert = true; });
   await page.locator('#btn-gantt').click();
-  for (let i = 0; i < 6; i++) {
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.getElementById('gantt-modal').contains(document.activeElement)), `Tab ${i + 1}`).toBe(true);
+  await expect(page.locator('#gantt-close')).toBeFocused();
+  expect(await page.locator('#editor').evaluate(el => !!el.closest('[inert]'))).toBe(true);
+  await page.locator('#editor').focus();
+  await expect(page.locator('#gantt-close')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('.gantt-label a').last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#gantt-close')).toBeFocused();
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => document.getElementById('gantt-modal').contains(document.activeElement)), `${key} ${i + 1}`).toBe(true);
+    }
+  }
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#gantt-modal')).not.toHaveClass(/open/);
+  await expect(page.locator('#btn-gantt')).toBeFocused();
+  expect(await page.locator('#editor').evaluate(el => !!el.closest('[inert]'))).toBe(false);
+  expect(await page.locator('#file-input').evaluate(el => el.inert)).toBe(true);
+});
+
+for (const close of ['button', 'backdrop', 'Escape']) {
+  test(`Empty Gantt contains keyboard focus and restores its opener via ${close}`, { tag: '@idx-gantt-dialog-focus' }, async ({ page }) => {
+    await edit(page, 'No tasks');
+    await page.locator('#btn-gantt').click();
+    for (const key of ['Tab', 'Shift+Tab']) {
+      await page.keyboard.press(key);
+      expect(await page.locator('#gantt-modal').evaluate(el => el.contains(document.activeElement))).toBe(true);
+    }
+    if (close === 'button') await page.locator('#gantt-close').click();
+    else if (close === 'backdrop') await page.locator('#gantt-modal').click({ position: { x: 2, y: 2 } });
+    else await page.keyboard.press('Escape');
+    await expect(page.locator('#gantt-modal')).not.toHaveClass(/open/);
+    await expect(page.locator('#btn-gantt')).toBeFocused();
+    expect(await page.locator('#editor').evaluate(el => !!el.closest('[inert]'))).toBe(false);
+  });
+}
+
+test('Gantt recovers focus after covered dialogs close one layer at a time', { tag: '@idx-gantt-dialog-focus' }, async ({ page }) => {
+  await edit(page, '- [ ] Task');
+  await page.locator('#btn-gantt').click();
+  for (const open of ['openHelpModal', 'openGraph']) {
+    await page.evaluate(name => window[name](), open);
+    await expect(page.locator('#gantt-modal')).toHaveJSProperty('inert', true);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#gantt-modal')).toHaveClass(/open/);
+    await expect(page.locator('#gantt-close')).toBeFocused();
+    await expect(page.locator('#gantt-modal')).toHaveJSProperty('inert', false);
   }
   await page.keyboard.press('Escape');
   await expect(page.locator('#btn-gantt')).toBeFocused();
@@ -126,7 +172,7 @@ test('Find keyboard shortcut can close and reopen search while its query has foc
   await expect(page.locator('#find-panel')).not.toHaveClass(/collapsed/);
 });
 
-test('Gantt Escape alone restores focus to its opener', async ({ page }) => {
+test('Gantt Escape alone restores focus to its opener', { tag: '@idx-gantt-dialog-focus' }, async ({ page }) => {
   await edit(page, '- [ ] Task');
   await page.locator('#btn-gantt').click();
   await page.keyboard.press('Escape');

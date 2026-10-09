@@ -10,7 +10,8 @@ const dialogs = [
   ['link', 'openLinkModal', 'closeLinkModal', 'link-url'],
   ['table', 'openTableModal', 'closeTableModal', 'tbl-rows'],
   ['help', 'openHelpModal', 'closeHelpModal', null],
-  ['wiki', 'openWikiModal', 'closeWikiModal', 'wiki-filter']
+  ['wiki', 'openWikiModal', 'closeWikiModal', 'wiki-filter'],
+  ['gantt', 'openGantt', 'closeGantt', 'gantt-close']
 ];
 
 async function contained(page, id) {

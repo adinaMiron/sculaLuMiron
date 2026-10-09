@@ -156,8 +156,7 @@ function paintGantt() {
   }));
   chart.append(svg);
 }
-function openGantt() { paintGantt(); ganttEl('gantt-modal').classList.add('open'); ganttEl('gantt-close').focus(); }
-function closeGantt() { ganttEl('gantt-modal').classList.remove('open'); }
+function openGantt() { paintGantt(); openOrdinaryDialog('gantt-modal', 'gantt-close'); }
+function closeGantt() { closeOrdinaryDialog('gantt-modal'); }
 ganttEl('gantt-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeGantt(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && ganttEl('gantt-modal').classList.contains('open')) closeGantt(); });
 window.addEventListener('scula-ui-lang', () => { if (ganttEl('gantt-modal').classList.contains('open')) paintGantt(); });

@@ -538,7 +538,8 @@ function closeOrdinaryDialog(id) {
 const ordinaryDialogClosers = {
   'image-modal': 'closeImageModal', 'workbook-modal': 'closeWorkbookModal',
   'idea-modal': 'closeIdeaModal', 'link-modal': 'closeLinkModal',
-  'table-modal': 'closeTableModal', 'help-modal': 'closeHelpModal', 'wiki-modal': 'closeWikiModal'
+  'table-modal': 'closeTableModal', 'help-modal': 'closeHelpModal', 'wiki-modal': 'closeWikiModal',
+  'gantt-modal': 'closeGantt'
 };
 document.addEventListener('keydown', e => {
   const top = refreshOrdinaryDialogs();
