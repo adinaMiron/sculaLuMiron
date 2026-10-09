@@ -160,7 +160,7 @@ real Drive account or production service were changed.
 
 ## Findings — UI, accessibility and workflow
 
-- [ ] [ID:idx-gantt-phone-chart] **P2 — The sticky Gantt labels leave almost no chart visible on a small phone.**
+- [x] [ID:idx-gantt-phone-chart] **P2 — The sticky Gantt labels leave almost no chart visible on a small phone.**
 
   **Location:** [index.html](../../index.html), `.gantt-labels` / `.gantt-body`, lines 635–642.  
   **Reproduce:** At 320×640, the body is 294px wide, labels occupy about 267.5px, and only 26.5px remains for dates and bars. The labels stay pinned while horizontal scrolling, so scrolling does not provide a useful overview. See [Gantt screenshot](2026-10-08-index-evidence/gantt-320.png).  

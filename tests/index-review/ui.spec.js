@@ -16,7 +16,7 @@ for (const [width, height, lang] of [[1440, 900, 'en'], [390, 844, 'ro'], [320, 
   });
 }
 
-test('Gantt at 320px leaves a visible, usable timeline beside the labels', async ({ page }, info) => {
+test('Gantt at 320px leaves a visible, usable timeline beside the labels', { tag: '@idx-gantt-phone-chart' }, async ({ page }, info) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await edit(page, '- [ ] First start@2026-10-01 end@2026-10-03\n- [x] Second start@2026-10-04 end@2026-10-05');
   await page.evaluate(() => openGantt());
@@ -27,7 +27,62 @@ test('Gantt at 320px leaves a visible, usable timeline beside the labels', async
     return { bodyWidth: body.width, labelWidth: labels.width, availableChart: body.width - labels.width };
   });
   expect(geometry.availableChart, JSON.stringify(geometry)).toBeGreaterThanOrEqual(80);
+  expect(geometry.availableChart, JSON.stringify(geometry)).toBeGreaterThanOrEqual(geometry.bodyWidth * 0.6 - 1);
 });
+
+for (const width of [320, 390, 700, 701, 1440]) {
+  test(`Gantt labels preserve chart space and row navigation with long text at ${width}px`, { tag: '@idx-gantt-phone-chart' }, async ({ page }) => {
+    await page.setViewportSize({ width, height: 640 });
+    const title = 'LongTaskTitle'.repeat(20);
+    const owner = Array(4).fill('ResponsiblePerson').join(' ');
+    const source = Array.from({ length: 16 }, (_, i) =>
+      `- [ ] ${owner}>> ${title}${i} start@2026-10-01 end@2026-11-30`).join('\n');
+    await edit(page, source);
+    await page.evaluate(() => openGantt());
+    const geometry = () => page.evaluate(() => {
+      const body = document.getElementById('gantt-body');
+      const labels = document.getElementById('gantt-labels').getBoundingClientRect();
+      const rect = body.getBoundingClientRect();
+      return { bodyWidth: body.clientWidth, labelWidth: labels.width, labelLeft: labels.left, bodyLeft: rect.left,
+        availableChart: body.clientWidth - labels.width, scrollLeft: body.scrollLeft,
+        aligned: [...document.querySelectorAll('.gantt-label')].every((label, i) =>
+          Math.abs(label.getBoundingClientRect().top - document.querySelectorAll('.gantt-row')[i].getBoundingClientRect().top) < 1),
+        pageWidth: document.documentElement.scrollWidth };
+    });
+    const before = await geometry();
+    expect(before.availableChart, JSON.stringify(before)).toBeGreaterThanOrEqual(80);
+    if (width <= 700) {
+      expect(before.availableChart).toBeGreaterThanOrEqual(before.bodyWidth * 0.6 - 1);
+      expect(before.labelWidth).toBeLessThanOrEqual(170);
+    } else {
+      expect(before.labelWidth).toBe(280);
+    }
+    expect(before.pageWidth).toBeLessThanOrEqual(width);
+    expect(before.aligned).toBe(true);
+    await expect(page.locator('.gantt-label a').nth(1)).toHaveAttribute('title', title + '1');
+    await expect(page.locator('.gantt-label').nth(1)).toHaveAttribute('title', new RegExp(owner));
+    await page.locator('#gantt-body').evaluate(async body => {
+      body.scrollLeft = 114;
+      body.scrollTop = 68;
+      await new Promise(requestAnimationFrame);
+    });
+    const after = await geometry();
+    expect(after.scrollLeft).toBe(114);
+    expect(after.labelLeft).toBeCloseTo(after.bodyLeft, 0);
+    expect(after.labelWidth).toBe(before.labelWidth);
+    expect(after.availableChart).toBe(before.availableChart);
+    expect(after.aligned).toBe(true);
+    const chartExposed = await page.locator('#gantt-body').evaluate(body => {
+      const rect = body.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.right - 10, rect.top + 60);
+      return document.getElementById('gantt-chart').contains(hit);
+    });
+    expect(chartExposed).toBe(true);
+    await page.locator('.gantt-label a').nth(1).click();
+    await expect(page.locator('#gantt-modal')).not.toHaveClass(/open/);
+    expect(await page.locator('#editor').evaluate(el => el.selectionStart)).toBe(source.indexOf(source.split('\n')[1]));
+  });
+}
 
 test('Gantt Tab stays within the dialog and Escape restores the opener', async ({ page }) => {
   await edit(page, '- [ ] A task start@2026-10-01 end@2026-10-03');
