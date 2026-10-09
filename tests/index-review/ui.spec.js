@@ -350,12 +350,50 @@ test.describe('touch table builder', () => {
   }
 });
 
-test('desktop navigation reaches the first preview heading after visiting the last', async ({ page }) => {
+test('desktop navigation reaches the first preview heading after visiting the last', { tag: '@idx-nav-test-contract' }, async ({ page }) => {
   await edit(page, '# First\n\n' + Array.from({ length: 80 }, (_, i) => 'Line ' + i + ' text '.repeat(30)).join('\n') + '\n\n# Last\nEnd');
   await page.locator('#nav-tree .nav-item').last().click();
   await expect.poll(() => page.locator('#preview').evaluate(e => e.scrollTop)).toBeGreaterThan(1000);
   await page.locator('#nav-tree .nav-item').first().click();
   await expect.poll(() => page.locator('#preview').evaluate(e => e.scrollTop)).toBeLessThan(200);
+});
+
+test.describe('phone navigation', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  for (const tab of ['source', 'preview']) {
+    test(`preserves the ${tab} tab and navigates its visible pane`, { tag: '@idx-nav-test-contract' }, async ({ page }) => {
+      const markdown = '# First\n\n' + Array.from({ length: 40 }, (_, i) => 'Line ' + i + ' text '.repeat(15)).join('\n') + '\n\n# Last\nEnd';
+      await edit(page, markdown);
+      await page.locator('#editor').evaluate(el => el.setSelectionRange(0, 0));
+      await page.locator(`#tab-${tab}`).tap();
+      const before = await page.locator('#editor').evaluate(el => ({ start: el.selectionStart, end: el.selectionEnd }));
+      await page.locator('#btn-nav').tap();
+      await page.locator('#nav-tree .nav-item').last().tap();
+
+      await expect(page.locator('body')).toHaveClass(new RegExp(`view-${tab}`));
+      await expect(page.locator(`#${tab === 'source' ? 'editor' : 'preview'}-pane`)).toBeVisible();
+      await expect(page.locator('#nav-panel')).toHaveClass(/collapsed/);
+      await expect(page.locator('#nav-tree .nav-item').last()).toHaveClass(/active/);
+      await expect(page.locator('#editor')).toHaveValue(markdown);
+      if (tab === 'source') {
+        await expect(page.locator('#editor')).toBeFocused();
+        expect(await page.locator('#editor').evaluate(el => ({ start: el.selectionStart,
+          picked: el.value.slice(el.selectionStart, el.selectionEnd) }))).toEqual({ start: markdown.indexOf('# Last'), picked: '# Last' });
+        expect(await page.locator('#editor').evaluate(el => el.scrollTop)).toBeGreaterThan(1000);
+        await expect(page.locator('#preview .md-target')).toHaveCount(0);
+      } else {
+        await expect(page.locator('#editor')).not.toBeFocused();
+        expect(await page.locator('#editor').evaluate(el => ({ start: el.selectionStart, end: el.selectionEnd }))).toEqual(before);
+        await expect(page.locator('#last')).toHaveClass(/md-target/);
+        await expect.poll(() => page.locator('#preview').evaluate(el => {
+          const heading = el.querySelector('#last').getBoundingClientRect();
+          const pane = el.getBoundingClientRect();
+          return heading.top >= pane.top && heading.bottom <= pane.bottom && el.scrollTop > 1000;
+        })).toBe(true);
+      }
+    });
+  }
 });
 
 test('selected search counts have readable contrast after their color transition settles', async ({ page }, info) => {

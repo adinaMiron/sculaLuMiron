@@ -1,6 +1,7 @@
 // Navigation panel in index.html: clicking a heading takes both
 // panes to it - the preview by the heading's id, the Markdown source by the
-// line it was read from.
+// line it was read from. On a phone, navigation preserves the active tab:
+// Source selects and focuses the line; Preview scrolls without moving the caret.
 //
 // Drives the real app off disk, like find.js and graph.js, and asserts on the
 // real textarea selection, the real scroll offsets and the real preview
@@ -50,9 +51,22 @@ const DOC = [
   ''
 ].join('\n');
 
+// Wait for the actual destination, including the scroll limit for a heading
+// near the document's end. A timer can sample a smooth scroll still in flight.
+async function settlePreview(page, id) {
+  await page.waitForFunction(id => {
+    const pv = document.getElementById('preview');
+    const heading = document.getElementById(id);
+    const destination = Math.max(0, Math.min(pv.scrollHeight - pv.clientHeight,
+      pv.scrollTop + heading.getBoundingClientRect().top - pv.getBoundingClientRect().top));
+    return Math.abs(pv.scrollTop - destination) < 2;
+  }, id, { timeout: 3000 });
+}
+
 (async () => {
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  await ctx.route(/^https?:/, route => route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
@@ -64,16 +78,18 @@ const DOC = [
     errors.push('CONSOLE ' + m.text());
   });
   await page.goto(URL);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => wbDraftReady);
+  await page.waitForTimeout(1350); // documented delayed browser-restoration pass
 
   await page.evaluate(doc => {
     const ed = document.getElementById('editor');
     ed.value = doc;
     updatePreview();
     updateStatus();
-    if (document.getElementById('nav-panel').classList.contains('collapsed')) toggleNav();
   }, DOC);
-  await page.waitForTimeout(200);
+  if (await page.locator('#nav-panel').evaluate(el => el.classList.contains('collapsed'))) {
+    await page.locator('#btn-nav').click();
+  }
 
   // What the panel made of the source.
   const listed = await page.evaluate(() => ({
@@ -85,23 +101,32 @@ const DOC = [
   check('a "#" inside a fence is not one', listed.items.length === 4, listed.items);
 
   // Clicking one: preview by id, source by line.
-  const clickNth = n => page.evaluate(async i => {
-    const ed = document.getElementById('editor');
-    const pv = document.getElementById('preview');
-    document.querySelectorAll('#nav-tree .nav-item')[i].click();
-    await new Promise(r => setTimeout(r, 700));   // the preview scrolls smoothly
-    return {
-      picked: ed.value.slice(ed.selectionStart, ed.selectionEnd),
-      start: ed.selectionStart,
-      focused: document.activeElement === ed,
-      edTop: ed.scrollTop,
-      edMax: ed.scrollHeight - ed.clientHeight,
-      pvTop: pv.scrollTop,
-      pvMax: pv.scrollHeight - pv.clientHeight,
-      flashed: (pv.querySelector('.md-target') || {}).id || '',
-      active: (document.querySelector('#nav-tree .nav-item.active') || {}).title || ''
-    };
-  }, n);
+  const clickNth = async n => {
+    await page.locator('#nav-tree .nav-item').nth(n).click();
+    const id = ['mecanică', 'inerție', 'inerție-1', 'forța-de-frecare'][n];
+    // The flash is transient and can finish before a long smooth scroll.
+    // A previous target may still be flashing during a subsequent click.
+    const flashed = await page.evaluate(id => {
+      const heading = document.getElementById(id);
+      return heading.classList.contains('md-target') ? heading.id : '';
+    }, id);
+    await settlePreview(page, id);
+    return page.evaluate(flashed => {
+      const ed = document.getElementById('editor');
+      const pv = document.getElementById('preview');
+      return {
+        picked: ed.value.slice(ed.selectionStart, ed.selectionEnd),
+        start: ed.selectionStart,
+        focused: document.activeElement === ed,
+        edTop: ed.scrollTop,
+        edMax: ed.scrollHeight - ed.clientHeight,
+        pvTop: pv.scrollTop,
+        pvMax: pv.scrollHeight - pv.clientHeight,
+        flashed,
+        active: (document.querySelector('#nav-tree .nav-item.active') || {}).title || ''
+      };
+    }, flashed);
+  };
 
   const last = await clickNth(3);
   check('the source jumps to the heading and selects it',
@@ -126,32 +151,48 @@ const DOC = [
   check('and to its own anchor in the preview',
     first.flashed === 'inerție' && second.flashed === 'inerție-1', { first: first.flashed, second: second.flashed });
 
-  // On a phone only one pane is on screen; the preview is what a nav click
-  // asks for, so the source is deliberately left where it was.
+  // On a phone only one pane is visible. Navigation stays on that tab.
   const phone = await ctx.newPage();
   phone.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
   await phone.setViewportSize({ width: 390, height: 780 });
   await phone.goto(URL);
-  await phone.waitForTimeout(300);
-  const onPhone = await phone.evaluate(async doc => {
+  await phone.waitForFunction(() => wbDraftReady);
+  await phone.waitForTimeout(1350); // documented delayed browser-restoration pass
+  await phone.locator('#editor').fill(DOC);
+  await phone.locator('#editor').evaluate(ed => ed.setSelectionRange(0, 0));
+  await phone.locator('#btn-nav').click();
+  await phone.locator('#nav-tree .nav-item').last().click();
+  const phoneState = () => phone.evaluate(() => {
     const ed = document.getElementById('editor');
-    ed.value = doc;
-    updatePreview();
-    if (document.getElementById('nav-panel').classList.contains('collapsed')) toggleNav();
-    ed.setSelectionRange(0, 0);
-    await new Promise(r => setTimeout(r, 100));
-    document.querySelectorAll('#nav-tree .nav-item')[3].click();
-    await new Promise(r => setTimeout(r, 400));
     return {
       start: ed.selectionStart,
+      end: ed.selectionEnd,
+      picked: ed.value.slice(ed.selectionStart, ed.selectionEnd),
+      edTop: ed.scrollTop,
+      edMax: ed.scrollHeight - ed.clientHeight,
       focused: document.activeElement === ed,
       view: document.body.className,
+      closed: document.getElementById('nav-panel').classList.contains('collapsed'),
       flashed: (document.querySelector('#preview .md-target') || {}).id || ''
     };
-  }, DOC);
-  check('on a phone the click shows the preview', /view-preview/.test(onPhone.view) && onPhone.flashed === 'forța-de-frecare', onPhone);
-  check('and leaves the source (and the keyboard) alone',
-    onPhone.start === 0 && !onPhone.focused, onPhone);
+  });
+  const onSource = await phoneState();
+  check('on a phone Source stays visible and the navigation panel closes',
+    /view-source/.test(onSource.view) && onSource.closed && onSource.flashed === '', onSource);
+  check('Source selects, focuses and scrolls to the clicked heading',
+    onSource.picked === '### Forța de frecare' && onSource.focused && onSource.edTop > onSource.edMax * 0.5, onSource);
+
+  await phone.locator('#tab-preview').click();
+  const beforePreview = await phoneState();
+  await phone.locator('#btn-nav').click();
+  await phone.locator('#nav-tree .nav-item').last().click();
+  const previewFlash = (await phoneState()).flashed;
+  await settlePreview(phone, 'forța-de-frecare');
+  const onPreview = await phoneState();
+  check('on a phone Preview stays visible, reaches the heading and closes navigation',
+    /view-preview/.test(onPreview.view) && onPreview.closed && previewFlash === 'forța-de-frecare', { ...onPreview, previewFlash });
+  check('Preview leaves the source selection and focus alone',
+    onPreview.start === beforePreview.start && onPreview.end === beforePreview.end && !onPreview.focused, onPreview);
 
   check('no page errors', errors.length === 0, errors);
 

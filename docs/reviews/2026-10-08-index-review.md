@@ -217,7 +217,7 @@ real Drive account or production service were changed.
   **Evidence:** Four assertions fail: global filtering, `.active` styling, per-book button hiding and removal of books without open tasks. They call/click `#btn-filter-todo` as a button; current requirements define a state select. `tests/taskstatus.js` and the corrected combined-filter `tests/importance.js` pass. This is already noted in CLAUDE.md but remains executable stale coverage.  
   **Required outcome:** Update this suite to select states and assert the current combined-filter contract, retaining coverage for per-book filtering and fence exclusion.
 
-- [ ] [ID:idx-nav-test-contract] **P2 — Navigation tests retain obsolete phone expectations and a brittle desktop scroll check.**
+- [x] [ID:idx-nav-test-contract] **P2 — Navigation tests retain obsolete phone expectations and a brittle desktop scroll check.**
 
   **Location:** [tests/nav.js](../../tests/nav.js), desktop first-heading assertion and phone checks around lines 114–156.  
   **Evidence:** Two runs fail three assertions. The phone assertions require switching from Source to Preview, whereas the current navigation implementation deliberately preserves the active tab (`gotoPreviewEl(..., true)`). The scripted desktop check reads preview scrollTop around 716–734 instead of under 200; the new test using actual clicks and an eventual position assertion passes. The mismatch is also acknowledged in CLAUDE.md; the accepted source/preview behavior needs to be made explicit in the test contract.  

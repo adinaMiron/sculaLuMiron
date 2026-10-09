@@ -327,11 +327,11 @@ change, not "later":
 
 ## Known issues (unfixed — confirm before "fixing" something else)
 
-1. `tests/nav.js` fails two checks — the phone pass: "on a phone the click
-   shows the preview" and "and leaves the source (and the keyboard) alone".
-   A click on a nav item leaves the view on `view-source` and flashes
-   nothing. Reproduces on the `index.html` in `HEAD`, so it is not whatever
-   you just changed. Every other check passes.
+1. Navigation test contract corrected: `tests/nav.js` uses real clicks and
+   waits for the preview destination. On phones, navigation preserves the
+   active tab: Source selects/focuses the line; Preview scrolls/flashes the
+   target without moving the source caret or focusing the editor. Both close
+   the panel. See `docs/FEATURES.md` and the `@idx-nav-test-contract` review tests.
 2. `tests/wbrename.js` times out on its first `dblclick` — the
    `.wb-ch-name` span it targets resolves but is never visible. Reproduces
    on `HEAD`, so it is not whatever you just changed.
