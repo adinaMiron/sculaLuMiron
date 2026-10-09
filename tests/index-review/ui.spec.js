@@ -267,12 +267,59 @@ test(`table placeholders meet the documented small-text contrast floor${palette 
 
 test.describe('touch table builder', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-  test('dynamic table cells and alignment selects meet the 44px touch floor', async ({ page }) => {
+  test('dynamic table cells and alignment selects meet the 44px touch floor', { tag: '@idx-table-touch-targets' }, async ({ page }) => {
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
     await page.evaluate(() => openTableModal());
-    const sizes = await page.locator('#table-preview-grid input, #table-preview-grid select').evaluateAll(elements =>
+    const sizes = await page.locator('#table-modal input, #table-preview-grid select').evaluateAll(elements =>
       elements.map(e => ({ tag: e.tagName, width: e.getBoundingClientRect().width, height: e.getBoundingClientRect().height })));
     expect(sizes.filter(r => r.width < 44 || r.height < 44)).toEqual([]);
   });
+
+  for (const [width, height] of [[320, 640], [390, 844], [844, 390], [1024, 768]]) {
+    test(`maximum touch table keeps targets separated and edge cells reachable at ${width}x${height}`, { tag: '@idx-table-touch-targets' }, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(() => openTableModal());
+      await page.locator('#tbl-rows').fill('20');
+      await page.locator('#tbl-cols').fill('10');
+      await expect(page.locator('#table-preview-grid input')).toHaveCount(210);
+      await expect(page.locator('#table-preview-grid select')).toHaveCount(10);
+      const geometry = await page.locator('.tbl-builder').evaluate(table => {
+        const rows = [...table.rows].map(row => [...row.querySelectorAll('input, select')].map(el => el.getBoundingClientRect()));
+        return {
+          undersized: rows.flat().filter(rect => rect.width < 44 || rect.height < 44).length,
+          horizontalGaps: rows.flatMap(row => row.slice(1).map((rect, i) => rect.left - row[i].right)),
+          verticalGaps: rows.slice(1).flatMap((row, i) => row.map((rect, col) => rect.top - rows[i][col].bottom)),
+        };
+      });
+      expect(geometry.undersized).toBe(0);
+      expect(Math.min(...geometry.horizontalGaps)).toBeGreaterThan(0);
+      expect(Math.min(...geometry.verticalGaps)).toBeGreaterThan(0);
+
+      const header = page.locator('#table-preview-grid input[data-row="h"][data-col="9"]');
+      await header.scrollIntoViewIfNeeded();
+      await header.tap();
+      await expect(header).toBeFocused();
+      await header.fill('Last header');
+      const alignment = page.locator('#table-preview-grid select[data-col="9"]');
+      await alignment.scrollIntoViewIfNeeded();
+      expect(await alignment.evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === el;
+      })).toBe(true);
+      await alignment.selectOption('right');
+      const lastCell = page.locator('#table-preview-grid input[data-row="19"][data-col="9"]');
+      await lastCell.scrollIntoViewIfNeeded();
+      await lastCell.tap();
+      await expect(lastCell).toBeFocused();
+      await lastCell.fill('Last cell');
+      await expect(header).toHaveValue('Last header');
+      await expect(alignment).toHaveValue('right');
+      await page.locator('[onclick="insertTable()"]').tap();
+      await expect(page.locator('#table-modal')).toBeHidden();
+      await expect(page.locator('#editor')).toHaveValue(/Last header[\s\S]*Last cell/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+  }
 });
 
 test('desktop navigation reaches the first preview heading after visiting the last', async ({ page }) => {

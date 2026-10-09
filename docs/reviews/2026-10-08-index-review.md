@@ -188,7 +188,7 @@ real Drive account or production service were changed.
   **Required outcome:** Apply theme-aware placeholder colors meeting the text threshold in the actual table backgrounds and focus states.  
   **Test:** `ui.spec.js` — `table placeholders meet the documented small-text contrast floor`; see [table screenshot](2026-10-08-index-evidence/table-390.png).
 
-- [ ] [ID:idx-table-touch-targets] **P2 — Dynamically generated table controls miss the 44px touch-target requirement.**
+- [x] [ID:idx-table-touch-targets] **P2 — Dynamically generated table controls miss the 44px touch-target requirement.**
 
   **Location:** [index.html](../../index.html), `.tbl-builder input` and `.align-select`, lines 765–790.  
   **Reproduce:** On a 390×844 coarse-pointer context, table inputs are 24px high and alignment selects are 14px high. These are adjacent editable controls, making wrong-cell selection likely. The earlier toolbar/button touch fixes do not cover this generated grid.  

@@ -786,6 +786,11 @@
     outline: none;
     width: 100%;
   }
+  @media (pointer: coarse) {
+    .tbl-builder th, .tbl-builder td { padding: 2px 4px; }
+    .tbl-builder input, .align-select, #table-modal .num-input { min-height: 44px; }
+    .align-select { min-width: 44px; }
+  }
 
   /* ── Code block preview ── */
   #preview code { cursor: copy; }
