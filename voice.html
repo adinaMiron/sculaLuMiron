@@ -1,0 +1,3395 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14201A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caiet vocal">
+<title>Caiet vocal — dictare ro / en</title>
+<style>
+  :root{
+    /* earth palette (shared brand base — see docs/THEME.md) */
+    /* surfaces, back → front */
+    --bg:#14201A;
+    --surface:#1B2A22;
+    --surface-2:#22342A;
+    --border:#2E4739;
+
+    /* text, strongest → weakest */
+    --text:#F3EEE1;
+    --text-2:#9FB3A5;
+    --on-text:#20261E;   /* dark text on a --text-coloured surface (transcript card) */
+
+    /* brand */
+    --accent:#C1BB45;
+    --on-accent:#1A2117; /* text ON an accent fill (pressed chip) */
+
+    /* status */
+    --danger:#C4643C;
+
+    /* shape + type */
+    --radius:14px;
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,ui-serif,serif;
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 60% at 50% -10%, #1E3128 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    font-size:16px;
+    line-height:1.45;
+    min-height:100dvh;
+    padding:0 0 calc(24px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- header ---------- */
+  .top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+    padding:calc(14px + env(safe-area-inset-top)) 18px 10px;
+  }
+  .brand{min-width:0}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 2px;
+  }
+  .wordmark{font-family:var(--font-display);font-size:27px;line-height:1;margin:0;font-weight:400}
+  .top-actions{display:flex;gap:8px;flex:0 0 auto}
+  .icon-btn{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    background:transparent;color:var(--text-2);border:1px solid var(--border);
+    border-radius:999px;padding:9px 13px;min-height:38px;cursor:pointer;
+  }
+  .icon-btn:active{background:var(--surface-2)}
+  .icon-btn[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+
+  main{padding:0 18px;max-width:680px;margin:0 auto}
+
+  /* ---------- notices ---------- */
+  .notice{
+    border:1px solid var(--danger);border-radius:var(--radius);
+    background:rgba(196,100,60,.12);color:#F0D5C6;
+    padding:12px 14px;font-size:14px;margin:6px 0 14px;
+  }
+  .notice code{font-family:var(--font-mono);font-size:12px}
+  .hidden{display:none !important}
+
+  /* ---------- teleprompter ---------- */
+  .tp-panel{border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin:1rem 0;background:var(--surface)}
+  .tp-panel[hidden]{display:none}
+  .tp-panel h2{margin:0;font:1.5rem var(--font-display)}
+  .tp-panel textarea{width:100%;min-height:12rem;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:.5rem;padding:.75rem;font:1rem/1.6 var(--font-ui)}
+  .tp-panel select{width:100%;min-width:0}
+  .tp-panel label{display:block;margin:.75rem 0 .35rem}
+  .tp-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
+  .tp-toolbar .btn{min-height:2.75rem}
+  .tp-open{overflow:hidden}
+  #tpDialog{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;padding:1rem;padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));background:var(--bg);color:var(--text)}
+  #tpDialog[open]{display:flex;flex-direction:column;gap:.5rem}
+  #tpDialog::backdrop{background:var(--bg)}
+  #tpReader{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;position:relative;font:3rem/1.65 var(--font-ui);padding:0 max(.5rem, calc((100% - 60rem)/2));overflow-wrap:anywhere;scrollbar-width:thin}
+  #tpReader::before,#tpReader::after{content:"";display:block;height:20vh}
+  #tpReader::after{height:65vh}
+  #tpReader p{margin:0 0 1em;white-space:pre-line}
+  #tpReader span{cursor:pointer;border-radius:.1em}
+  #tpReader .tp-read{color:var(--text-2)}
+  #tpReader .tp-current{color:var(--accent);text-decoration:underline;text-underline-offset:.2em}
+  #tpDialog :focus-visible,.tp-panel :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  #tpStatus,#tpHeard{margin:0}
+  #tpHeard{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:1.5em;color:var(--text-2)}
+  #tpProgress{margin-inline-start:auto;font-family:var(--font-mono)}
+  #tpSize{width:7rem;vertical-align:middle}
+  @media(max-width:480px){#tpDialog{padding:.65rem}.tp-toolbar .btn{padding:.5rem .65rem;font-size:.85rem}}
+
+  /* ---------- stage: growth rings + record ---------- */
+  .stage{
+    position:relative;display:grid;place-items:center;
+    height:290px;margin:2px 0 4px;
+  }
+  .rings{position:absolute;width:250px;height:250px;pointer-events:none}
+  .ring{
+    position:absolute;inset:0;border-radius:50%;
+    border:1px solid var(--accent);opacity:.14;
+    transform:scale(.55);
+    transition:transform .09s linear, opacity .18s linear;
+  }
+  .stage.idle .ring{opacity:.09}
+  .btn-rec{
+    position:relative;width:146px;height:146px;border-radius:50%;
+    border:1px solid rgba(243,238,225,.22);
+    background:radial-gradient(120% 120% at 30% 25%, #3A5B48 0%, #23382C 70%);
+    color:var(--text);cursor:pointer;
+    display:grid;place-items:center;gap:2px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .btn-rec .dot{
+    width:20px;height:20px;border-radius:50%;background:var(--danger);
+    box-shadow:0 0 0 6px rgba(196,100,60,.16);
+  }
+  .btn-rec .label{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text);
+  }
+  .btn-rec.on{background:radial-gradient(120% 120% at 30% 25%, #6E3524 0%, #2B2019 70%);border-color:rgba(196,100,60,.55)}
+  .btn-rec.on .dot{border-radius:4px;background:var(--text);box-shadow:none;width:22px;height:22px}
+  .btn-rec:disabled{opacity:.5;cursor:default}
+  .clock{
+    position:absolute;bottom:16px;
+    font-family:var(--font-mono);font-size:13px;letter-spacing:.14em;color:var(--text-2);
+  }
+  .clock b{color:var(--accent);font-weight:400}
+
+  /* ---------- controls ---------- */
+  .field-label{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--text-2);margin:16px 0 7px;
+  }
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    flex:1 1 0;min-width:88px;min-height:46px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    color:var(--text);font-size:15px;cursor:pointer;padding:10px 8px;
+  }
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+  .chip:active{transform:translateY(1px)}
+
+  /* keep-the-audio option — lives next to the record button, not in the
+     settings sheet, because it has to be decided before pressing record */
+  .rec-opt{margin-top:18px}
+  .rec-opt-tip{margin:6px 0 0}
+  .rec-sub{margin-left:32px}
+  label.rec-sub{margin-top:10px}
+
+  /* ---------- transcript ---------- */
+  .paper{
+    background:var(--text);color:var(--on-text);border-radius:18px;
+    padding:14px 14px 10px;margin-top:18px;
+    box-shadow:0 14px 36px rgba(0,0,0,.35);
+  }
+  #transcript{
+    width:100%;min-height:220px;resize:vertical;
+    background:transparent;border:0;outline:none;
+    color:var(--on-text);font-family:var(--font-display);font-size:18px;line-height:1.55;
+    padding:0;
+  }
+  #transcript::placeholder{color:#8A8C7E}
+  .interim{
+    font-family:var(--font-display);font-size:18px;line-height:1.55;color:#7C8073;
+    min-height:0;margin:2px 0 0;
+  }
+  .paper-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    border-top:1px solid rgba(32,38,30,.14);margin-top:10px;padding-top:9px;
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6E7266;
+  }
+
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{
+    flex:1 1 0;min-width:98px;min-height:48px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    color:var(--text);font-size:15px;cursor:pointer;padding:12px 10px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn:active{background:var(--surface-2)}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:#E9B79F;border-color:rgba(196,100,60,.45)}
+  .btn:disabled{opacity:.45;cursor:default}
+
+  .status{
+    font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--text-2);
+    margin:14px 0 0;min-height:18px;
+  }
+  .status.err{color:#EEA98A}
+  .status.busy b{color:var(--accent);font-weight:400}
+
+  /* ---------- settings sheet ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(8,14,11,.6);backdrop-filter:blur(2px);z-index:8}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:9;
+    background:var(--surface);border-top:1px solid var(--border);
+    border-radius:20px 20px 0 0;
+    padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height:88dvh;overflow:auto;
+    max-width:680px;margin:0 auto;
+  }
+  .sheet h2{font-family:var(--font-display);font-weight:400;font-size:22px;margin:2px 0 4px}
+  .sheet p.help{font-size:13px;color:var(--text-2);margin:0 0 12px}
+  .grid{display:grid;gap:12px}
+  label.stack{display:grid;gap:6px}
+  label.stack > span{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);
+  }
+  input[type=text],input[type=password],input[type=number],select,textarea.hint{
+    width:100%;font-size:16px;font-family:var(--font-ui);
+    background:var(--bg);color:var(--text);
+    border:1px solid var(--border);border-radius:12px;padding:12px 13px;min-height:48px;
+  }
+  textarea.hint{min-height:76px;resize:vertical;line-height:1.4}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .row2{display:flex;gap:8px;align-items:flex-end}
+  .row2 > *{flex:1 1 0;min-width:0}
+  .row2 > button{flex:0 0 auto}
+  .toggle{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--text)}
+  .toggle input{width:22px;height:22px;accent-color:var(--accent)}
+  .tiny{font-size:12px;color:var(--text-2);font-family:var(--font-mono);line-height:1.5}
+  .tiny a{color:var(--accent)}
+  hr.sep{border:0;border-top:1px solid var(--border);margin:16px 0}
+  .sheet-foot{display:flex;gap:8px;margin-top:18px}
+
+  /* ---------- melodie: the recording turned into music ---------- */
+  .melody-card{
+    border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);margin-top:18px;overflow:hidden;
+  }
+  .melody-head{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:transparent;border:0;color:var(--text);cursor:pointer;text-align:left;
+    padding:14px;min-height:52px;font-size:15px;font-family:var(--font-ui);
+  }
+  .melody-head .mel-name{display:flex;align-items:center;gap:9px;min-width:0}
+  .melody-head .chev{color:var(--text-2);flex:0 0 auto;transition:transform .16s ease}
+  .melody-card.open .melody-head .chev{transform:rotate(180deg)}
+  .melody-body{padding:2px 14px 16px;border-top:1px solid var(--border)}
+  .chips.wrap .chip{flex:1 1 28%;min-width:96px;min-height:42px;font-size:14px;padding:8px 6px}
+  .mel-grid{display:grid;gap:12px;grid-template-columns:1fr 1fr;margin-top:16px}
+  @media (max-width:520px){ .mel-grid{grid-template-columns:1fr} }
+  .mel-roll{
+    display:block;width:100%;height:132px;margin-top:16px;
+    border:1px solid var(--border);border-radius:10px;background:var(--bg);
+  }
+  #melInfo{margin-top:8px;min-height:18px}
+
+  /* ---------- help ---------- */
+  .help-body h3{font-family:var(--font-display);font-weight:400;font-size:16px;margin:16px 0 6px;color:var(--text)}
+  .help-body h3:first-child{margin-top:0}
+  .help-body p{font-size:13px;line-height:1.6;color:var(--text-2);margin:0 0 8px}
+  .help-body ul{margin:0 0 8px;padding-left:20px}
+  .help-body li{font-size:13px;line-height:1.6;color:var(--text-2);margin:0 0 4px}
+  .help-body b{color:var(--text)}
+  .help-body code{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);border-radius:4px;padding:1px 5px;color:var(--accent)}
+  .help-body kbd{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+
+  @media (prefers-reduced-motion: reduce){
+    .ring{transition:none}
+  }
+  @media (min-width:620px){
+    .wordmark{font-size:34px}
+    .stage{height:320px}
+  }
+</style>
+</head>
+<body>
+<!-- ===== toolbar nav — paste right after <body> ===== -->
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="kanban.html" data-page="kanban.html">Kanban</a>
+  <a href="map.html" data-page="map.html">Hartă</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="song.html" data-page="song.html">Creează melodie</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <a href="transfer.html" data-page="transfer.html">Transfer</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so on those devices
+     the button just names the fallback route (share/download) and a tap
+     opens the destination sheet instead of the picker - see the "supported()"
+     branch in fBtn's click handler below. Kept visible (not hidden) so a
+     phone still has a way to reach ScuLaFolder.chooser() from the nav. */
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all nine files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){
+    btn.textContent = l === "ro" ? "EN" : "RO";
+    document.querySelector('#site-nav [data-page="song.html"]').textContent = l === "en" ? "Song Creation" : "Creează melodie";
+  }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all nine files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "song.html": "Song Creation",
+    "calendar.html": "calendar",
+    "kanban.html": "kanban",
+    "map.html": "harta",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete",
+    "transfer.html": "transfer"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // The chosen root folder itself, or null. dir() below narrows it to this
+  // page's own subfolder; a page that moves the *whole* folder across
+  // (transfer.html sends it to another device, and writes a received tree
+  // back into it) needs the root, with the same permission dance.
+  function rootDir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      return ok ? root : null;
+    }).catch(function(){ return null; });
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  // Stream producers are used by large Song WAV exports. Other saves keep the
+  // Blob API. Await every write for backpressure; never buffer a large fallback.
+  async function saveStream(filename, source, opts){
+    var cap = 32 * 1048576, quiet = !!(opts && opts.quiet);
+    if(!Number.isSafeInteger(source.size) || source.size < 0) throw new Error("renderLimit");
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) throw new Error("renderLimit");
+    async function fallback(){
+      if(source.size > cap) throw new Error("exportLimit");
+      var chunks=[], bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size || bytes>cap) throw new Error("exportLimit");
+        chunks.push(new Blob([chunk]));
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      return save(filename,new Blob(chunks,{type:source.type}),opts);
+    }
+    if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
+    if(currentMode()!=="folder") return fallback();
+    var d=await dir();
+    if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
+    if(!d) return fallback();
+    for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
+    var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
+    try{
+      var bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size) throw new Error("renderSize");
+        await w.write(chunk);
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      await w.close();
+    }catch(e){try{await w.abort();}catch(_){} throw e;}
+    var path=root.name+"/"+subdir()+"/"+(folders.length?folders.join("/")+"/":"")+name;
+    return report({saved:true,via:"folder",name:name,path:path,message:tx("saved")(path)},quiet);
+  }
+
+  function save(filename, blob, opts){
+    if(blob && !(blob instanceof Blob) && typeof blob.stream === "function") return saveStream(filename,blob,opts);
+    var quiet = !!(opts && opts.quiet);
+    // Optional directories remain beneath this page's SUBDIR. On mobile,
+    // callers include ownership in the filename; share/download stay flat.
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) return Promise.resolve({ saved:false, message:tx("failed"), via:"folder" });
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      var nested = Promise.resolve(d);
+      folders.forEach(function(p){ nested = nested.then(function(h){ return h.getDirectoryHandle(p, { create:true }); }); });
+      return nested.then(function(d){ return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + (folders.length ? folders.join("/") + "/" : "") + name };
+          });
+        });
+      });
+    }); }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    rootDir: rootDir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
+
+/* ============================================================
+   window.ScuLaGeo - the "^@" location marker
+   ------------------------------------------------------------
+   "^@Castelul Peles", "^@44.4268, 26.1025", "^@Strada Lipscani 12,
+   Bucuresti" - a place flagged in markdown, the way "@date" flags a day
+   for the calendar. The syntax lives here, in the block every page
+   carries, and not in the page that writes it, so index.html (which
+   paints the markers and sends them) and map.html (which draws them)
+   can never drift apart - docs/FEATURES.md § S.
+   ============================================================ */
+(function(){
+  var KEY = "scula:map:payload";
+
+  // "^@" then the place, to the end of the line. A "#tag" ends it - the tag
+  // belongs to the line, not to the address - and so does a "<": by the time
+  // index.html runs this over a rendered line, every "<" in it is a tag that
+  // line's own rendering produced. The lead class is TAG_RE's, so "a^@b"
+  // mid-word is not a marker, and one inside `inline code` (which by then
+  // follows "`" or ">") is left alone.
+  //
+  // The tail is a lookahead, not part of the match, so the space *before* a
+  // trailing "#tag" survives: without it the pill this becomes would put the
+  // tag straight after a ">", which is exactly the lead TAG_RE refuses, and
+  // the tag would stop being one. "m", because applyInline() is handed whole
+  // paragraphs and a line start inside one still starts a marker.
+  function markRe(){ return /(^|[\s(\[{])\^@[ \t]*([^\n<#]*?)(?=[ \t]*(?:[<#]|$))/gm; }
+
+  // "44.4268, 26.1025" or "44.4268N 26.1025E" -> {lat, lon}. A pair of bare
+  // integers ("Sector 3, 5") is not coordinates: one of the numbers must
+  // carry a decimal point, or both must carry a hemisphere letter. V is
+  // Romanian for West, so it counts as one.
+  function coords(s){
+    var str = String(s == null ? "" : s).trim();
+    var m = /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])?\s*[,;]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])?$/.exec(str)
+         || /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])\s+([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])$/.exec(str);
+    if(!m) return null;
+    if(!(m[2] && m[4]) && m[1].indexOf(".") < 0 && m[3].indexOf(".") < 0) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[3]);
+    if(m[2] && /[Ss]/.test(m[2])) lat = -lat;
+    if(m[4] && /[WVwv]/.test(m[4])) lon = -lon;
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: lat, lon: lon };
+  }
+
+  // What follows "^@" -> { query, note, lat, lon }, or null when there is
+  // nothing but the marker. Everything after a "|" is a note about the
+  // place rather than part of its address.
+  function read(raw){
+    var s = String(raw == null ? "" : raw), bar = s.indexOf("|"), note = "";
+    if(bar >= 0){ note = s.slice(bar + 1).trim(); s = s.slice(0, bar); }
+    s = s.replace(/[\s,;]+$/, "").trim();
+    if(!s) return null;
+    var c = coords(s);
+    return { query: s, note: note, lat: c ? c.lat : null, lon: c ? c.lon : null };
+  }
+
+  // The whole thing in one call: text -> [{ place, index, length, text }],
+  // the shape ScuLaCal.findMarks already returns for dates.
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text == null ? "" : text)))){
+      if(re.lastIndex === m.index) re.lastIndex++;
+      var place = read(m[2]);
+      if(!place) continue;
+      var lead = m[1] ? m[1].length : 0;
+      out.push({ place: place, index: m.index + lead, length: m[0].length - lead, text: m[0].slice(lead) });
+    }
+    return out;
+  }
+  function has(text){ return findMarks(text).length > 0; }
+
+  function tagsOf(line){
+    var re = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu, m, out = [];
+    while((m = re.exec(String(line)))) out.push(m[2]);
+    return out;
+  }
+  // The line the place was written on, without its markers, its bullet and
+  // its checkbox - what the popup shows under the name.
+  function contextOf(line){
+    var s = String(line).replace(markRe(), function(whole, lead, raw){
+      var p = read(raw);
+      return (lead || "") + (p ? p.query : "");
+    });
+    s = s.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "").replace(/^\s*\[[ xX]\]\s*/, "");
+    s = s.replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
+    return s.length > 160 ? s.slice(0, 157) + "…" : s;
+  }
+
+  // text -> the payload map.html draws: one layer per heading, in the order
+  // the headings appear, each holding the places written under it.
+  function scan(text, meta){
+    meta = meta || {};
+    var lines = String(text == null ? "" : text).split("\n");
+    var layers = [], index = {}, count = 0, current = "", inCode = false;
+    var fallback = String(meta.title || "").replace(/\.(md|markdown|txt)$/i, "").trim() || "·";
+    function layer(name){
+      if(!index[name]){ index[name] = { name: name, items: [] }; layers.push(index[name]); }
+      return index[name];
+    }
+    lines.forEach(function(line, i){
+      if(/^\s*```/.test(line)){ inCode = !inCode; return; }
+      if(inCode) return;
+      var h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if(h){
+        current = h[2].replace(markRe(), "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim();
+      }
+      var hits = findMarks(line);
+      if(!hits.length) return;
+      var name = current || fallback, tags = tagsOf(line), ctx = contextOf(line);
+      hits.forEach(function(hit){
+        layer(name).items.push({
+          q: hit.place.query, note: hit.place.note,
+          lat: hit.place.lat, lon: hit.place.lon,
+          line: i, tags: tags, context: ctx
+        });
+        count++;
+      });
+    });
+    return { v:1, source: meta.source || "index.html", title: meta.title || "",
+             at: Date.now(), count: count, layers: layers };
+  }
+
+  // The hand-over: one page writes the list, map.html reads it. localStorage
+  // rather than a query string - a whole chapter's worth of places does not
+  // belong in a URL, and this survives the map page being reloaded.
+  function send(payload){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); return true; }catch(e){ return false; }
+  }
+  function received(){
+    try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  window.ScuLaGeo = {
+    KEY: KEY,
+    markRe: markRe,
+    coords: coords,
+    read: read,
+    findMarks: findMarks,
+    has: has,
+    scan: scan,
+    send: send,
+    received: received
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+
+
+<div class="top">
+  <div class="brand">
+    <p class="eyebrow" id="eyebrow" data-i="eyebrow">dictare · română / english</p>
+    <h1 class="wordmark">Caiet vocal</h1>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="helpBtn" type="button" data-i="helpBtn">Ajutor</button>
+    <button class="icon-btn" id="setBtn" type="button" data-i="settings">Setări</button>
+  </div>
+</div>
+
+<main>
+  <div class="notice hidden" id="secureWarn"></div>
+  <div class="notice hidden" id="setupWarn"></div>
+
+  <button class="btn" id="tpToggle" type="button" aria-expanded="false" aria-controls="tpPanel" data-i="tpTitle">Teleprompter</button>
+  <section class="tp-panel" id="tpPanel" hidden aria-labelledby="tpHeading">
+    <h2 id="tpHeading" data-i="tpTitle">Teleprompter</h2>
+    <p class="tiny" data-i="tpIntro">Alege un capitol din caietul „Subtitrare” din pagina Markdown sau lipește scenariul mai jos. Textul urmărește vocea și se oprește când faci pauză.</p>
+    <label for="tpChapter" data-i="tpChapter">Capitol din Subtitrare</label>
+    <select id="tpChapter"></select>
+    <div class="actions">
+      <button class="btn ghost" id="tpRefresh" type="button" data-i="tpRefresh">Reîncarcă lista</button>
+      <a class="btn ghost" href="index.html" target="_blank" rel="noopener" data-i="tpMarkdown">Deschide Markdown</a>
+    </div>
+    <label for="tpScript" data-i="tpScript">Scenariu (copie editabilă pentru citire)</label>
+    <textarea id="tpScript" data-i-placeholder="tpPlaceholder" placeholder="Scrie sau lipește aici textul de citit."></textarea>
+    <label for="tpLanguage" data-i="langLabel">Limba vorbită</label>
+    <select id="tpLanguage"><option value="ro-RO">Română</option><option value="en-US">English</option></select>
+    <p class="tiny" data-i="tpPrivacy">Urmărirea vocală folosește recunoașterea browserului, care poate trimite sunetul către serviciul său online. Întârzierea depinde de browser și conexiune. Poți citi și avansa manual fără microfon.</p>
+    <p class="tiny" id="tpSourceStatus" role="status"></p>
+    <button class="btn" id="tpOpen" type="button" data-i="tpOpen">Deschide teleprompterul</button>
+  </section>
+
+  <div class="stage idle" id="stage">
+    <div class="rings" aria-hidden="true">
+      <div class="ring" data-i0></div>
+      <div class="ring" data-i1></div>
+      <div class="ring" data-i2></div>
+      <div class="ring" data-i3></div>
+    </div>
+    <button class="btn-rec" id="recBtn" type="button">
+      <span class="dot"></span>
+      <span class="label" id="recLabel">Înregistrează</span>
+    </button>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+
+  <label class="toggle rec-opt">
+    <input type="checkbox" id="keepAudio">
+    <span data-i="keepAudioLabel">Salvează și sunetul înregistrării</span>
+  </label>
+  <p class="tiny rec-opt-tip" data-i="keepAudioTip">Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.</p>
+
+  <label class="toggle rec-opt rec-sub">
+    <input type="checkbox" id="keepWav">
+    <span data-i="keepWavLabel">Și ca WAV de calitate înaltă (fără pierderi)</span>
+  </label>
+  <p class="tiny rec-opt-tip rec-sub" data-i="keepWavTip">Sunetul brut al microfonului, 24 de biți, fără filtre și fără compresie. Se salvează lângă celălalt fișier audio. Ocupă mult: cam 9 MB pe minut, în mono.</p>
+
+  <label class="toggle rec-opt">
+    <input type="checkbox" id="melodyArm">
+    <span data-i="melodyArmLabel">Păstrează sunetul și pentru melodie</span>
+  </label>
+  <p class="tiny rec-opt-tip" data-i="melodyArmTip">Bifează înainte de a înregistra. Sunetul rămâne în pagină, ca să poată fi transformat în melodie mai jos.</p>
+
+  <p class="field-label" data-i="langLabel">Limba vorbită</p>
+  <div class="chips" role="group" id="langChips">
+    <button class="chip" type="button" data-lang="ro" aria-pressed="true">Română</button>
+    <button class="chip" type="button" data-lang="en" aria-pressed="false">English</button>
+    <button class="chip" type="button" data-lang="auto" aria-pressed="false" data-i="auto">Automat</button>
+  </div>
+
+  <p class="field-label" data-i="engineLabel">Motor de transcriere</p>
+  <div class="chips" role="group" id="engineChips">
+    <button class="chip" type="button" data-engine="api" aria-pressed="true" data-i="engApi">Server (precis)</button>
+    <button class="chip" type="button" data-engine="live" aria-pressed="false" data-i="engLive">Browser (fără cheie)</button>
+  </div>
+
+  <div class="paper">
+    <textarea id="transcript" spellcheck="true" placeholder="Textul apare aici." data-i-placeholder="placeholder"></textarea>
+    <p class="interim" id="interim"></p>
+    <div class="paper-foot">
+      <span id="counts">0 cuvinte</span>
+      <span id="segInfo"></span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button" data-i="copy">Copiază</button>
+    <button class="btn" id="shareBtn" type="button" data-i="share">Trimite</button>
+    <button class="btn" id="dlBtn" type="button" data-i="download">Descarcă</button>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="fileBtn" type="button" data-i="importFile">Transcrie un fișier audio</button>
+    <button class="btn ghost danger" id="clearBtn" type="button" data-i="clear">Șterge tot</button>
+  </div>
+  <input type="file" id="fileInput" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+
+  <section class="melody-card" id="melodyCard">
+    <button class="melody-head" id="melodyToggle" type="button" aria-expanded="false" aria-controls="melodyBody">
+      <span class="mel-name">🎵 <span data-i="melodyTitle">Melodie din înregistrare</span></span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div class="melody-body hidden" id="melodyBody">
+      <p class="tiny" data-i="melodyIntro">Pagina caută notele și bătaia din ce ai înregistrat și le dă instrumentelor alese.</p>
+
+      <p class="field-label" data-i="melodyLead">Instrumentul melodiei</p>
+      <div class="chips wrap" role="group" id="leadChips"></div>
+
+      <p class="field-label" data-i="melodyBacking">Acompaniament</p>
+      <div class="chips" role="group" id="backChips">
+        <button class="chip" type="button" data-back="drums" aria-pressed="true" data-i="melodyDrums">Tobe</button>
+        <button class="chip" type="button" data-back="bass" aria-pressed="true" data-i="melodyBass">Bas</button>
+        <button class="chip" type="button" data-back="chords" aria-pressed="true" data-i="melodyChords">Acorduri</button>
+      </div>
+
+      <div class="mel-grid">
+        <label class="stack">
+          <span data-i="melodyChordInst">Instrument pentru acorduri</span>
+          <select id="melChordInst"></select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyScale">Gamă</span>
+          <select id="melScale">
+            <option value="auto" data-i="melodyScaleAuto">Automat (detectată)</option>
+            <option value="major" data-i="melodyScaleMajor">Major</option>
+            <option value="minor" data-i="melodyScaleMinor">Minor</option>
+            <option value="penta" data-i="melodyScalePenta">Pentatonic</option>
+            <option value="chrom" data-i="melodyScaleChrom">Fără potrivire</option>
+          </select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyGrid">Așezare pe ritm</span>
+          <select id="melGrid">
+            <option value="0" data-i="melodyGridFree">Liberă</option>
+            <option value="1" data-i="melodyGrid4">Pătrimi</option>
+            <option value="2" data-i="melodyGrid8">Optimi</option>
+            <option value="4" data-i="melodyGrid16">Șaisprezecimi</option>
+          </select>
+        </label>
+        <label class="stack">
+          <span data-i="melodyTempo">Tempo (BPM)</span>
+          <input type="number" id="melTempo" min="40" max="220" step="1" inputmode="numeric">
+        </label>
+        <label class="stack">
+          <span data-i="melodyOct">Octava melodiei</span>
+          <select id="melOct">
+            <option value="-2">−2</option>
+            <option value="-1">−1</option>
+            <option value="0">0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+          </select>
+        </label>
+      </div>
+
+      <canvas class="mel-roll" id="melRoll" aria-hidden="true"></canvas>
+      <p class="tiny" id="melInfo"></p>
+
+      <div class="actions">
+        <button class="btn" id="melMakeBtn" type="button" data-i="melodyMake" disabled>Fă melodia</button>
+        <button class="btn" id="melPlayBtn" type="button" disabled>Ascultă</button>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="melWavBtn" type="button" data-i="melodySaveWav" disabled>Salvează WAV</button>
+        <button class="btn ghost" id="melMidiBtn" type="button" data-i="melodySaveMidi" disabled>Salvează MIDI</button>
+        <button class="btn ghost" id="melFileBtn" type="button" data-i="melodyFromFile">Dintr-un fișier</button>
+      </div>
+      <input type="file" id="melFile" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg" class="hidden">
+      <p class="tiny" data-i="melodyRights">Totul e sintetizat aici, în pagină.</p>
+    </div>
+  </section>
+
+  <p class="status" id="status"></p>
+</main>
+
+<div class="scrim hidden" id="scrim"></div>
+<div class="sheet hidden" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle" data-i="settings">Setări</h2>
+  <p class="help" data-i="setHelp">Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.</p>
+
+  <div class="grid">
+    <label class="stack">
+      <span data-i="provider">Furnizor</span>
+      <select id="provider">
+        <option value="groq">Groq — Whisper large v3</option>
+        <option value="openai">OpenAI</option>
+        <option value="custom" data-i="ownServer">Server propriu (proxy)</option>
+      </select>
+    </label>
+
+    <label class="stack" id="endpointWrap">
+      <span data-i="endpoint">Adresa proxy-ului</span>
+      <input type="text" id="endpoint" inputmode="url" placeholder="/api/transcribe" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+
+    <label class="stack">
+      <span data-i="apiKey">Cheie API</span>
+      <span class="row2">
+        <input type="password" id="apiKey" placeholder="gsk_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="icon-btn" id="peekBtn" type="button" data-i="show">Arată</button>
+      </span>
+    </label>
+    <p class="tiny" id="keyTip"></p>
+
+    <label class="stack">
+      <span data-i="model">Model</span>
+      <input type="text" id="model" list="modelList" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <datalist id="modelList"></datalist>
+    </label>
+
+    <label class="stack">
+      <span data-i="hint">Termeni utili (opțional)</span>
+      <textarea class="hint" id="hint" placeholder="ex. Netopia, răsaduri, semănare directă, Darcy-Weisbach"></textarea>
+    </label>
+
+    <label class="stack">
+      <span data-i="segLen">Lungimea unui segment</span>
+      <select id="segLen">
+        <option value="2">2 min</option>
+        <option value="5" selected>5 min</option>
+        <option value="10">10 min</option>
+        <option value="0" data-i="segOff">Fără împărțire</option>
+      </select>
+    </label>
+
+    <hr class="sep">
+
+    <label class="toggle">
+      <input type="checkbox" id="tidy">
+      <span data-i="tidyLabel">Corectează punctuația și diacriticele după transcriere</span>
+    </label>
+    <label class="stack">
+      <span data-i="tidyModel">Model pentru corectură</span>
+      <input type="text" id="tidyModel" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+  </div>
+
+  <div class="sheet-foot">
+    <button class="btn" id="saveBtn" type="button" data-i="save">Salvează</button>
+  </div>
+</div>
+
+<!-- Help -->
+<div class="scrim hidden" id="helpScrim"></div>
+<div class="sheet hidden" id="helpSheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <h2 id="helpTitle" data-i="helpTitle">Ajutor — Caiet vocal</h2>
+  <div class="help-body" id="helpBody"></div>
+  <div class="sheet-foot">
+    <button class="btn" id="helpCloseBtn" type="button" data-i="helpClose">Închide</button>
+  </div>
+</div>
+
+<script src="js/audio/pcm.js"></script>
+<dialog id="tpDialog" aria-label="Teleprompter" data-i-aria="tpTitle">
+  <div class="tp-toolbar">
+    <button class="btn" id="tpListen" type="button" aria-pressed="false">Urmărește vocea</button>
+    <button class="btn ghost" id="tpBack" type="button" data-i="tpBack">Înapoi</button>
+    <button class="btn ghost" id="tpNext" type="button" data-i="tpNext">Înainte</button>
+    <button class="btn ghost" id="tpReset" type="button" data-i="tpReset">De la început</button>
+    <button class="btn ghost" id="tpExit" type="button" data-i="tpExit">Ieși</button>
+  </div>
+  <div class="tp-toolbar">
+    <label for="tpSize"><span data-i="tpSize">Mărimea textului</span> <input id="tpSize" type="range" min="2" max="6" step="0.25" value="3"></label>
+    <span id="tpProgress"></span>
+  </div>
+  <p id="tpStatus" role="status"></p>
+  <p class="tiny" id="tpInstructions" data-i="tpInstructions">Atinge un cuvânt pentru a relua de acolo. În text: săgeți pentru deplasare, Spațiu pentru pauză; Esc pentru ieșire.</p>
+  <div id="tpReader" tabindex="0" role="region" aria-label="Scenariu" data-i-aria="tpScript" aria-describedby="tpInstructions"></div>
+  <p id="tpHeard" data-i-title="tpHeard" title="Ultimele cuvinte auzite"></p>
+</dialog>
+<script src="js/voice/teleprompter.js"></script>
+<script src="js/audio/analysis.js"></script>
+<script src="js/audio/synthesis.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1. i18n
+   ============================================================ */
+const I18N = {
+  ro:{
+    tpTitle:"Teleprompter", tpIntro:"Alege un capitol din caietul „Subtitrare” din pagina Markdown sau lipește scenariul mai jos. Textul urmărește vocea și se oprește când faci pauză.",
+    tpChapter:"Capitol din Subtitrare", tpRefresh:"Reîncarcă lista", tpMarkdown:"Deschide Markdown",
+    tpScript:"Scenariu (copie editabilă pentru citire)", tpPlaceholder:"Scrie sau lipește aici textul de citit.",
+    tpPrivacy:"Urmărirea vocală folosește recunoașterea browserului, care poate trimite sunetul către serviciul său online. Întârzierea depinde de browser și conexiune. Poți citi și avansa manual fără microfon.",
+    tpOpen:"Deschide teleprompterul", tpListen:"Urmărește vocea", tpPause:"Pauză", tpBack:"Înapoi", tpNext:"Înainte", tpReset:"De la început", tpExit:"Ieși", tpSize:"Mărimea textului",
+    tpInstructions:"Atinge un cuvânt pentru a relua de acolo. În text: săgeți pentru deplasare, Spațiu pentru pauză; Esc pentru ieșire.", tpHeard:"Ultimele cuvinte auzite",
+    tpProgress:({current,total}) => current + " / " + total + " cuvinte",
+    tpReady:"Gata de citire. Pornește urmărirea vocală când ești pregătit.", tpPaused:"În pauză — poziția este păstrată.", tpFollowing:"Te ascult — citește în ritmul tău.", tpStarting:"Pornesc microfonul…", tpReconnecting:"Reconectez recunoașterea vocală…", tpFinished:"Ai ajuns la sfârșitul scenariului.",
+    tpChoose:"Alege un capitol…", tpNoChapters:"Nu există capitole în „Subtitrare”. Creează caietul și un capitol în Markdown, în același browser, apoi reîncarcă lista; sau lipește textul mai jos.",
+    tpLoading:"Citesc lista capitolelor…", tpLoaded:"Scenariul a fost încărcat. Modificările de aici nu schimbă capitolul original.", tpEmpty:"Adaugă un scenariu cu text înainte de a deschide teleprompterul.", tpStorageError:"Nu pot citi caietele. Reîncarcă lista sau lipește scenariul mai jos.",
+    tpUnsupported:"Browserul nu oferă recunoaștere vocală. Poți citi și avansa manual.", tpDenied:"Accesul la microfon a fost refuzat. Permite-l în browser și încearcă din nou, sau avansează manual.", tpNetwork:"Recunoașterea vocală a pierdut conexiunea. Repornește urmărirea sau avansează manual.", tpSpeechError:"Recunoașterea vocală nu a putut continua. Verifică microfonul și limba, apoi repornește urmărirea sau avansează manual.", tpBusy:"Oprește înregistrarea sau dictarea înainte de a deschide teleprompterul.",
+    eyebrow:"dictare · română / english",
+    settings:"Setări", langLabel:"Limba vorbită", auto:"Automat",
+    engineLabel:"Motor de transcriere", engApi:"Server (precis)", engLive:"Browser (fără cheie)",
+    copy:"Copiază", share:"Trimite", download:"Descarcă", clear:"Șterge tot",
+    importFile:"Transcrie un fișier audio",
+    rec:"Înregistrează", stop:"Oprește",
+    keepAudioLabel:"Salvează și sunetul înregistrării",
+    keepAudioTip:"Bifează înainte de a înregistra. Fișierul audio se salvează la „Descarcă”, cu același nume ca textul.",
+    noAudio:"Nu s-a păstrat niciun fișier audio pentru acest text.",
+    keepWavLabel:"Și ca WAV de calitate înaltă (fără pierderi)",
+    keepWavTip:"Sunetul brut al microfonului, 24 de biți, fără filtre și fără compresie. Se salvează lângă celălalt fișier audio. Ocupă mult: cam 9 MB pe minut, în mono.",
+    noWav:"Nu s-a păstrat niciun WAV pentru acest text.",
+    melodyArmLabel:"Păstrează sunetul și pentru melodie",
+    melodyArmTip:"Bifează înainte de a înregistra. Sunetul rămâne în pagină, ca să poată fi transformat în melodie mai jos.",
+    melodyTitle:"Melodie din înregistrare",
+    melodyIntro:"Pagina caută notele și bătaia din ce ai înregistrat și le dă instrumentelor alese.",
+    melodyLead:"Instrumentul melodiei", melodyBacking:"Acompaniament",
+    melodyDrums:"Tobe", melodyBass:"Bas", melodyChords:"Acorduri",
+    melodyChordInst:"Instrument pentru acorduri",
+    melodyScale:"Gamă", melodyScaleAuto:"Automat (detectată)", melodyScaleMajor:"Major",
+    melodyScaleMinor:"Minor", melodyScalePenta:"Pentatonic", melodyScaleChrom:"Fără potrivire",
+    melodyGrid:"Așezare pe ritm", melodyGridFree:"Liberă", melodyGrid4:"Pătrimi",
+    melodyGrid8:"Optimi", melodyGrid16:"Șaisprezecimi",
+    melodyTempo:"Tempo (BPM)", melodyOct:"Octava melodiei",
+    melodyMake:"Fă melodia", melodyPlay:"Ascultă", melodyStop:"Oprește",
+    melodySaveWav:"Salvează WAV", melodySaveMidi:"Salvează MIDI", melodyFromFile:"Dintr-un fișier",
+    melodyMajor:"major", melodyMinor:"minor",
+    melodyRollEmpty:"Aici apar notele găsite.",
+    melodyNoSrc:"Nu am niciun sunet. Bifează „Păstrează sunetul și pentru melodie” înainte de a înregistra, sau alege „Dintr-un fișier”.",
+    melodySrcRec:"Am sunetul înregistrării. Apasă „Fă melodia”.",
+    melodySrcFile:"Am fișierul ales. Apasă „Fă melodia”.",
+    melodyDecoding:"Se citește sunetul…",
+    melodyBeatStep:"Caut bătaia…",
+    melodyPitchStep:p=>"Caut notele… "+p+"%",
+    melodyArranging:"Aleg acordurile…",
+    melodyRendering:"Se cântă la instrumente…",
+    melodyDone:o=>o.n+" note · "+o.bpm+" BPM · "+o.key+" · "+o.bars+" măsuri · "+o.len,
+    melodyStale:"S-au schimbat setările. Apasă „Fă melodia” din nou.",
+    melodyNoNotes:"N-am găsit note cântate. Încearcă să fredonezi o linie melodică, nu doar să vorbești.",
+    melodyTrimmed:m=>"am folosit primele "+m+" minute",
+    melodyFailed:"Nu am putut folosi sunetul acesta.",
+    melodyRights:"Totul e sintetizat aici, în pagină: fără sample-uri, fără biblioteci, fără sunet luat de la altcineva. Melodia iese din vocea ta, deci o poți folosi în clipuri YouTube fără drepturi de autor sau redevențe către terți.",
+    instPiano:"Pian", instGuitar:"Chitară", instViolin:"Vioară", instCello:"Violoncel",
+    instFlute:"Flaut", instClarinet:"Clarinet", instTrumpet:"Trompetă", instOrgan:"Orgă",
+    instHarp:"Harpă", instXylo:"Xilofon", instBox:"Cutie muzicală", instStrings:"Corzi",
+    instSynth:"Sintetizator", instBass:"Bas",
+    setHelp:"Cheia rămâne pe acest dispozitiv. Audio-ul se trimite doar către furnizorul ales.",
+    provider:"Furnizor", ownServer:"Server propriu (proxy)", endpoint:"Adresa proxy-ului",
+    apiKey:"Cheie API", show:"Arată", hide:"Ascunde", model:"Model",
+    hint:"Termeni utili (opțional)", segLen:"Lungimea unui segment", segOff:"Fără împărțire",
+    tidyLabel:"Corectează punctuația și diacriticele după transcriere",
+    tidyModel:"Model pentru corectură", save:"Salvează",
+    placeholder:"Textul apare aici.",
+    words:n=>n+(n===1?" cuvânt":" cuvinte"),
+    listening:"Ascult. Ține ecranul aprins.",
+    transcribing:n=>"Se transcrie segmentul "+n+"…",
+    doneSeg:n=>"Segmentul "+n+" e gata.",
+    tidying:"Se corectează textul…",
+    ready:"Gata.",
+    copied:"Copiat.",
+    cleared:"Text șters.",
+    micDenied:"Microfonul e blocat. Permite accesul în setările browserului, apoi reîncarcă pagina.",
+    noRecorder:"Browserul acesta nu poate înregistra audio. Încearcă Safari pe iPhone sau Chrome pe tabletă.",
+    insecure:"Microfonul funcționează doar pe <b>https://</b> sau localhost. Deschis din fișier local (file://) sau http, browserul nu dă acces la microfon.",
+    needKey:"Adaugă o cheie API în Setări, sau comută pe „Browser (fără cheie)”.",
+    errNoKey:"Lipsește cheia API.",
+    errNoEndpoint:"Lipsește adresa proxy-ului.",
+    errNetwork:"Cererea nu a ajuns la server (rețea sau CORS). Dacă furnizorul blochează cererile din browser, folosește un proxy pe serverul tău.",
+    err401:"Cheie respinsă",
+    err413:"Fișierul e prea mare. Alege un segment mai scurt în Setări.",
+    err429:"Prea multe cereri, mai încearcă",
+    liveUnsupported:"Dictarea din browser nu e disponibilă aici (frecvent pe tabletele fără servicii Google). Folosește motorul „Server (precis)”.",
+    liveAuto:"Dictarea din browser are nevoie de o limbă anume; folosesc româna.",
+    liveOn:"Dictare activă. Vorbește normal.",
+    fileReading:"Se transcrie fișierul…",
+    keyTipGroq:'Cheie de la <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 scrie corect cu diacritice. Ca să generezi una: intră pe link, conectează-te (sau creează cont gratuit), apasă „Create API Key”, dă-i un nume și copiaz-o — apare o singură dată, deci lipește-o aici acum.',
+    keyTipOpenAI:'Cheie de la platform.openai.com/api-keys.',
+    keyTipCustom:'Trimite POST multipart către adresa ta; cheia rămâne pe server. Lasă câmpul de cheie gol.',
+    tooBig:"Fișier prea mare pentru transcriere într-o singură cerere (peste 25 MB).",
+    helpBtn:"Ajutor", helpTitle:"Ajutor — Caiet vocal", helpClose:"Închide",
+    helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>„Caiet vocal” transformă vorbirea în text — fie direct în browser, fie trimițând sunetul către un motor de transcriere extern.</p>
+      <h3>Înregistrarea</h3>
+      <ul>
+        <li>Apasă butonul mare pentru a începe; apasă din nou pentru a opri.</li>
+        <li>Ceasul de sub buton arată cât ai vorbit.</li>
+        <li><b>Limba vorbită</b> (Română / English / Automat) e separată de limba interfeței — poți dicta în română cu interfața în engleză, sau invers.</li>
+      </ul>
+      <h3>Motorul de transcriere</h3>
+      <p>Din <b>Setări</b> alegi între:</p>
+      <ul>
+        <li><b>Server (precis)</b> — trimite sunetul către Groq, OpenAI sau un server propriu; cere o cheie API, care rămâne pe acest dispozitiv.</li>
+        <li><b>Browser (fără cheie)</b> — dictare live, fără cont, cât timp browserul o suportă.</li>
+      </ul>
+      <h3>Păstrează și sunetul</h3>
+      <p>Bifează căsuța <i>„Salvează și sunetul înregistrării”</i> <b>înainte</b> de a apăsa Înregistrează — nu în timpul înregistrării. Fișierul audio se salvează odată cu textul, sub același nume.</p>
+      <p>Bifează și <i>„Și ca WAV de calitate înaltă”</i> ca să primești în plus un <code>.wav</code> cu același nume: sunetul brut al microfonului, 24 de biți, la rata plăcii de sunet, fără anularea ecoului, fără reducerea zgomotului și fără compresie. E fișierul bun pentru editare; celălalt e cel mic, de ascultat.</p>
+      <h3>După transcriere</h3>
+      <p>Copiază, trimite (share), descarcă sau șterge textul cu butoanele de sub el. Poți transcrie și un fișier audio existent cu „Transcrie un fișier audio”.</p>
+      <h3>Melodie din înregistrare</h3>
+      <p>Bifează <i>„Păstrează sunetul și pentru melodie”</i> <b>înainte</b> de a înregistra, apoi deschide panoul <b>🎵 Melodie din înregistrare</b> și apasă <b>Fă melodia</b>. Pagina urmărește înălțimea vocii cadru cu cadru, taie linia în note, găsește bătaia și le cântă la instrumentul ales, cu tobe, bas și acorduri sub ele.</p>
+      <ul>
+        <li><b>Gama</b> potrivește notele pe o gamă, ca să nu sune fals; „Fără potrivire” le lasă exact cum au fost cântate.</li>
+        <li><b>Așezarea pe ritm</b> mută începuturile notelor pe pătrimi, optimi sau șaisprezecimi.</li>
+        <li><b>Tempo</b> se completează singur cu bătaia găsită; poți scrie altul.</li>
+        <li><b>Salvează WAV</b> dă fișierul audio; <b>Salvează MIDI</b> dă notele, ca să le duci în orice program muzical și să schimbi instrumentele acolo.</li>
+        <li>Poți porni și de la un fișier audio, cu <b>Dintr-un fișier</b>. Se folosesc primele 3 minute.</li>
+      </ul>
+      <p>Tot sunetul e sintetizat aici — fără sample-uri, fără biblioteci, fără nimic luat de la altcineva — deci melodia care iese e a ta și o poți folosi în clipuri fără probleme de drepturi de autor sau redevențe.</p>
+      <h3>Unde ajung fișierele</h3>
+      <p>Butonul 📁 din bara de navigare alege unde se salvează: un folder de pe calculator, ecranul de partajare al telefonului, sau o descărcare simplă — totul ajunge în folderul <code>transcript</code>.</p>
+      <h3>Scurtături</h3>
+      <p><kbd>Esc</kbd> închide fereastra de Setări sau cea de alegere a folderului.</p>
+    `
+  },
+  en:{
+    tpTitle:"Teleprompter", tpIntro:"Choose a chapter from the “Subtitrare” workbook on the Markdown page, or paste your script below. The text follows your voice and waits when you pause.",
+    tpChapter:"Chapter from Subtitrare", tpRefresh:"Refresh chapters", tpMarkdown:"Open Markdown",
+    tpScript:"Script (editable reading copy)", tpPlaceholder:"Write or paste your script here.",
+    tpPrivacy:"Voice following uses browser recognition, which may send audio to its online service. Delay depends on your browser and connection. You can read and advance manually without a microphone.",
+    tpOpen:"Open teleprompter", tpListen:"Follow my voice", tpPause:"Pause", tpBack:"Back", tpNext:"Next", tpReset:"Restart", tpExit:"Exit", tpSize:"Text size",
+    tpInstructions:"Tap a word to resume there. In the text: arrow keys to move, Space to pause; Esc to exit.", tpHeard:"Last words heard",
+    tpProgress:({current,total}) => current + " / " + total + " words",
+    tpReady:"Ready to read. Start voice following when you are ready.", tpPaused:"Paused — your place is kept.", tpFollowing:"Listening — read at your own pace.", tpStarting:"Starting microphone…", tpReconnecting:"Reconnecting speech recognition…", tpFinished:"You have reached the end of the script.",
+    tpChoose:"Choose a chapter…", tpNoChapters:"No chapters in “Subtitrare”. Create the workbook and a chapter in Markdown in the same browser, then refresh; or paste your script below.",
+    tpLoading:"Loading chapters…", tpLoaded:"Script loaded. Edits here do not change the original chapter.", tpEmpty:"Add a script with text before opening the teleprompter.", tpStorageError:"Cannot read the workbooks. Refresh or paste your script below.",
+    tpUnsupported:"This browser does not offer speech recognition. You can read and advance manually.", tpDenied:"Microphone access was denied. Allow it in the browser and retry, or advance manually.", tpNetwork:"Speech recognition lost its connection. Restart voice following or advance manually.", tpSpeechError:"Speech recognition could not continue. Check your microphone and language, then restart voice following or advance manually.", tpBusy:"Stop recording or dictation before opening the teleprompter.",
+    eyebrow:"dictation · romanian / english",
+    settings:"Settings", langLabel:"Spoken language", auto:"Auto",
+    engineLabel:"Transcription engine", engApi:"Server (accurate)", engLive:"Browser (no key)",
+    copy:"Copy", share:"Share", download:"Download", clear:"Clear all",
+    importFile:"Transcribe an audio file",
+    rec:"Record", stop:"Stop",
+    keepAudioLabel:"Also save the sound of the recording",
+    keepAudioTip:"Tick this before recording. The audio file is saved on “Download”, under the same name as the text.",
+    noAudio:"No audio was kept for this text.",
+    keepWavLabel:"Also as a high-quality WAV (lossless)",
+    keepWavTip:"The raw microphone sound, 24-bit, no filters and no compression. Saved next to the other audio file. It is big: about 9 MB a minute in mono.",
+    noWav:"No WAV was kept for this text.",
+    melodyArmLabel:"Also keep the sound for the melody",
+    melodyArmTip:"Tick this before recording. The sound stays in the page, so it can be turned into a melody below.",
+    melodyTitle:"Melody from the recording",
+    melodyIntro:"The page finds the notes and the beat in what you recorded and hands them to the instruments you pick.",
+    melodyLead:"Melody instrument", melodyBacking:"Backing",
+    melodyDrums:"Drums", melodyBass:"Bass", melodyChords:"Chords",
+    melodyChordInst:"Chord instrument",
+    melodyScale:"Scale", melodyScaleAuto:"Auto (detected)", melodyScaleMajor:"Major",
+    melodyScaleMinor:"Minor", melodyScalePenta:"Pentatonic", melodyScaleChrom:"No snapping",
+    melodyGrid:"Snap to the beat", melodyGridFree:"Free", melodyGrid4:"Quarters",
+    melodyGrid8:"Eighths", melodyGrid16:"Sixteenths",
+    melodyTempo:"Tempo (BPM)", melodyOct:"Melody octave",
+    melodyMake:"Make the melody", melodyPlay:"Play", melodyStop:"Stop",
+    melodySaveWav:"Save WAV", melodySaveMidi:"Save MIDI", melodyFromFile:"From a file",
+    melodyMajor:"major", melodyMinor:"minor",
+    melodyRollEmpty:"The notes found will show up here.",
+    melodyNoSrc:"There is no sound yet. Tick “Also keep the sound for the melody” before recording, or pick “From a file”.",
+    melodySrcRec:"Got the sound of the recording. Press “Make the melody”.",
+    melodySrcFile:"Got the file you picked. Press “Make the melody”.",
+    melodyDecoding:"Reading the sound…",
+    melodyBeatStep:"Looking for the beat…",
+    melodyPitchStep:p=>"Looking for the notes… "+p+"%",
+    melodyArranging:"Choosing the chords…",
+    melodyRendering:"Playing it on the instruments…",
+    melodyDone:o=>o.n+" notes · "+o.bpm+" BPM · "+o.key+" · "+o.bars+" bars · "+o.len,
+    melodyStale:"The settings changed. Press “Make the melody” again.",
+    melodyNoNotes:"No sung notes found. Try humming a melodic line rather than just speaking.",
+    melodyTrimmed:m=>"used the first "+m+" minutes",
+    melodyFailed:"Could not use this sound.",
+    melodyRights:"Every sound here is synthesised in this page: no samples, no libraries, nothing borrowed from anyone else. The melody comes out of your own voice, so you can use it in YouTube videos with no third-party copyright or royalty claims.",
+    instPiano:"Piano", instGuitar:"Guitar", instViolin:"Violin", instCello:"Cello",
+    instFlute:"Flute", instClarinet:"Clarinet", instTrumpet:"Trumpet", instOrgan:"Organ",
+    instHarp:"Harp", instXylo:"Xylophone", instBox:"Music box", instStrings:"Strings",
+    instSynth:"Synth", instBass:"Bass",
+    setHelp:"The key stays on this device. Audio goes only to the provider you pick.",
+    provider:"Provider", ownServer:"Your own server (proxy)", endpoint:"Proxy address",
+    apiKey:"API key", show:"Show", hide:"Hide", model:"Model",
+    hint:"Useful terms (optional)", segLen:"Segment length", segOff:"No splitting",
+    tidyLabel:"Fix punctuation and diacritics after transcribing",
+    tidyModel:"Model for the cleanup pass", save:"Save",
+    placeholder:"Your text appears here.",
+    words:n=>n+(n===1?" word":" words"),
+    listening:"Listening. Keep the screen on.",
+    transcribing:n=>"Transcribing segment "+n+"…",
+    doneSeg:n=>"Segment "+n+" done.",
+    tidying:"Cleaning up the text…",
+    ready:"Ready.",
+    copied:"Copied.",
+    cleared:"Text cleared.",
+    micDenied:"The microphone is blocked. Allow access in your browser settings, then reload.",
+    noRecorder:"This browser can't record audio. Try Safari on iPhone or Chrome on the tablet.",
+    insecure:"The microphone only works over <b>https://</b> or localhost. Opened from a local file (file://) or plain http, the browser won't grant mic access.",
+    needKey:"Add an API key in Settings, or switch to “Browser (no key)”.",
+    errNoKey:"API key missing.",
+    errNoEndpoint:"Proxy address missing.",
+    errNetwork:"The request never reached the server (network or CORS). If the provider blocks browser calls, route it through a proxy on your own server.",
+    err401:"Key rejected",
+    err413:"File too large. Pick a shorter segment in Settings.",
+    err429:"Too many requests, try again",
+    liveUnsupported:"Browser dictation isn't available here (common on tablets without Google services). Use the “Server (accurate)” engine.",
+    liveAuto:"Browser dictation needs a specific language; using Romanian.",
+    liveOn:"Dictation on. Speak normally.",
+    fileReading:"Transcribing the file…",
+    keyTipGroq:'Key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Whisper large v3 handles Romanian diacritics well. To generate one: open the link, sign in (or create a free account), click “Create API Key”, name it, and copy it — it is shown only once, so paste it here right away.',
+    keyTipOpenAI:'Key from platform.openai.com/api-keys.',
+    keyTipCustom:'Sends a multipart POST to your address; the key stays on the server. Leave the key field empty.',
+    tooBig:"File is too large for a single request (over 25 MB).",
+    helpBtn:"Help", helpTitle:"Help — Caiet vocal", helpClose:"Close",
+    helpBody:`
+      <h3>What this page does</h3>
+      <p>"Caiet vocal" (voice notebook) turns speech into text — either right in the browser, or by sending the audio to an external transcription engine.</p>
+      <h3>Recording</h3>
+      <ul>
+        <li>Press the big button to start; press again to stop.</li>
+        <li>The clock under the button shows how long you've spoken.</li>
+        <li>The <b>spoken language</b> (Romanian / English / Auto) is separate from the interface language — you can dictate Romanian with an English interface, or the other way round.</li>
+      </ul>
+      <h3>The transcription engine</h3>
+      <p>In <b>Settings</b> you choose between:</p>
+      <ul>
+        <li><b>Server (accurate)</b> — sends the audio to Groq, OpenAI, or your own server; needs an API key, which stays on this device.</li>
+        <li><b>Browser (no key)</b> — live dictation, no account, as long as the browser supports it.</li>
+      </ul>
+      <h3>Keeping the audio</h3>
+      <p>Tick <i>"Also save the sound of the recording"</i> <b>before</b> pressing Record — not mid-recording. The audio file is saved alongside the text, under the same name.</p>
+      <p>Also tick <i>"Also as a high-quality WAV"</i> to get a <code>.wav</code> under the same name as well: the raw microphone sound, 24-bit, at the sound card's rate, with no echo cancellation, no noise suppression and no compression. That is the file to edit; the other one is the small one to listen to.</p>
+      <h3>After transcribing</h3>
+      <p>Copy, share, download or clear the text with the buttons below it. You can also transcribe an existing audio file with "Transcribe an audio file".</p>
+      <h3>Melody from the recording</h3>
+      <p>Tick <i>"Also keep the sound for the melody"</i> <b>before</b> recording, then open the <b>🎵 Melody from the recording</b> panel and press <b>Make the melody</b>. The page tracks the pitch of your voice frame by frame, cuts that line into notes, finds the beat, and plays it on the instrument you picked, with drums, bass and chords underneath.</p>
+      <ul>
+        <li><b>Scale</b> snaps the notes onto a scale so nothing sounds off-key; "No snapping" leaves them exactly as sung.</li>
+        <li><b>Snap to the beat</b> moves note starts onto quarters, eighths or sixteenths.</li>
+        <li><b>Tempo</b> fills itself in with the beat that was found; you can type another.</li>
+        <li><b>Save WAV</b> gives you the audio; <b>Save MIDI</b> gives you the notes, so you can open them in any music program and swap the instruments there.</li>
+        <li>You can also start from an audio file, with <b>From a file</b>. The first 3 minutes are used.</li>
+      </ul>
+      <p>Every sound is synthesised here — no samples, no libraries, nothing borrowed — so the melody that comes out is yours, and you can use it in videos with no copyright or royalty trouble.</p>
+      <h3>Where files go</h3>
+      <p>The 📁 button in the top nav picks where things are saved: a folder on your computer, your phone's share sheet, or a plain download — everything lands in the <code>transcript</code> folder.</p>
+      <h3>Shortcuts</h3>
+      <p><kbd>Esc</kbd> closes the Settings sheet or the folder-picker sheet.</p>
+    `
+  }
+};
+let UI = "ro";
+function t(k,a){ const v = I18N[UI][k]; return typeof v === "function" ? v(a) : v; }
+
+/* ============================================================
+   2. Providers
+   ============================================================ */
+const PROVIDERS = {
+  groq:{
+    url:"https://api.groq.com/openai/v1/audio/transcriptions",
+    models:["whisper-large-v3","whisper-large-v3-turbo"],
+    chatUrl:"https://api.groq.com/openai/v1/chat/completions",
+    chatModel:"llama-3.3-70b-versatile",
+    keyPlaceholder:"gsk_…", tip:"keyTipGroq"
+  },
+  openai:{
+    url:"https://api.openai.com/v1/audio/transcriptions",
+    models:["gpt-4o-transcribe","whisper-1","gpt-4o-mini-transcribe"],
+    chatUrl:"https://api.openai.com/v1/chat/completions",
+    chatModel:"gpt-4o-mini",
+    keyPlaceholder:"sk-…", tip:"keyTipOpenAI"
+  },
+  custom:{
+    url:"", models:["whisper-large-v3"],
+    chatUrl:"", chatModel:"",
+    keyPlaceholder:"", tip:"keyTipCustom"
+  }
+};
+
+/* ============================================================
+   3. Settings store (persists where storage exists, memory otherwise)
+   ============================================================ */
+const KEY = "caiet-vocal:settings";
+const store = (function(){
+  const hasWS = typeof window.storage === "object" && window.storage && typeof window.storage.get === "function";
+  let ls = null;
+  if(!hasWS){
+    try{ localStorage.setItem("__cv","1"); localStorage.removeItem("__cv"); ls = localStorage; }
+    catch(e){ ls = null; }
+  }
+  const mem = {};
+  return {
+    async get(k){
+      if(hasWS){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } }
+      if(ls){ try{ return ls.getItem(k); }catch(e){ return null; } }
+      return mem[k] || null;
+    },
+    async set(k,v){
+      if(hasWS){ try{ await window.storage.set(k,v); return; }catch(e){} }
+      if(ls){ try{ ls.setItem(k,v); return; }catch(e){} }
+      mem[k] = v;
+    }
+  };
+})();
+
+const S = {
+  ui:"ro", lang:"ro", engine:"api",
+  provider:"groq", key:"", model:"whisper-large-v3", endpoint:"",
+  hint:"", segMin:5, tidy:false, tidyModel:"llama-3.3-70b-versatile",
+  keepAudio:false, keepWav:false,
+  melody:false, melLead:"piano", melChord:"strings",
+  melDrums:true, melBass:true, melChords:true,
+  melScale:"auto", melGrid:"2", melOct:"0"
+};
+
+/* ============================================================
+   4. DOM
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const stage=$("#stage"), recBtn=$("#recBtn"), recLabel=$("#recLabel"), clock=$("#clock");
+const rings=[...document.querySelectorAll(".ring")];
+const ta=$("#transcript"), interim=$("#interim"), counts=$("#counts"), segInfo=$("#segInfo");
+const statusEl=$("#status"), secureWarn=$("#secureWarn"), setupWarn=$("#setupWarn");
+const sheet=$("#sheet"), scrim=$("#scrim");
+const providerSel=$("#provider"), apiKeyEl=$("#apiKey"), modelEl=$("#model"), modelList=$("#modelList");
+const endpointEl=$("#endpoint"), endpointWrap=$("#endpointWrap"), hintEl=$("#hint");
+const segLenEl=$("#segLen"), tidyEl=$("#tidy"), tidyModelEl=$("#tidyModel"), keyTip=$("#keyTip");
+const fileInput=$("#fileInput"), keepAudioEl=$("#keepAudio"), keepWavEl=$("#keepWav"), melodyArmEl=$("#melodyArm");
+
+function say(msg, kind){
+  statusEl.className = "status" + (kind ? " " + kind : "");
+  statusEl.innerHTML = msg || "";
+}
+function updateCounts(){
+  const txt = ta.value.trim();
+  const n = txt ? txt.split(/\s+/).length : 0;
+  counts.textContent = t("words", n);
+}
+function appendText(text){
+  if(!text) return;
+  const cur = ta.value.replace(/\s+$/,"");
+  ta.value = cur ? cur + "\n\n" + text : text;
+  updateCounts();
+  ta.scrollTop = ta.scrollHeight;
+}
+
+/* ============================================================
+   5. Language / engine chips
+   ============================================================ */
+function bindChips(sel, attr, onPick){
+  const box = $(sel);
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button[" + attr + "]");
+    if(!b) return;
+    [...box.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    onPick(b.getAttribute(attr));
+  });
+}
+bindChips("#langChips","data-lang", v => { S.lang = v; save(); if(live.active){ stopLive(); startLive(); } });
+bindChips("#engineChips","data-engine", v => { S.engine = v; save(); checkSetup(); });
+
+/* ============================================================
+   6. UI language
+   ============================================================ */
+const LANG_KEY = "scula:ui-lang";
+const UI_ATTRS = ["placeholder", "title", "aria-label", "value", "alt"];
+function applyUILang(){
+  document.documentElement.lang = UI;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.getAttribute("data-i")); });
+  UI_ATTRS.forEach(attr => {
+    const d = "data-i-" + attr.replace("aria-label", "aria");
+    document.querySelectorAll("[" + d + "]").forEach(el => el.setAttribute(attr, t(el.getAttribute(d))));
+  });
+  const navBtn = document.getElementById("navLangBtn");
+  if(navBtn) navBtn.textContent = UI === "ro" ? "EN" : "RO";
+  try{ localStorage.setItem(LANG_KEY, UI); }catch(e){}
+  recLabel.textContent = rec.active ? t("stop") : t("rec");
+  const b = $("#peekBtn"); b.textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+  secureWarn.innerHTML = t("insecure");
+  melSyncLabels();
+  teleprompter.labels();
+  updateCounts(); updateProviderUI(); checkSetup();
+}
+window.addEventListener("scula-ui-lang", e => { UI = S.ui = e.detail; applyUILang(); save(); if(!helpSheet.classList.contains("hidden")) paintHelp(); });
+
+/* ============================================================
+   7. Settings sheet
+   ============================================================ */
+function openSheet(){ sheet.classList.remove("hidden"); scrim.classList.remove("hidden"); }
+function closeSheet(){ sheet.classList.add("hidden"); scrim.classList.add("hidden"); }
+$("#setBtn").addEventListener("click", openSheet);
+scrim.addEventListener("click", closeSheet);
+$("#peekBtn").addEventListener("click", () => {
+  apiKeyEl.type = apiKeyEl.type === "password" ? "text" : "password";
+  $("#peekBtn").textContent = apiKeyEl.type === "password" ? t("show") : t("hide");
+});
+function updateProviderUI(){
+  const p = PROVIDERS[providerSel.value] || PROVIDERS.groq;
+  apiKeyEl.placeholder = p.keyPlaceholder;
+  modelList.innerHTML = p.models.map(m => '<option value="' + m + '"></option>').join("");
+  endpointWrap.classList.toggle("hidden", providerSel.value !== "custom");
+  keyTip.innerHTML = t(p.tip);
+}
+providerSel.addEventListener("change", () => {
+  const p = PROVIDERS[providerSel.value];
+  modelEl.value = p.models[0] || "";
+  tidyModelEl.value = p.chatModel || "";
+  updateProviderUI();
+});
+$("#saveBtn").addEventListener("click", () => {
+  S.provider = providerSel.value;
+  S.key = apiKeyEl.value.trim();
+  S.model = modelEl.value.trim() || PROVIDERS[S.provider].models[0] || "";
+  S.endpoint = endpointEl.value.trim();
+  S.hint = hintEl.value.trim();
+  S.segMin = parseInt(segLenEl.value, 10) || 0;
+  S.tidy = tidyEl.checked;
+  S.tidyModel = tidyModelEl.value.trim();
+  save(); closeSheet(); checkSetup(); say(t("ready"));
+});
+async function save(){ try{ await store.set(KEY, JSON.stringify(S)); }catch(e){} try{ await store.set(LANG_KEY, S.ui); }catch(e){} }
+async function load(){
+  let raw = null;
+  try{ raw = await store.get(KEY); }catch(e){}
+  if(raw){ try{ Object.assign(S, JSON.parse(raw)); }catch(e){} }
+  // Shared LANG_KEY (docs/I18N.md) is the source of truth once it exists;
+  // S.ui (from the per-app settings blob above) is the back-compat fallback.
+  let sharedLang = null;
+  try{ sharedLang = await store.get(LANG_KEY); }catch(e){}
+  S.ui = sharedLang === "en" || sharedLang === "ro" ? sharedLang : S.ui;
+  UI = S.ui === "en" ? "en" : "ro";
+  providerSel.value = S.provider in PROVIDERS ? S.provider : "groq";
+  apiKeyEl.value = S.key || "";
+  modelEl.value = S.model || PROVIDERS[providerSel.value].models[0];
+  endpointEl.value = S.endpoint || "";
+  hintEl.value = S.hint || "";
+  segLenEl.value = String(S.segMin);
+  tidyEl.checked = !!S.tidy;
+  tidyModelEl.value = S.tidyModel || PROVIDERS[providerSel.value].chatModel || "";
+  keepAudioEl.checked = !!S.keepAudio;
+  keepWavEl.checked = !!(S.keepAudio && S.keepWav);
+  melodyArmEl.checked = !!S.melody;
+  mel.lead = S.melLead in INSTR ? S.melLead : "piano";
+  mel.back.drums = S.melDrums !== false;
+  mel.back.bass = S.melBass !== false;
+  mel.back.chords = S.melChords !== false;
+  melChordInstEl.value = S.melChord in INSTR ? S.melChord : "strings";
+  melScaleEl.value = S.melScale || "auto";
+  melGridEl.value = S.melGrid == null ? "2" : String(S.melGrid);
+  melOctEl.value = String(S.melOct == null ? 0 : S.melOct);
+  document.querySelectorAll("#langChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
+  document.querySelectorAll("#engineChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.engine === S.engine)));
+  applyUILang();
+}
+
+function checkSetup(){
+  const needsKey = S.engine === "api" && S.provider !== "custom" && !S.key;
+  const needsUrl = S.engine === "api" && S.provider === "custom" && !S.endpoint;
+  if(needsKey || needsUrl){
+    setupWarn.textContent = needsUrl ? t("errNoEndpoint") : t("needKey");
+    setupWarn.classList.remove("hidden");
+  } else {
+    setupWarn.classList.add("hidden");
+  }
+}
+
+/* ============================================================
+   7b. Help
+   ============================================================ */
+const helpSheet=$("#helpSheet"), helpScrim=$("#helpScrim");
+function paintHelp(){ $("#helpBody").innerHTML = t("helpBody"); }
+function openHelpModal(){ paintHelp(); helpSheet.classList.remove("hidden"); helpScrim.classList.remove("hidden"); }
+function closeHelpModal(){ helpSheet.classList.add("hidden"); helpScrim.classList.add("hidden"); }
+$("#helpBtn").addEventListener("click", openHelpModal);
+$("#helpCloseBtn").addEventListener("click", closeHelpModal);
+helpScrim.addEventListener("click", closeHelpModal);
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !helpSheet.classList.contains("hidden")) closeHelpModal(); });
+
+/* ============================================================
+   8. Secure-context check
+   ============================================================ */
+if(!window.isSecureContext){ secureWarn.classList.remove("hidden"); }
+
+/* ============================================================
+   9. Recording (MediaRecorder) with segment rotation
+   ============================================================ */
+function pickMime(){
+  if(typeof MediaRecorder === "undefined") return null;
+  const cand = [
+    ["audio/webm;codecs=opus","webm"],
+    ["audio/ogg;codecs=opus","ogg"],
+    ["audio/mp4;codecs=mp4a.40.2","m4a"],
+    ["audio/mp4","m4a"],
+    ["audio/aac","m4a"]
+  ];
+  for(const [m,e] of cand){
+    try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return {mime:m, ext:e}; }catch(_){}
+  }
+  return {mime:"", ext:"webm"};
+}
+
+const rec = { active:false, stream:null, mr:null, chunks:[], fmt:null, t0:0, timer:null, rot:null, rotating:false, n:0 };
+
+/* Keeping the sound is a *second* MediaRecorder on the same stream, running
+   uninterrupted for the whole session. The transcription recorder above is
+   rotated every S.segMin minutes, and its segments are separate containers -
+   glueing them back together does not produce a playable file. One recorder
+   that never stops does. */
+const audio = { armed:false, mr:null, chunks:[], blob:null, ext:"webm", own:null };
+
+/* The WAV is a third tap, and a different kind: not a MediaRecorder (every
+   one of them compresses) but the raw float samples, read off a Web Audio
+   graph and packed as 24-bit PCM as they arrive. It asks for its own stream
+   with echo cancellation, noise suppression and gain control off - the
+   transcription stream has all three on and is mono, which is right for
+   speech recognition and wrong for a recording someone wants to keep. */
+const wav = { armed:false, ctx:null, node:null, src:null, own:null, sr:48000, ch:1,
+              parts:[], pend:[], pendBytes:0, bytes:0, blob:null };
+
+// Read the checkboxes once, when recording starts: what was ticked then is
+// what gets recorded. Any earlier take is dropped here, so a new recording
+// never leaves the previous session's sound behind to be saved with the new
+// text. Two boxes want the sound for different reasons - one writes it next
+// to the transcript, the other (S 14) turns it into a melody - and either is
+// enough to start the recorder.
+function armAudio(){
+  audio.armed = !!(keepAudioEl.checked || melodyArmEl.checked);
+  audio.blob = null; audio.chunks = [];
+  wav.armed = !!(keepAudioEl.checked && keepWavEl.checked);
+  wav.blob = null; wav.parts = []; wav.pend = []; wav.pendBytes = 0; wav.bytes = 0;
+}
+
+// `stream` is the recording stream when there is one (the API engine); browser
+// dictation has none, so ask for our own and stop it again when done.
+async function startAudioKeep(stream){
+  startWav(stream);
+  if(!audio.armed || typeof MediaRecorder === "undefined") return;
+  if(audio.mr && audio.mr.state === "recording") return;
+  if(!stream){
+    try{ stream = audio.own = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+    catch(e){ audio.armed = false; return; }
+  }
+  const fmt = pickMime();
+  audio.ext = fmt.ext;
+  const opts = {};
+  if(fmt.mime) opts.mimeType = fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ audio.mr = new MediaRecorder(stream, opts); }
+  catch(e){ try{ audio.mr = new MediaRecorder(stream); }catch(e2){ audio.armed = false; return; } }
+  audio.chunks = [];
+  audio.mr.ondataavailable = ev => { if(ev.data && ev.data.size) audio.chunks.push(ev.data); };
+  audio.mr.onstop = () => {
+    const type = audio.chunks.length ? (audio.chunks[0].type || fmt.mime) : fmt.mime;
+    const blob = new Blob(audio.chunks, {type: type || "audio/webm"});
+    audio.chunks = [];
+    audio.blob = blob.size > 1200 ? blob : null;
+    if(audio.blob && melodyArmEl.checked) melSetSource(audio.blob, "rec");
+    stopOwnStream();
+  };
+  try{ audio.mr.start(); }catch(e){ audio.armed = false; stopOwnStream(); }
+}
+
+function stopOwnStream(){
+  if(audio.own){ audio.own.getTracks().forEach(tr => tr.stop()); audio.own = null; }
+}
+function stopAudioKeep(){
+  stopWav();
+  try{ if(audio.mr && audio.mr.state !== "inactive"){ audio.mr.stop(); return; } }catch(e){}
+  stopOwnStream();
+}
+
+async function startWav(fallback){
+  if(!wav.armed || wav.ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC){ wav.armed = false; return; }
+  let stream = null;
+  try{
+    stream = wav.own = await navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false,
+      channelCount:{ ideal:2 } } });
+  }catch(e){ stream = fallback; }
+  if(!stream || !wav.armed){ stopWavStream(); wav.armed = false; return; }
+  try{
+    const tr = stream.getAudioTracks()[0];
+    const set = tr && tr.getSettings ? tr.getSettings() : {};
+    wav.ch = set.channelCount === 2 ? 2 : 1;
+    wav.ctx = new AC();
+    wav.sr = wav.ctx.sampleRate;
+    wav.src = wav.ctx.createMediaStreamSource(stream);
+    // ScriptProcessor rather than an AudioWorklet: a worklet is a module
+    // loaded from a URL, and this page is one file that must open from file://.
+    wav.node = wav.ctx.createScriptProcessor(4096, wav.ch, wav.ch);
+    wav.node.onaudioprocess = ev => { if(wav.ctx) wavTake(ev.inputBuffer); };
+    wav.src.connect(wav.node);
+    // A processor only runs while it reaches the destination; its output
+    // buffer is never written, so what it passes on is silence.
+    wav.node.connect(wav.ctx.destination);
+    if(wav.ctx.state === "suspended") wav.ctx.resume().catch(() => {});
+  }catch(e){ wavTeardown(); wav.armed = false; }
+}
+
+// Pack each block as 24-bit little-endian PCM straight away - 3 bytes a sample
+// instead of the 4 a float copy would hold - and fold the blocks into a Blob
+// every few seconds, which the browser is free to page out of memory.
+function wavTake(buf){
+  const n = buf.length, ch = wav.ch;
+  const chans = [];
+  for(let c = 0; c < ch; c++) chans.push(buf.getChannelData(Math.min(c, buf.numberOfChannels - 1)));
+  const out = ScuLaPCM.pack24(chans);
+  wav.pend.push(out); wav.pendBytes += out.length; wav.bytes += out.length;
+  if(wav.pendBytes > wav.sr * ch * 3 * 5){ wav.parts.push(new Blob(wav.pend)); wav.pend = []; wav.pendBytes = 0; }
+}
+
+function stopWavStream(){
+  if(wav.own){ wav.own.getTracks().forEach(tr => tr.stop()); wav.own = null; }
+}
+function wavTeardown(){
+  try{ if(wav.src) wav.src.disconnect(); }catch(e){}
+  try{ if(wav.node){ wav.node.onaudioprocess = null; wav.node.disconnect(); } }catch(e){}
+  try{ if(wav.ctx) wav.ctx.close(); }catch(e){}
+  wav.ctx = wav.node = wav.src = null;
+  stopWavStream();
+}
+function stopWav(){
+  // A start still waiting on the microphone sees this and backs out.
+  wav.armed = false;
+  if(!wav.ctx) return;
+  wavTeardown();
+  if(wav.pend.length){ wav.parts.push(new Blob(wav.pend)); wav.pend = []; wav.pendBytes = 0; }
+  // Under a tenth of a second is a stray click, not a recording.
+  wav.blob = wav.bytes >= wav.sr * wav.ch * 3 / 10 ? wavPcmBlob(wav.parts, wav.bytes, wav.sr, wav.ch) : null;
+  wav.parts = [];
+}
+
+/* --- WAV (24-bit PCM, any channel count) ---------------------------- */
+function wavPcmBlob(parts, dataBytes, sr, ch){
+  return ScuLaPCM.wav(parts, dataBytes, sr, ch);
+}
+
+keepAudioEl.addEventListener("change", () => {
+  S.keepAudio = keepAudioEl.checked;
+  // The WAV is a second copy of the kept sound, so it cannot outlive the first.
+  if(!keepAudioEl.checked){ keepWavEl.checked = false; S.keepWav = false; }
+  save();
+});
+keepWavEl.addEventListener("change", () => {
+  S.keepWav = keepWavEl.checked;
+  if(keepWavEl.checked && !keepAudioEl.checked){ keepAudioEl.checked = true; S.keepAudio = true; }
+  save();
+});
+const queue = { items:[], busy:false, done:0 };
+let audioCtx=null, analyser=null, srcNode=null, rafId=null, wakeLock=null;
+
+recBtn.addEventListener("click", async () => {
+  if(S.engine === "live"){ live.active ? stopLive() : startLive(); return; }
+  recBtn.disabled = true;
+  try{ if(rec.active) stopRec(); else await startRec(); }
+  finally{ recBtn.disabled = false; }
+});
+
+async function startRec(){
+  if(typeof MediaRecorder === "undefined"){ say(t("noRecorder"), "err"); return; }
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  if(S.provider === "custom" && !S.endpoint){ say(t("errNoEndpoint"), "err"); openSheet(); return; }
+
+  try{
+    rec.stream = await navigator.mediaDevices.getUserMedia({
+      audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+  }catch(e){ say(t("micDenied"), "err"); return; }
+
+  rec.fmt = pickMime();
+  armAudio(); startAudioKeep(rec.stream);
+  rec.active = true; rec.n = 0; rec.t0 = Date.now();
+  queue.done = 0;
+  setRecUI(true);
+  say(t("listening"), "busy");
+  startMeter(rec.stream);
+  requestWakeLock();
+  rec.timer = setInterval(tick, 250); tick();
+  startSegment();
+}
+
+function startSegment(){
+  const opts = {};
+  if(rec.fmt.mime) opts.mimeType = rec.fmt.mime;
+  opts.audioBitsPerSecond = 64000;
+  try{ rec.mr = new MediaRecorder(rec.stream, opts); }
+  catch(e){ try{ rec.mr = new MediaRecorder(rec.stream); }catch(e2){ say(t("noRecorder"),"err"); return; } }
+  rec.chunks = [];
+  rec.n++;
+  rec.mr.ondataavailable = ev => { if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
+  rec.mr.onstop = () => {
+    const type = rec.chunks.length ? (rec.chunks[0].type || rec.fmt.mime) : rec.fmt.mime;
+    const blob = new Blob(rec.chunks, {type:type || "audio/webm"});
+    rec.chunks = [];
+    if(blob.size > 1200) enqueue(blob, rec.fmt.ext);
+    if(rec.rotating && rec.active){ rec.rotating = false; startSegment(); armRotation(); }
+  };
+  rec.mr.start();
+  armRotation();
+}
+
+function armRotation(){
+  clearTimeout(rec.rot);
+  if(!S.segMin) return;
+  rec.rot = setTimeout(() => {
+    if(rec.active && rec.mr && rec.mr.state === "recording"){ rec.rotating = true; rec.mr.stop(); }
+  }, S.segMin * 60000);
+}
+
+function stopRec(){
+  rec.active = false; rec.rotating = false;
+  clearTimeout(rec.rot); clearInterval(rec.timer);
+  try{ if(rec.mr && rec.mr.state !== "inactive") rec.mr.stop(); }catch(e){}
+  stopAudioKeep();
+  stopMeter();
+  releaseWakeLock();
+  setRecUI(false);
+  setTimeout(() => {
+    if(rec.stream){ rec.stream.getTracks().forEach(tr => tr.stop()); rec.stream = null; }
+  }, 400);
+}
+
+function setRecUI(on){
+  recBtn.classList.toggle("on", on);
+  recLabel.textContent = on ? t("stop") : t("rec");
+  stage.classList.toggle("idle", !on);
+  if(!on){ rings.forEach(r => { r.style.transform = "scale(.55)"; r.style.opacity = ""; }); }
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+function tick(){
+  const ms = Date.now() - rec.t0;
+  clock.innerHTML = fmtTime(ms) + (S.segMin ? ' · <b>' + t("segLen").toLowerCase() + " " + S.segMin + " min</b>" : "");
+}
+
+/* --- level meter drives the growth rings --- */
+function startMeter(stream){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    srcNode = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512; analyser.smoothingTimeConstant = .75;
+    srcNode.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    let smooth = 0;
+    const loop = () => {
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0;
+      for(let i=0;i<buf.length;i++){ const v = Math.abs(buf[i]-128)/128; if(v>peak) peak = v; }
+      smooth = smooth*0.72 + peak*0.28;
+      const lvl = Math.min(1, smooth*3.2);
+      rings.forEach((r,i) => {
+        const base = 0.55 + i*0.13;
+        r.style.transform = "scale(" + (base + lvl*(0.16 + i*0.05)).toFixed(3) + ")";
+        r.style.opacity = (0.12 + lvl*(0.5 - i*0.09)).toFixed(3);
+      });
+      rafId = requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){}
+}
+function stopMeter(){
+  cancelAnimationFrame(rafId);
+  try{ if(srcNode) srcNode.disconnect(); }catch(e){}
+  try{ if(audioCtx) audioCtx.close(); }catch(e){}
+  audioCtx = analyser = srcNode = null;
+}
+
+async function requestWakeLock(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseWakeLock(){ try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){} }
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && rec.active && !wakeLock) requestWakeLock();
+});
+
+/* ============================================================
+   10. Transcription queue
+   ============================================================ */
+function enqueue(blob, ext){
+  queue.items.push({blob, ext});
+  segInfo.textContent = "";
+  pump();
+}
+async function pump(){
+  if(queue.busy || !queue.items.length) return;
+  queue.busy = true;
+  const item = queue.items.shift();
+  const idx = ++queue.done;
+  say(t("transcribing", idx), "busy");
+  segInfo.textContent = t("transcribing", idx);
+  try{
+    if(item.blob.size > 25*1024*1024) throw new Error(t("tooBig"));
+    let text = await transcribe(item.blob, item.ext, tailPrompt());
+    if(text && S.tidy){ say(t("tidying"), "busy"); text = await tidyUp(text); }
+    appendText(text);
+    say(t("doneSeg", idx));
+  }catch(e){
+    say(String(e.message || e), "err");
+  }
+  segInfo.textContent = "";
+  queue.busy = false;
+  if(queue.items.length) pump();
+}
+function tailPrompt(){
+  const tail = ta.value.trim().slice(-400);
+  const bits = [];
+  if(S.hint) bits.push(S.hint);
+  if(tail) bits.push(tail);
+  return bits.join(" ").slice(-800);
+}
+
+async function transcribe(blob, ext, promptText){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? S.endpoint : p.url;
+  if(!url) throw new Error(t("errNoEndpoint"));
+  if(S.provider !== "custom" && !S.key) throw new Error(t("errNoKey"));
+
+  const fd = new FormData();
+  fd.append("file", blob, "inregistrare." + (ext || "webm"));
+  fd.append("model", S.model || p.models[0]);
+  fd.append("response_format", "json");
+  fd.append("temperature", "0");
+  if(S.lang !== "auto") fd.append("language", S.lang);
+  if(promptText) fd.append("prompt", promptText);
+
+  const headers = {};
+  if(S.key) headers.Authorization = "Bearer " + S.key;
+
+  let res;
+  try{ res = await fetch(url, {method:"POST", headers, body:fd}); }
+  catch(e){ throw new Error(t("errNetwork")); }
+
+  if(!res.ok){
+    let msg = "HTTP " + res.status;
+    try{
+      const j = await res.json();
+      if(j && j.error) msg = j.error.message || (typeof j.error === "string" ? j.error : msg);
+    }catch(_){}
+    if(res.status === 401 || res.status === 403) msg = t("err401") + " · " + msg;
+    if(res.status === 413) msg = t("err413");
+    if(res.status === 429) msg = t("err429") + " · " + msg;
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return String(data.text || "").trim();
+}
+
+async function tidyUp(text){
+  const p = PROVIDERS[S.provider] || PROVIDERS.groq;
+  const url = S.provider === "custom" ? "" : p.chatUrl;
+  if(!url || !S.tidyModel) return text;
+  const sys = "You edit raw speech-to-text output. Fix punctuation, capitalisation and missing Romanian diacritics. " +
+              "Never translate, never rephrase, never add or remove words. Reply with the corrected text only.";
+  try{
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + S.key },
+      body: JSON.stringify({
+        model: S.tidyModel, temperature: 0,
+        messages: [{role:"system", content:sys}, {role:"user", content:text}]
+      })
+    });
+    if(!res.ok) return text;
+    const j = await res.json();
+    const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    return out ? String(out).trim() : text;
+  }catch(e){ return text; }
+}
+
+/* ============================================================
+   11. Browser dictation (Web Speech API)
+   ============================================================ */
+const live = { active:false, sr:null, wantOn:false };
+function startLive(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ say(t("liveUnsupported"), "err"); return; }
+  const lang = S.lang === "en" ? "en-US" : "ro-RO";
+  if(S.lang === "auto") say(t("liveAuto"));
+  try{
+    live.sr = new SR();
+  }catch(e){ say(t("liveUnsupported"), "err"); return; }
+  live.sr.lang = lang;
+  live.sr.continuous = true;
+  live.sr.interimResults = true;
+  live.wantOn = true; live.active = true;
+  armAudio(); startAudioKeep(null);
+  setRecUI(true);
+  say(t("liveOn"), "busy");
+  clock.textContent = lang;
+
+  live.sr.onresult = ev => {
+    let inter = "";
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const r = ev.results[i];
+      if(r.isFinal){
+        const txt = String(r[0].transcript).trim();
+        if(txt){
+          const cur = ta.value.replace(/\s+$/,"");
+          ta.value = cur ? cur + " " + txt : txt;
+          updateCounts(); ta.scrollTop = ta.scrollHeight;
+        }
+      } else {
+        inter += r[0].transcript;
+      }
+    }
+    interim.textContent = inter;
+    const pulse = Math.min(1, (inter.length % 40) / 40 + 0.25);
+    rings.forEach((r,i) => { r.style.transform = "scale(" + (0.55 + i*0.13 + pulse*0.1).toFixed(3) + ")"; });
+  };
+  live.sr.onerror = ev => {
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){ live.wantOn = false; say(t("micDenied"), "err"); }
+    else if(ev.error === "language-not-supported"){ live.wantOn = false; say(t("liveUnsupported"), "err"); }
+  };
+  live.sr.onend = () => {
+    interim.textContent = "";
+    if(live.wantOn){ try{ live.sr.start(); }catch(e){} }
+    else { live.active = false; setRecUI(false); clock.textContent = "00:00"; say(t("ready")); }
+  };
+  try{ live.sr.start(); }
+  catch(e){ live.wantOn = false; live.active = false; setRecUI(false); say(t("liveUnsupported"), "err"); }
+  requestWakeLock();
+}
+function stopLive(){
+  live.wantOn = false;
+  try{ if(live.sr) live.sr.stop(); }catch(e){}
+  stopAudioKeep();
+  live.active = false; setRecUI(false); interim.textContent = "";
+  clock.textContent = "00:00"; releaseWakeLock();
+}
+
+/* ============================================================
+   12. File import
+   ============================================================ */
+$("#fileBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files && fileInput.files[0];
+  fileInput.value = "";
+  if(!f) return;
+  if(S.provider !== "custom" && !S.key){ say(t("needKey"), "err"); openSheet(); return; }
+  const ext = (f.name.split(".").pop() || "m4a").toLowerCase();
+  say(t("fileReading"), "busy");
+  enqueue(f, ext);
+});
+
+/* ============================================================
+   13. Copy / share / download / clear
+   ============================================================ */
+$("#copyBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); say(t("copied")); }
+  catch(e){ ta.focus(); ta.select(); say(t("copied")); }
+});
+$("#shareBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  if(navigator.share){ try{ await navigator.share({title:"Caiet vocal", text:txt}); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(txt); say(t("copied")); }catch(e){} }
+});
+$("#dlBtn").addEventListener("click", async () => {
+  const txt = ta.value;
+  if(!txt) return;
+  const stamp = new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
+  const blob = new Blob(["\uFEFF" + txt], {type:"text/plain;charset=utf-8"});
+  const name = "transcriere_" + stamp + ".txt";
+  // Folder, share sheet or download - ScuLaFolder decides and hands back a
+  // ready-made message (null when there is nothing to say, e.g. the person
+  // dismissed the share sheet). See the shared nav block.
+  const r = await ScuLaFolder.save(name, blob, { quiet:true });
+  const msgs = [r.message];
+  // The kept sound rides along under the name the text actually got (freeName
+  // may have bumped it to -1), so the pair stays together in the folder.
+  if(keepAudioEl.checked && !r.cancelled){
+    if(audio.blob){
+      const twin = (r.name || name).replace(/\.[^.]+$/, "") + "." + audio.ext;
+      const ra = await ScuLaFolder.save(twin, audio.blob, { quiet:true });
+      msgs.push(ra.message);
+    } else {
+      msgs.push(t("noAudio"));
+    }
+    if(keepWavEl.checked){
+      if(wav.blob){
+        const wname = (r.name || name).replace(/\.[^.]+$/, "") + ".wav";
+        const rw = await ScuLaFolder.save(wname, wav.blob, { quiet:true });
+        msgs.push(rw.message);
+      } else if(audio.blob){
+        msgs.push(t("noWav"));
+      }
+    }
+  }
+  const msg = msgs.filter(Boolean).join(" · ");
+  if(msg) say(msg);
+});
+$("#clearBtn").addEventListener("click", () => {
+  ta.value = ""; interim.textContent = ""; audio.blob = null; wav.blob = null; melReset(); updateCounts(); say(t("cleared"));
+});
+ta.addEventListener("input", updateCounts);
+
+
+/* ============================================================
+   14. Melodie — the recording turned into a piece of music
+   ------------------------------------------------------------
+   Analysis and synthesis both happen here, in this page: the pitch
+   track (YIN), the beat (spectral flux + autocorrelation) and every
+   instrument (additive/subtractive voices, Karplus-Strong for the
+   guitar, hand-built drum one-shots). No samples, no library, no
+   third-party audio anywhere in the signal path — which is the whole
+   point: the result carries no copyright or royalty claim from anyone
+   but the person who spoke into the microphone.
+   ============================================================ */
+const MEL_SR   = 44100;   // render rate
+const AN_SR    = 22050;   // analysis rate (onsets / beat)
+const HOP      = 256;     // analysis hop, both rates
+const MEL_MAX  = 180;     // seconds of source we look at (memory, not taste)
+
+const yieldUI = () => new Promise(r => setTimeout(r, 0));
+const clampN = (v,a,b) => v < a ? a : (v > b ? b : v);
+
+/* --- instruments -------------------------------------------------
+   `partials` are the relative amplitudes of harmonics 1..N. `damp`
+   turns a held tone into a struck/plucked one (exp decay, faster for
+   the upper partials via `dampP`). `ks` swaps the whole kernel for a
+   Karplus-Strong string. `gm` is the General MIDI program the MIDI
+   export writes, so the same arrangement opens in any DAW. */
+const { INSTR,LEAD_ORDER,CHORD_ORDER,NOTE_RO,NOTE_EN,SCALES,snapMidi,chordsFor,fitRange,chordVoicing,renderInstrument,renderKick,renderSnare,renderHat,place,finishMix,wavBlob,midiBlob } = ScuLaSynthesis;
+
+/* Versioned analysis and synthesis kernels are shared with Song. */
+const {decodeMono,normalise,decimate2,trackPitch,segmentNotes,onsetEnvelope,detectTempo,beatPhase,detectKey,median}=ScuLaAnalysis;
+
+/* --- arrangement --------------------------------------------------- */
+const mel = {
+  src:null, srcKind:"", raw:null, rawFor:null, score:null, out:null, parts:null,
+  lead:"piano", back:{ drums:true, bass:true, chords:true },
+  busy:false, playing:false, trimmed:false, ctx:null, node:null, msg:null
+};
+
+function quantise(notes, beat, phase, div){
+  if(!div) return notes.slice().sort((a,b) => a.start - b.start);
+  const step = beat / div;
+  const q = notes.map(n => {
+    const s = Math.round((n.start - phase) / step) * step + phase;
+    let e = Math.round((n.start + n.dur - phase) / step) * step + phase;
+    if(e - s < step - 1e-9) e = s + step;
+    return { start: s, dur: e - s, midi: n.midi, vel: n.vel };
+  });
+  q.sort((a, b) => a.start - b.start || b.dur - a.dur);
+  const out = [];
+  for(const n of q){
+    const p = out[out.length - 1];
+    if(p){
+      if(Math.abs(p.start - n.start) < 1e-6) continue;   // same slot — the longer one won the sort
+      if(n.start < p.start + p.dur) p.dur = n.start - p.start;
+      if(p.dur <= 1e-6) out.pop();
+    }
+    out.push(n);
+  }
+  return out.filter(n => n.dur > 1e-6);
+}
+function keyName(tonic, mode){
+  return (UI === "ro" ? NOTE_RO : NOTE_EN)[((tonic % 12) + 12) % 12] + " " + t(mode === "minor" ? "melodyMinor" : "melodyMajor");
+}
+
+function buildScore(){
+  const raw = mel.raw;
+  const bpm = Math.round(clampN(parseFloat(melTempoEl.value) || raw.bpm, 40, 220));
+  const beat = 60 / bpm, barLen = beat * 4;
+  const div = parseInt(melGridEl.value, 10) || 0;
+  const oct = parseInt(melOctEl.value, 10) || 0;
+  let notes = raw.notes.map(n => ({ start:n.start, dur:n.dur, midi:n.midi, vel:n.vel }));
+  if(!notes.length) return null;
+
+  const key = detectKey(notes);
+  const want = melScaleEl.value;
+  const mode = want === "major" ? "major" : (want === "minor" ? "minor" : key.mode);
+  let set = null;
+  if(want === "auto") set = SCALES[key.mode];
+  else if(want === "major") set = SCALES.major;
+  else if(want === "minor") set = SCALES.minor;
+  else if(want === "penta") set = SCALES.penta;
+  if(set) notes.forEach(n => { n.midi = snapMidi(n.midi, key.tonic, set); });
+
+  notes = quantise(notes, beat, raw.phase, div);
+  if(!notes.length) return null;
+
+  // Bar 1, beat 1 is the first note. Everything was quantised against the
+  // detected beat phase, so shifting the whole thing by that first note
+  // keeps the notes on the grid the drums are about to play.
+  const base = notes[0].start;
+  let lastEnd = 0;
+  for(const n of notes){ n.start -= base; lastEnd = Math.max(lastEnd, n.start + n.dur); }
+  const origin = 0;
+  const bars = Math.max(1, Math.ceil(lastEnd / barLen));
+  const chords = chordsFor(notes, origin, barLen, bars, key.tonic, mode);
+  return { bpm, beat, barLen, origin, bars, notes, chords, tonic:key.tonic, mode, oct,
+           end: bars * barLen };
+}
+
+async function renderAudio(sc){
+  const sr = MEL_SR;
+  const sp = INSTR[mel.lead] || INSTR.piano;
+  const parts = [];
+
+  // the lead sits where the chosen instrument actually plays: shift the
+  // whole line by octaves until its middle lands inside the range
+  const med = median(sc.notes.map(n => n.midi));
+  let shift = sc.oct * 12;
+  while(med + shift < sp.lo) shift += 12;
+  while(med + shift > sp.hi) shift -= 12;
+  parts.push({ inst: mel.lead, ch: 0, name: "Lead", gain: 1, pan: 0,
+    notes: sc.notes.map(n => ({ start:n.start, dur:Math.min(4, n.dur), midi:fitRange(n.midi + shift, sp), vel:n.vel })) });
+
+  if(mel.back.chords){
+    const id = melChordInstEl.value in INSTR ? melChordInstEl.value : "strings";
+    const ci = INSTR[id], cn = [];
+    const plucked = !!(ci.damp || ci.ks);
+    for(const c of sc.chords){
+      const t0 = sc.origin + c.bar * sc.barLen;
+      const v = chordVoicing(c);
+      if(plucked){
+        const arp = [v[0], v[1], v[2], v[0] + 12];
+        const pat = [0, 1, 2, 3, 2, 1, 0, 1];
+        for(let k = 0; k < 8; k++)
+          cn.push({ start: t0 + k * sc.beat / 2, dur: sc.beat * 0.48, midi: fitRange(arp[pat[k]], ci), vel: k % 2 ? 0.34 : 0.46 });
+      } else {
+        for(const m of v) cn.push({ start: t0, dur: sc.barLen * 0.96, midi: fitRange(m, ci), vel: 0.4 });
+      }
+    }
+    parts.push({ inst: id, ch: 1, name: "Chords", gain: 0.55, pan: -0.22, notes: cn });
+  }
+
+  if(mel.back.bass){
+    const bi = INSTR.bass, bn = [];
+    for(const c of sc.chords){
+      const t0 = sc.origin + c.bar * sc.barLen;
+      const root = fitRange(36 + c.root, bi);
+      bn.push({ start: t0, dur: sc.beat * 1.8, midi: root, vel: 0.78 });
+      bn.push({ start: t0 + sc.beat * 2, dur: sc.beat * 1.8, midi: root, vel: 0.6 });
+    }
+    parts.push({ inst: "bass", ch: 2, name: "Bass", gain: 0.8, pan: 0.05, notes: bn });
+  }
+
+  const drums = [];
+  if(mel.back.drums){
+    for(let b = 0; b < sc.bars; b++){
+      const t0 = sc.origin + b * sc.barLen;
+      drums.push({ t: t0, type: "kick", vel: 1 });
+      drums.push({ t: t0 + sc.beat * 2, type: "kick", vel: 0.82 });
+      drums.push({ t: t0 + sc.beat, type: "snare", vel: 0.9 });
+      drums.push({ t: t0 + sc.beat * 3, type: "snare", vel: 0.9 });
+      for(let k = 0; k < 8; k++){
+        const open = (b % 2 === 1 && k === 7);
+        drums.push({ t: t0 + k * sc.beat / 2, type: open ? "hato" : "hat", vel: k % 2 ? 0.55 : 0.8 });
+      }
+    }
+  }
+
+  const total = Math.ceil((sc.end + 1.8) * sr);
+  const L = new Float32Array(total), R = new Float32Array(total);
+
+  // one rendered tone per (instrument, pitch), held as long as the
+  // longest note that needs it — the release happens in `place`
+  const need = new Map();
+  for(const p of parts) for(const n of p.notes){
+    const k = p.inst + "|" + n.midi, d = Math.min(4, n.dur);
+    if(!(need.get(k) >= d)) need.set(k, d);
+  }
+  const cache = new Map();
+  let made = 0;
+  for(const [k, d] of need){
+    const cut = k.lastIndexOf("|");
+    cache.set(k, renderInstrument(k.slice(0, cut), +k.slice(cut + 1), d, sr));
+    if((++made & 7) === 0) await yieldUI();
+  }
+  for(const p of parts){
+    const rel = (INSTR[p.inst] || INSTR.piano).rel || 0.12;
+    for(const n of p.notes){
+      const buf = cache.get(p.inst + "|" + n.midi);
+      if(buf) place(L, R, buf, n.start, Math.min(4, n.dur), rel, p.gain * n.vel, p.pan, sr);
+    }
+    await yieldUI();
+  }
+  if(drums.length){
+    const kit = { kick: renderKick(sr), snare: renderSnare(sr), hat: renderHat(sr, false), hato: renderHat(sr, true) };
+    const gn  = { kick: 0.95, snare: 0.6, hat: 0.32, hato: 0.28 };
+    const pn  = { kick: 0, snare: -0.08, hat: 0.22, hato: 0.22 };
+    for(const d of drums){
+      const b = kit[d.type];
+      place(L, R, b, d.t, b.length / sr, 0.005, gn[d.type] * d.vel, pn[d.type], sr);
+    }
+    await yieldUI();
+  }
+  finishMix(L, R, sr, 0.16);
+
+  const mp = parts.map(p => ({ ch: p.ch, gm: (INSTR[p.inst] || INSTR.piano).gm, name: p.name, notes: p.notes }));
+  if(drums.length){
+    const gmDrum = { kick: 36, snare: 38, hat: 42, hato: 46 };
+    mp.push({ ch: 9, gm: 0, name: "Drums",
+      notes: drums.map(d => ({ start: d.t, dur: 0.12, midi: gmDrum[d.type], vel: d.vel })) });
+  }
+  return { L, R, sr, parts: mp, drums };
+}
+
+/* --- the panel ----------------------------------------------------- */
+const melCard=$("#melodyCard"), melBody=$("#melodyBody"), melHead=$("#melodyToggle");
+const melRoll=$("#melRoll"), melInfo=$("#melInfo");
+const melTempoEl=$("#melTempo"), melGridEl=$("#melGrid"), melScaleEl=$("#melScale");
+const melOctEl=$("#melOct"), melChordInstEl=$("#melChordInst");
+const leadChips=$("#leadChips"), backChips=$("#backChips");
+const melMakeBtn=$("#melMakeBtn"), melPlayBtn=$("#melPlayBtn");
+const melWavBtn=$("#melWavBtn"), melMidiBtn=$("#melMidiBtn");
+const melFileBtn=$("#melFileBtn"), melFileInput=$("#melFile");
+
+LEAD_ORDER.forEach(id => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip";
+  b.setAttribute("data-inst", id);
+  b.setAttribute("data-i", INSTR[id].k);
+  b.setAttribute("aria-pressed", "false");
+  b.textContent = id;
+  leadChips.appendChild(b);
+});
+CHORD_ORDER.forEach(id => {
+  const o = document.createElement("option");
+  o.value = id; o.setAttribute("data-i", INSTR[id].k); o.textContent = id;
+  melChordInstEl.appendChild(o);
+});
+
+function melSay(m){ mel.msg = typeof m === "function" ? m : () => m; melPaintInfo(); }
+function melPaintInfo(){ if(melInfo) melInfo.textContent = mel.msg ? mel.msg() : ""; }
+function melButtons(){
+  if(!melMakeBtn) return;
+  melMakeBtn.disabled = mel.busy || !mel.src;
+  melPlayBtn.disabled = mel.busy || !mel.out;
+  melWavBtn.disabled  = mel.busy || !mel.out;
+  melMidiBtn.disabled = mel.busy || !mel.parts;
+  melPlayBtn.textContent = mel.playing ? t("melodyStop") : t("melodyPlay");
+}
+function melSyncLabels(){
+  if(!melMakeBtn) return;
+  melButtons();
+  document.querySelectorAll("#leadChips button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.getAttribute("data-inst") === mel.lead)));
+  [["drums","melodyDrums"],["bass","melodyBass"],["chords","melodyChords"]].forEach(([k]) => {
+    const b = backChips.querySelector('button[data-back="' + k + '"]');
+    if(b) b.setAttribute("aria-pressed", String(!!mel.back[k]));
+  });
+  melPaintInfo();
+  drawRoll();
+}
+function melStale(){
+  mel.score = null;
+  if(mel.out){ mel.out = null; mel.parts = null; melStop(); melSay(() => t("melodyStale")); }
+  melButtons();
+}
+function melSetSource(blob, kind){
+  mel.src = blob; mel.srcKind = kind;
+  mel.raw = null; mel.rawFor = null; mel.score = null; mel.out = null; mel.parts = null;
+  melStop();
+  melSay(() => t(kind === "file" ? "melodySrcFile" : "melodySrcRec"));
+  melButtons(); drawRoll();
+}
+function melReset(){
+  melStop();
+  mel.src = null; mel.raw = null; mel.rawFor = null;
+  mel.score = null; mel.out = null; mel.parts = null;
+  melSay("");
+  melButtons(); drawRoll();
+}
+
+/* --- the piano roll ------------------------------------------------ */
+function drawRoll(){
+  if(!melRoll || !melRoll.clientWidth) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = melRoll.clientWidth, h = 132;
+  melRoll.width = Math.round(w * dpr); melRoll.height = Math.round(h * dpr);
+  melRoll.style.height = h + "px";
+  const g = melRoll.getContext("2d");
+  if(!g) return;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cs = getComputedStyle(document.documentElement);
+  const col = k => (cs.getPropertyValue(k) || "").trim() || "#888";
+  g.fillStyle = col("--bg"); g.fillRect(0, 0, w, h);
+  const sc = mel.score;
+  if(!sc || !sc.notes.length){
+    g.fillStyle = col("--text-2"); g.font = "11px " + "ui-monospace, monospace";
+    g.fillText(t("melodyRollEmpty"), 10, h / 2);
+    return;
+  }
+  const t0 = sc.origin, span = Math.max(0.5, sc.end - sc.origin);
+  const X = s => 4 + (s - t0) / span * (w - 8);
+  let lo = 127, hi = 0;
+  for(const n of sc.notes){ if(n.midi < lo) lo = n.midi; if(n.midi > hi) hi = n.midi; }
+  if(hi - lo < 12){ const c = (hi + lo) / 2; lo = c - 6; hi = c + 6; }
+  const top = 8, bot = h - (mel.back.drums ? 20 : 8);
+  const Y = m => bot - (m - lo) / (hi - lo) * (bot - top);
+
+  g.strokeStyle = col("--border"); g.lineWidth = 1;
+  for(let b = 0; b <= sc.bars; b++){
+    const x = Math.round(X(sc.origin + b * sc.barLen)) + 0.5;
+    g.globalAlpha = 0.85; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+  }
+  g.globalAlpha = 0.35;
+  for(let b = 0; b < sc.bars; b++) for(let k = 1; k < 4; k++){
+    const x = Math.round(X(sc.origin + b * sc.barLen + k * sc.beat)) + 0.5;
+    g.beginPath(); g.moveTo(x, top); g.lineTo(x, bot); g.stroke();
+  }
+  g.globalAlpha = 1;
+
+  if(mel.back.chords){
+    g.fillStyle = col("--surface-2");
+    for(const c of sc.chords){
+      const x = X(sc.origin + c.bar * sc.barLen);
+      const x2 = X(sc.origin + (c.bar + 1) * sc.barLen);
+      for(const m of chordVoicing(c)){
+        const y = Y(clampN(m, lo, hi));
+        g.fillRect(x + 1, y - 1.5, Math.max(2, x2 - x - 3), 3);
+      }
+    }
+  }
+  g.fillStyle = col("--accent");
+  for(const n of sc.notes){
+    const x = X(n.start), x2 = X(n.start + n.dur);
+    g.fillRect(x, Y(n.midi) - 2.5, Math.max(2, x2 - x - 1), 5);
+  }
+  if(mel.back.drums){
+    g.fillStyle = col("--danger");
+    for(let b = 0; b < sc.bars; b++) for(let k = 0; k < 4; k++){
+      const x = X(sc.origin + b * sc.barLen + k * sc.beat);
+      g.fillRect(x, h - 12, k % 2 ? 2 : 3, k % 2 ? 4 : 7);
+    }
+  }
+}
+
+/* --- making it ------------------------------------------------------ */
+function melStamp(){
+  return new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "-");
+}
+async function melMake(){
+  if(mel.busy) return;
+  if(!mel.src){ melSay(() => t("melodyNoSrc")); return; }
+  mel.busy = true; melStop(); melButtons();
+  try{
+    if(mel.rawFor !== mel.src){
+      melSay(() => t("melodyDecoding"));
+      await yieldUI();
+      let x = await decodeMono(mel.src, AN_SR);
+      mel.trimmed = false;
+      if(x.length > MEL_MAX * AN_SR){ x = x.subarray(0, MEL_MAX * AN_SR); mel.trimmed = true; }
+      normalise(x);
+      melSay(() => t("melodyBeatStep"));
+      await yieldUI();
+      const env = onsetEnvelope(x);
+      const fps = AN_SR / HOP;
+      const lag = detectTempo(env, fps);
+      const pt = await trackPitch(decimate2(x), AN_SR / 2,
+        f => melSay(() => t("melodyPitchStep", Math.round(f * 100))));
+      mel.raw = { notes: segmentNotes(pt), bpm: Math.round(60 * fps / lag), phase: beatPhase(env, lag) / fps };
+      mel.rawFor = mel.src;
+      melTempoEl.value = String(mel.raw.bpm);
+    }
+    if(!mel.raw.notes.length){ melSay(() => t("melodyNoNotes")); return; }
+    melSay(() => t("melodyArranging"));
+    await yieldUI();
+    const sc = buildScore();
+    if(!sc){ melSay(() => t("melodyNoNotes")); return; }
+    mel.score = sc; drawRoll();
+    melSay(() => t("melodyRendering"));
+    await yieldUI();
+    const out = await renderAudio(sc);
+    mel.out = out; mel.parts = out.parts;
+    const info = { n: sc.notes.length, bpm: sc.bpm, key: keyName(sc.tonic, sc.mode),
+                   bars: sc.bars, len: fmtTime(out.L.length / out.sr * 1000) };
+    const trimmed = mel.trimmed;
+    melSay(() => t("melodyDone", info) + (trimmed ? " · " + t("melodyTrimmed", Math.round(MEL_MAX / 60)) : ""));
+  }catch(e){
+    melSay(() => t("melodyFailed"));
+  }finally{
+    mel.busy = false; melButtons();
+  }
+}
+function melPlay(){
+  if(!mel.out) return;
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!mel.ctx) mel.ctx = new AC();
+    if(mel.ctx.state === "suspended") mel.ctx.resume();
+    const buf = mel.ctx.createBuffer(2, mel.out.L.length, mel.out.sr);
+    if(buf.copyToChannel){ buf.copyToChannel(mel.out.L, 0); buf.copyToChannel(mel.out.R, 1); }
+    else { buf.getChannelData(0).set(mel.out.L); buf.getChannelData(1).set(mel.out.R); }
+    const node = mel.ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(mel.ctx.destination);
+    node.onended = () => { if(mel.node === node){ mel.node = null; mel.playing = false; melButtons(); } };
+    node.start();
+    mel.node = node; mel.playing = true; melButtons();
+  }catch(e){ melSay(() => t("melodyFailed")); }
+}
+function melStop(){
+  if(mel.node){ try{ mel.node.onended = null; mel.node.stop(); }catch(e){} mel.node = null; }
+  mel.playing = false; melButtons();
+}
+
+melHead.addEventListener("click", () => {
+  const open = melBody.classList.contains("hidden");
+  melBody.classList.toggle("hidden", !open);
+  melHead.setAttribute("aria-expanded", String(open));
+  melCard.classList.toggle("open", open);
+  if(open) drawRoll();
+});
+leadChips.addEventListener("click", e => {
+  const b = e.target.closest("button[data-inst]");
+  if(!b) return;
+  mel.lead = b.getAttribute("data-inst");
+  [...leadChips.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  S.melLead = mel.lead; save(); melStale();
+});
+backChips.addEventListener("click", e => {
+  const b = e.target.closest("button[data-back]");
+  if(!b) return;
+  const k = b.getAttribute("data-back");
+  mel.back[k] = !mel.back[k];
+  b.setAttribute("aria-pressed", String(mel.back[k]));
+  S.melDrums = mel.back.drums; S.melBass = mel.back.bass; S.melChords = mel.back.chords;
+  save(); melStale(); drawRoll();
+});
+[melChordInstEl, melScaleEl, melGridEl, melOctEl].forEach(el => el.addEventListener("change", () => {
+  S.melChord = melChordInstEl.value; S.melScale = melScaleEl.value;
+  S.melGrid = melGridEl.value; S.melOct = melOctEl.value;
+  save(); melStale();
+}));
+melTempoEl.addEventListener("change", melStale);
+melMakeBtn.addEventListener("click", melMake);
+melPlayBtn.addEventListener("click", () => { mel.playing ? melStop() : melPlay(); });
+melFileBtn.addEventListener("click", () => melFileInput.click());
+melFileInput.addEventListener("change", () => {
+  const f = melFileInput.files && melFileInput.files[0];
+  melFileInput.value = "";
+  if(f) melSetSource(f, "file");
+});
+melWavBtn.addEventListener("click", async () => {
+  if(!mel.out) return;
+  const r = await ScuLaFolder.save("melodie_" + melStamp() + ".wav",
+    wavBlob(mel.out.L, mel.out.R, mel.out.sr), { quiet:true });
+  if(r.message) melSay(r.message);
+});
+melMidiBtn.addEventListener("click", async () => {
+  if(!mel.parts || !mel.score) return;
+  const r = await ScuLaFolder.save("melodie_" + melStamp() + ".mid",
+    midiBlob(mel.parts, mel.score.bpm), { quiet:true });
+  if(r.message) melSay(r.message);
+});
+melodyArmEl.addEventListener("change", () => { S.melody = melodyArmEl.checked; save(); });
+let melRollTimer = null;
+window.addEventListener("resize", () => { clearTimeout(melRollTimer); melRollTimer = setTimeout(drawRoll, 180); });
+
+/* ============================================================
+   15. Go
+   ============================================================ */
+const teleprompter = ScuLaTeleprompter.mount({t, getLanguage:() => S.lang,
+  isRecording:() => rec.active || live.active || recBtn.disabled || !!rec.stream});
+load();
+})();
+</script>
+</body>
+</html>

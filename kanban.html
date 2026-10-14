@@ -1,0 +1,1690 @@
+<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kanban — Scula lu Miron</title>
+<style>
+  :root { --bg:#14201A; --surface:#1B2A22; --surface-2:#22342A; --border:#2E4739; --accent:#C1BB45; --text:#F3EEE1; --muted:#9FB3A5; --quiet:#789084; --danger:#C4643C; --ok:#6E9E8A; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  button, input, select { font:inherit; }
+  button, select { cursor:pointer; }
+  .kanban-shell { padding:clamp(14px,2vw,30px); max-width:1800px; margin:auto; }
+  .kanban-head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin-bottom:20px; }
+  .kanban-head h1 { margin:0; font-size:clamp(24px,3vw,36px); letter-spacing:-.035em; }
+  .kanban-head p { margin:3px 0 0; color:var(--muted); }
+  .kanban-head button { margin-left:auto; }
+  .controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+  .control { display:flex; flex-direction:column; gap:5px; min-width:160px; flex:1 1 160px; }
+  .control.search { flex:2 1 230px; }
+  .control label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .control input, .control select, .card select { min-height:42px; width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--bg); }
+  .control input:focus-visible, .control select:focus-visible, .card select:focus-visible, button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn { border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text); padding:9px 14px; min-height:42px; }
+  .btn:hover, .card a:hover { border-color:var(--accent); color:var(--accent); }
+  .summary { display:flex; align-items:center; flex-wrap:wrap; gap:10px; min-height:48px; color:var(--muted); }
+  .summary strong { color:var(--accent); font-size:18px; }
+  .summary .sep { color:var(--border); }
+  #notice { color:var(--danger); margin-left:auto; }
+  .board { display:grid; grid-template-columns:repeat(5,minmax(220px,1fr)); gap:12px; overflow-x:auto; padding-bottom:18px; align-items:start; }
+  .lane { min-width:220px; border:1px solid var(--border); border-radius:13px; background:var(--surface); min-height:180px; overflow:hidden; }
+  .lane.over { outline:2px dashed var(--accent); outline-offset:-5px; }
+  .lane-head { display:flex; align-items:center; gap:8px; padding:13px 14px; border-bottom:1px solid var(--border); border-top:3px solid var(--lane-color); }
+  .lane-head h2 { margin:0; font-size:15px; flex:1; }
+  .lane-head span { border-radius:999px; min-width:25px; padding:2px 6px; text-align:center; background:var(--surface-2); color:var(--muted); font-size:12px; }
+  .lane-cards { display:flex; flex-direction:column; gap:9px; padding:10px; }
+  .lane-empty { padding:22px 8px; text-align:center; color:var(--quiet); font-size:12px; }
+  .card { padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); overflow-wrap:anywhere; }
+  .card[draggable="true"] { cursor:grab; }
+  .card.dragging { opacity:.5; }
+  .card.vital { border-left:3px solid var(--danger); }
+  .card.important { border-left:3px solid #D9A441; }
+  .card-title { margin:0 0 8px; font-size:14px; font-weight:650; line-height:1.4; white-space:pre-wrap; }
+  .card-path { color:var(--muted); font-size:11px; margin-bottom:9px; }
+  .card-meta { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  .pill { display:inline-flex; align-items:center; max-width:100%; padding:3px 7px; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:11px; }
+  .pill.priority { color:#E7C875; }
+  .pill.overdue { color:#F0A284; border-color:#8D4735; }
+  .card-actions { display:flex; align-items:center; gap:7px; }
+  .card-actions select { min-height:34px; font-size:12px; flex:1; }
+  .card-actions a { color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:7px 9px; text-decoration:none; font-size:12px; white-space:nowrap; }
+  .empty-page { grid-column:1/-1; padding:46px 16px; text-align:center; border:1px dashed var(--border); border-radius:14px; color:var(--muted); }
+  .empty-page a { color:var(--accent); }
+  @media(max-width:1150px) { .board { grid-template-columns:repeat(5,minmax(250px,1fr)); } }
+  @media(max-width:700px) { .kanban-shell { padding:12px; } .kanban-head button { margin-left:0; } .controls { gap:10px; padding:12px; } .control { min-width:calc(50% - 5px); } .control.search, .control.scope { min-width:100%; } .board { scroll-snap-type:x mandatory; } .lane { scroll-snap-align:start; } }
+</style>
+</head>
+<body>
+<nav id="site-nav" aria-label="Instrumente">
+  <a href="index.html" data-page="index.html">Markdown</a>
+  <a href="calendar.html" data-page="calendar.html">Calendar</a>
+  <a href="kanban.html" data-page="kanban.html">Kanban</a>
+  <a href="map.html" data-page="map.html">Hartă</a>
+  <a href="voice.html" data-page="voice.html">Caiet vocal</a>
+  <a href="song.html" data-page="song.html">Creează melodie</a>
+  <a href="recipes.html" data-page="recipes.html">Rețete</a>
+  <a href="editor.html" data-page="editor.html">Mazgaleste</a>
+  <a href="transfer.html" data-page="transfer.html">Transfer</a>
+  <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
+</nav>
+<style>
+  #site-nav{
+    display:flex;gap:4px;align-items:center;
+    background:#14201A;
+    border-bottom:1px solid #2E4739;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #site-nav a{
+    flex:0 0 auto;
+    color:#9FB3A5;
+    text-decoration:none;
+    font-size:13px;
+    letter-spacing:.03em;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  #site-nav a:hover{ color:#F3EEE1; }
+  #site-nav a.current{
+    color:#1A2117;
+    background:#C1BB45;
+    border-color:#C1BB45;
+    font-weight:600;
+  }
+  #site-nav #navFolderBtn,
+  #site-nav #navLangBtn{
+    flex:0 0 auto;
+    background:transparent;
+    color:#9FB3A5;
+    border:1px solid #2E4739;
+    border-radius:999px;
+    padding:7px 11px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #site-nav #navFolderBtn:hover,
+  #site-nav #navLangBtn:hover{ color:#F3EEE1; }
+  #site-nav #navFolderBtn{
+    margin-left:auto;
+    letter-spacing:.04em;
+    text-transform:none;
+    max-width:min(42vw,240px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  @media (max-width:560px){
+    /* A long folder name must not push the language toggle out of reach on a
+       phone - the nav scrolls, but the toggle should still be visible. */
+    #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
+  }
+  /* No phone or tablet browser has showDirectoryPicker, so on those devices
+     the button just names the fallback route (share/download) and a tap
+     opens the destination sheet instead of the picker - see the "supported()"
+     branch in fBtn's click handler below. Kept visible (not hidden) so a
+     phone still has a way to reach ScuLaFolder.chooser() from the nav. */
+  #scula-toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:99999;
+    max-width:min(90vw,520px);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    word-break:break-word;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  #scula-toast.show{ opacity:1; }
+  #scula-toast.acting{ pointer-events:auto; }
+  #scula-toast button{
+    flex:0 0 auto;
+    background:#C1BB45;
+    color:#1A2117;
+    border:0;
+    border-radius:999px;
+    padding:8px 14px;
+    min-height:44px;
+    font:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #scula-sheet{
+    position:fixed; inset:0; z-index:100000;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:16px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #scula-sheet.open{ display:flex; }
+  #scula-sheet .card{
+    width:min(420px,100%);
+    background:#14201A;
+    color:#F3EEE1;
+    border:1px solid #2E4739;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+  }
+  #scula-sheet h2{ margin:0 0 6px; font-size:16px; }
+  #scula-sheet p{ margin:0 0 14px; font-size:13px; line-height:1.5; color:#9FB3A5; }
+  #scula-sheet .opt{
+    display:block; width:100%; text-align:left;
+    background:transparent; color:#F3EEE1;
+    border:1px solid #2E4739; border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+  #scula-sheet .opt:hover{ border-color:#5A6B2E; }
+  #scula-sheet .opt.on{ border-color:#C1BB45; color:#C1BB45; }
+  #scula-sheet .opt small{ display:block; margin-top:3px; font-size:12px; color:#9FB3A5; }
+  #scula-sheet .opt[disabled]{ opacity:.5; cursor:not-allowed; }
+  #scula-sheet .close{
+    display:block; width:100%;
+    background:transparent; color:#9FB3A5;
+    border:0; padding:12px; margin-top:4px;
+    font:inherit; cursor:pointer; min-height:44px;
+  }
+</style>
+<script>
+(function(){
+  var here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("#site-nav a").forEach(function(a){
+    if(a.getAttribute("data-page") === here) a.classList.add("current");
+  });
+  // Shared UI-language toggle - see docs/I18N.md "Shared preference across
+  // pages". This block is byte-identical in all nine files (CLAUDE.md rule
+  // 2); it only paints itself from localStorage and broadcasts a
+  // "scula-ui-lang" event. Each app's own script (loaded later, at the
+  // bottom of the page) owns the actual translation via its own I18N/t()/
+  // applyUILang() and reconciles against its async storage as the source of
+  // truth - see that file's "6. UI language" section.
+  var LANG_KEY = "scula:ui-lang";
+  var lang = "ro";
+  try{ lang = localStorage.getItem(LANG_KEY) || "ro"; }catch(e){}
+
+  var btn = document.getElementById("navLangBtn");
+  if(btn){
+    paintLang(lang);
+    btn.addEventListener("click", function(){
+      lang = lang === "ro" ? "en" : "ro";
+      try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+      paintLang(lang);
+      paintFolder();
+      window.dispatchEvent(new CustomEvent("scula-ui-lang", { detail: lang }));
+    });
+  }
+  function paintLang(l){
+    btn.textContent = l === "ro" ? "EN" : "RO";
+    document.querySelector('#site-nav [data-page="song.html"]').textContent = l === "en" ? "Song Creation" : "Creează melodie";
+  }
+
+  // Some apps toggle the language from their own controls; follow along.
+  window.addEventListener("scula-ui-lang", function(ev){
+    if(ev.detail && ev.detail !== lang){ lang = ev.detail; if(btn) paintLang(lang); paintFolder(); }
+  });
+
+  /* ============================================================
+     Shared save destination (window.ScuLaFolder)
+     ------------------------------------------------------------
+     Pages never build their own <a download>; they call
+     ScuLaFolder.save(name, blob) and this decides where the bytes go.
+     Three routes, in order of preference:
+
+       "folder"   desktop Chrome/Edge. One directory picked once via the
+                  File System Access API, kept in IndexedDB (a directory
+                  handle is not a string, so localStorage cannot hold
+                  it). Each page writes into its own subfolder - SUBDIR.
+       "share"    phones and tablets, where no browser implements
+                  showDirectoryPicker. navigator.share({files}) hands the
+                  file to the OS share sheet, where "Save to Files"
+                  (iOS) / the Files app (Android) lets the person drop it
+                  in any folder they like. No folder can be *remembered*
+                  there - the OS picker owns that choice.
+       "download" last resort, and always available.
+
+     Byte-identical in all nine files (CLAUDE.md rule 2) - see
+     docs/FEATURES.md "Saving files".
+     ============================================================ */
+  var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
+  var SUBDIR = {
+    "voice.html": "transcript",
+    "song.html": "Song Creation",
+    "calendar.html": "calendar",
+    "kanban.html": "kanban",
+    "map.html": "harta",
+    "editor.html": "desen",
+    "index.html": "markdown",
+    "recipes.html": "retete",
+    "transfer.html": "transfer"
+  };
+  var T = {
+    ro:{
+      pickLabel:"Dosar",
+      modeShare:"Fișiere",
+      modeDownload:"Descărcări",
+      tipDesktop:"Alege dosarul implicit pentru fișierele salvate (clic dreapta: renunță la dosar)",
+      tipMobile:"Alege unde ajung fișierele salvate",
+      unsupported:"Browserul acesta nu poate ține minte un dosar. Fișierele se descarcă normal.",
+      denied:"Acces refuzat la dosar. Fișierele se descarcă normal.",
+      picked:function(n){ return "Dosar implicit: " + n; },
+      cleared:"Dosarul implicit a fost șters. Fișierele se descarcă normal.",
+      clearAsk:function(n){ return "Renunți la dosarul implicit „" + n + "”?"; },
+      saved:function(p){ return "Salvat în " + p; },
+      shared:function(n){ return "Trimis către aplicații: " + n; },
+      downloaded:function(n){ return "Descărcat: " + n; },
+      failed:"Nu s-a putut scrie în dosar. Fișierul a fost descărcat.",
+      tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
+      tapAction:"Salvează",
+      sheetTitle:"Unde salvezi fișierele?",
+      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
+      optShare:"Salvează în Fișiere",
+      optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
+      optShareOff:"Browserul acesta nu poate trimite fișiere către aplicații.",
+      optDownload:"Descarcă",
+      optDownloadSub:"Merge direct în dosarul Descărcări.",
+      optFolder:"Alege un dosar…",
+      optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
+      sheetClose:"Închide",
+      modeSetShare:"Fișierele merg către fereastra de partajare.",
+      modeSetDownload:"Fișierele se descarcă."
+    },
+    en:{
+      pickLabel:"Folder",
+      modeShare:"Files",
+      modeDownload:"Downloads",
+      tipDesktop:"Choose the default folder for saved files (right-click: forget the folder)",
+      tipMobile:"Choose where saved files go",
+      unsupported:"This browser can't remember a folder. Files download normally instead.",
+      denied:"Folder access denied. Files download normally instead.",
+      picked:function(n){ return "Default folder: " + n; },
+      cleared:"Default folder cleared. Files download normally instead.",
+      clearAsk:function(n){ return "Forget the default folder “" + n + "”?"; },
+      saved:function(p){ return "Saved to " + p; },
+      shared:function(n){ return "Sent to your apps: " + n; },
+      downloaded:function(n){ return "Downloaded: " + n; },
+      failed:"Couldn't write into the folder. The file was downloaded instead.",
+      tapToSave:function(n){ return "“" + n + "” is ready."; },
+      tapAction:"Save",
+      sheetTitle:"Where do saved files go?",
+      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroDesktop:"Choose what happens when you save.",
+      optShare:"Save to Files",
+      optShareSub:"Opens the system share sheet, where you pick any folder you like.",
+      optShareOff:"This browser can't hand files to other apps.",
+      optDownload:"Download",
+      optDownloadSub:"Goes straight to the Downloads folder.",
+      optFolder:"Choose a folder…",
+      optFolderSub:"One folder for every page, remembered between visits.",
+      sheetClose:"Close",
+      modeSetShare:"Files now go to the share sheet.",
+      modeSetDownload:"Files now download."
+    }
+  };
+  function tx(k){ return (T[lang] || T.ro)[k]; }
+
+  var fBtn = document.getElementById("navFolderBtn");
+  var fName = document.getElementById("navFolderName");
+  var root = null;          // FileSystemDirectoryHandle, desktop only
+  var mode = null;          // "share" | "download" | null (= pick for me)
+  var toastEl = null, toastTimer = 0;
+  var sheetEl = null;
+
+  function supported(){ return typeof window.showDirectoryPicker === "function"; }
+  function subdir(){ return SUBDIR[here] || "scula"; }
+
+  // Sharing a *file* is Web Share level 2: iOS Safari 15+, Android Chrome.
+  // canShare() is the only honest test - navigator.share alone exists in
+  // browsers that refuse files.
+  function canShareFiles(){
+    try{
+      if(!navigator.share || !navigator.canShare || typeof File !== "function") return false;
+      return navigator.canShare({ files:[ new File(["x"], "x.txt", { type:"text/plain" }) ] });
+    }catch(e){ return false; }
+  }
+
+  function currentMode(){
+    if(root) return "folder";
+    if(mode === "share") return canShareFiles() ? "share" : "download";
+    if(mode === "download") return "download";
+    // Unset: on a device with no directory picker the share sheet is the
+    // only route into a folder the person chooses, so prefer it there.
+    return (!supported() && canShareFiles()) ? "share" : "download";
+  }
+
+  function toast(msg, action, onAction){
+    if(!msg) return;
+    if(!toastEl){
+      toastEl = document.createElement("div");
+      toastEl.id = "scula-toast";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = "";
+    toastEl.classList.remove("acting");
+    toastEl.appendChild(document.createTextNode(msg));
+    clearTimeout(toastTimer);
+    if(action && onAction){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = action;
+      b.addEventListener("click", function(){
+        toastEl.classList.remove("show", "acting");
+        onAction();
+      });
+      toastEl.appendChild(b);
+      toastEl.classList.add("acting");
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show", "acting"); }, 30000);
+    } else {
+      toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 4200);
+    }
+    toastEl.classList.add("show");
+  }
+
+  function paintFolder(){
+    if(!fBtn) return;
+    var m = currentMode();
+    fBtn.title = supported() ? tx("tipDesktop") : tx("tipMobile");
+    fBtn.setAttribute("aria-label", fBtn.title);
+    // Desktop with nothing chosen yet reads as an invitation ("Dosar"), since
+    // the tap opens the picker. Where there is no picker the button names the
+    // route a save will actually take, because that is what the tap changes.
+    fName.textContent = m === "folder" ? root.name
+      : (supported() ? tx("pickLabel")
+      : (m === "share" ? tx("modeShare") : tx("modeDownload")));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+  }
+
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+      try{ r = indexedDB.open(DB_NAME, 1); }catch(e){ rej(e); return; }
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function idbTx(mode2, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction(DB_STORE, mode2);
+        var req = run(t.objectStore(DB_STORE));
+        t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+        t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  function idbGet(k){ return idbTx("readonly", function(s){ return s.get(k); }); }
+  function idbPut(k, v){ return idbTx("readwrite", function(s){ return s.put(v, k); }); }
+  function idbDel(k){ return idbTx("readwrite", function(s){ return s.delete(k); }); }
+
+  // requestPermission() needs a user gesture, so pass request:true only from
+  // inside a click handler.
+  function permitted(handle, request){
+    if(!handle || typeof handle.queryPermission !== "function") return Promise.resolve(!!handle);
+    var opts = { mode:"readwrite" };
+    return handle.queryPermission(opts).then(function(state){
+      if(state === "granted") return true;
+      if(!request) return false;
+      return handle.requestPermission(opts).then(function(s){ return s === "granted"; });
+    }).catch(function(){ return false; });
+  }
+
+  function announce(){
+    paintFolder();
+    window.dispatchEvent(new CustomEvent("scula-folder", {
+      detail: { name: root ? root.name : null, mode: currentMode() }
+    }));
+  }
+
+  function pick(){
+    if(!supported()){ toast(tx("unsupported")); return Promise.resolve(null); }
+    return window.showDirectoryPicker({ id:"scula-root", mode:"readwrite", startIn:"documents" })
+      .then(function(h){
+        return permitted(h, true).then(function(ok){
+          if(!ok){ toast(tx("denied")); return null; }
+          root = h;
+          return idbPut(DB_KEY, h).catch(function(){}).then(function(){
+            // Give every page its folder up front, so the layout is visible
+            // in the file manager before anything has been saved.
+            var chain = Promise.resolve();
+            Object.keys(SUBDIR).forEach(function(k){
+              chain = chain.then(function(){
+                return h.getDirectoryHandle(SUBDIR[k], { create:true }).catch(function(){});
+              });
+            });
+            return chain;
+          }).then(function(){
+            announce();
+            toast(tx("picked")(h.name));
+            return h;
+          });
+        });
+      })
+      .catch(function(){ return null; });  // AbortError: the user cancelled
+  }
+
+  function forget(){
+    root = null;
+    return idbDel(DB_KEY).catch(function(){}).then(function(){
+      announce();
+      toast(tx("cleared"));
+    });
+  }
+
+  function setMode(m){
+    mode = m;
+    return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
+      announce();
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      return m;
+    });
+  }
+
+  /* ---- the "where do files go?" sheet (mobile's stand-in for a picker) ---- */
+  function closeSheet(){ if(sheetEl) sheetEl.classList.remove("open"); }
+
+  function option(label, sub, on, enabled, onPick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt" + (on ? " on" : "");
+    b.appendChild(document.createTextNode(label));
+    var s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+    if(enabled) b.addEventListener("click", onPick); else b.disabled = true;
+    return b;
+  }
+
+  function openSheet(){
+    var m = currentMode();
+    if(!sheetEl){
+      sheetEl = document.createElement("div");
+      sheetEl.id = "scula-sheet";
+      sheetEl.setAttribute("role", "dialog");
+      sheetEl.setAttribute("aria-modal", "true");
+      sheetEl.addEventListener("click", function(ev){ if(ev.target === sheetEl) closeSheet(); });
+      document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") closeSheet(); });
+      document.body.appendChild(sheetEl);
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var h = document.createElement("h2");
+    h.textContent = tx("sheetTitle");
+    var p = document.createElement("p");
+    p.textContent = supported() ? tx("sheetIntroDesktop") : tx("sheetIntroMobile");
+    card.appendChild(h);
+    card.appendChild(p);
+
+    if(supported()){
+      card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
+        function(){ closeSheet(); pick(); }));
+    }
+    var shareOk = canShareFiles();
+    card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
+      m === "share", shareOk, function(){ closeSheet(); setMode("share"); }));
+    card.appendChild(option(tx("optDownload"), tx("optDownloadSub"), m === "download", true,
+      function(){ closeSheet(); setMode("download"); }));
+
+    var c = document.createElement("button");
+    c.type = "button";
+    c.className = "close";
+    c.textContent = tx("sheetClose");
+    c.addEventListener("click", closeSheet);
+    card.appendChild(c);
+
+    sheetEl.textContent = "";
+    sheetEl.appendChild(card);
+    sheetEl.classList.add("open");
+  }
+
+  // The chosen root folder itself, or null. dir() below narrows it to this
+  // page's own subfolder; a page that moves the *whole* folder across
+  // (transfer.html sends it to another device, and writes a received tree
+  // back into it) needs the root, with the same permission dance.
+  function rootDir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      return ok ? root : null;
+    }).catch(function(){ return null; });
+  }
+
+  // Resolves to this page's subfolder handle, or null when unavailable.
+  function dir(request){
+    if(!root) return Promise.resolve(null);
+    return permitted(root, request !== false).then(function(ok){
+      if(!ok) return null;
+      return root.getDirectoryHandle(subdir(), { create:true });
+    }).catch(function(){ return null; });
+  }
+
+  // Never overwrite: "a.png" taken -> "a-1.png", "a-2.png", …
+  function freeName(d, filename){
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var i = 0;
+    function attempt(){
+      var name = i === 0 ? filename : base + "-" + i + ext;
+      return d.getFileHandle(name).then(function(){
+        i++;
+        return i > 500 ? name : attempt();
+      }, function(){ return name; });
+    }
+    return attempt();
+  }
+
+  function download(filename, blob){
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function report(r, quiet){
+    if(!quiet && r.message) toast(r.message);
+    return r;
+  }
+  function downloadResult(filename, blob, quiet, extra){
+    download(filename, blob);
+    return report({ saved:false, via:"download", name:filename, path:filename,
+                    message:(extra ? extra + " " : "") + tx("downloaded")(filename) }, quiet);
+  }
+
+  // iOS accepts only a short list of types in the share sheet; text/markdown
+  // is not on it, so retry text formats as plain text before giving up.
+  function shareable(filename, blob){
+    var f;
+    try{ f = new File([blob], filename, { type: blob.type || "application/octet-stream" }); }
+    catch(e){ return null; }
+    try{ if(navigator.canShare({ files:[f] })) return f; }catch(e){}
+    if(/\.(md|txt|html?)$/i.test(filename)){
+      try{
+        var f2 = new File([blob], filename, { type:"text/plain" });
+        if(navigator.canShare({ files:[f2] })) return f2;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function shareOut(filename, blob, quiet){
+    var file = shareable(filename, blob);
+    if(!file) return Promise.resolve(downloadResult(filename, blob, quiet));
+    // No `title`/`text` here: iOS's "Save to Files" reads any text field
+    // alongside `files` as a *second* shareable item and drops a companion
+    // "text" file next to the real one. Filename-only files avoids that.
+    return navigator.share({ files:[file] }).then(function(){
+      return report({ saved:true, via:"share", name:filename, path:filename,
+                      message: tx("shared")(filename) }, quiet);
+    }, function(err){
+      var n = err && err.name;
+      // The person backed out of the share sheet - that is not a failure, and
+      // silently downloading behind their back would be wrong.
+      if(n === "AbortError") return { saved:false, cancelled:true, name:filename, path:filename, message:null };
+      // Producing the file (a big canvas, a zip) outlived the tap that started
+      // it, and iOS will not open the sheet without one. Offer a fresh tap.
+      if(n === "NotAllowedError" || n === "SecurityError"){
+        toast(tx("tapToSave")(filename), tx("tapAction"), function(){ shareOut(filename, blob, quiet); });
+        return { saved:false, pending:true, name:filename, path:filename, message:null };
+      }
+      return downloadResult(filename, blob, quiet);
+    });
+  }
+
+  // The one call pages make. Always resolves. Read `message` to say what
+  // happened in the app's own UI (null = say nothing), or leave `quiet` off
+  // and the shared toast speaks.
+  // Stream producers are used by large Song WAV exports. Other saves keep the
+  // Blob API. Await every write for backpressure; never buffer a large fallback.
+  async function saveStream(filename, source, opts){
+    var cap = 32 * 1048576, quiet = !!(opts && opts.quiet);
+    if(!Number.isSafeInteger(source.size) || source.size < 0) throw new Error("renderLimit");
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) throw new Error("renderLimit");
+    async function fallback(){
+      if(source.size > cap) throw new Error("exportLimit");
+      var chunks=[], bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size || bytes>cap) throw new Error("exportLimit");
+        chunks.push(new Blob([chunk]));
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      return save(filename,new Blob(chunks,{type:source.type}),opts);
+    }
+    if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
+    if(currentMode()!=="folder") return fallback();
+    var d=await dir();
+    if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
+    if(!d) return fallback();
+    for(var folder of folders) d=await d.getDirectoryHandle(folder,{create:true});
+    var name=await freeName(d,filename),fh=await d.getFileHandle(name,{create:true}),w=await fh.createWritable();
+    try{
+      var bytes=0;
+      for await(var chunk of source.stream()){
+        bytes+=chunk.byteLength; if(bytes>source.size) throw new Error("renderSize");
+        await w.write(chunk);
+      }
+      if(bytes!==source.size) throw new Error("renderSize");
+      if(source.check) source.check();
+      await w.close();
+    }catch(e){try{await w.abort();}catch(_){} throw e;}
+    var path=root.name+"/"+subdir()+"/"+(folders.length?folders.join("/")+"/":"")+name;
+    return report({saved:true,via:"folder",name:name,path:path,message:tx("saved")(path)},quiet);
+  }
+
+  function save(filename, blob, opts){
+    if(blob && !(blob instanceof Blob) && typeof blob.stream === "function") return saveStream(filename,blob,opts);
+    var quiet = !!(opts && opts.quiet);
+    // Optional directories remain beneath this page's SUBDIR. On mobile,
+    // callers include ownership in the filename; share/download stay flat.
+    var folders = opts && opts.directories || [];
+    if(!Array.isArray(folders) || folders.some(function(p){
+      return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
+    })) return Promise.resolve({ saved:false, message:tx("failed"), via:"folder" });
+    var m = currentMode();
+    if(m === "share") return shareOut(filename, blob, quiet);
+    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    return dir().then(function(d){
+      if(!d) return null;
+      var nested = Promise.resolve(d);
+      folders.forEach(function(p){ nested = nested.then(function(h){ return h.getDirectoryHandle(p, { create:true }); }); });
+      return nested.then(function(d){ return freeName(d, filename).then(function(name){
+        return d.getFileHandle(name, { create:true }).then(function(fh){
+          return fh.createWritable().then(function(w){
+            return Promise.resolve(w.write(blob)).then(function(){ return w.close(); });
+          }).then(function(){
+            return { saved:true, via:"folder", name:name,
+                     path: root.name + "/" + subdir() + "/" + (folders.length ? folders.join("/") + "/" : "") + name };
+          });
+        });
+      });
+    }); }).catch(function(){ return { failed:true }; }).then(function(r){
+      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
+      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+    });
+  }
+
+  var ready = Promise.all([
+    idbGet(DB_KEY).catch(function(){ return null; }),
+    idbGet(MODE_KEY).catch(function(){ return null; })
+  ]).then(function(vals){
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    var h = vals[0];
+    if(!h){ paintFolder(); return null; }
+    return permitted(h, false).then(function(ok){
+      // Not granted yet is fine - the first save re-asks inside a gesture.
+      root = h;
+      paintFolder();
+      return ok ? h : null;
+    });
+  }).catch(function(){ paintFolder(); return null; });
+
+  if(fBtn){
+    paintFolder();
+    // Desktop goes straight to the directory picker - that is the whole
+    // feature there. Everywhere else the picker does not exist, so offer the
+    // routes that do.
+    fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    fBtn.addEventListener("contextmenu", function(ev){
+      ev.preventDefault();
+      if(root && confirm(tx("clearAsk")(root.name))) forget();
+      else openSheet();
+    });
+  }
+
+  window.ScuLaFolder = {
+    supported: supported,
+    canShareFiles: canShareFiles,
+    isSet: function(){ return !!root; },
+    name: function(){ return root ? root.name : null; },
+    mode: currentMode,
+    setMode: setMode,
+    subdir: subdir,
+    ready: ready,
+    pick: pick,
+    forget: forget,
+    chooser: openSheet,
+    dir: dir,
+    rootDir: rootDir,
+    save: save,
+    download: download,
+    toast: toast
+  };
+})();
+
+/* ============================================================
+   Shared calendar store (window.ScuLaCal)
+   ------------------------------------------------------------
+   One event store every page can write into, next to ScuLaFolder
+   and for the same reason: there is no build step here, so the
+   nav block is where shared code lives (CLAUDE.md rule 2).
+
+   Events are kept in the *Google Calendar API* event shape - not
+   in a private format converted on the way out. So the export is
+   already a valid body for events.insert, and nothing can drift
+   between "what we store" and "what Google accepts". Our own
+   fields ride along in extendedProperties.private, which Google
+   round-trips (values there must be strings, so they are).
+
+   Times: a timed event carries an RFC-3339 dateTime with the
+   local offset plus its IANA timeZone; an all-day event carries
+   start.date / end.date, and **end.date is exclusive** - the same
+   trap Google has. when()/daysOf() are the only places that know
+   it; read a range through them, never off the raw field.
+
+   See docs/FEATURES.md "L. The calendar".
+   ============================================================ */
+(function(){
+  var CAL_DB = "scula-cal", CAL_VER = 1, EV = "events", META = "meta";
+  var DEFAULT_MIN = 60;          // an "@date 14:00" with no end lasts an hour
+  var MS_DAY = 86400000;
+
+/* Google's own event palette, so a colour picked here is the colour
+     that shows up after an import. colorId is what the API takes. */
+  var COLORS = [
+    { id:"1",  hex:"#7986CB", key:"colLavender" },
+    { id:"2",  hex:"#33B679", key:"colSage"     },
+    { id:"3",  hex:"#8E24AA", key:"colGrape"    },
+    { id:"4",  hex:"#E67C73", key:"colFlamingo" },
+    { id:"5",  hex:"#F6BF26", key:"colBanana"   },
+    { id:"6",  hex:"#F4511E", key:"colTangerine"},
+    { id:"7",  hex:"#039BE5", key:"colPeacock"  },
+    { id:"8",  hex:"#616161", key:"colGraphite" },
+    { id:"9",  hex:"#3F51B5", key:"colBlueberry"},
+    { id:"10", hex:"#0B8043", key:"colBasil"    },
+    { id:"11", hex:"#D50000", key:"colTomato"   }
+  ];
+  function colorHex(id){
+    for(var i=0;i<COLORS.length;i++) if(COLORS[i].id === String(id)) return COLORS[i].hex;
+    return COLORS[6].hex;
+  }
+
+/* ---- dates ---- */
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function ymd(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function hm(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function tzName(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; }
+  }
+  function offsetOf(d){
+    var m = -d.getTimezoneOffset(), s = m < 0 ? "-" : "+";
+    m = Math.abs(m);
+    return s + pad(Math.floor(m/60)) + ":" + pad(m%60);
+  }
+  // Local midnight of a "YYYY-MM-DD". new Date("2026-09-03") is *UTC*
+  // midnight, which lands on the 2nd west of Greenwich - never use it.
+  function dayStart(s){
+    var p = String(s).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  function rfc3339(d){
+    return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00" + offsetOf(d);
+  }
+
+  // The one decoder: an event -> real Date bounds. Everything that draws,
+  // sorts or filters goes through here, so the exclusive end.date is
+  // handled once.
+  function when(ev){
+    var s = (ev && ev.start) || {}, e = (ev && ev.end) || {};
+    if(s.date){
+    var a = dayStart(s.date);
+      return { start:a, end:(e.date ? dayStart(e.date) : addDays(a,1)), allDay:true };
+    }
+    var a2 = new Date(s.dateTime);
+    var b2 = e.dateTime ? new Date(e.dateTime) : new Date(a2.getTime() + DEFAULT_MIN*60000);
+    return { start:a2, end:b2, allDay:false };
+  }
+  // Every "YYYY-MM-DD" an event touches - the calendar grid's index.
+  function daysOf(ev){
+    var w = when(ev), out = [], d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate());
+    // An all-day end is exclusive; a timed event that ends at 00:00 has not
+    // reached that day either.
+    var last = w.allDay ? new Date(w.end.getTime() - 1) : w.end;
+    var stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    if(stop < d) stop = d;
+    while(d <= stop && out.length < 400){ out.push(ymd(d)); d = addDays(d, 1); }
+    return out;
+  }
+
+/* ---- ids ---- */
+  // Google wants base32hex: characters 0-9 and a-v, 5..1024 long. Number
+  // .toString(32) is already in that alphabet, so the timestamp prefix is
+  // legal as-is and the ids sort roughly by creation time.
+  function newId(){
+    var c = "0123456789abcdefghijklmnopqrstuv", s = "";
+    for(var i=0;i<10;i++) s += c.charAt(Math.floor(Math.random()*32));
+    return "scula" + Date.now().toString(32) + s;
+  }
+
+/* ---- storage: IndexedDB, with a localStorage fallback ---- */
+  var memEv = null;              // set only when neither store works
+  function idb(){
+    return new Promise(function(res, rej){
+      var r;
+    try{ r = indexedDB.open(CAL_DB, CAL_VER); }catch(e){ rej(e); return; }
+    r.onupgradeneeded = function(){
+      var db = r.result;
+        if(!db.objectStoreNames.contains(EV)) db.createObjectStore(EV, { keyPath:"id" });
+        if(!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function tx(store, mode, run){
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+      var t = db.transaction(store, mode), req = run(t.objectStore(store));
+      t.oncomplete = function(){ db.close(); res(req ? req.result : undefined); };
+      t.onerror = function(){ db.close(); rej(t.error); };
+      });
+    });
+  }
+  var LS_EV = "scula:cal:events";
+  function lsRead(){
+    if(memEv) return memEv;
+    try{ return JSON.parse(localStorage.getItem(LS_EV) || "[]"); }
+    catch(e){ memEv = memEv || []; return memEv; }
+  }
+  function lsWrite(list){
+    if(memEv){ memEv = list; return; }
+    try{ localStorage.setItem(LS_EV, JSON.stringify(list)); }
+    catch(e){ memEv = list; }
+  }
+
+  function all(){
+    return tx(EV, "readonly", function(s){ return s.getAll(); })
+      .then(function(r){ return r || []; })
+      .catch(function(){ return lsRead(); });
+  }
+  function putRaw(ev){
+    return tx(EV, "readwrite", function(s){ return s.put(ev); })
+      .catch(function(){
+      var list = lsRead(), i;
+      for(i=0;i<list.length;i++) if(list[i].id === ev.id){ list[i] = ev; lsWrite(list); return; }
+        list.push(ev); lsWrite(list);
+      });
+  }
+  function dropRaw(id){
+    return tx(EV, "readwrite", function(s){ return s.delete(id); })
+      .catch(function(){
+      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
+      });
+  }
+  function metaGet(k){
+    return tx(META, "readonly", function(s){ return s.get(k); })
+      .catch(function(){
+        try{ return JSON.parse(localStorage.getItem("scula:cal:" + k) || "null"); }catch(e){ return null; }
+      });
+  }
+  function metaSet(k, v){
+    return tx(META, "readwrite", function(s){ return s.put(v, k); })
+      .catch(function(){
+        try{ localStorage.setItem("scula:cal:" + k, JSON.stringify(v)); }catch(e){}
+      });
+  }
+
+/* ---- change fan-out (this page, and any other tab) ---- */
+  var subs = [], chan = null;
+  try{
+    chan = new BroadcastChannel("scula-cal");
+    chan.onmessage = function(){ subs.forEach(function(f){ try{ f(); }catch(e){} }); };
+  }catch(e){ chan = null; }
+  function fire(){
+    subs.forEach(function(f){ try{ f(); }catch(e){} });
+    try{ if(chan) chan.postMessage(1); }catch(e){}
+  }
+
+/* ---- building an event without hand-writing Google's shape ---- */
+  // make({ title, date, time, endDate, endTime, allDay, ... }) -> event.
+  // Pages call this; only this function knows the API field names.
+  function make(o){
+    o = o || {};
+    var priv = {}, k;
+    var ext = o.ext || {};
+    for(k in ext) if(Object.prototype.hasOwnProperty.call(ext, k) && ext[k] != null) priv[k] = String(ext[k]);
+    var ev = {
+      id: o.id || newId(),
+      summary: String(o.title || o.summary || "").trim(),
+      description: String(o.description || ""),
+      location: String(o.location || ""),
+      status: o.status || "confirmed",
+      colorId: String(o.colorId || "7"),
+    start: {}, end: {},
+      reminders: o.reminders || { useDefault:true },
+      created: o.created || new Date().toISOString(),
+      updated: new Date().toISOString()
+    };
+    if(o.recurrence && o.recurrence.length) ev.recurrence = o.recurrence.slice();
+    if(o.allDay){
+    var s = o.date, e = o.endDate || o.date;
+    ev.start = { date:s };
+      // The person typed the last day they mean; Google's end.date is the
+      // first day they do *not*. Convert here, once.
+    ev.end = { date: ymd(addDays(dayStart(e), 1)) };
+    } else {
+    var tz = o.timeZone || tzName();
+    var a = dayStart(o.date);
+    var t1 = String(o.time || "00:00").split(":");
+      a.setHours(+t1[0], +t1[1], 0, 0);
+    var b = dayStart(o.endDate || o.date);
+      if(o.endTime){
+      var t2 = String(o.endTime).split(":");
+        b.setHours(+t2[0], +t2[1], 0, 0);
+        // "22:00-01:00" means tonight into tomorrow, not a negative hour.
+      if(b <= a && !o.endDate) b = new Date(b.getTime() + MS_DAY);
+      } else {
+      b = new Date(a.getTime() + DEFAULT_MIN*60000);
+      }
+    ev.start = { dateTime: rfc3339(a), timeZone: tz };
+    ev.end   = { dateTime: rfc3339(b), timeZone: tz };
+    }
+    if(Object.keys(priv).length) ev.extendedProperties = { private: priv };
+    return ev;
+  }
+  function priv(ev, k){
+    var p = ev && ev.extendedProperties && ev.extendedProperties.private;
+    return (p && p[k]) || "";
+  }
+
+  function put(ev){
+    ev.updated = new Date().toISOString();
+    return putRaw(ev).then(function(){ fire(); return ev; });
+  }
+  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function putMany(list){
+    var chain = Promise.resolve();
+    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    return chain.then(function(){ fire(); return list.length; });
+  }
+
+  // The hook page-scrapers use. Everything this source+ref owns is
+  // replaced by `list`; an incoming event whose sculaKey matches one
+  // already stored keeps that event's id, so links to it survive a
+  // re-scan. Returns what changed, for the toast.
+  function syncSource(source, ref, list){
+    return all().then(function(have){
+    var mine = have.filter(function(e){
+      return priv(e, "sculaSource") === source && (ref == null || priv(e, "sculaRef") === String(ref));
+      });
+    var byKey = {};
+    mine.forEach(function(e){ var k = priv(e, "sculaKey"); if(k) byKey[k] = e; });
+    var keep = {}, out = [], added = 0, kept = 0;
+      list.forEach(function(ev){
+      var k = priv(ev, "sculaKey");
+      if(k && byKey[k]){ ev.id = byKey[k].id; ev.created = byKey[k].created; keep[byKey[k].id] = 1; kept++; }
+        else added++;
+        out.push(ev);
+      });
+    var gone = mine.filter(function(e){ return !keep[e.id]; });
+    var chain = Promise.resolve();
+    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
+      return chain.then(function(){
+        fire();
+        return { added:added, updated:kept, removed:gone.length };
+      });
+    });
+  }
+
+/* ---- the "@date" marker, shared so every page reads one syntax ----
+     @2026-09-03                            a whole day
+     @2026-09-03 14:00                      an hour from 14:00
+     @2026-09-03 14:00-15:30                an interval
+     @2026-09-03..2026-09-05                several whole days (through the 5th)
+     @2026-09-03 14:00..2026-09-05 10:00    an interval across days
+     Also accepts 03.09.2026 / 03/09/2026, since that is how the date is
+     written by hand here. The lead class is TAG_RE's, which is what keeps
+     an e-mail address from looking like a date. */
+  var RE_DATE = "(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})";
+  var RE_TIME = "(?:[01]?\\d|2[0-3]):[0-5]\\d";
+  function markRe(){
+    return new RegExp(
+      "(^|[\\s(\\[{])@(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?" +
+      "(?:[ \\t]*(\\.\\.|[-\u2013\u2014])[ \\t]*(?:(" + RE_DATE + ")(?:[ \\t]+(" + RE_TIME + "))?|(" + RE_TIME + ")))?",
+      "g");
+  }
+  function normDate(s){
+    if(!s) return null;
+    var y, m, d, p;
+    if(s.indexOf("-") === 4){ p = s.split("-"); y = +p[0]; m = +p[1]; d = +p[2]; }
+    else { p = s.split(/[./]/); d = +p[0]; m = +p[1]; y = +p[2]; }
+    if(!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var t = new Date(y, m - 1, d);
+    if(t.getMonth() !== m - 1 || t.getDate() !== d) return null;   // 31.02
+    return ymd(t);
+  }
+  function normTime(s){
+    if(!s) return null;
+    var p = s.split(":");
+    return pad(+p[0]) + ":" + pad(+p[1]);
+  }
+  // A match from markRe() -> { allDay, date, time, endDate, endTime } or null.
+  function readMark(m){
+    var d1 = normDate(m[2]);
+    if(!d1) return null;
+    var t1 = normTime(m[3]), d2 = normDate(m[5]), t2 = normTime(m[6] || m[7]);
+    if(!t1) return { allDay:true, date:d1, endDate:d2 || d1 };
+    return { allDay:false, date:d1, time:t1, endDate:d2 || d1, endTime:t2 || null };
+  }
+  // The whole thing in one call: text -> [{ mark, index, length, text }].
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text)))){
+    var got = readMark(m);
+      if(!got) continue;
+    var lead = m[1] ? m[1].length : 0;
+      out.push({
+        mark: got,
+        index: m.index + lead,
+        length: m[0].length - lead,
+        text: m[0].slice(lead)
+      });
+    }
+    return out;
+  }
+
+/* ---- export ---- */
+  // Ready to POST: JSON.parse(...).forEach(b => calendar.events.insert({calendarId, resource:b}))
+  function toGoogleJSON(list){
+    return JSON.stringify(list.map(function(e){
+    var c = {}, k;
+    for(k in e) if(Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+      delete c.created;                       // the API sets these itself
+      delete c.updated;
+      return c;
+    }), null, 2);
+  }
+  function icsEsc(s){
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function fold(line){
+    if(line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while(rest.length > 72){ out += "\r\n " + rest.slice(0, 72); rest = rest.slice(72); }
+    return out + (rest ? "\r\n " + rest : "");
+  }
+  function utc(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  // Timed events go out in UTC rather than TZID: it needs no VTIMEZONE
+  // block and every importer agrees on what it means. The JSON export is
+  // the one that carries the IANA zone, and that is the API route anyway.
+  function toICS(list){
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scula lu Miron//Calendar//RO",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var stamp = utc(new Date());
+    list.forEach(function(e){
+    var w = when(e);
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + e.id + "@scula-lu-miron");
+      L.push("DTSTAMP:" + stamp);
+      if(w.allDay){
+      L.push("DTSTART;VALUE=DATE:" + e.start.date.replace(/-/g, ""));
+      L.push("DTEND;VALUE=DATE:" + (e.end && e.end.date ? e.end.date : ymd(w.end)).replace(/-/g, ""));
+      } else {
+        L.push("DTSTART:" + utc(w.start));
+        L.push("DTEND:" + utc(w.end));
+      }
+      L.push(fold("SUMMARY:" + icsEsc(e.summary)));
+      if(e.description) L.push(fold("DESCRIPTION:" + icsEsc(e.description)));
+      if(e.location) L.push(fold("LOCATION:" + icsEsc(e.location)));
+      if(e.recurrence) e.recurrence.forEach(function(r){ L.push(fold(r)); });
+      if(e.status) L.push("STATUS:" + String(e.status).toUpperCase());
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n") + "\r\n";
+  }
+
+/* ---- import: an .ics back in, or our own JSON ---- */
+  function icsUnesc(s){
+    return String(s).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  }
+  function icsDate(v){
+    // 20260903, 20260903T140000, 20260903T110000Z
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v);
+    if(!m) return null;
+    if(!m[4]) return { date: m[1] + "-" + m[2] + "-" + m[3] };
+    var d = m[7]
+      ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]))
+      : new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    return { dateTime: rfc3339(d), timeZone: tzName() };
+  }
+  function fromICS(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    var out = [], cur = null;
+    raw.split("\n").forEach(function(line){
+    if(/^BEGIN:VEVENT/i.test(line)){ cur = { id:newId(), status:"confirmed", colorId:"7" }; return; }
+      if(/^END:VEVENT/i.test(line)){
+      if(cur && cur.start){ if(!cur.summary) cur.summary = ""; out.push(cur); }
+      cur = null; return;
+      }
+      if(!cur) return;
+    var i = line.indexOf(":");
+      if(i < 0) return;
+    var name = line.slice(0, i), val = line.slice(i + 1);
+    var key = name.split(";")[0].toUpperCase();
+    if(key === "SUMMARY") cur.summary = icsUnesc(val);
+    else if(key === "DESCRIPTION") cur.description = icsUnesc(val);
+    else if(key === "LOCATION") cur.location = icsUnesc(val);
+    else if(key === "RRULE") cur.recurrence = (cur.recurrence || []).concat(["RRULE:" + val]);
+    else if(key === "DTSTART") cur.start = icsDate(val.trim());
+    else if(key === "DTEND") cur.end = icsDate(val.trim());
+    });
+    return out.filter(function(e){ return !!e.start; });
+  }
+
+  window.ScuLaCal = {
+    COLORS: COLORS,
+    colorHex: colorHex,
+    ready: all().then(function(){ return true; }, function(){ return false; }),
+    all: all,
+    get: function(id){ return all().then(function(l){
+      for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+      return null;
+    }); },
+    put: put,
+    putMany: putMany,
+    remove: remove,
+    make: make,
+    priv: priv,
+    syncSource: syncSource,
+    newId: newId,
+    when: when,
+    daysOf: daysOf,
+    ymd: ymd,
+    hm: hm,
+    dayStart: dayStart,
+    addDays: addDays,
+    tz: tzName,
+    markRe: markRe,
+    readMark: readMark,
+    findMarks: findMarks,
+    toICS: toICS,
+    fromICS: fromICS,
+    toGoogleJSON: toGoogleJSON,
+    meta: metaGet,
+    setMeta: metaSet,
+    onChange: function(f){ subs.push(f); },
+    offChange: function(f){ subs = subs.filter(function(x){ return x !== f; }); },
+    changed: fire
+  };
+})();
+
+/* ============================================================
+   window.ScuLaGeo - the "^@" location marker
+   ------------------------------------------------------------
+   "^@Castelul Peles", "^@44.4268, 26.1025", "^@Strada Lipscani 12,
+   Bucuresti" - a place flagged in markdown, the way "@date" flags a day
+   for the calendar. The syntax lives here, in the block every page
+   carries, and not in the page that writes it, so index.html (which
+   paints the markers and sends them) and map.html (which draws them)
+   can never drift apart - docs/FEATURES.md § S.
+   ============================================================ */
+(function(){
+  var KEY = "scula:map:payload";
+
+  // "^@" then the place, to the end of the line. A "#tag" ends it - the tag
+  // belongs to the line, not to the address - and so does a "<": by the time
+  // index.html runs this over a rendered line, every "<" in it is a tag that
+  // line's own rendering produced. The lead class is TAG_RE's, so "a^@b"
+  // mid-word is not a marker, and one inside `inline code` (which by then
+  // follows "`" or ">") is left alone.
+  //
+  // The tail is a lookahead, not part of the match, so the space *before* a
+  // trailing "#tag" survives: without it the pill this becomes would put the
+  // tag straight after a ">", which is exactly the lead TAG_RE refuses, and
+  // the tag would stop being one. "m", because applyInline() is handed whole
+  // paragraphs and a line start inside one still starts a marker.
+  function markRe(){ return /(^|[\s(\[{])\^@[ \t]*([^\n<#]*?)(?=[ \t]*(?:[<#]|$))/gm; }
+
+  // "44.4268, 26.1025" or "44.4268N 26.1025E" -> {lat, lon}. A pair of bare
+  // integers ("Sector 3, 5") is not coordinates: one of the numbers must
+  // carry a decimal point, or both must carry a hemisphere letter. V is
+  // Romanian for West, so it counts as one.
+  function coords(s){
+    var str = String(s == null ? "" : s).trim();
+    var m = /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])?\s*[,;]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])?$/.exec(str)
+         || /^([+-]?\d{1,3}(?:\.\d+)?)\s*([NSns])\s+([+-]?\d{1,3}(?:\.\d+)?)\s*([EWVewv])$/.exec(str);
+    if(!m) return null;
+    if(!(m[2] && m[4]) && m[1].indexOf(".") < 0 && m[3].indexOf(".") < 0) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[3]);
+    if(m[2] && /[Ss]/.test(m[2])) lat = -lat;
+    if(m[4] && /[WVwv]/.test(m[4])) lon = -lon;
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: lat, lon: lon };
+  }
+
+  // What follows "^@" -> { query, note, lat, lon }, or null when there is
+  // nothing but the marker. Everything after a "|" is a note about the
+  // place rather than part of its address.
+  function read(raw){
+    var s = String(raw == null ? "" : raw), bar = s.indexOf("|"), note = "";
+    if(bar >= 0){ note = s.slice(bar + 1).trim(); s = s.slice(0, bar); }
+    s = s.replace(/[\s,;]+$/, "").trim();
+    if(!s) return null;
+    var c = coords(s);
+    return { query: s, note: note, lat: c ? c.lat : null, lon: c ? c.lon : null };
+  }
+
+  // The whole thing in one call: text -> [{ place, index, length, text }],
+  // the shape ScuLaCal.findMarks already returns for dates.
+  function findMarks(text){
+    var re = markRe(), m, out = [];
+    while((m = re.exec(String(text == null ? "" : text)))){
+      if(re.lastIndex === m.index) re.lastIndex++;
+      var place = read(m[2]);
+      if(!place) continue;
+      var lead = m[1] ? m[1].length : 0;
+      out.push({ place: place, index: m.index + lead, length: m[0].length - lead, text: m[0].slice(lead) });
+    }
+    return out;
+  }
+  function has(text){ return findMarks(text).length > 0; }
+
+  function tagsOf(line){
+    var re = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu, m, out = [];
+    while((m = re.exec(String(line)))) out.push(m[2]);
+    return out;
+  }
+  // The line the place was written on, without its markers, its bullet and
+  // its checkbox - what the popup shows under the name.
+  function contextOf(line){
+    var s = String(line).replace(markRe(), function(whole, lead, raw){
+      var p = read(raw);
+      return (lead || "") + (p ? p.query : "");
+    });
+    s = s.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "").replace(/^\s*\[[ xX]\]\s*/, "");
+    s = s.replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
+    return s.length > 160 ? s.slice(0, 157) + "…" : s;
+  }
+
+  // text -> the payload map.html draws: one layer per heading, in the order
+  // the headings appear, each holding the places written under it.
+  function scan(text, meta){
+    meta = meta || {};
+    var lines = String(text == null ? "" : text).split("\n");
+    var layers = [], index = {}, count = 0, current = "", inCode = false;
+    var fallback = String(meta.title || "").replace(/\.(md|markdown|txt)$/i, "").trim() || "·";
+    function layer(name){
+      if(!index[name]){ index[name] = { name: name, items: [] }; layers.push(index[name]); }
+      return index[name];
+    }
+    lines.forEach(function(line, i){
+      if(/^\s*```/.test(line)){ inCode = !inCode; return; }
+      if(inCode) return;
+      var h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if(h){
+        current = h[2].replace(markRe(), "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim();
+      }
+      var hits = findMarks(line);
+      if(!hits.length) return;
+      var name = current || fallback, tags = tagsOf(line), ctx = contextOf(line);
+      hits.forEach(function(hit){
+        layer(name).items.push({
+          q: hit.place.query, note: hit.place.note,
+          lat: hit.place.lat, lon: hit.place.lon,
+          line: i, tags: tags, context: ctx
+        });
+        count++;
+      });
+    });
+    return { v:1, source: meta.source || "index.html", title: meta.title || "",
+             at: Date.now(), count: count, layers: layers };
+  }
+
+  // The hand-over: one page writes the list, map.html reads it. localStorage
+  // rather than a query string - a whole chapter's worth of places does not
+  // belong in a URL, and this survives the map page being reloaded.
+  function send(payload){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); return true; }catch(e){ return false; }
+  }
+  function received(){
+    try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  window.ScuLaGeo = {
+    KEY: KEY,
+    markRe: markRe,
+    coords: coords,
+    read: read,
+    findMarks: findMarks,
+    has: has,
+    scan: scan,
+    send: send,
+    received: received
+  };
+})();
+</script>
+<!-- ===== end toolbar nav ===== -->
+<main class="kanban-shell">
+  <header class="kanban-head">
+    <div><h1 data-i="title">Kanban</h1><p data-i="subtitle">Sarcini din caiete, organizate după stare.</p></div>
+    <button id="refresh" class="btn" type="button" data-i="refresh">↻ Reîncarcă</button>
+  </header>
+  <section class="controls" aria-label="Filtre Kanban">
+    <div class="control scope"><label for="scope" data-i="scope">Arată sarcinile din</label><select id="scope"></select></div>
+    <div class="control search"><label for="search" data-i="search">Caută sarcini</label><input id="search" type="search" data-i-placeholder="searchHint" placeholder="Caută text, caiet sau capitol…"></div>
+    <div class="control"><label for="owner" data-i="owner">Responsabil</label><select id="owner"></select></div>
+    <div class="control"><label for="priority" data-i="priority">Prioritate</label><select id="priority"></select></div>
+    <div class="control"><label for="date-filter" data-i="dateFilter">Dată</label><select id="date-filter"></select></div>
+    <div class="control"><label for="state-filter" data-i="stateFilter">Stare</label><select id="state-filter"></select></div>
+    <button id="clear" class="btn" type="button" data-i="clear">Șterge filtrele</button>
+  </section>
+  <div class="summary" role="status"><strong id="count">0</strong><span id="count-label"></span><span class="sep">•</span><span id="progress"></span><span id="notice" aria-live="polite"></span></div>
+  <div id="board" class="board"></div>
+</main>
+<script>
+const I18N = {
+  ro: { title:'Kanban', subtitle:'Sarcini din caiete, organizate după stare.', refresh:'↻ Reîncarcă', scope:'Arată sarcinile din', search:'Caută sarcini', searchHint:'Caută text, caiet sau capitol…', owner:'Responsabil', priority:'Prioritate', dateFilter:'Dată', stateFilter:'Stare', clear:'Șterge filtrele', all:'Toate caietele și capitolele', allOwners:'Toți responsabilii', unassigned:'Fără responsabil', allPriorities:'Toate prioritățile', noPriority:'Fără prioritate', nice:'Utilă', important:'Importantă', vital:'Vitală', allDates:'Toate datele', overdue:'Întârziate', today:'Astăzi', next7:'Următoarele 7 zile', undated:'Fără dată', allStates:'Toate stările', todo:'De făcut', inwork:'În lucru', onhold:'În așteptare', blocked:'Blocate', done:'Terminate', tasks:n=>`${n} sarcini afișate`, progress:(d,n)=>`${d} din ${n} terminate`, noTasks:'Nu există sarcini în această selecție. Adaugă o listă „- [ ]” într-un capitol.', noMatches:'Nicio sarcină nu corespunde filtrelor.', emptyLane:'Nicio sarcină', open:'Deschide', move:'Schimbă starea', loadError:'Nu s-au putut încărca caietele.', saveError:'Sarcina s-a schimbat între timp. Am reîncărcat pagina.', saved:'Starea a fost salvată.', workbook:'Caiet', chapter:'Capitol' },
+  en: { title:'Kanban', subtitle:'Workbook tasks organized by state.', refresh:'↻ Refresh', scope:'Show tasks from', search:'Search tasks', searchHint:'Search text, workbook or chapter…', owner:'Responsible', priority:'Priority', dateFilter:'Date', stateFilter:'State', clear:'Clear filters', all:'All workbooks and chapters', allOwners:'All responsibles', unassigned:'Unassigned', allPriorities:'All priorities', noPriority:'No priority', nice:'Nice to have', important:'Important', vital:'Vital', allDates:'All dates', overdue:'Overdue', today:'Today', next7:'Next 7 days', undated:'No date', allStates:'All states', todo:'To do', inwork:'In work', onhold:'On hold', blocked:'Blocked', done:'Done', tasks:n=>`${n} tasks shown`, progress:(d,n)=>`${d} of ${n} done`, noTasks:'No tasks in this selection. Add a “- [ ]” list to a chapter.', noMatches:'No tasks match the filters.', emptyLane:'No tasks', open:'Open', move:'Change state', loadError:'Could not load workbooks.', saveError:'This task changed in the meantime. The board has been refreshed.', saved:'Status saved.', workbook:'Workbook', chapter:'Chapter' }
+};
+let UI = 'ro';
+try { UI = localStorage.getItem('scula:ui-lang') === 'en' ? 'en' : 'ro'; } catch(e) {}
+const t = (key, ...args) => { const v = I18N[UI][key]; return typeof v === 'function' ? v(...args) : v; };
+const $ = id => document.getElementById(id);
+const STATES = ['todo','inwork','onhold','blocked','done'];
+const COLORS = { todo:'#9FB3A5', inwork:'#C1BB45', onhold:'#D9A441', blocked:'#C4643C', done:'#6E9E8A' };
+const TASK_RE = /^([ \t]*[-*+][ \t]+)\[([ xX])\]([ \t]+|$)(.*)$/;
+const STATUS_RE = /^~(inwork|onhold|blocked)(?:[ \t]+|$)/;
+const NAME_WORD = "[\\p{L}\\p{N}][\\p{L}\\p{N}._'-]{0,20}";
+const OWNER_PREFIX = new RegExp('^(' + NAME_WORD + '(?:[ \\t]+' + NAME_WORD + '){0,3})[ \\t]?>>(?=[ \\t])', 'u');
+const OWNER_INLINE = new RegExp(">>(" + NAME_WORD + ")(?![\\p{L}\\p{N}._'-])", 'gu');
+const PRIORITY_RE = /(^|[\s(\[{])!(nice|important|vital)(?![\p{L}\p{N}_-])/u;
+const DATE_VALUE = '(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[./]\\d{1,2}[./]\\d{4})(?:[ \\t]+(?:[01]?\\d|2[0-3]):[0-5]\\d)?|(?:[01]?\\d|2[0-3]):[0-5]\\d';
+const NAMED_DATE = new RegExp('(^|[ \\t(])(start|end)@[ \\t]*(' + DATE_VALUE + ')(?=$|[ \\t),;.!?])', 'giu');
+const PLAIN_DATE = /(^|[ \t(])(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})([ \t]+(?:[01]?\d|2[0-3]):[0-5]\d)?(?=$|[ \t),;.!?])/g;
+let books = [], chapters = [], tasks = [], visible = [];
+let dbBusy = false, loaded = false, scopeInitialized = false;
+const params = new URLSearchParams(location.search);
+
+function openDb() {
+  return new Promise((resolve,reject) => {
+    const request = indexedDB.open('scula-md', 2);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('workbooks')) db.createObjectStore('workbooks',{keyPath:'id'});
+      if (!db.objectStoreNames.contains('chapters')) db.createObjectStore('chapters',{keyPath:'id'}).createIndex('byWorkbook','workbookId');
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+      if (!db.objectStoreNames.contains('pending')) db.createObjectStore('pending',{keyPath:'chapterId'});
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function readAll() {
+  const db = await openDb();
+  return new Promise((resolve,reject) => {
+    const tx = db.transaction(['workbooks','chapters'],'readonly');
+    const b = tx.objectStore('workbooks').getAll();
+    const c = tx.objectStore('chapters').getAll();
+    tx.oncomplete = () => { db.close(); resolve([b.result,c.result]); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+function order(a,b) { return (a.order||0)-(b.order||0) || (a.created||0)-(b.created||0); }
+function parseDates(body) {
+  const dates = {};
+  const named = Array.from(body.matchAll(NAMED_DATE));
+  named.forEach(m => { dates[m[2].toLowerCase()] = m[3]; });
+  let clean = body.replace(NAMED_DATE,' ');
+  if (window.ScuLaCal) {
+    const marks = ScuLaCal.findMarks(clean);
+    marks.forEach(hit => {
+      const m = hit.mark;
+      const start = m.date + (m.allDay ? '' : ' ' + m.time);
+      const end = (m.endDate || m.date) + (m.endTime ? ' ' + m.endTime : '');
+      const interval = m.endDate !== m.date || !!m.endTime;
+      if (interval && !dates.start) dates.start = start;
+      if (!dates.end && (interval || m.allDay)) dates.end = end;
+      if (!interval && !m.allDay && !dates.start) dates.start = start;
+    });
+    for (let i=marks.length-1;i>=0;i--) clean = clean.slice(0,marks[i].index) + clean.slice(marks[i].index+marks[i].length);
+    const plain = Array.from(clean.matchAll(PLAIN_DATE)).filter(hit => ScuLaCal.findMarks('@'+hit[2]+(hit[3]||'')).length);
+    if (plain.length) {
+      const values=plain.map(hit=>hit[2]+(hit[3]||''));
+      if (values.length>1 && !dates.start) dates.start=values[0];
+      if (!dates.end) dates.end=values[values.length-1];
+      for (let i=plain.length-1;i>=0;i--) {
+        const hit=plain[i], from=hit.index+hit[1].length;
+        clean=clean.slice(0,from)+clean.slice(from+hit[2].length+(hit[3]||'').length);
+      }
+    }
+  }
+  return { dates, clean };
+}
+function parseTask(ch, book, line, lineIndex) {
+  const match = line.match(TASK_RE);
+  if (!match) return null;
+  const status = match[2].toLowerCase() === 'x' ? 'done' : ((match[4].match(STATUS_RE)||[])[1] || 'todo');
+  let body = match[4].replace(STATUS_RE,'');
+  const owners = [];
+  const lead = body.match(OWNER_PREFIX);
+  if (lead) { owners.push(lead[1].replace(/[ \t]+/g,' ')); body = body.slice(lead[0].length).trimStart(); }
+  for (const hit of body.matchAll(OWNER_INLINE)) if (!owners.some(n => n.toLowerCase() === hit[1].toLowerCase())) owners.push(hit[1]);
+  body = body.replace(OWNER_INLINE,' ');
+  const priority = (body.match(PRIORITY_RE)||[])[2] || '';
+  body = body.replace(PRIORITY_RE,'$1');
+  const parsed = parseDates(body);
+  const title = parsed.clean.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,target,alias)=>alias||target)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*_`]/g,'').replace(/\s+/g,' ').trim() || line.trim();
+  return { id:ch.id+':'+lineIndex, chapterId:ch.id, workbookId:ch.workbookId, book:book?.name||'', chapter:ch.title, lineIndex, line, title, status, owners, priority, dates:parsed.dates };
+}
+function collectTasks() {
+  const byBook = new Map(books.map(b=>[b.id,b]));
+  tasks = [];
+  chapters.sort(order).forEach(ch => {
+    let fence = '';
+    String(ch.content||'').split('\n').forEach((line,i) => {
+      const marker=line.match(/^[ \t]*(`{3,}|~{3,})/);
+      if (marker) { if (!fence) fence=marker[1][0]; else if (fence===marker[1][0]) fence=''; return; }
+      if (fence) return;
+      const task = parseTask(ch,byBook.get(ch.workbookId),line,i);
+      if (task) tasks.push(task);
+    });
+  });
+}
+function option(value,label) { const el=document.createElement('option'); el.value=value; el.textContent=label; return el; }
+function fill(select,items) {
+  const current=select.value;
+  select.replaceChildren(...items.map(([value,label])=>option(value,label)));
+  if (items.some(([value])=>value===current)) select.value=current;
+}
+function paintControls() {
+  const scope=$('scope'), old=scope.value;
+  scope.replaceChildren(option('all',t('all')));
+  books.sort(order).forEach(book => {
+    const group=document.createElement('optgroup'); group.label=book.name;
+    group.appendChild(option('b:'+book.id,t('workbook')+' · '+book.name));
+    chapters.filter(ch=>ch.workbookId===book.id).sort(order).forEach(ch=>group.appendChild(option('c:'+ch.id,t('chapter')+' · '+ch.title)));
+    scope.appendChild(group);
+  });
+  const initial=params.get('scope');
+  const available=Array.from(scope.options).map(o=>o.value);
+  scope.value=scopeInitialized && available.includes(old) ? old : (available.includes(initial) ? initial : 'all');
+  scopeInitialized=true;
+  const ownerMap=new Map();
+  tasks.flatMap(task=>task.owners).forEach(name=>{
+    const key=name.normalize('NFC').toLocaleLowerCase();
+    if (!ownerMap.has(key)) ownerMap.set(key,name);
+  });
+  const owners=Array.from(ownerMap,([key,name])=>[key,name]).sort((a,b)=>a[1].localeCompare(b[1],UI));
+  fill($('owner'),[['all',t('allOwners')],['none',t('unassigned')],...owners]);
+  fill($('priority'),[['all',t('allPriorities')],['none',t('noPriority')],['nice',t('nice')],['important',t('important')],['vital',t('vital')]]);
+  fill($('date-filter'),[['all',t('allDates')],['overdue',t('overdue')],['today',t('today')],['next7',t('next7')],['undated',t('undated')]]);
+  fill($('state-filter'),[['all',t('allStates')],...STATES.map(s=>[s,t(s)])]);
+}
+function dateDay(value) {
+  if (!value) return '';
+  const iso=value.match(/^\d{4}-\d{2}-\d{2}/);
+  if (iso) return iso[0];
+  const local=value.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  return local ? local[3]+'-'+local[2].padStart(2,'0')+'-'+local[1].padStart(2,'0') : '';
+}
+function localDay(date) { return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'); }
+function dateMatches(task,filter) {
+  if (filter==='all') return true;
+  if (filter==='undated') return !task.dates.start && !task.dates.end;
+  const day=dateDay(task.dates.end||task.dates.start);
+  if (!day || task.status==='done') return false;
+  const today=localDay(new Date());
+  if (filter==='overdue') return !!task.dates.end && day<today;
+  if (filter==='today') return day===today;
+  const next=new Date(); next.setDate(next.getDate()+7);
+  return day>today && day<=localDay(next);
+}
+function filterTasks() {
+  const scope=$('scope').value, q=$('search').value.trim().toLocaleLowerCase(), owner=$('owner').value, priority=$('priority').value, date=$('date-filter').value, state=$('state-filter').value;
+  const scoped=tasks.filter(task=>scope==='all'||(scope.startsWith('b:')&&task.workbookId===scope.slice(2))||(scope.startsWith('c:')&&task.chapterId===scope.slice(2)));
+  visible=scoped.filter(task =>
+    (!q || [task.title,task.book,task.chapter,...task.owners].join(' ').toLocaleLowerCase().includes(q)) &&
+    (owner==='all'||(owner==='none'?!task.owners.length:task.owners.some(n=>n.normalize('NFC').toLocaleLowerCase()===owner))) &&
+    (priority==='all'||(priority==='none'?!task.priority:task.priority===priority)) &&
+    (state==='all'||task.status===state) && dateMatches(task,date));
+  paintBoard(scoped.length);
+}
+function node(tag,className,textValue) { const el=document.createElement(tag); if(className) el.className=className; if(textValue!=null) el.textContent=textValue; return el; }
+function makeCard(task) {
+  const card=node('article','card'+(task.priority?' '+task.priority:''));
+  card.draggable=true; card.dataset.id=task.id;
+  card.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain',task.id); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
+  card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  card.append(node('h3','card-title',task.title),node('div','card-path',task.book+' › '+task.chapter));
+  const meta=node('div','card-meta');
+  task.owners.forEach(name=>meta.appendChild(node('span','pill','◉ '+name)));
+  if (!task.owners.length) meta.appendChild(node('span','pill',t('unassigned')));
+  if (task.priority) meta.appendChild(node('span','pill priority',t(task.priority)));
+  const today=localDay(new Date());
+  for (const kind of ['start','end']) if (task.dates[kind]) {
+    const late=kind==='end' && task.status!=='done' && dateDay(task.dates[kind]) && dateDay(task.dates[kind])<today;
+    meta.appendChild(node('span','pill'+(late?' overdue':''),kind+'@'+task.dates[kind]));
+  }
+  card.appendChild(meta);
+  const actions=node('div','card-actions'), select=node('select');
+  select.setAttribute('aria-label',t('move')+': '+task.title);
+  STATES.forEach(s=>select.appendChild(option(s,t(s)))); select.value=task.status;
+  select.addEventListener('change',()=>changeStatus(task,select.value));
+  const link=node('a','',t('open')); link.href='index.html?chapter='+encodeURIComponent(task.chapterId)+'&line='+task.lineIndex; link.setAttribute('aria-label',t('open')+': '+task.title);
+  actions.append(select,link); card.appendChild(actions);
+  return card;
+}
+function paintBoard(scopedCount) {
+  $('count').textContent=visible.length; $('count-label').textContent=t('tasks',visible.length).replace(/^\d+\s*/, '');
+  $('progress').textContent=t('progress',visible.filter(task=>task.status==='done').length,visible.length);
+  const board=$('board'); board.replaceChildren();
+  if (!scopedCount || !visible.length) { board.appendChild(node('div','empty-page',!scopedCount?t('noTasks'):t('noMatches'))); return; }
+  STATES.forEach(state => {
+    const lane=node('section','lane'); lane.dataset.state=state; lane.style.setProperty('--lane-color',COLORS[state]);
+    const head=node('div','lane-head'); head.append(node('h2','',t(state)),node('span','',visible.filter(task=>task.status===state).length)); lane.appendChild(head);
+    const cards=node('div','lane-cards');
+    const subset=visible.filter(task=>task.status===state).sort((a,b)=>{
+      const p={vital:0,important:1,nice:2,'':3};
+      return p[a.priority]-p[b.priority] || (dateDay(a.dates.end||a.dates.start)||'9999').localeCompare(dateDay(b.dates.end||b.dates.start)||'9999') || a.title.localeCompare(b.title,UI);
+    });
+    if (!subset.length) cards.appendChild(node('div','lane-empty',t('emptyLane')));
+    else subset.forEach(task=>cards.appendChild(makeCard(task)));
+    lane.appendChild(cards);
+    lane.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; lane.classList.add('over'); });
+    lane.addEventListener('dragleave',e=>{ if (!lane.contains(e.relatedTarget)) lane.classList.remove('over'); });
+    lane.addEventListener('drop',e=>{ e.preventDefault(); lane.classList.remove('over'); const task=tasks.find(x=>x.id===e.dataTransfer.getData('text/plain')); if(task) changeStatus(task,state); });
+    board.appendChild(lane);
+  });
+}
+function setLineStatus(line,status) {
+  const match=line.match(TASK_RE); if(!match) return line;
+  const body=match[4].replace(STATUS_RE,'');
+  const marker=({inwork:'~inwork',onhold:'~onhold',blocked:'~blocked'})[status];
+  return match[1]+(status==='done'?'[x]':'[ ]')+(match[3]||(marker?' ':''))+(marker?marker+(body?' ':''):'')+body;
+}
+async function writeStatus(task,status) {
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(['chapters','pending'],'readwrite');
+    const store=tx.objectStore('chapters');
+    const request=store.get(task.chapterId);
+    let conflict=false;
+    request.onsuccess=()=>{
+      const ch=request.result;
+      const lines=String(ch?.content||'').split('\n');
+      if (!ch || lines[task.lineIndex]!==task.line) { conflict=true; return; }
+      lines[task.lineIndex]=setLineStatus(lines[task.lineIndex],status);
+      ch.content=lines.join('\n'); ch.updated=Date.now();
+      store.put(ch);
+      tx.objectStore('pending').put({chapterId:ch.id,workbookId:ch.workbookId,content:ch.content,updated:ch.updated});
+    };
+    tx.oncomplete=()=>{ db.close(); conflict ? reject(new Error('conflict')) : resolve(); };
+    tx.onerror=()=>{ db.close(); reject(tx.error); };
+  });
+}
+async function changeStatus(task,status) {
+  if (dbBusy || task.status===status) return;
+  dbBusy=true; $('notice').textContent='';
+  try {
+    await writeStatus(task,status);
+    try { localStorage.setItem('scula:kanban-change',JSON.stringify({chapterId:task.chapterId,lineIndex:task.lineIndex,line:task.line,status,at:Date.now()})); } catch(e) {}
+    await reload(); $('notice').textContent=t('saved');
+  } catch(e) { await reload(); $('notice').textContent=t('saveError'); }
+  finally { dbBusy=false; }
+}
+async function reload() {
+  try { [books,chapters]=await readAll(); loaded=true; collectTasks(); paintControls(); filterTasks(); }
+  catch(e) { $('notice').textContent=t('loadError'); }
+}
+function repaintLanguage() {
+  document.documentElement.lang=UI;
+  document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
+  document.querySelectorAll('[data-i-placeholder]').forEach(el=>el.placeholder=t(el.dataset.iPlaceholder));
+  if (loaded) { paintControls(); filterTasks(); }
+}
+window.addEventListener('scula-ui-lang',e=>{ UI=e.detail==='en'?'en':'ro'; repaintLanguage(); });
+window.addEventListener('focus',reload);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reload(); });
+for (const id of ['scope','owner','priority','date-filter','state-filter']) $(id).addEventListener('change',filterTasks);
+$('search').addEventListener('input',filterTasks);
+$('refresh').addEventListener('click',reload);
+$('clear').addEventListener('click',()=>{ $('search').value=''; ['scope','owner','priority','date-filter','state-filter'].forEach(id=>$(id).value='all'); filterTasks(); });
+repaintLanguage(); reload();
+</script>
+</body>
+</html>

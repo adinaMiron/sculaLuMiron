@@ -1,0 +1,52 @@
+# codex
+.codex/.tmp/
+.codex/tmp/
+.codex/log/
+.codex/rules/
+.codex/skill-installer/
+.codex/skills/.system/skill-installer/
+.codex/models_cache.json
+.codex/sessions/
+.codex/session_index.jsonl
+.codex/config.toml
+.codex/.sandbox_migration
+.codex/thread-writer-locks
+*.sqlite*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local test scratch
+/tmp/
+*.local.html
+# tests/wbresume.js writes this copy of index.html to stand in for a browser's
+# form restoration, and deletes it again
+tests/.restored.html
+
+# root Playwright suite
+node_modules/
+test-results/
+playwright-report/
+package-lock.json
+
+# tests/ - Playwright checks (see tests/README.md); `npm install` regenerates these
+tests/node_modules/
+tests/package-lock.json
+
+# A local OCR engine for recipes.html, if you keep one (docs/RECIPES.md § A).
+# ~45 MB of wasm and language data: it is fetched, never committed.
+/ocr/
+100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.pdf
+100-de-rete-pentru-slabit-fin3-comprimat-ghrsvd.md
+
+# The task pipeline's run log (absolute timestamps, task text) — local state, not repo content.
+/orchestrator_state.json
+
+# Sandbox pulseaudio runtime symlink (points into /tmp), not repo content.
+.config/pulse/

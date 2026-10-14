@@ -1,0 +1,12 @@
+{
+  "name": "scula-lu-miron-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright regression suite for the task pipeline (tests/01-*/). Dev-only; the apps themselves stay dependency-free.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
