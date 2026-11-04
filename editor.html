@@ -223,12 +223,12 @@
   #newCanvasSummary{ font-size:0.857rem; color:var(--text-2); margin-top:0.714rem; }
 
   /* ---------- Save all sizes modal ---------- */
-  #saveSizesOverlay{
+  #saveSizesOverlay, #saveImageOverlay{
     display:none; position:fixed; inset:0; background:rgba(20,20,15,.45);
     z-index:100; align-items:center; justify-content:center;
   }
-  #saveSizesOverlay.open{ display:flex; }
-  #saveSizesModal{
+  #saveSizesOverlay.open, #saveImageOverlay.open{ display:flex; }
+  #saveSizesModal, #saveImageModal{
     background:var(--surface); border-radius:var(--radius); padding:1.429rem 1.571rem;
     width:24rem; max-width:92vw; box-shadow: 0 10px 40px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:0.429rem;
@@ -2037,6 +2037,19 @@
     </div>
   </div>
 
+  <div id="saveImageOverlay">
+    <div id="saveImageModal" role="dialog" aria-modal="true" aria-labelledby="saveImageTitle">
+      <h3 id="saveImageTitle" style="margin:0 0 0.429rem;" data-i="saveImageTitle">Save image</h3>
+      <div class="grp" style="padding:0; border:none;">
+        <button class="action" id="saveImagePng">PNG</button>
+        <button class="action" id="saveImageJpg">JPG</button>
+      </div>
+      <div style="display:flex; gap:0.571rem; justify-content:flex-end; margin-top:0.714rem;">
+        <button class="action" id="saveImageCancel" data-i="cancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="saveSizesOverlay">
     <div id="saveSizesModal">
       <h3 style="margin:0 0 0.429rem;" data-i="saveAllSizesTitle">Save all sizes</h3>
@@ -2201,7 +2214,7 @@ const I18N = {
     cancelBtn:"Anulează", createCanvasBtn:"Creează canvas",
     infiniteSizeBtn:"∞ Infinit — desenează oriunde",
     infiniteSummary:bg=>`∞ Pânză infinită · ${bg} · exportul se decupează pe desen, cu 10 px margine`,
-    saveAllSizesTitle:"Salvează toate dimensiunile", lblFormat:"Format", savingEllipsis:"Se salvează…",
+    saveAllSizesTitle:"Salvează toate dimensiunile", saveImageTitle:"Salvează imaginea", lblFormat:"Format", savingEllipsis:"Se salvează…",
     recordingPreviewTitle:"Previzualizare înregistrare", closeTip:"Închide",
     playTip:"Redă / pauză", playLabel:"▶ Redă",
     stopTip:"Oprește (derulează la început)", stopLabel:"⏹ Oprește",
@@ -2246,7 +2259,7 @@ const I18N = {
       <p>„Captură ecran” aduce o poză a ecranului direct în editor. „Înregistrează” filmează ecranul (cu sunet) live, cu pauză/reluare, direct pe canvas.</p>
       <h3>Salvare</h3>
       <ul>
-        <li><b>Salvează</b> — exportă imaginea curentă, în aceeași mărime ca și canvasul (sau decupată pe desen, pe pânza infinită).</li>
+        <li><b>Salvează</b> — exportă imaginea curentă ca PNG sau JPG, în aceeași mărime ca și canvasul (sau decupată pe desen, pe pânza infinită).</li>
         <li><b>Toate mărimile</b> — exportă un .zip cu fiecare mărime presetată până la mărimea curentă.</li>
         <li><b>Drive</b> — conectează contul Google și salvează direct într-un folder „Mazgaleste”, creat automat.</li>
       </ul>
@@ -2330,7 +2343,7 @@ const I18N = {
     cancelBtn:"Cancel", createCanvasBtn:"Create canvas",
     infiniteSizeBtn:"∞ Infinite — draw anywhere",
     infiniteSummary:bg=>`∞ Infinite canvas · ${bg} · the export is cropped to your drawing, with a 10 px margin`,
-    saveAllSizesTitle:"Save all sizes", lblFormat:"Format", savingEllipsis:"Saving…",
+    saveAllSizesTitle:"Save all sizes", saveImageTitle:"Save image", lblFormat:"Format", savingEllipsis:"Saving…",
     recordingPreviewTitle:"Recording preview", closeTip:"Close",
     playTip:"Play / pause", playLabel:"▶ Play",
     stopTip:"Stop (rewind to start)", stopLabel:"⏹ Stop",
@@ -2375,7 +2388,7 @@ const I18N = {
       <p>"Screenshot" brings a picture of your screen straight into the editor. "Record" films your screen (with audio) live, with pause/resume, directly onto the canvas.</p>
       <h3>Saving</h3>
       <ul>
-        <li><b>Save</b> — exports the current image, at the same size as the canvas (or cropped to the drawing, on the infinite canvas).</li>
+        <li><b>Save</b> — exports the current image as PNG or JPG, at the same size as the canvas (or cropped to the drawing, on the infinite canvas).</li>
         <li><b>All sizes</b> — exports a .zip with every preset size up to the current one.</li>
         <li><b>Drive</b> — connects your Google account and saves straight into a "Mazgaleste" folder it creates automatically.</li>
       </ul>
@@ -5744,12 +5757,27 @@ const saveOut = (filename, blob) => {
   return ScuLaFolder.save(filename, blob);
 };
 
-document.getElementById('saveBtn').addEventListener('click', () => {
+const saveImageOverlay = document.getElementById('saveImageOverlay');
+const closeSaveImage = () => saveImageOverlay.classList.remove('open');
+
+function saveImageAs(ext){
+  closeSaveImage();
   if (!state.canvasReady) return;
   const rect = exportRect();
-  const out = renderComposite(Math.max(1, Math.round(rect.w)), Math.max(1, Math.round(rect.h)), { rect });
-  out.toBlob((blob) => { saveOut('edited-image.png', blob); }, 'image/png');
+  const jpg = ext === 'jpg';
+  const out = renderComposite(Math.max(1, Math.round(rect.w)), Math.max(1, Math.round(rect.h)), { rect, forceWhiteBg: jpg });
+  out.toBlob((blob) => { if (blob) saveOut('edited-image.' + ext, blob); },
+    jpg ? 'image/jpeg' : 'image/png', jpg ? 0.92 : undefined);
+}
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  if (!state.canvasReady) return;
+  saveImageOverlay.classList.add('open');
 });
+document.getElementById('saveImagePng').addEventListener('click', () => saveImageAs('png'));
+document.getElementById('saveImageJpg').addEventListener('click', () => saveImageAs('jpg'));
+document.getElementById('saveImageCancel').addEventListener('click', closeSaveImage);
+saveImageOverlay.addEventListener('click', (e) => { if (e.target === saveImageOverlay) closeSaveImage(); });
 
 /* ===================== Save all sizes (zip) ===================== */
 const SIZE_PRESETS = [[320,240],[480,360],[800,600],[1200,900],[1600,1200],[1920,1080],[4096,2160]];

@@ -850,6 +850,35 @@ function wbBindChapterDrop(el, bookId, targetId = null) {
 
 // A long press starts a chapter move on touch screens. Until then, the list
 // keeps its normal tap and vertical scroll behaviour.
+let wbDraggedBookId = null;
+function wbBookBefore(el, y) { return y < el.getBoundingClientRect().top + el.offsetHeight / 2; }
+function wbBindBookDrop(row, bookId) {
+  row.dataset.wbBookRow = bookId;
+  row.addEventListener('dragover', e => {
+    if (!wbDraggedBookId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    wbClearDropHint();
+    row.classList.add(wbBookBefore(row, e.clientY) ? 'wb-drop-before' : 'wb-drop-after');
+  });
+  row.addEventListener('drop', e => {
+    if (!wbDraggedBookId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = wbDraggedBookId;
+    const before = wbBookBefore(row, e.clientY);
+    wbDraggedBookId = null;
+    wbClearDropHint(true);
+    moveWorkbookTo(id, bookId, before);
+  });
+}
+function wbTouchBookAt(x, y) {
+  const hit = document.elementFromPoint(x, y);
+  const el = hit && hit.closest('[data-wb-book-row]');
+  if (!el || !document.getElementById('wb-tree').contains(el)) return null;
+  return { el, bookId: el.dataset.wbBookRow, before: wbBookBefore(el, y) };
+}
 function wbTouchAt(x, y) {
   const hit = document.elementFromPoint(x, y);
   const el = hit && hit.closest('[data-wb-drop-book]');
@@ -860,6 +889,11 @@ function wbTouchAt(x, y) {
 }
 function wbTouchHint(x, y) {
   wbClearDropHint();
+  if (wbTouchDrag && wbTouchDrag.kind === 'book') {
+    const bt = wbTouchBookAt(x, y);
+    if (bt) bt.el.classList.add(bt.before ? 'wb-drop-before' : 'wb-drop-after');
+    return bt;
+  }
   const target = wbTouchAt(x, y);
   if (target) target.el.classList.add(target.targetId ? (target.before ? 'wb-drop-before' : 'wb-drop-after') : 'wb-drop-append');
   return target;
@@ -872,6 +906,7 @@ document.addEventListener('touchstart', e => {
   clearTimeout(wbTouchDrag.timer);
   wbTouchDrag = null;
   wbDraggedChapterId = null;
+  wbDraggedBookId = null;
   wbClearDropHint(true);
 }, { passive: true });
 function wbEndTouchDrag(e, cancelled = false) {
@@ -882,6 +917,13 @@ function wbEndTouchDrag(e, cancelled = false) {
   wbTouchDrag = null;
   if (!drag.active) return;
   e.preventDefault(); // also suppresses the synthetic click after a drop
+  if (drag.kind === 'book') {
+    const bt = cancelled ? null : wbTouchBookAt(touch.clientX, touch.clientY);
+    wbDraggedBookId = null;
+    wbClearDropHint(true);
+    if (bt) moveWorkbookTo(drag.id, bt.bookId, bt.before);
+    return;
+  }
   const target = cancelled ? null : wbTouchAt(touch.clientX, touch.clientY);
   wbDraggedChapterId = null;
   wbClearDropHint(true);
@@ -959,6 +1001,32 @@ function renderWorkbooks() {
     row.className = 'wb-book-row' + (chapters.some(c => wbPendingIds.has(c.id)) ? ' has-modified' : '');
     row.title = book.folder + '/';
     wbBindChapterDrop(row, book.id);
+    wbBindBookDrop(row, book.id);
+    row.draggable = true;
+    row.addEventListener('dragstart', e => {
+      if (wbDraggedChapterId || e.target.closest('[contenteditable="true"]')) { e.preventDefault(); return; }
+      clearTimeout(wbNameClickTimer);
+      wbDraggedBookId = book.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', book.id);
+      requestAnimationFrame(() => row.classList.add('wb-dragging'));
+    });
+    row.addEventListener('dragend', () => { wbDraggedBookId = null; wbClearDropHint(true); });
+    row.addEventListener('contextmenu', e => { if (wbTouchDrag && wbTouchDrag.active) e.preventDefault(); });
+    row.addEventListener('touchstart', e => {
+      if (wbTouchDrag || wbMovingChapter || e.touches.length !== 1 || e.target.closest('.wb-acts, [contenteditable="true"]')) return;
+      const touch = e.changedTouches[0];
+      const drag = { kind: 'book', id: book.id, identifier: touch.identifier, x: touch.clientX, y: touch.clientY, active: false, timer: null };
+      wbTouchDrag = drag;
+      drag.timer = setTimeout(() => {
+        if (wbTouchDrag !== drag) return;
+        drag.active = true;
+        clearTimeout(wbNameClickTimer);
+        wbDraggedBookId = book.id;
+        row.classList.add('wb-dragging');
+        wbTouchHint(drag.x, drag.y);
+      }, 350);
+    }, { passive: true });
     row.addEventListener('click', () => {
       if (open) wbOpenBooks.delete(book.id); else wbOpenBooks.add(book.id);
       renderWorkbooks();
@@ -1168,8 +1236,34 @@ async function newChapter(workbookId) {
   if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); return; }
   wbOpenBooks.add(book.id);
   loadChapterIntoEditor(ch);
+  if (isSmallScreen()) closeWbPanel();
+  setView('source');
+  editor.focus();
+  editor.setSelectionRange(0, 0);
   await wbMirrorWrite(book, ch, '');
 }
+
+// Enter after a lone "@date" row turns it into "# @date" and opens the next row.
+editor.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.isComposing) return;
+  if (editor.selectionStart !== editor.selectionEnd) return;
+  const pos = editor.selectionStart, v = editor.value;
+  const start = v.lastIndexOf('\n', pos - 1) + 1;
+  let end = v.indexOf('\n', pos);
+  if (end === -1) end = v.length;
+  if (pos !== end) return;
+  const line = v.slice(start, end);
+  if (!/^\s*@/.test(line)) return;
+  // the fence state depends on the rows above, so convert the prefix as a whole
+  const head = v.slice(0, end);
+  const conv = gdDateHeadings(head, true);
+  if (conv === head) return;
+  e.preventDefault();
+  editor.value = conv + '\n' + v.slice(end);
+  const caret = conv.length + 1;
+  editor.setSelectionRange(caret, caret);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+});
 
 function loadChapterIntoEditor(ch) {
   wbEditorDestination++;
@@ -1177,6 +1271,9 @@ function loadChapterIntoEditor(ch) {
   wbDirty = false;
   clearTimeout(wbSaveTimer);
   editor.value = ch.content || '';
+  const gardenText = gdDateHeadings(editor.value, !gdIsGardenBook(wbBook(ch.workbookId)));
+  const gardenChanged = gardenText !== editor.value;
+  if (gardenChanged) editor.value = gardenText;
   undoReset();                 // the old chapter's history is not this one's
   document.getElementById('current-file').textContent = ch.file;
   updatePreview(); updateStatus(); updateNav();
@@ -1184,6 +1281,10 @@ function loadChapterIntoEditor(ch) {
   wbMetaSet('last', ch.id).catch(() => {});
   wbDraftWrite();              // the journal points at this chapter from now on
   wbSay(t('chapterOpened', ch.title));
+  if (gardenChanged) {         // keep the converted headings: save them
+    wbDirty = true;
+    wbSaveTimer = setTimeout(() => { flushChapter(); }, 800);
+  }
 }
 
 async function openChapter(id) {
@@ -1283,6 +1384,23 @@ async function moveWorkbook(id, dir) {
   const j = i + dir;
   if (j < 0 || j >= ordered.length) return;
   ordered.splice(j, 0, ordered.splice(i, 1)[0]);
+  const changed = [];
+  ordered.forEach((b, k) => {
+    if ((b.order || 0) !== k) { b.order = k; b.updated = Date.now(); changed.push(b); }
+  });
+  for (const b of changed) { if (!await wbPersist(WB_BOOKS, b)) return; }
+  renderWorkbooks();
+}
+
+// Drag and drop: place a workbook right before or after another one.
+async function moveWorkbookTo(id, targetId, before) {
+  if (id === targetId) return;
+  const ordered = wbBooks.slice().sort(wbByOrder);
+  const book = ordered.find(b => b.id === id);
+  if (!book || !ordered.some(b => b.id === targetId)) return;
+  ordered.splice(ordered.indexOf(book), 1);
+  const ti = ordered.findIndex(b => b.id === targetId);
+  ordered.splice(before ? ti : ti + 1, 0, book);
   const changed = [];
   ordered.forEach((b, k) => {
     if ((b.order || 0) !== k) { b.order = k; b.updated = Date.now(); changed.push(b); }

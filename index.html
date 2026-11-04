@@ -136,7 +136,25 @@
 
   /* On desktop this wrapper must not disturb .toolbar's own flex layout */
   .toolbar-groups { display: contents; }
+  .tb-group-btns { display: none; }
+  /* Phones: tools are grouped behind four buttons; selects for task status,
+     importance and the filters stay directly in the menu. */
+  @media (max-width: 600px) {
+    .tb-group-btns { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+    .tb-group-btns .tb-btn { flex: 1 1 0; min-height: 36px; }
+    .tb-group-btns .tb-btn[aria-expanded="true"] { background: var(--accent, #4a7); color: #fff; }
+    .toolbar-groups .toolbar-sep { display: none; }
+    .toolbar-groups:not([data-open="edit"]) [data-tbg="edit"],
+    .toolbar-groups:not([data-open="format"]) [data-tbg="format"],
+    .toolbar-groups:not([data-open="insert"]) [data-tbg="insert"],
+    .toolbar-groups:not([data-open="tools"]) [data-tbg="tools"] { display: none; }
+  }
   .tb-toggle { display: none; } /* shown only on small screens, see media queries */
+  /* 💡 Idea inside the ☰ menu: tablet and phone only (the header has it on desktop) */
+  .tb-menu-idea { display: none; }
+  @media (max-width: 1024px), (min-width: 1025px) and (pointer: coarse) {
+    .toolbar-groups .tb-menu-idea { display: inline-flex; align-items: center; }
+  }
 
   .tb-btn {
     background: transparent;
@@ -1258,6 +1276,21 @@
     #wb-save-sync-row .btn { padding: 6px 10px; }
   }
 
+  /* Large touch tablets (landscape 1180/1366): same collapsible toolbar */
+  @media (min-width: 1025px) and (pointer: coarse) {
+    .toolbar { flex-wrap: nowrap; align-items: flex-start; }
+    .tb-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar-groups {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      flex: 1 1 0;
+      min-width: 0;
+      transition: max-height 0.2s ease, opacity 0.2s ease;
+    }
+    .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; overflow: hidden; visibility: hidden; }
+  }
+
   /* ═══════════ TABLET (≤ 1024px) ═══════════ */
   @media (max-width: 1024px) {
     :root { --panel-w: 240px; }
@@ -1285,7 +1318,7 @@
       overflow-y: auto;
       transition: max-height 0.2s ease, opacity 0.2s ease;
     }
-    .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; }
+    .toolbar.collapsed .toolbar-groups { max-height: 0; opacity: 0; visibility: hidden; }
     .tb-btn { padding: 6px 7px; font-size: 12px; }
     .tb-select { font-size: 11px; padding: 4px 6px; }
     .toolbar-sep { margin: 0 4px; }
@@ -3782,12 +3815,19 @@
   <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" aria-controls="toolbar-groups" aria-expanded="true" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
 
   <div class="toolbar-groups" id="toolbar-groups">
-  <button class="tb-btn" id="btn-undo" onclick="undoEdit()" data-i="undoBtn" data-i-title="undoTip" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
-  <button class="tb-btn" id="btn-redo" onclick="redoEdit()" data-i="redoBtn" data-i-title="redoTip" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
+  <button type="button" class="tb-btn tb-menu-idea" id="btn-idea-menu" onclick="openIdeaModal()" data-i="ideaBtn" data-i-title="ideaTip" title="Capture an idea straight into its chapter (Ctrl+Alt+I)">💡 Idea</button>
+  <div class="tb-group-btns" id="tb-group-btns" role="group">
+    <button type="button" class="tb-btn" data-group="edit" aria-expanded="false" onclick="toggleToolbarGroup('edit')" data-i="tbgEdit">Edit</button>
+    <button type="button" class="tb-btn" data-group="format" aria-expanded="false" onclick="toggleToolbarGroup('format')" data-i="tbgFormat">Format</button>
+    <button type="button" class="tb-btn" data-group="insert" aria-expanded="false" onclick="toggleToolbarGroup('insert')" data-i="tbgInsert">Insert</button>
+    <button type="button" class="tb-btn" data-group="tools" aria-expanded="false" onclick="toggleToolbarGroup('tools')" data-i="tbgTools">Tools</button>
+  </div>
+  <button class="tb-btn" data-tbg="edit" id="btn-undo" onclick="undoEdit()" data-i="undoBtn" data-i-title="undoTip" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+  <button class="tb-btn" data-tbg="edit" id="btn-redo" onclick="redoEdit()" data-i="redoBtn" data-i-title="redoTip" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
 
   <div class="toolbar-sep"></div>
-  <span class="tb-label">H</span>
-  <select class="tb-select" id="heading-select" onchange="insertHeading(this.value)">
+  <span class="tb-label" data-tbg="format">H</span>
+  <select class="tb-select" data-tbg="format" id="heading-select" onchange="insertHeading(this.value)">
     <option value="" data-i="headingDefault">— Heading —</option>
     <option value="1" data-i="headingH1">H1 — Title</option>
     <option value="2" data-i="headingH2">H2 — Section</option>
@@ -3798,8 +3838,8 @@
   </select>
 
   <div class="toolbar-sep"></div>
-  <span class="tb-label" data-i="lblSize">Size</span>
-  <select class="tb-select" id="size-select" onchange="insertFontSize(this.value)">
+  <span class="tb-label" data-tbg="format" data-i="lblSize">Size</span>
+  <select class="tb-select" data-tbg="format" id="size-select" onchange="insertFontSize(this.value)">
     <option value="" data-i="sizeDefault">— Font Size —</option>
     <option value="8">8px</option>
     <option value="9">9px</option>
@@ -3819,15 +3859,16 @@
     <option value="28">28px</option>
     <option value="30">30px</option>
   </select>
-  <label class="tb-btn tb-color-control" title="Text color" data-i-title="textColorTip">A <input type="color" aria-label="Text color" value="#c1bb45" onchange="applyTextColor(this.value)"></label>
-  <label class="tb-btn tb-color-control" title="Highlight color" data-i-title="highlightColorTip">▰ <input type="color" aria-label="Highlight color" value="#f4d35e" onchange="applyHighlightColor(this.value)"></label>
+  <label class="tb-btn tb-color-control" data-tbg="format" title="Text color" data-i-title="textColorTip">A <input type="color" aria-label="Text color" value="#c1bb45" onchange="applyTextColor(this.value)"></label>
+  <label class="tb-btn tb-color-control" data-tbg="format" title="Highlight color" data-i-title="highlightColorTip">▰ <input type="color" aria-label="Highlight color" value="#f4d35e" onchange="applyHighlightColor(this.value)"></label>
+  <button class="tb-btn" data-tbg="format" onclick="applyColorAndHighlight()" data-i-title="colorHighlightTip" title="Text color + highlight">A▰</button>
 
-  <button class="tb-btn" onclick="wrapSelection('**','**')" data-i-title="boldTip" title="Bold"><b>B</b></button>
-  <button class="tb-btn" onclick="wrapSelection('*','*')" data-i-title="italicTip" title="Italic"><i>I</i></button>
+  <button class="tb-btn" data-tbg="format" onclick="wrapSelection('**','**')" data-i-title="boldTip" title="Bold"><b>B</b></button>
+  <button class="tb-btn" data-tbg="format" onclick="wrapSelection('*','*')" data-i-title="italicTip" title="Italic"><i>I</i></button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
-  <button class="tb-btn" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
+  <button class="tb-btn" data-tbg="insert" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
+  <button class="tb-btn" data-tbg="insert" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
   <select class="tb-select" id="task-status-select" onchange="setTaskStatus(this.value)"
           data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)">
     <option value="" data-i="taskStatusDefault">— Task status —</option>
@@ -3845,27 +3886,27 @@
     <option value="!vital" data-i="impInsertVital">🔥 !vital</option>
   </select>
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
-  <button class="tb-btn" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
+  <button class="tb-btn" data-tbg="insert" onclick="openLinkModal()" data-i="linkBtn" data-i-title="linkTip" title="Insert hyperlink (Ctrl+K)">🔗 Link</button>
+  <button class="tb-btn" data-tbg="insert" onclick="openImageModal()" data-i="imageBtn">⬛ Image</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
-  <button class="tb-btn" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
-  <button class="tb-btn" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
-  <button class="tb-btn" id="btn-diagram" onclick="openDiagram()" data-i="diagramBtn" data-i-title="diagramTip" title="Draw a flowchart or a mind map">◇ Diagram</button>
-  <button class="tb-btn" id="btn-sketch" onclick="openSketch()" data-i="sketchBtn" data-i-title="sketchTip" title="Draw a freehand sketch into the chapter">✏ Sketch</button>
-  <button class="tb-btn" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
+  <button class="tb-btn" data-tbg="insert" onclick="openTableModal()" data-i="tableBtn" data-i-title="tableTip" title="Insert table">⊞ Table</button>
+  <button class="tb-btn" data-tbg="insert" onclick="insertCodeBlock()" data-i="codeBtn" data-i-title="codeTip" title="Insert code block (Ctrl+Shift+K)">⟨/⟩ Code</button>
+  <button class="tb-btn" data-tbg="insert" onclick="insertTimeline()" data-i="timelineBtn" data-i-title="timelineTip" title="Insert a timeline (#date - !what happened)">⏳ Timeline</button>
+  <button class="tb-btn" data-tbg="insert" id="btn-diagram" onclick="openDiagram()" data-i="diagramBtn" data-i-title="diagramTip" title="Draw a flowchart or a mind map">◇ Diagram</button>
+  <button class="tb-btn" data-tbg="insert" id="btn-sketch" onclick="openSketch()" data-i="sketchBtn" data-i-title="sketchTip" title="Draw a freehand sketch into the chapter">✏ Sketch</button>
+  <button class="tb-btn" data-tbg="insert" id="btn-dictate" onclick="toggleDictation()" data-i="dictateBtn" data-i-title="dictateTip" title="Voice dictation">🎤 Dictate</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" onclick="openWikiModal()" data-i="wikilinkBtn" data-i-title="wikilinkTip" title="Link to a note or a section (Ctrl+Shift+L)">⟦⟧ Note link</button>
-  <button class="tb-btn" onclick="toggleGraph()" data-i="graphBtn" data-i-title="graphTip" title="Knowledge graph (Ctrl+3)">🕸 Graph</button>
-  <button class="tb-btn" id="btn-garden" onclick="toggleGarden()" data-i="gardenBtn" data-i-title="gardenTip" title="Garden toolbox (Ctrl+5)" hidden>🌱 Garden</button>
-  <button class="tb-btn" id="btn-media" onclick="toggleMedia()" data-i="mediaBtn" data-i-title="mediaTip" title="Photos and films from a folder (Ctrl+6)">📸 Photos</button>
+  <button class="tb-btn" data-tbg="insert" onclick="openWikiModal()" data-i="wikilinkBtn" data-i-title="wikilinkTip" title="Link to a note or a section (Ctrl+Shift+L)">⟦⟧ Note link</button>
+  <button class="tb-btn" data-tbg="tools" onclick="toggleGraph()" data-i="graphBtn" data-i-title="graphTip" title="Knowledge graph (Ctrl+3)">🕸 Graph</button>
+  <button class="tb-btn" data-tbg="tools" id="btn-garden" onclick="toggleGarden()" data-i="gardenBtn" data-i-title="gardenTip" title="Garden toolbox (Ctrl+5)" hidden>🌱 Garden</button>
+  <button class="tb-btn" data-tbg="tools" id="btn-media" onclick="toggleMedia()" data-i="mediaBtn" data-i-title="mediaTip" title="Photos and films from a folder (Ctrl+6)">📸 Photos</button>
 
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" id="btn-find" onclick="toggleFind(true)" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
-  <button class="tb-btn active" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
-  <button class="tb-btn active" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
+  <button class="tb-btn" data-tbg="tools" id="btn-find" onclick="toggleFind(true)" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
+  <button class="tb-btn active" data-tbg="tools" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
+  <button class="tb-btn active" data-tbg="tools" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
   <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
   <div class="toolbar-filters" role="group">
     <select class="tb-select" id="btn-filter-todo" onchange="filterTodoByStatus(this.value)"
@@ -3890,8 +3931,8 @@
     </select>
   </div>
   <div class="toolbar-sep"></div>
-  <button class="tb-btn" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
-  <button class="tb-btn" id="btn-gantt" onclick="openGantt()" data-i="ganttBtn" data-i-title="ganttTip" title="Show this chapter's tasks as a Gantt chart">▤ Gantt</button>
+  <button class="tb-btn" data-tbg="tools" id="btn-kanban" onclick="openKanban()" data-i="kanbanBtn" data-i-title="kanbanTip" title="Open the task board for this chapter">▦ Kanban</button>
+  <button class="tb-btn" data-tbg="tools" id="btn-gantt" onclick="openGantt()" data-i="ganttBtn" data-i-title="ganttTip" title="Show this chapter's tasks as a Gantt chart">▤ Gantt</button>
   </div>
 </div>
 

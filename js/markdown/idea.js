@@ -343,8 +343,11 @@ async function ideaSaveNow() {
 async function loadWorkbooks() {
   try {
     const [books, chapters] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS)]);
-    wbBooks = (books || []).sort(wbByOrder);
-    wbChapters = (chapters || []).sort(wbByOrder);
+    // A tree something already booted (wbBooted) is newer than storage.
+    if (!wbBooted) {
+      wbBooks = (books || []).sort(wbByOrder);
+      wbChapters = (chapters || []).sort(wbByOrder);
+    }
     wbChapters.forEach(ch => wbChapterVersions.set(ch.id, wbChapterVersion(ch)));
     try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }

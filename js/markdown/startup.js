@@ -208,6 +208,38 @@ initWbPanelResize();
 initWbPanelDrag();
 
 let lastSmall = isSmallScreen();
+// Returning to the page (e.g. Alt+Tab back): put the caret, selection and
+// scroll of the editor back where they were, unless focus was elsewhere.
+let returnSnap = null;
+function rememberEditorForReturn() {
+  if (returnSnap) return;   // already away; keep the first snapshot
+  const ed = document.getElementById('editor');
+  if (!ed) return;
+  returnSnap = {
+    focused: document.activeElement === ed,
+    s: ed.selectionStart, e: ed.selectionEnd, dir: ed.selectionDirection,
+    top: ed.scrollTop, left: ed.scrollLeft,
+  };
+}
+function restoreEditorOnReturn() {
+  const snap = returnSnap;
+  if (!snap || document.hidden) return;
+  returnSnap = null;
+  const ed = document.getElementById('editor');
+  if (!ed || !snap.focused) return;
+  const a = document.activeElement;
+  if (a && a !== document.body && a !== ed) return;
+  try { ed.focus({ preventScroll: true }); } catch (err) { ed.focus(); }
+  try { ed.setSelectionRange(snap.s, snap.e, snap.dir || 'none'); } catch (err) {}
+  ed.scrollTop = snap.top;
+  ed.scrollLeft = snap.left;
+}
+window.addEventListener('blur', rememberEditorForReturn);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) rememberEditorForReturn(); else restoreEditorOnReturn();
+});
+window.addEventListener('focus', restoreEditorOnReturn);
+
 window.addEventListener('resize', () => {
   const nowSmall = isSmallScreen();
   if (nowSmall !== lastSmall) {   // only react when crossing the breakpoint

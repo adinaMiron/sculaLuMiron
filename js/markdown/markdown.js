@@ -339,9 +339,20 @@ function calScan() {
     const text = noteText(n);
     if (!text) return;
     const ref = n.chapterId || 'loose';
-    text.split('\n').forEach((line, i) => {
+    const rows = text.split('\n');
+    rows.forEach((line, i) => {
       ScuLaCal.findMarks(line).forEach(hit => {
         const tags = calTagsOf(line);
+        let description = n.title + (n.bookName ? ' · ' + n.bookName : '');
+        // "# @date" alone on a heading row: its first paragraph is the description
+        const hm = /^#{1,6}[ \t]+(\S.*?)[ \t]*$/.exec(line);
+        if (hm && hm[1] === hit.text) {
+          let j = i + 1;
+          while (j < rows.length && !rows[j].trim()) j++;
+          const para = [];
+          for (; j < rows.length && rows[j].trim() && !/^#{1,6}[ \t]/.test(rows[j]); j++) para.push(rows[j].replace(/\s+$/, ''));
+          if (para.length) description = para.join('\n');
+        }
         events.push(ScuLaCal.make({
           title: calTitleOf(line, hit) || n.title,
           allDay: hit.mark.allDay,
@@ -351,7 +362,7 @@ function calScan() {
           endTime: hit.mark.endTime,
           colorId: '2',
           location: '',
-          description: n.title + (n.bookName ? ' · ' + n.bookName : ''),
+          description,
           ext: {
             sculaSource: 'index.html',
             sculaRef: ref,

@@ -128,6 +128,7 @@
   }
   #stage.dragging { cursor: grabbing; }
   #tiles, #pins { position: absolute; inset: 0; }
+  #contours { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   #pins { pointer-events: none; }
   .tile {
     position: absolute; top: 0; left: 0; width: 256px; height: 256px;
@@ -1586,6 +1587,8 @@
   <button class="btn" id="btn-fit" onclick="fitAll()" data-i="fitBtn" data-i-title="fitTip" title="Încadrează toate locurile găsite">⤢ Încadrează</button>
   <button class="btn" id="btn-locate" onclick="locateAll(true)" data-i="locateBtn" data-i-title="locateTip" title="Caută din nou fiecare adresă">🔎 Caută adresele</button>
   <button class="btn" id="btn-open-md" onclick="openMd()" data-i="openMdBtn" data-i-title="openMdTip" title="Citește marcajele „^@” dintr-un fișier .md">📄 Deschide .md</button>
+  <button class="btn" id="btn-satellite" onclick="toggleSatellite()" aria-pressed="false" data-i="satelliteBtn">🛰 Satelit</button>
+  <button class="btn" id="btn-contours" onclick="toggleContours()" aria-pressed="false" data-i="contoursBtn">〰 Curbe de nivel</button>
   <button class="btn" id="btn-export" onclick="exportGeoJSON()" data-i="exportBtn" data-i-title="exportTip" title="Salvează locurile ca .geojson">⬇ Exportă</button>
   <button class="btn icon" id="btn-settings" onclick="openSettings()" data-i-title="settingsTip" title="Adresa hărții și a geocodorului">⚙</button>
   <button class="btn icon" id="btn-help" onclick="openHelp()" data-i-title="helpTip" title="Ajutor">❓</button>
@@ -1604,6 +1607,7 @@
 
   <div id="stage">
     <div id="tiles"></div>
+    <canvas id="contours"></canvas>
     <div id="pins"></div>
     <div id="hud">
       <button class="btn icon" onclick="zoomBy(1)" aria-label="+">＋</button>
@@ -1633,6 +1637,16 @@
       <label for="f-tiles" data-i="tilesLabel">Adresa dalelor hărții</label>
       <input id="f-tiles" type="text" spellcheck="false">
       <span class="hint" data-i="tilesHint">Șablon cu {z}/{x}/{y}. Gol = fără dale: rămân caroiajul și punctele, deci pagina merge și fără internet. Un dosar local („./tiles/{z}/{x}/{y}.png”) merge la fel de bine.</span>
+    </div>
+    <div class="field">
+      <label for="f-satellite-tiles" data-i="satelliteLabel">Adresa imaginilor din satelit</label>
+      <input id="f-satellite-tiles" type="text" spellcheck="false">
+      <span class="hint" data-i="satelliteHint">Șablon cu {z}/{x}/{y}, folosit când butonul „🛰 Satelit” e apăsat. Gol = fără dale.</span>
+    </div>
+    <div class="field">
+      <label for="f-contour-tiles" data-i="contourLabel">Adresa datelor de altitudine</label>
+      <input id="f-contour-tiles" type="text" spellcheck="false">
+      <span class="hint" data-i="contourHint">Șablon cu {z}/{x}/{y}, dale Terrarium (metri = R·256 + G + B/256 − 32768). Gol = fără curbe de nivel.</span>
     </div>
     <div class="field">
       <label for="f-geocoder" data-i="geocoderLabel">Adresa geocodorului</label>
@@ -1678,6 +1692,12 @@ const I18N = {
     fitBtn:"⤢ Încadrează", fitTip:"Încadrează toate locurile găsite",
     locateBtn:"🔎 Caută adresele", locateTip:"Caută din nou fiecare adresă",
     openMdBtn:"📄 Deschide .md", openMdTip:"Citește marcajele „^@” dintr-un fișier .md",
+    contoursBtn:"〰 Curbe de nivel",
+    satelliteBtn:"🛰 Satelit",
+    satelliteLabel:"Adresa imaginilor din satelit",
+    satelliteHint:"Șablon cu {z}/{x}/{y}, folosit când butonul „🛰 Satelit” e apăsat. Gol = fără dale.",
+    contourLabel:"Adresa datelor de altitudine",
+    contourHint:"Șablon cu {z}/{x}/{y}, dale Terrarium (metri = R·256 + G + B/256 − 32768). Gol = fără curbe de nivel.",
     exportBtn:"⬇ Exportă", exportTip:"Salvează locurile ca .geojson",
     settingsTip:"Adresa hărții și a geocodorului",
     helpTip:"Ajutor",
@@ -1723,7 +1743,7 @@ const I18N = {
       <h3>Straturile</h3>
       <p>Fiecare loc intră în stratul titlului de deasupra lui (<code>## Ziua 2</code>). Clic pe numele stratului îl ascunde și îl arată; clic pe ▸ îl strânge. Clic pe un loc duce harta la el.</p>
       <h3>Harta</h3>
-      <p>Trage cu degetul sau cu mausul, rotița sau <kbd>+</kbd>/<kbd>−</kbd> apropie și depărtează, <kbd>F</kbd> încadrează tot. Dalele vin de la OpenStreetMap, adresa lor se vede și se schimbă în ⚙ — un dosar local le înlocuiește, iar câmpul gol lasă doar caroiajul.</p>
+      <p>Trage cu degetul sau cu mausul, rotița sau <kbd>+</kbd>/<kbd>−</kbd> apropie și depărtează, <kbd>F</kbd> încadrează tot. Dalele vin de la OpenStreetMap, adresa lor se vede și se schimbă în ⚙ — un dosar local le înlocuiește, iar câmpul gol lasă doar caroiajul. Butonul <b>〰 Curbe de nivel</b> desenează curbele de nivel peste hartă, din datele de altitudine de la „Adresa datelor de altitudine” din ⚙ (dale Terrarium); gol = fără curbe. Butonul <b>🛰 Satelit</b> înlocuiește harta cu imagini din satelit, de la „Adresa imaginilor din satelit” din ⚙.</p>
       <h3>Căutarea adreselor</h3>
       <p>Numele și străzile sunt căutate cu geocodorul din ⚙ (implicit Nominatim, al OpenStreetMap), o cerere pe secundă, iar răspunsurile sunt ținute minte, așa că a doua oară nu se mai cere nimic.</p>
     `
@@ -1732,6 +1752,12 @@ const I18N = {
     fitBtn:"⤢ Fit all", fitTip:"Frame every place that was found",
     locateBtn:"🔎 Look up addresses", locateTip:"Look every address up again",
     openMdBtn:"📄 Open .md", openMdTip:"Read the “^@” markers out of a .md file",
+    contoursBtn:"〰 Contour lines",
+    satelliteBtn:"🛰 Satellite",
+    satelliteLabel:"Satellite imagery address",
+    satelliteHint:"A {z}/{x}/{y} template, used while the “🛰 Satellite” button is pressed. Empty = no tiles.",
+    contourLabel:"Elevation data address",
+    contourHint:"A {z}/{x}/{y} template of Terrarium tiles (metres = R·256 + G + B/256 − 32768). Empty = no contour lines.",
     exportBtn:"⬇ Export", exportTip:"Save the places as .geojson",
     settingsTip:"The map and geocoder addresses",
     helpTip:"Help",
@@ -1777,7 +1803,7 @@ const I18N = {
       <h3>The layers</h3>
       <p>Each place joins the layer of the heading above it (<code>## Day 2</code>). Clicking a layer's name hides and shows it; clicking ▸ collapses it. Clicking a place takes the map there.</p>
       <h3>The map</h3>
-      <p>Drag with a finger or the mouse, the wheel or <kbd>+</kbd>/<kbd>−</kbd> zooms, <kbd>F</kbd> frames everything. Tiles come from OpenStreetMap; their address is visible and editable under ⚙ — a local folder replaces them, and an empty field leaves just the graticule.</p>
+      <p>Drag with a finger or the mouse, the wheel or <kbd>+</kbd>/<kbd>−</kbd> zooms, <kbd>F</kbd> frames everything. Tiles come from OpenStreetMap; their address is visible and editable under ⚙ — a local folder replaces them, and an empty field leaves just the graticule. The <b>〰 Contour lines</b> button draws contour lines over the map from the elevation data at the “Elevation data address” under ⚙ (Terrarium tiles); empty = no lines. The <b>🛰 Satellite</b> button swaps the map for satellite imagery from the “Satellite imagery address” under ⚙.</p>
       <h3>Looking addresses up</h3>
       <p>Names and streets are looked up with the geocoder under ⚙ (Nominatim, OpenStreetMap's own, by default), one request a second, and the answers are remembered, so the second time nothing is asked.</p>
     `
@@ -1813,7 +1839,11 @@ const SET_KEY = "scula:map:settings";
 const CACHE_KEY = "scula:map:geocache";
 const DEFAULTS = {
   tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  geocoder: "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}"
+  geocoder: "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q={q}",
+  contours: false,
+  satellite: false,
+  satelliteTiles: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  contourTiles: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 };
 let S = Object.assign({}, DEFAULTS);
 (function loadSettings(){
@@ -1879,14 +1909,15 @@ function pointToLatLon(px, py){
 /* ============================================================
    5. Tiles
    ============================================================ */
+function baseTpl(){ return ((S.satellite ? S.satelliteTiles : S.tiles) || "").trim(); }
 function tileUrl(z, x, y){
-  const tpl = (S.tiles || "").trim();
+  const tpl = baseTpl();
   if(!tpl) return "";
   return tpl.replace("{z}", z).replace("{x}", x).replace("{y}", y)
             .replace("{s}", "abc"[(x + y) % 3]);
 }
 function renderTiles(){
-  const tpl = (S.tiles || "").trim();
+  const tpl = baseTpl();
   if(!tpl){ tileNodes.forEach(img => img.remove()); tileNodes.clear(); return; }
   const { w, h } = stageSize(), z = view.z, n = Math.pow(2, z), o = origin();
   const x0 = Math.floor(o.x / TILE), x1 = Math.floor((o.x + w) / TILE);
@@ -1913,9 +1944,87 @@ function renderTiles(){
   }
   tileNodes.forEach((img, key) => { if(!want.has(key)){ img.remove(); tileNodes.delete(key); } });
 }
+/* Contour lines: Terrarium elevation tiles -> 1px lines on a canvas. */
+const ELEV_MAX_Z = 15;
+const contourTiles = new Map();   // key -> { canvas|null }
+const contourCv = $("contours");
+function contourInterval(z){ return z >= 13 ? 10 : z >= 11 ? 20 : z >= 9 ? 100 : 200; }
+function contourFromImage(img, step){
+  const c = document.createElement("canvas");
+  c.width = c.height = TILE;
+  const cx = c.getContext("2d");
+  cx.drawImage(img, 0, 0, TILE, TILE);
+  const src = cx.getImageData(0, 0, TILE, TILE).data;
+  const out = cx.createImageData(TILE, TILE), d = out.data;
+  const lvl = new Int32Array(TILE * TILE);
+  for(let i = 0; i < lvl.length; i++){
+    const m = src[i * 4] * 256 + src[i * 4 + 1] + src[i * 4 + 2] / 256 - 32768;
+    lvl[i] = Math.floor(m / step);
+  }
+  for(let y = 0; y < TILE; y++) for(let x = 0; x < TILE; x++){
+    const i = y * TILE + x, v = lvl[i];
+    if((x + 1 < TILE && lvl[i + 1] !== v) || (y + 1 < TILE && lvl[i + TILE] !== v)){
+      const o = i * 4;
+      d[o] = 120; d[o + 1] = 60; d[o + 2] = 20; d[o + 3] = 210;
+    }
+  }
+  cx.clearRect(0, 0, TILE, TILE);
+  cx.putImageData(out, 0, 0);
+  return c;
+}
+function renderContours(){
+  const tpl = (S.contourTiles || "").trim();
+  const { w, h } = stageSize();
+  if(contourCv.width !== Math.round(w)) contourCv.width = Math.round(w);
+  if(contourCv.height !== Math.round(h)) contourCv.height = Math.round(h);
+  const ctx = contourCv.getContext("2d");
+  ctx.clearRect(0, 0, contourCv.width, contourCv.height);
+  if(!S.contours || !tpl) return;
+  const ez = Math.min(ELEV_MAX_Z, view.z), n = Math.pow(2, ez);
+  const sz = TILE * Math.pow(2, view.z - ez), o = origin();
+  const x0 = Math.floor(o.x / sz), x1 = Math.floor((o.x + w) / sz);
+  const y0 = Math.floor(o.y / sz), y1 = Math.floor((o.y + h) / sz);
+  ctx.imageSmoothingEnabled = false;
+  for(let ty = Math.max(0, y0); ty <= Math.min(n - 1, y1); ty++){
+    for(let tx = x0; tx <= x1; tx++){
+      const wx = ((tx % n) + n) % n, key = ez + "/" + wx + "/" + ty;
+      let rec = contourTiles.get(key);
+      if(!rec){
+        rec = { canvas: null };
+        contourTiles.set(key, rec);
+        if(contourTiles.size > 300) contourTiles.delete(contourTiles.keys().next().value);
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try{ rec.canvas = contourFromImage(img, contourInterval(ez)); }catch(e){ return; }
+          if(S.contours) renderContours();
+        };
+        img.onerror = () => {};
+        img.src = tpl.replace("{z}", ez).replace("{x}", wx).replace("{y}", ty);
+      }
+      if(rec.canvas) ctx.drawImage(rec.canvas, Math.round(tx * sz - o.x), Math.round(ty * sz - o.y), sz, sz);
+    }
+  }
+}
+function paintContoursBtn(){ $("btn-contours").setAttribute("aria-pressed", S.contours ? "true" : "false"); }
+paintContoursBtn();
+function toggleContours(){
+  S.contours = !S.contours;
+  saveS(); paintContoursBtn(); renderContours();
+}
+function paintSatelliteBtn(){ $("btn-satellite").setAttribute("aria-pressed", S.satellite ? "true" : "false"); }
+paintSatelliteBtn();
+function toggleSatellite(){
+  S.satellite = !S.satellite;
+  saveS(); paintSatelliteBtn();
+  tileNodes.forEach(img => img.remove()); tileNodes.clear();
+  paintAttrib(); renderTiles();
+}
 function paintAttrib(){
-  const tpl = (S.tiles || "").trim();
-  $("attrib").innerHTML = /openstreetmap\.org/i.test(tpl)
+  const tpl = baseTpl();
+  $("attrib").innerHTML = S.satellite
+    ? (/arcgisonline\.com/i.test(tpl) ? "Tiles © Esri" : "")
+    : /openstreetmap\.org/i.test(tpl)
     ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
     : "";
 }
@@ -1967,7 +2076,7 @@ function renderScale(){
   el.style.width = Math.round(px) + "px";
   el.querySelector("span").textContent = nice >= 1000 ? (nice / 1000) + " km" : nice + " m";
 }
-function render(){ renderTiles(); renderPins(); renderScale(); }
+function render(){ renderTiles(); renderContours(); renderPins(); renderScale(); }
 
 /* ---- the popup ---- */
 function select(p, fromList){
@@ -2389,12 +2498,17 @@ document.addEventListener("keydown", ev => {
 function openSettings(){
   $("f-tiles").value = S.tiles || "";
   $("f-geocoder").value = S.geocoder || "";
+  $("f-contour-tiles").value = S.contourTiles || "";
+  $("f-satellite-tiles").value = S.satelliteTiles || "";
   $("settings-modal").classList.add("open");
 }
 function closeSettings(){ $("settings-modal").classList.remove("open"); }
 function saveSettings(){
   S.tiles = $("f-tiles").value.trim();
   S.geocoder = $("f-geocoder").value.trim();
+  S.contourTiles = $("f-contour-tiles").value.trim();
+  S.satelliteTiles = $("f-satellite-tiles").value.trim();
+  contourTiles.clear();
   saveS();
   closeSettings();
   tileNodes.forEach(img => img.remove()); tileNodes.clear();
@@ -2402,7 +2516,7 @@ function saveSettings(){
   PLACES.forEach(p => { if(!located(p)) enqueue(p); });
   paintList(); pump();
 }
-function resetSettings(){ $("f-tiles").value = DEFAULTS.tiles; $("f-geocoder").value = DEFAULTS.geocoder; }
+function resetSettings(){ $("f-tiles").value = DEFAULTS.tiles; $("f-geocoder").value = DEFAULTS.geocoder; $("f-contour-tiles").value = DEFAULTS.contourTiles; $("f-satellite-tiles").value = DEFAULTS.satelliteTiles; }
 function clearGeoCache(){
   CACHE = {}; store.drop(CACHE_KEY);
   ScuLaFolder.toast(t("cacheCleared"));

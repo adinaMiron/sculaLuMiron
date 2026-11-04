@@ -139,30 +139,41 @@ function applyInlineColor(property, color) {
   applyInlineStyle(property, color);
 }
 
+function applyColorAndHighlight() {
+  const c = document.querySelector('input[aria-label="Text color"]');
+  const h = document.querySelector('input[aria-label="Highlight color"]');
+  if (!c || !h || !/^#[0-9a-f]{6}$/i.test(c.value) || !/^#[0-9a-f]{6}$/i.test(h.value)) return;
+  applyInlineStyle([['color', c.value], ['background-color', h.value]]);
+}
+
 function applyInlineStyle(property, value) {
+  const props = Array.isArray(property) ? property : [[property, value]];
   editor.focus();
-  const start = editor.selectionStart, end = editor.selectionEnd;
+  let start = editor.selectionStart, end = editor.selectionEnd;
   const source = editor.value;
-  const selected = source.slice(start, end) || 'text';
-  const opening = source.slice(0, start).match(/<span style="([^"]*)">$/);
+  let selected = source.slice(start, end) || 'text';
+  let existing = null;
   // A second toolbar action on the same selected text updates its span.
-  // Partial selections still get their own span, which the parser can nest.
-  if (opening && source.slice(end).startsWith('</span>') &&
+  // Selecting the whole span markup works the same as selecting its text.
+  const whole = selected.match(/^<span style="([^"]*)">([^<]*)<\/span>$/);
+  const opening = source.slice(0, start).match(/<span style="([^"]*)">$/);
+  if (whole) {
+    existing = whole[1]; selected = whole[2];
+  } else if (opening && source.slice(end).startsWith('</span>') &&
       !selected.includes('<span') && !selected.includes('</span>')) {
-    const styles = opening[1].split(';').map(s => s.trim()).filter(Boolean)
-      .filter(s => s.split(':', 1)[0].trim() !== property);
-    styles.push(`${property}:${value}`);
-    const spanStart = start - opening[0].length;
-    const replacement = `<span style="${styles.join(';')}">${selected}</span>`;
-    editor.setRangeText(replacement, spanStart, end + '</span>'.length, 'select');
-    const textStart = spanStart + replacement.indexOf('>') + 1;
-    editor.setSelectionRange(textStart, textStart + selected.length);
-  } else {
-    const replacement = `<span style="${property}:${value}">${selected}</span>`;
-    editor.setRangeText(replacement, start, end, 'select');
-    const textStart = start + replacement.indexOf('>') + 1;
-    editor.setSelectionRange(textStart, textStart + selected.length);
+    existing = opening[1];
+    start -= opening[0].length; end += '</span>'.length;
   }
+  let styles = existing === null ? [] :
+    existing.split(';').map(s => s.trim()).filter(Boolean);
+  for (const [p, v] of props) {
+    styles = styles.filter(s => s.split(':', 1)[0].trim() !== p);
+    styles.push(`${p}:${v}`);
+  }
+  const replacement = `<span style="${styles.join(';')}">${selected}</span>`;
+  editor.setRangeText(replacement, start, end, 'select');
+  const textStart = start + replacement.indexOf('>') + 1;
+  editor.setSelectionRange(textStart, textStart + selected.length);
   updatePreview(); updateStatus();
 }
 
@@ -778,32 +789,44 @@ function toggleNav() { togglePanelById('nav-panel'); }
 
 const TB_COLLAPSED_KEY = 'scula:toolbar-collapsed';
 
+const TB_COLLAPSE_MQ = '(max-width: 1024px), (pointer: coarse)';
+function toolbarCollapsible() { return window.matchMedia(TB_COLLAPSE_MQ).matches; }
+
 function setToolbarCollapsed(collapsed) {
   const bar = document.querySelector('.toolbar');
   const btn = document.getElementById('btn-toolbar-toggle');
   const groups = document.getElementById('toolbar-groups');
-  if (collapsed && isSmallScreen() && groups.contains(document.activeElement)) btn.focus();
+  if (collapsed && toolbarCollapsible() && groups.contains(document.activeElement)) btn.focus();
   bar.classList.toggle('collapsed', collapsed);
-  groups.inert = collapsed && isSmallScreen();
+  groups.inert = collapsed && toolbarCollapsible();
   btn.classList.toggle('active', !collapsed);
   btn.setAttribute('aria-expanded', String(!groups.inert));
 }
 
 // Desktop always shows the groups, even with a saved mobile collapse preference.
-window.matchMedia('(max-width: 1024px)').addEventListener('change', () => {
+window.matchMedia(TB_COLLAPSE_MQ).addEventListener('change', () => {
   setToolbarCollapsed(document.querySelector('.toolbar').classList.contains('collapsed'));
 });
+
+// Phones group the tools behind Edit/Format/Insert/Tools; one group is open at a time.
+function toggleToolbarGroup(name) {
+  const groups = document.getElementById('toolbar-groups');
+  const next = groups.dataset.open === name ? '' : name;
+  if (next) groups.dataset.open = next; else delete groups.dataset.open;
+  document.querySelectorAll('#tb-group-btns [data-group]').forEach(b =>
+    b.setAttribute('aria-expanded', String(b.dataset.group === next)));
+}
 
 function toggleToolbarCollapse() {
   const collapsed = !document.querySelector('.toolbar').classList.contains('collapsed');
   setToolbarCollapsed(collapsed);
-  if (isSmallScreen()) {
+  if (toolbarCollapsible()) {
     try { store.set(TB_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
   }
 }
 
 async function initToolbarCollapse() {
-  if (!isSmallScreen()) return;
+  if (!toolbarCollapsible()) return;
   let saved = null;
   try { saved = await store.get(TB_COLLAPSED_KEY); } catch (e) {}
   setToolbarCollapsed(saved === '1');
@@ -986,3 +1009,33 @@ function handleTab(e) {
     updatePreview();
   }
 }
+
+/* ── Touch devices: keep the top link row inside the visual viewport ── */
+(function pinNavOnTouch() {
+  const nav = document.getElementById('site-nav');
+  if (!nav || !window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+  const vv = window.visualViewport;
+  const spacer = document.createElement('div');
+  spacer.setAttribute('aria-hidden', 'true');
+  nav.parentNode.insertBefore(spacer, nav);
+  nav.style.position = 'fixed';
+  nav.style.left = '0';
+  nav.style.right = '0';
+  nav.style.zIndex = '10000';
+  nav.style.boxSizing = 'border-box';
+  function place() {
+    nav.style.top = (vv ? vv.offsetTop : 0) + 'px';
+    nav.style.left = (vv ? vv.offsetLeft : 0) + 'px';
+    spacer.style.height = nav.offsetHeight + 'px';
+  }
+  place();
+  window.addEventListener('scroll', place, { passive: true });
+  window.addEventListener('resize', place);
+  if (vv) { vv.addEventListener('resize', place); vv.addEventListener('scroll', place); }
+  if (editor) editor.style.scrollPaddingBottom = '48px';
+  if (editor) editor.addEventListener('input', () => {
+    if (window.scrollY) window.scrollTo(0, 0);
+    if (editor.selectionStart === editor.value.length) editor.scrollTop = editor.scrollHeight;
+    place();
+  });
+})();

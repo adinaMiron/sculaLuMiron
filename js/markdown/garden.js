@@ -30,10 +30,12 @@ const GD_PLACES = [
   { key: 's2',       label: 'Solar 2',       alias: ['s2', 'solar 2', 'solarul 2'] },
   { key: 's3',       label: 'Solar 3',       alias: ['s3', 'solar 3', 'solarul 3'] },
   { key: 'gg',       label: 'GG',            alias: ['gg'] },
+  { key: 'ge1',      label: 'Grădina extensivă 1', alias: ['ge1', 'gradina extensiva 1'] },
+  { key: 'gv',       label: 'Grădina veche', alias: ['gv', 'gradina veche'] },
   { key: 'gp-nord',  label: 'GP nord',       alias: ['gp nord', 'gp-nord'] },
   { key: 'gp-sud',   label: 'GP sud',        alias: ['gp sud', 'gp-sud'] },
-  { key: 'gp',       label: 'GP',            alias: ['gp'] },
-  { key: 'gn',       label: 'GN',            alias: ['gn'] },
+  { key: 'gp',       label: 'GP',            alias: ['gp', 'gradina padure'] },
+  { key: 'gn',       label: 'GN',            alias: ['gn', 'gradina noua'] },
   { key: 'sant-iaz', label: 'Șanț iaz',      alias: ['sant iaz', 'santul iaz', 'santului iaz'] },
   { key: 'iaz',      label: 'Iaz',           alias: ['iaz'] },
   { key: 'socru',    label: 'Grădina socru', alias: ['gradina socru', 'gradina socrului'] },
@@ -151,18 +153,36 @@ function gdItems(text) {
   const out = [];
   String(text).split(/,(?!\d)|;|\s+(?:si|și|and)\s+/i).forEach(chunk => {
     const m = GD_QTY_RE.exec(chunk);
-    if (!m) return;
+    if (!m) {
+      // "9,2 kg rosii din sm si s1": a bare code continues the last item.
+      const prev = out[out.length - 1];
+      const more = prev && gdPlacesIn(chunk);
+      if (more && more.length && gdFold(chunk).trim().split(/\s+/).length <= 3) {
+        more.forEach(p => { if (!prev.places.some(q => q.key === p.key)) prev.places.push(p); });
+      }
+      return;
+    }
     const unit = gdFold(m[2]);
     const piece = /^buc/.test(unit);
     const n = gdNum(m[1]);
     if (!isFinite(n)) return;
-    const name = (chunk.slice(0, m.index) + ' ' + chunk.slice(m.index + m[0].length)).trim();
+    let name = (chunk.slice(0, m.index) + ' ' + chunk.slice(m.index + m[0].length)).trim();
+    name = name.replace(/^[^:]*:\s*/, '');                // "recolta: cherry"
+    let places = [];
+    const at = /(?:^|\s)(din|de\s+la|de\s+langa|de\s+pe|in|la|pe|from)\s+(\S.*)$/i.exec(name);
+    if (at) {
+      const tail = at[2];
+      places = gdPlacesIn(tail);
+      if (!places.length && /^(din|de\s+la|in|from)$/i.test(at[1])) places = gdPlaceOf(tail);
+      name = name.slice(0, at.index).trim();
+    }
     const plant = gdPlantOf(name);
     out.push({
       plant: plant ? plant.key : '',
       plantLabel: plant ? plant.label : '',
       grams: piece ? 0 : n * (/^k/.test(unit) ? 1000 : 1),
-      pieces: piece ? n : 0
+      pieces: piece ? n : 0,
+      places
     });
   });
   return out;
@@ -182,7 +202,11 @@ function gdParseHarvest(line) {
     const q = GD_QTY_RE.exec(after);
     const cut = colon !== -1 && (!q || colon < q.index) ? colon : (q ? q.index : -1);
     if (cut === -1) return null;
-    place = after.slice(0, cut).replace(GD_FROM_RE, '');
+    const pre = after.slice(0, cut);
+    const from = GD_FROM_RE.test(pre);
+    place = pre.replace(GD_FROM_RE, '');
+    // Without din/de la/in, a name before the colon is who picked.
+    if (!from) place = gdPlacesIn(place).length ? place : '';
     rest = after.slice(cut === colon ? cut + 1 : cut);
   } else {
     const head = /^\s*([^:]{1,30}):\s*(.+)$/.exec(line);
@@ -191,7 +215,9 @@ function gdParseHarvest(line) {
   }
   const items = gdItems(rest);
   if (!items.length) return null;
-  return { places: gdPlaceOf(place), items };
+  const places = gdPlaceOf(place);
+  items.forEach(it => { if (!it.places.length) it.places = places; });
+  return { places, items };
 }
 
 function gdCatsOf(folded) {
@@ -208,7 +234,7 @@ function gdCatsOf(folded) {
 function gdScan(text) {
   const recs = [];
   const dateRe = window.ScuLaCal ? ScuLaCal.markRe() : /(?!)/g;
-  let day = null, fence = null;
+  let day = null, fence = null, headPlace = [];
   String(text).split('\n').forEach((line, i) => {
     // Skip examples before interpreting either their dates or activities.
     const marker = line.match(/^[ \t]*(`{3,}|~{3,})([^\n]*)$/);
@@ -227,9 +253,15 @@ function gdScan(text) {
       const mark = ScuLaCal.readMark(dm);
       // An invalid header ends the previous day instead of inheriting it.
       day = mark ? mark.date : null;
+      headPlace = [];
       // Keep the clock interval for Garden's duration calculation.
       const at = dm.index + dm[1].length;
       body = line.slice(0, at) + line.slice(at + 1 + dm[2].length);
+    }
+    const hd = /^\s{0,3}#{1,6}\s+(.*)$/.exec(body);
+    if (hd) {
+      headPlace = gdPlacesIn(hd[1]);
+      return;
     }
     body = body.replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s*)?/, '').trim();
     if (!body || /^[#>|\-=*_\s]*$/.test(body)) return;
@@ -266,7 +298,18 @@ function gdScan(text) {
       if (mins < 0) mins += 24 * 60;                 // past midnight
     }
     const cat = cats.length ? cats[0] : (litres || /\bap[aă]\b/.test(folded) ? 'water' : 'other');
-    const actPlaces = harvest && !places.length ? harvest.places : places;
+    let actPlaces = harvest && !places.length ? harvest.places : places;
+    if (harvest) {
+      const seen = new Set();
+      actPlaces = [];
+      harvest.items.forEach(it => it.places.forEach(p => { if (!seen.has(p.key)) { seen.add(p.key); actPlaces.push(p); } }));
+      harvest.places.forEach(p => { if (!seen.has(p.key)) { seen.add(p.key); actPlaces.push(p); } });
+    }
+    // A heading's place covers records that name none of their own.
+    if (headPlace.length) {
+      if (!actPlaces.length) actPlaces = headPlace;
+      if (harvest) harvest.items.forEach(it => { if (!it.places.length) it.places = headPlace; });
+    }
     const grams = harvest ? harvest.items.reduce((s, it) => s + it.grams, 0) : 0;
     const pieces = harvest ? harvest.items.reduce((s, it) => s + it.pieces, 0) : 0;
 
@@ -276,7 +319,7 @@ function gdScan(text) {
     });
     if (harvest) harvest.items.forEach(it => recs.push({
       kind: 'harvest', cat: 'harvest', date: day, line: i, text: body,
-      places: harvest.places, plant: it.plant, plantLabel: it.plantLabel,
+      places: it.places, plant: it.plant, plantLabel: it.plantLabel,
       grams: it.grams, pieces: it.pieces
     }));
   });
@@ -699,7 +742,65 @@ function closeGarden() {
   if (view) view.classList.remove('open');
   gdOpen = false;
 }
-function toggleGarden() { if (gdOpen) closeGarden(); else openGarden(); }
+function toggleGarden() {
+  gdConvertAll().catch(() => {});
+  if (gdOpen) closeGarden(); else openGarden();
+}
+
+/* A line holding only a date ("11.08.2026", "@22/08/2026", "2026-08-06")
+   becomes the heading "# @date", so the navigation lists the day and the
+   toolbox/calendar read it. Fenced blocks, list items, lines with other
+   text, impossible dates and existing headings are left alone. */
+function gdDateOk(y, m, d) {
+  const dt = new Date(y, m - 1, d);
+  return m >= 1 && m <= 12 && dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+function gdDateHeadings(text, atOnly) {
+  const src = String(text == null ? '' : text);
+  let fence = null, changed = false;
+  const out = src.split('\n').map(line => {
+    const marker = line.match(/^[ \t]*(`{3,}|~{3,})([^\n]*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence.c && marker[1].length >= fence.n && /^[ \t\r]*$/.test(marker[2])) fence = null;
+      return line;
+    }
+    if (marker && (marker[1][0] === '~' || !marker[2].includes('`'))) {
+      fence = { c: marker[1][0], n: marker[1].length };
+      return line;
+    }
+    const m = new RegExp('^\\s*@' + (atOnly ? '' : '?') + '\\s*(?:(\\d{1,2})([./])(\\d{1,2})\\2(\\d{4})|(\\d{4})-(\\d{1,2})-(\\d{1,2}))\\s*$').exec(line);
+    if (!m) return line;
+    const ok = m[1] ? gdDateOk(+m[4], +m[3], +m[1]) : gdDateOk(+m[5], +m[6], +m[7]);
+    if (!ok) return line;
+    changed = true;
+    return '# @' + line.trim().replace(/^@\s*/, '');
+  });
+  return changed ? out.join('\n') : src;
+}
+function gdBookOfChapter(ch) { return ch ? wbBook(ch.workbookId) : null; }
+
+// Every chapter of every garden workbook, open in the editor or not.
+async function gdConvertAll() {
+  for (const book of wbBooks.filter(gdIsGardenBook)) {
+    for (const ch of wbChaptersOf(book.id)) {
+      if (ch.id === wbCurrentId) {
+        const next = gdDateHeadings(editor.value);
+        if (next !== editor.value) {
+          editor.value = next;
+          wbDirty = true;
+          updatePreview(); updateStatus(); updateNav();
+          await flushChapter();
+        }
+        continue;
+      }
+      const next = gdDateHeadings(ch.content);
+      if (next === (ch.content || '')) continue;
+      const saved = { ...ch, content: next, updated: Date.now() };
+      if (await wbPersist(WB_CHAPTERS, saved, true)) Object.assign(ch, saved);
+    }
+  }
+  renderWorkbooks();
+}
 
 // The button exists only while the open chapter belongs to a garden
 // workbook — it follows the editor the same way btn-map does.
