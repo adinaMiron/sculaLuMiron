@@ -73,6 +73,10 @@ const I18N = {
     dictateNetwork:"Conexiune eșuată către serviciul de transcriere.",
     dictateTooBig:"Segmentul audio este prea mare.",
     dictateError:"Eroare la dictare:",
+    mkBar:"Taste pentru scurtături", mkCtrlTip:"Ctrl pentru următoarea tastă — atinge de două ori ca să rămână apăsat",
+    mkShiftTip:"Shift pentru următoarea tastă — atinge de două ori ca să rămână apăsat",
+    mkAltTip:"Alt pentru următoarea tastă — atinge de două ori ca să rămână apăsat",
+    mkLeft:"Săgeată stânga", mkUp:"Săgeată sus", mkDown:"Săgeată jos", mkRight:"Săgeată dreapta",
     dictateRecovery:"Dictarea nu a putut fi inserată. Copiază textul recuperat de mai jos.",
     dictateRecoveredText:"Dictare recuperată",
     explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
@@ -475,6 +479,7 @@ const I18N = {
         <kbd>Ctrl+Alt+1/2/3</kbd> importanță (<kbd>Ctrl+Alt+0</kbd> șterge) ·
         <kbd>F2</kbd> redenumește caietul/capitolul selectat · <kbd>Esc</kbd> închide fereastra deschisă.
       </p>
+      <p>Pe telefon și tabletă, cât timp un câmp de text are cursorul, deasupra tastaturii apare o bară cu <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd> și săgețile <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd>. Atinge o tastă de comandă, apoi litera sau cifra de pe tastatura telefonului: <kbd>Ctrl</kbd> și apoi <kbd>B</kbd> face aldin. O atingere ține tasta pentru o singură apăsare, două atingeri o lasă apăsată până o atingi din nou. <kbd>Shift</kbd> + săgeți extinde selecția; ține apăsat pe o săgeată ca să se repete.</p>
     `
   },
   en:{
@@ -542,6 +547,10 @@ const I18N = {
     dictateNetwork:"Could not reach the transcription service.",
     dictateTooBig:"The audio segment is too large.",
     dictateError:"Dictation error:",
+    mkBar:"Shortcut keys", mkCtrlTip:"Ctrl for the next key — tap twice to keep it on",
+    mkShiftTip:"Shift for the next key — tap twice to keep it on",
+    mkAltTip:"Alt for the next key — tap twice to keep it on",
+    mkLeft:"Left arrow", mkUp:"Up arrow", mkDown:"Down arrow", mkRight:"Right arrow",
     dictateRecovery:"Dictation could not be inserted. Copy the recovered text below.",
     dictateRecoveredText:"Recovered dictation",
     explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
@@ -944,6 +953,7 @@ const I18N = {
         <kbd>Ctrl+Alt+1/2/3</kbd> importance (<kbd>Ctrl+Alt+0</kbd> clears) ·
         <kbd>F2</kbd> renames the selected workbook/chapter · <kbd>Esc</kbd> closes whatever's open.
       </p>
+      <p>On a phone or tablet, while a text field has the caret, a bar with <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd> and the arrows <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> appears above the keyboard. Tap a modifier, then the letter or digit on the phone keyboard: <kbd>Ctrl</kbd> then <kbd>B</kbd> makes bold. One tap holds the key for a single press, two taps keep it on until you tap it again. <kbd>Shift</kbd> + arrows extends the selection; hold an arrow to repeat it.</p>
     `
   }
 };

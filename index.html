@@ -961,6 +961,25 @@
   .file-name.loose { color: var(--danger); border-color: var(--danger); }
   #status-bar { display: flex; gap: 20px; padding: 4px 16px; font-size: 11px; color: var(--text-3); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
 
+  /* ── Phone key bar: Ctrl / Shift / Alt / arrows (js/markdown/keybar.js) ── */
+  #mobile-keys {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9995;
+    display: flex; gap: 6px; justify-content: center;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--border);
+  }
+  #mobile-keys[hidden] { display: none; }
+  #mobile-keys button {
+    min-width: 44px; min-height: 44px; padding: 0 10px;
+    font: 14px var(--font-ui); color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  #mobile-keys .mk-gap { width: 8px; }
+  #mobile-keys button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  #mobile-keys button.lock { box-shadow: inset 0 -3px 0 var(--on-accent); }
+  body.mk-on { padding-bottom: var(--mk-h, 53px); }
+
   /* ── Voice dictation (settings come from the Caiet vocal page) ── */
   #dictate-pill {
     position: fixed; right: 16px; bottom: 40px; z-index: 9990;
@@ -4065,6 +4084,17 @@ Use the toolbar above to insert formatting.
   <span id="stat-wb"></span>
 </div>
 
+<div id="mobile-keys" role="toolbar" hidden data-i-aria="mkBar" aria-label="Shortcut keys">
+  <button type="button" data-mk-mod="ctrl" aria-pressed="false" data-i-title="mkCtrlTip" title="Ctrl for the next key">Ctrl</button>
+  <button type="button" data-mk-mod="shift" aria-pressed="false" data-i-title="mkShiftTip" title="Shift for the next key">Shift</button>
+  <button type="button" data-mk-mod="alt" aria-pressed="false" data-i-title="mkAltTip" title="Alt for the next key">Alt</button>
+  <span class="mk-gap" aria-hidden="true"></span>
+  <button type="button" data-mk-key="ArrowLeft" data-i-aria="mkLeft" aria-label="Left arrow">←</button>
+  <button type="button" data-mk-key="ArrowUp" data-i-aria="mkUp" aria-label="Up arrow">↑</button>
+  <button type="button" data-mk-key="ArrowDown" data-i-aria="mkDown" aria-label="Down arrow">↓</button>
+  <button type="button" data-mk-key="ArrowRight" data-i-aria="mkRight" aria-label="Right arrow">→</button>
+</div>
+
 <div id="dictate-pill" hidden>
   <span class="dictate-dot"></span>
   <span id="dictate-pill-state"></span>
@@ -4592,6 +4622,7 @@ Use the toolbar above to insert formatting.
 <script src="js/markdown/wikilinks.js"></script>
 <script src="js/markdown/files.js"></script>
 <script src="js/markdown/events.js"></script>
+<script src="js/markdown/keybar.js"></script>
 <script src="js/markdown/dictation.js"></script>
 <script src="js/markdown/drive.js"></script>
 <script src="js/markdown/startup.js"></script>
