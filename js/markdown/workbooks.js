@@ -24,6 +24,8 @@ let wbSaveTimer = 0;
 let wbFlushPromise = null;   // serialize writes, including a switch during autosave
 const wbChapterVersions = new Map(); // immutable versions this tab actually read/wrote
 const wbConflictCopies = new Map();
+let wbStoreWrites = 0;       // this tab's read/write transactions still open
+let wbStoreGen = 0;          // bumped when one of them ends — see wbSyncFromStore()
 function wbChapterVersion(ch) {
   return ch ? JSON.stringify([ch.updated, ch.content || '', ch.workbookId, ch.file, ch.title, ch.order]) : null;
 }
@@ -250,17 +252,21 @@ function wbDb() {
   });
 }
 function wbTx(store, mode, run, scope) {
+  const writing = mode === 'readwrite';
+  const shared = writing && store !== WB_META;
+  if (writing) wbStoreWrites++;
+  const done = () => { if (writing) { wbStoreWrites--; wbStoreGen++; } };
   return wbDb().then(db => new Promise((res, rej) => {
     // Chapter saves can commit their mirror retry marker in the same write.
-    const stores = scope || (store === WB_CHAPTERS && mode === 'readwrite' ? [WB_CHAPTERS, WB_PENDING] : store);
+    const stores = scope || (store === WB_CHAPTERS && writing ? [WB_CHAPTERS, WB_PENDING] : store);
     const tx = db.transaction(stores, mode);
     let req;
-    tx.oncomplete = () => { db.close(); res(req ? req.result : undefined); };
+    tx.oncomplete = () => { db.close(); done(); if (shared) wbAnnounce(); res(req ? req.result : undefined); };
     tx.onerror = () => { db.close(); rej(tx.error); };
-    tx.onabort = () => { db.close(); rej(tx.error); };
+    tx.onabort = () => { db.close(); done(); rej(tx.error); };
     try { req = run(tx.objectStore(store)); }
     catch (e) { tx.abort(); db.close(); rej(e); }
-  }));
+  }), e => { done(); throw e; });
 }
 const wbAll = store => wbTx(store, 'readonly', s => s.getAll());
 const wbPut = async (store, v) => {
@@ -280,20 +286,27 @@ const wbDrop = async (store, k) => {
 const wbMetaGet = k => wbTx(WB_META, 'readonly', s => s.get(k));
 const wbMetaSet = (k, v) => wbTx(WB_META, 'readwrite', s => s.put(v, k));
 
-async function wbPersist(store, value, pending = false) {
+// `merge`: when another tab changed the record meanwhile, combine both edits
+// if they touch different lines (wbMergeRecord) and hand the result back in
+// `value`; only overlapping edits fall through to a conflict copy.
+async function wbPersist(store, value, pending = false, merge = false) {
   try {
     if (store !== WB_CHAPTERS) { await wbPut(store, value); return true; }
     const saved = { ...value };
     const expected = wbChapterVersions.get(saved.id) || null;
     let conflict = null;
     let createdConflict = false;
+    let merged = false;
     const conflictVersion = wbChapterVersion({ ...saved, updated: 0 });
     // IndexedDB serializes read/write transactions across tabs. Comparing
     // inside the write transaction also catches simultaneous autosaves.
     await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
       const req = chapters.get(saved.id);
       req.onsuccess = () => {
-        if (wbChapterVersion(req.result) === expected) {
+        const combined = wbChapterVersion(req.result) === expected ? null
+          : merge && req.result && expected && wbMergeRecord(expected, saved, req.result);
+        if (combined) { Object.assign(saved, combined); merged = true; }
+        if (combined || wbChapterVersion(req.result) === expected) {
           chapters.put(saved);
           if (pending) chapters.transaction.objectStore(WB_PENDING).put(wbPendingRecord(saved));
           return;
@@ -327,9 +340,10 @@ async function wbPersist(store, value, pending = false) {
       }
       renderWorkbooks();
       wbDraftWrite();
-      wbSay(t('wbConflict'), true);
+      if (!merge) wbSay(t('wbConflict'), true);   // flushChapter() reports its own
       return false;
     }
+    if (merged) Object.assign(value, saved);
     wbChapterVersions.set(saved.id, wbChapterVersion(saved));
     if (pending) wbPendingIds.add(saved.id);
     wbRecordResponsibles(saved.content);
@@ -337,6 +351,192 @@ async function wbPersist(store, value, pending = false) {
   }
   catch (e) { wbSay(t('wbStoreFailed'), true); return false; }
 }
+
+/* ── Two tabs, one chapter ──
+   Each side's edit since the shared base is reduced to the span between its
+   common prefix and suffix, widened to whole lines. Edits on different lines
+   combine; the same edit on both sides is taken once; anything else is a
+   conflict (null). Autosave runs every 800 ms, so one span per side is the
+   normal case. */
+function wbMerge3(base, mine, theirs) {
+  if (mine === theirs || theirs === base) return mine;
+  if (mine === base) return theirs;
+  const span = text => {
+    const max = Math.min(base.length, text.length);
+    let p = 0, s = 0;
+    while (p < max && base[p] === text[p]) p++;
+    while (s < max - p && base[base.length - 1 - s] === text[text.length - 1 - s]) s++;
+    const from = base.lastIndexOf('\n', p - 1) + 1;
+    const end = base.indexOf('\n', base.length - s);
+    const to = end < 0 ? base.length : end;
+    return { from, to, text: base.slice(from, p) + text.slice(p, text.length - s) + base.slice(base.length - s, to) };
+  };
+  const a = span(mine), b = span(theirs);
+  if (a.from === b.from && a.to === b.to && a.text === b.text) return mine;
+  if (!(a.to < b.from || b.to < a.from)) return null;
+  const [first, last] = a.from < b.from ? [a, b] : [b, a];
+  return base.slice(0, first.from) + first.text + base.slice(first.to, last.from) + last.text + base.slice(last.to);
+}
+// `expected` is the version string this tab last read (wbChapterVersion), so
+// it carries the base text and metadata; `stored` is what another tab wrote.
+function wbMergeRecord(expected, saved, stored) {
+  let base;
+  try { base = JSON.parse(expected); } catch (e) { return null; }
+  if (!Array.isArray(base) || typeof base[1] !== 'string') return null;
+  const content = wbMerge3(base[1], saved.content || '', stored.content || '');
+  if (content == null) return null;
+  const out = { ...stored, content, updated: Math.max(saved.updated || 0, (stored.updated || 0) + 1) };
+  const same = (x, y) => (x ?? null) === (y ?? null);
+  const fields = ['workbookId', 'file', 'title', 'order'];
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i], was = base[i + 2];
+    if (same(saved[f], was) || same(saved[f], stored[f])) continue;
+    if (!same(stored[f], was)) return null;      // both tabs renamed/moved it
+    out[f] = saved[f];
+  }
+  return out;
+}
+
+/* ── Other tabs ──
+   Every tab holds its own copy of the tree. Each write to the shared store
+   is announced through localStorage (the `storage` event reaches the other
+   tabs, also on file://), and they reread the store: other chapters are
+   replaced, and the open one is too while it has no unsaved typing. That is
+   what keeps two tabs on different chapters from ever looking stale to each
+   other. Focus and visibility re-check in case an announcement was missed. */
+const WB_CHANGE_KEY = 'scula:md:change';
+function wbAnnounce() {
+  try { localStorage.setItem(WB_CHANGE_KEY, Date.now() + ':' + Math.random().toString(36).slice(2)); } catch (e) {}
+}
+const wbKnownBooks = new Set();  // workbook ids seen in the store by this tab
+let wbSyncRunning = null, wbSyncAgain = false, wbSyncTimer = 0;
+async function wbSyncFromStore() {
+  if (!wbBooted || !wbDraftReady) return;
+  if (wbSyncRunning) { wbSyncAgain = true; return wbSyncRunning; }
+  wbSyncRunning = (async () => {
+    do { wbSyncAgain = false; await wbSyncOnce(); } while (wbSyncAgain);
+  })();
+  try { await wbSyncRunning; } finally { wbSyncRunning = null; }
+}
+function wbSyncLater() {
+  clearTimeout(wbSyncTimer);
+  wbSyncTimer = setTimeout(() => wbSyncFromStore(), 150);
+}
+async function wbSyncOnce() {
+  // This tab's own writes update memory after they commit; wait for them.
+  if (wbStoreWrites || wbFlushPromise) { wbSyncLater(); return; }
+  const gen = wbStoreGen;
+  let books, chapters, pending;
+  try {
+    [books, chapters, pending] = await Promise.all([wbAll(WB_BOOKS), wbAll(WB_CHAPTERS), wbAll(WB_PENDING)]);
+  } catch (e) { return; }
+  if (gen !== wbStoreGen || wbStoreWrites || wbFlushPromise) { wbSyncLater(); return; }
+  let changed = false, openChanged = false;
+  const storedBooks = new Map((books || []).map(b => [b.id, b]));
+  const sameRecord = (x, y) => {
+    const keys = Object.keys(x);
+    return keys.length === Object.keys(y).length && keys.every(k => JSON.stringify(x[k]) === JSON.stringify(y[k]));
+  };
+  for (const b of storedBooks.values()) {
+    const mine = wbBook(b.id);
+    if (!mine) { wbBooks.push({ ...b }); changed = true; }
+    else if (!sameRecord(mine, b)) {
+      Object.keys(mine).forEach(k => { if (!(k in b)) delete mine[k]; });
+      Object.assign(mine, b); changed = true;
+    }
+  }
+  // Drop only what this tab once saw stored: a book or chapter it created a
+  // moment ago may not have reached the store yet.
+  wbBooks = wbBooks.filter(b => {
+    const keep = storedBooks.has(b.id) || !wbKnownBooks.has(b.id);
+    if (!keep) changed = true;
+    return keep;
+  });
+  wbKnownBooks.clear();
+  storedBooks.forEach((b, id) => wbKnownBooks.add(id));
+  wbBooks.sort(wbByOrder);
+
+  const storedChapters = new Map((chapters || []).map(c => [c.id, c]));
+  for (const stored of storedChapters.values()) {
+    const version = wbChapterVersion(stored);
+    const ch = wbChapter(stored.id);
+    if (!ch) {
+      wbChapters.push({ ...stored });
+      wbChapterVersions.set(stored.id, version);
+      changed = true;
+      continue;
+    }
+    if (wbChapterVersions.get(stored.id) === version) continue;
+    if (stored.id === wbCurrentId) {
+      // Unsaved typing stays; its autosave merges with this (wbPersist).
+      if (wbDirty || editor.value !== (ch.content || '')) { flushChapter(); continue; }
+      openChanged = true;
+    }
+    Object.keys(ch).forEach(k => { if (!(k in stored)) delete ch[k]; });
+    Object.assign(ch, stored);
+    wbChapterVersions.set(stored.id, version);
+    changed = true;
+  }
+  const gone = wbChapters.filter(c => !storedChapters.has(c.id) && wbChapterVersions.has(c.id));
+  if (gone.length) {
+    changed = true;
+    wbChapters = wbChapters.filter(c => !gone.includes(c));
+    gone.forEach(c => { wbChapterVersions.delete(c.id); wbPendingIds.delete(c.id); });
+    // Deleted elsewhere: the text stays on screen as a loose file, flagged.
+    if (gone.some(c => c.id === wbCurrentId)) detachChapter();
+  }
+  (pending || []).forEach(r => {
+    if (r && storedChapters.has(r.chapterId) && !wbPendingIds.has(r.chapterId)) {
+      wbPendingIds.add(r.chapterId); changed = true;
+    }
+  });
+  if (openChanged) {
+    const ch = wbChapter(wbCurrentId);
+    wbReplaceEditorText(ch.content || '');
+    wbFileLabel(ch.file);
+    updatePreview(); updateStatus(); updateNav();
+    wbDraftWrite();
+    wbSay(t('wbTabUpdated'));
+  }
+  if (changed) renderWorkbooks();
+}
+// Replace the editor's text without moving the caret or scroll for the
+// person reading it. The previous text stays one undo step away.
+function wbReplaceEditorText(text) {
+  const old = editor.value;
+  if (old === text) return;
+  let p = 0;
+  while (p < old.length && p < text.length && old[p] === text[p]) p++;
+  const shift = at => at <= p ? at : Math.max(p, at + text.length - old.length);
+  const start = shift(editor.selectionStart), end = shift(editor.selectionEnd);
+  const dir = editor.selectionDirection, top = editor.scrollTop;
+  undoMark(false);
+  editor.value = text;
+  try { editor.setSelectionRange(start, end, dir); } catch (e) {}
+  editor.scrollTop = top;
+  // The caret remembered while this tab was in the background, too.
+  if (typeof returnSnap !== 'undefined' && returnSnap) {
+    returnSnap.s = shift(returnSnap.s); returnSnap.e = shift(returnSnap.e);
+  }
+}
+// A real conflict: the competing copy now holds exactly this editor's text,
+// so the editor continues there. Further typing saves into the copy instead
+// of producing a new copy on every autosave.
+function wbContinueInCopy(copy) {
+  wbCurrentId = copy.id;
+  wbDirty = editor.value !== (copy.content || '');
+  wbFileLabel(copy.file);
+  wbOpenBooks.add(copy.workbookId);
+  wbMetaSet('last', copy.id).catch(() => {});
+  wbDraftWrite();
+  renderWorkbooks();
+  wbSay(t('wbConflictMoved', copy.title), true);
+  if (wbDirty) { clearTimeout(wbSaveTimer); wbSaveTimer = setTimeout(() => { flushChapter(); }, 800); }
+  wbSyncLater();               // and pick up the other tab's version of the original
+}
+window.addEventListener('storage', event => { if (event.key === WB_CHANGE_KEY) wbSyncFromStore(); });
+window.addEventListener('focus', () => wbSyncFromStore());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) wbSyncFromStore(); });
 
 /* ── Pending edits ──
    Autosave already writes the open chapter's text straight to IndexedDB.
@@ -1489,6 +1689,7 @@ async function wbMoveChapterTo(id, bookId, targetId, before) {
       Object.assign(wbChapter(item.id), item);
       wbChapterVersions.set(item.id, wbChapterVersion(item));
     });
+    wbAnnounce();
     if (changingBooks) {
       wbOpenBooks.add(bookId);
       if (id === wbCurrentId) {
@@ -1603,15 +1804,38 @@ async function flushChapter(force = false) {
   const saved = { ...ch, content: editor.value, updated: Date.now() };
   wbDirty = true;
   wbDraftWrite();            // keep recovery even if the store rejects this write
+  const mine = saved.content;
   wbFlushPromise = (async () => {
     const wasPending = wbPendingIds.has(ch.id);
-    if (!await wbPersist(WB_CHAPTERS, saved, true)) return false;
+    const before = wbConflictCopies.get(ch.id);
+    if (!await wbPersist(WB_CHAPTERS, saved, true, true)) {
+      const entry = wbConflictCopies.get(ch.id);   // a new entry: this save conflicted
+      if (entry && entry !== before) {
+        if (wbCurrentId === ch.id && entry.chapter.content === mine) wbContinueInCopy(entry.chapter);
+        else wbSay(t('wbConflict'), true);
+      }
+      return false;
+    }
     Object.assign(ch, saved);
+    const merged = saved.content !== mine;
+    if (merged && wbCurrentId === ch.id) {
+      // Another tab's edit was combined in. Rebase typing done meanwhile.
+      const now = editor.value;
+      const text = now === mine ? saved.content : wbMerge3(mine, now, saved.content);
+      if (text == null) {
+        // Overlaps: keep it on screen; the next save sees a changed base
+        // and preserves it as a conflict copy instead of dropping either.
+        wbChapterVersions.set(ch.id, wbChapterVersion({ ...saved, content: mine }));
+      } else {
+        wbReplaceEditorText(text);
+        updatePreview(); updateStatus(); updateNav();
+      }
+    }
     // Typing while the write was in flight still needs its own save.
     if (wbCurrentId === ch.id && editor.value === saved.content) wbDirty = false;
     wbDraftWrite();
-    if (!wasPending) renderWorkbooks();   // show the "modified" dot
-    if (!wbDirty) wbSay(t('wbAutosaved'));
+    if (!wasPending || merged) renderWorkbooks();   // show the "modified" dot
+    if (!wbDirty) wbSay(t(merged ? 'wbTabMerged' : 'wbAutosaved'));
     cloudAutoSync();                      // and, debounced, up to Drive — § O
     return wbCurrentId === ch.id && !wbDirty;
   })();

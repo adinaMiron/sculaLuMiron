@@ -349,6 +349,7 @@ async function loadWorkbooks() {
       wbChapters = (chapters || []).sort(wbByOrder);
     }
     wbChapters.forEach(ch => wbChapterVersions.set(ch.id, wbChapterVersion(ch)));
+    (books || []).forEach(b => wbKnownBooks.add(b.id));   // wbSyncFromStore() may drop these later
     try { (await wbAll(WB_PENDING) || []).forEach(r => { if (r && r.chapterId) wbPendingIds.add(r.chapterId); }); } catch (e) {}
   } catch (e) { wbBooks = []; wbChapters = []; }
   try {
