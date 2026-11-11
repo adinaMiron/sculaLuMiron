@@ -247,6 +247,24 @@ function exportHtml() {
     .tl-what { flex: 1 1 auto; min-width: 0; }
     .tl-what img { max-width: 100%; height: auto; border-radius: 4px; margin: 4px 0 0; }
     @media (max-width: 640px) { .tl-item { flex-wrap: wrap; } .tl-what { flex-basis: 100%; } }
+    .md-chart { margin: 14px 0 8px; padding: 10px 14px 4px; border: 1px solid #e2e2e2; border-radius: 8px; background: #fafafa; }
+    .ch-s0 { --ch-c: #8A6A1F; } .ch-s1 { --ch-c: #3F7A63; } .ch-s2 { --ch-c: #C08A1E; } .ch-s3 { --ch-c: #A1421C; } .ch-s4 { --ch-c: #5F7468; }
+    .ch-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.88em; }
+    .ch-key { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+    .ch-stat { color: #666; font-family: 'Courier New', monospace; font-size: 0.92em; }
+    .ch-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--ch-c); align-self: center; }
+    .ch-plot { position: relative; margin: 6px 0 0; }
+    .ch-svg { display: block; width: 100%; overflow: visible; }
+    .ch-grid { stroke: #e4e4e4; stroke-width: 1; } .ch-xtick { stroke: #c9c9c9; stroke-width: 1; }
+    .ch-ylab, .ch-xlab { fill: #666; font-family: 'Trebuchet MS', sans-serif; font-size: 11px; }
+    .ch-line { stroke: var(--ch-c); stroke-width: 2; stroke-linecap: round; }
+    .ch-guide { display: none; }
+    .ch-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; padding: 0; border: 2px solid #ffffff; border-radius: 50%; background: var(--ch-c); cursor: pointer; }
+    .ch-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: max-content; max-width: 260px; padding: 6px 9px; border: 1px solid #d0d0d0; border-radius: 6px; background: #ffffff; color: #222; font-size: 12.5px; line-height: 1.45; text-align: left; box-shadow: 0 4px 14px rgba(0,0,0,0.15); pointer-events: none; z-index: 3; }
+    .ch-tip-l { left: 0; transform: none; } .ch-tip-r { left: auto; right: 0; transform: none; } .ch-tip-b { bottom: auto; top: calc(100% + 8px); }
+    .ch-dot:hover .ch-tip, .ch-dot:focus .ch-tip { display: block; }
+    .ch-tip-date { display: block; color: #8a6a1f; font-family: 'Courier New', monospace; font-weight: 600; }
+    .ch-tip-row { display: flex; align-items: center; gap: 6px; } .ch-tip-note { display: block; margin-top: 2px; color: #666; }
     strong { font-weight: 700; }
     em { font-style: italic; }
     img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }

@@ -12,6 +12,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `editor.js` | Editor selection, undo/redo, formatting actions, image paste and explorer, responsive panels |
 | `multicursor.js` | Extra cursors from Ctrl+Alt+↑/↓ and Alt+Click: typing, deleting, paste/copy/cut and caret moves at every cursor, painted in an overlay |
 | `markdown.js` | Wikilink/date/place/importance/timeline rendering, Markdown parser, preview, navigation |
+| `chart.js` | Line chart above a table with dates in its first column and numbers beside them, with its tooltip and keyboard — loaded right after `markdown.js` ([FEATURES § W](../../docs/FEATURES.md)) |
 | `diagram.js` | ` ```flow ` / ` ```mindmap ` / ` ```sequence ` diagrams: parsers, serializers, ports, SVG layout, SVG/PNG download and the diagram modal — loaded right after `markdown.js` ([FEATURES § U](../../docs/FEATURES.md)) |
 | `sketch.js` | Freehand sketch modal and the ✎ on preview pictures — loaded right after `diagram.js` ([FEATURES § U](../../docs/FEATURES.md)) |
 | `gantt.js` | Chapter Gantt task/date/dependency parsing, chart rendering and dialog |

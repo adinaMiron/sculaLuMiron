@@ -1035,6 +1035,12 @@ function parseMarkdownBlocks(md, opts) {
     const isSep = sepRow.every(c => /^:?-+:?$/.test(c));
     if (!isSep) { rows.forEach(r => out.push(`<p>${applyInline(r, opts)}</p>`)); return; }
     const aligns = sepRow.map(c => c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left');
+    // Dates down the first column and numbers beside them: drawn as a chart
+    // above the table (js/markdown/chart.js, docs/FEATURES.md § W).
+    if (typeof chTableHtml === 'function') {
+      const chart = chTableHtml(headers, rows.slice(2).map(mdTableCells), opts);
+      if (chart) out.push(chart);
+    }
     out.push('<table>');
     out.push('<thead><tr>' + headers.map((h,i) => `<th style="text-align:${aligns[i]}">${applyInline(h, opts)}</th>`).join('') + '</tr></thead>');
     if (rows.length > 2) {

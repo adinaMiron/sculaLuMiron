@@ -38,6 +38,7 @@ const I18N = {
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
     codeTip:"Inserează bloc de cod (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Cod",
     timelineTip:"Inserează o cronologie (#dată - !ce s-a întâmplat)", timelineBtn:"⏳ Cronologie",
+    chartAria:"Grafic", chartLast:"ultima", chartMin:"min", chartMax:"max",
     dgKindSequence:"Secvență", dgColorAuto:"↺ Culoarea ramurii", dgAutoLayout:"↺ Aranjare automată",
     dgDlSvg:"⤓ SVG", dgDlPng:"⤓ PNG", dgDlSvgTip:"Descarcă diagrama ca SVG", dgDlPngTip:"Descarcă diagrama ca PNG",
     dgDlFailed:"Nu am putut descărca diagrama",
@@ -447,6 +448,13 @@ const I18N = {
         <li>După <code>!</code> scrii text, o poză — <code>![lună](luna.png)</code> — sau o legătură — <code>![Apollo 11](https://nasa.gov)</code>. Aceeași formă; unde duce spune ce e.</li>
         <li>Butonul ⏳ Cronologie din bară scrie trei rânduri peste care poți scrie ale tale.</li>
       </ul>
+      <h3>Grafice din tabele</h3>
+      <ul>
+        <li>Un tabel cu date în prima coloană și numere în celelalte primește deasupra un grafic cu linii: o linie pentru fiecare coloană de numere (până la cinci).</li>
+        <li>Datele se scriu <code>2026-11-08</code>, <code>08.11.2026</code> sau <code>2026-11</code>; rândurile pot fi în orice ordine. Numerele pot avea virgulă sau punct și o unitate scurtă: <code>89,7 kg</code>.</li>
+        <li>Coloanele cu text sunt note: apar lângă punct. O celulă goală sare punctul.</li>
+        <li>Treci cu mouse-ul sau atinge graficul: se arată punctul cel mai apropiat, cu data, valoarea și nota. Cu <kbd>Tab</kbd> ajungi la grafic, iar <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> trec de la un punct la altul.</li>
+      </ul>
       <h3>Diagrame</h3>
       <ul>
         <li>Butonul ◇ Diagramă deschide un editor pe tot ecranul pentru o <b>schemă logică</b> sau o <b>hartă mentală</b>; „Inserează în notă” scrie diagrama ca bloc de text în capitol. <code>✎ Editează</code> sau dublu-clic pe desenul din previzualizare o redeschide.</li>
@@ -516,6 +524,7 @@ const I18N = {
     tableTip:"Insert table", tableBtn:"⊞ Table",
     codeTip:"Insert code block (Ctrl+Shift+K)", codeBtn:"⟨/⟩ Code",
     timelineTip:"Insert a timeline (#date - !what happened)", timelineBtn:"⏳ Timeline",
+    chartAria:"Chart", chartLast:"last", chartMin:"min", chartMax:"max",
     dgKindSequence:"Sequence", dgColorAuto:"↺ Branch colour", dgAutoLayout:"↺ Auto layout",
     dgDlSvg:"⤓ SVG", dgDlPng:"⤓ PNG", dgDlSvgTip:"Download the diagram as SVG", dgDlPngTip:"Download the diagram as PNG",
     dgDlFailed:"Could not download the diagram",
@@ -924,6 +933,13 @@ const I18N = {
         <li>The date can be a year, a month or a day: <code>#1969</code>, <code>#2026-09</code>, <code>#2026-09-21</code>, <code>#21.09.2026</code>.</li>
         <li>After the <code>!</code> write text, a picture — <code>![moon](moon.png)</code> — or a link — <code>![Apollo 11](https://nasa.gov)</code>. The same shape; where it points says which it is.</li>
         <li>The ⏳ Timeline toolbar button writes three lines to write over.</li>
+      </ul>
+      <h3>Charts from tables</h3>
+      <ul>
+        <li>A table with dates in its first column and numbers in the others gets a line chart above it: one line per number column (up to five).</li>
+        <li>Write the dates as <code>2026-11-08</code>, <code>08.11.2026</code> or <code>2026-11</code>; the rows may be in any order. Numbers may use a comma or a point and a short unit: <code>89,7 kg</code>.</li>
+        <li>Text columns are notes, shown with the point. An empty cell skips the point.</li>
+        <li>Hover over or touch the chart to see the nearest point, with its date, value and note. <kbd>Tab</kbd> reaches the chart, and <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> move between points.</li>
       </ul>
       <h3>Diagrams</h3>
       <ul>
