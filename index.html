@@ -563,6 +563,20 @@
   #editor-matches mark.page-match { position: relative; background: #ffd54a; color: #211900; border-radius: 2px; }
   #editor-matches .page-match-caret { position:absolute; top:-1px; bottom:-1px; width:1px; background:#15120a; pointer-events:none; z-index:1; }
   #editor-matches mark.page-match.current { background: #ff8a3d; outline: 2px solid #ff8a3d; }
+  /* Extra cursors from Ctrl+Alt+↑/↓ and Alt+Click (multicursor.js): transparent text over the editor. */
+  #editor-cursors {
+    position: absolute; z-index: 2; box-sizing: border-box; margin: 0;
+    overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word;
+    color: transparent; pointer-events: none;
+  }
+  #editor-cursors mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: transparent; }
+  #editor-cursors .mc-caret { position: relative; }
+  #editor-cursors .mc-caret::after {
+    content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px;
+    background: var(--text); animation: mc-blink 1.1s steps(1) infinite;
+  }
+  @keyframes mc-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { #editor-cursors .mc-caret::after { animation: none; } }
   #editor {
     position: relative; z-index: 1;
     flex: 1;
@@ -961,10 +975,10 @@
   .file-name.loose { color: var(--danger); border-color: var(--danger); }
   #status-bar { display: flex; gap: 20px; padding: 4px 16px; font-size: 11px; color: var(--text-3); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
 
-  /* ── Phone key bar: Ctrl / Shift / Alt / arrows (js/markdown/keybar.js) ── */
+  /* ── Phone key bar: Ctrl / Shift / Alt, : - _ and arrows (js/markdown/keybar.js); wraps on narrow phones ── */
   #mobile-keys {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 9995;
-    display: flex; gap: 6px; justify-content: center;
+    display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center;
     padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
     background: var(--surface); border-top: 1px solid var(--border);
   }
@@ -975,7 +989,7 @@
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
     touch-action: manipulation; user-select: none; -webkit-user-select: none;
   }
-  #mobile-keys .mk-gap { width: 8px; }
+  #mobile-keys .mk-group { display: flex; gap: 6px; }
   #mobile-keys button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   #mobile-keys button.lock { box-shadow: inset 0 -3px 0 var(--on-accent); }
   body.mk-on { padding-bottom: var(--mk-h, 53px); }
@@ -1580,6 +1594,24 @@
     padding: 0 7px;
     font-size: 0.9em;
     white-space: nowrap;
+  }
+
+  /* "9:21 - 9:34 ⏱ 13 min" — the length of a time range, and the section
+     total parseMarkdown() adds before the next heading. Muted on purpose:
+     it is a derived figure, not something the person typed. */
+  .md-dur {
+    display: inline-block;
+    color: var(--text-2);
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 0.85em;
+    white-space: nowrap;
+  }
+  .md-dur-total {
+    color: var(--text-2);
+    border-top: 1px dashed var(--border);
+    padding-top: 4px;
   }
 
   /* "^@Castelul Peleș" — a place flagged in the source, rendered as a pill
@@ -4085,14 +4117,22 @@ Use the toolbar above to insert formatting.
 </div>
 
 <div id="mobile-keys" role="toolbar" hidden data-i-aria="mkBar" aria-label="Shortcut keys">
-  <button type="button" data-mk-mod="ctrl" aria-pressed="false" data-i-title="mkCtrlTip" title="Ctrl for the next key">Ctrl</button>
-  <button type="button" data-mk-mod="shift" aria-pressed="false" data-i-title="mkShiftTip" title="Shift for the next key">Shift</button>
-  <button type="button" data-mk-mod="alt" aria-pressed="false" data-i-title="mkAltTip" title="Alt for the next key">Alt</button>
-  <span class="mk-gap" aria-hidden="true"></span>
-  <button type="button" data-mk-key="ArrowLeft" data-i-aria="mkLeft" aria-label="Left arrow">←</button>
-  <button type="button" data-mk-key="ArrowUp" data-i-aria="mkUp" aria-label="Up arrow">↑</button>
-  <button type="button" data-mk-key="ArrowDown" data-i-aria="mkDown" aria-label="Down arrow">↓</button>
-  <button type="button" data-mk-key="ArrowRight" data-i-aria="mkRight" aria-label="Right arrow">→</button>
+  <span class="mk-group">
+    <button type="button" data-mk-mod="ctrl" aria-pressed="false" data-i-title="mkCtrlTip" title="Ctrl for the next key">Ctrl</button>
+    <button type="button" data-mk-mod="shift" aria-pressed="false" data-i-title="mkShiftTip" title="Shift for the next key">Shift</button>
+    <button type="button" data-mk-mod="alt" aria-pressed="false" data-i-title="mkAltTip" title="Alt for the next key">Alt</button>
+  </span>
+  <span class="mk-group">
+    <button type="button" data-mk-char=":" data-i-aria="mkColon" aria-label="Colon">:</button>
+    <button type="button" data-mk-char="-" data-i-aria="mkHyphen" aria-label="Hyphen">-</button>
+    <button type="button" data-mk-char="_" data-i-aria="mkUnderscore" aria-label="Underscore">_</button>
+  </span>
+  <span class="mk-group">
+    <button type="button" data-mk-key="ArrowLeft" data-i-aria="mkLeft" aria-label="Left arrow">←</button>
+    <button type="button" data-mk-key="ArrowUp" data-i-aria="mkUp" aria-label="Up arrow">↑</button>
+    <button type="button" data-mk-key="ArrowDown" data-i-aria="mkDown" aria-label="Down arrow">↓</button>
+    <button type="button" data-mk-key="ArrowRight" data-i-aria="mkRight" aria-label="Right arrow">→</button>
+  </span>
 </div>
 
 <div id="dictate-pill" hidden>
@@ -4609,6 +4649,7 @@ Use the toolbar above to insert formatting.
 
 <script src="js/markdown/i18n.js"></script>
 <script src="js/markdown/editor.js"></script>
+<script src="js/markdown/multicursor.js"></script>
 <script src="js/markdown/markdown.js"></script>
 <script src="js/markdown/diagram.js"></script>
 <script src="js/markdown/sketch.js"></script>

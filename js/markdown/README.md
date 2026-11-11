@@ -10,6 +10,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 |---|---|
 | `i18n.js` | Romanian and English strings, UI language, `store` |
 | `editor.js` | Editor selection, undo/redo, formatting actions, image paste and explorer, responsive panels |
+| `multicursor.js` | Extra cursors from Ctrl+Alt+↑/↓ and Alt+Click: typing, deleting, paste/copy/cut and caret moves at every cursor, painted in an overlay |
 | `markdown.js` | Wikilink/date/place/importance/timeline rendering, Markdown parser, preview, navigation |
 | `diagram.js` | ` ```flow ` / ` ```mindmap ` / ` ```sequence ` diagrams: parsers, serializers, ports, SVG layout, SVG/PNG download and the diagram modal — loaded right after `markdown.js` ([FEATURES § U](../../docs/FEATURES.md)) |
 | `sketch.js` | Freehand sketch modal and the ✎ on preview pictures — loaded right after `diagram.js` ([FEATURES § U](../../docs/FEATURES.md)) |
@@ -23,7 +24,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `wikilinks.js` | Wiki link dialog and `[[` suggestions |
 | `files.js` | New/open/import/export, table, timeline, code and link dialogs |
 | `events.js` | Editor and keyboard event handlers |
-| `keybar.js` | Phone/tablet key bar (Ctrl, Shift, Alt, arrows) that feeds the shortcuts in `events.js` |
+| `keybar.js` | Phone/tablet key bar (Ctrl, Shift, Alt, `:` `-` `_`, arrows) that feeds the shortcuts in `events.js` |
 | `dictation.js` | Speech transcription into notes or the idea dialog |
 | `drive.js` | Google Drive authentication, merge and sync |
 | `startup.js` | Initial rendering, layout and workbook boot (after Drive is defined) |

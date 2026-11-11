@@ -209,6 +209,8 @@ function exportHtml() {
     .md-color { font-family: 'Courier New', monospace; font-size: 0.92em; white-space: nowrap; }
     .md-color-sw { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.12em; border-radius: 3px; border: 1px solid #ccc; }
     .md-assignee { color: #C4643C; font-weight: 600; }
+    .md-dur { display: inline-block; color: #555; background: #f1f1f1; border-radius: 10px; padding: 0 7px; font-size: 0.85em; white-space: nowrap; }
+    .md-dur-total { color: #555; border-top: 1px dashed #ccc; padding-top: 4px; }
     .task-list { list-style: none; margin-left: 0; }
     .task-status { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font-size: 0.82em; font-weight: 700; background: #f4f4f4; }
     .task-status-inwork { color: #736c24; }

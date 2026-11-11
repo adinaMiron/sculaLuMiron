@@ -77,6 +77,7 @@ const I18N = {
     mkShiftTip:"Shift pentru următoarea tastă — atinge de două ori ca să rămână apăsat",
     mkAltTip:"Alt pentru următoarea tastă — atinge de două ori ca să rămână apăsat",
     mkLeft:"Săgeată stânga", mkUp:"Săgeată sus", mkDown:"Săgeată jos", mkRight:"Săgeată dreapta",
+    mkColon:"Două puncte", mkHyphen:"Cratimă", mkUnderscore:"Linie de subliniere",
     dictateRecovery:"Dictarea nu a putut fi inserată. Copiază textul recuperat de mai jos.",
     dictateRecoveredText:"Dictare recuperată",
     explorerTip:"Explorator imagini", explorerBtn:"🖼 Explorator",
@@ -340,6 +341,7 @@ const I18N = {
     calSynced:([n, gone]) => (n === 1 ? "1 dată trimisă în calendar" : n + " date trimise în calendar") +
                              (gone ? ", " + gone + " șterse" : "") + ".",
     calNoDates:"Nicio „@dată” găsită. Scrie de exemplu @2026-09-03 14:00-15:30.",
+    durTotal:"Timp total",
     calOpen:"Deschide",
     mapBtn:"🗺 Hartă", mapTip:"Arată pe hartă locurile „^@” din capitolul acesta (Ctrl+Alt+M)",
     mapNone:"Niciun loc „^@” în capitolul acesta. Scrie de exemplu ^@Castelul Peleș.",
@@ -432,6 +434,8 @@ const I18N = {
       <p><code>&gt;&gt;Nume</code> poate apărea oriunde în text, inclusiv în afara unei sarcini, pentru a marca un responsabil. Forma <code>Nume&gt;&gt; text</code> de la începutul rândului funcționează și ea.</p>
       <h3>Marcajul de dată @dată</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, sau un interval de zile cu <code>..</code> — scris oriunde în text. 📅 „Trimite datele” sau <kbd>Ctrl+Alt+D</kbd> trimite toate marcajele către pagina Calendar.</p>
+      <h3>Durate din intervale orare</h3>
+      <p>Un interval ca <code>9:21 - 9:34</code> sau <code>09:21-9:34</code> (cu sau fără spații în jurul lui „-”) primește în previzualizare durata lui, „⏱ 13 min”. La sfârșitul fiecărei secțiuni — înaintea titlului următor sau la capătul textului — apare „Timp total”, suma duratelor din secțiune. Un interval care trece de miezul nopții (<code>23:30-0:15</code>) se socotește corect; orele dintr-un <code>@date</code> nu intră în total.</p>
       <h3>Marcajul de loc ^@</h3>
       <p><code>^@Castelul Peleș</code>, <code>^@Strada Lipscani 12, București</code> sau <code>^@44.4268, 26.1025</code> — un nume, o adresă sau coordonate, scrise până la capătul rândului. După <code>|</code> poți adăuga o notă, iar un <code>#etichetă</code> încheie adresa și rămâne al rândului.</p>
       <p>Butonul 🗺 Hartă apare doar cât capitolul deschis are un <code>^@</code>; el (sau <kbd>Ctrl+Alt+M</kbd>) duce locurile pe pagina Hartă, așezate pe straturi după titlul de deasupra fiecăruia.</p>
@@ -471,7 +475,7 @@ const I18N = {
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> bloc de cod ·
         <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> sarcină de făcut / în lucru / terminată ·
         <kbd>Ctrl+Shift+.</kbd> / <kbd>Ctrl+Shift+,</kbd> următorul / precedentul titlu sau sarcină (în editor, previzualizare și navigare) ·
-        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul ·
+        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> rând gol după/înainte · <kbd>Alt+↑/↓</kbd> mută rândul · <kbd>Ctrl+Alt+↑/↓</kbd> adaugă un cursor deasupra/dedesubt, <kbd>Alt+Click</kbd> adaugă (sau scoate) un cursor acolo unde dai clic, pentru editare în mai multe locuri deodată (<kbd>Esc</kbd> revine la un cursor) ·
         <kbd>Ctrl+L</kbd> selectează rândul (apasă din nou pentru paragraf) · <kbd>Ctrl+Shift+/</kbd> selectează și copiază tot blocul până la următorul titlu sau sarcină, fără marcajele de început ·
         <kbd>Ctrl+1</kbd> navigare · <kbd>Ctrl+2</kbd> caiete · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> căutare · <kbd>Ctrl+3</kbd> graf · <kbd>Ctrl+5</kbd> grădină · <kbd>Ctrl+6</kbd> poze ·
         <kbd>Ctrl+Shift+L</kbd> legătură [[notiță]] ·
@@ -479,7 +483,7 @@ const I18N = {
         <kbd>Ctrl+Alt+1/2/3</kbd> importanță (<kbd>Ctrl+Alt+0</kbd> șterge) ·
         <kbd>F2</kbd> redenumește caietul/capitolul selectat · <kbd>Esc</kbd> închide fereastra deschisă.
       </p>
-      <p>Pe telefon și tabletă, cât timp un câmp de text are cursorul, deasupra tastaturii apare o bară cu <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd> și săgețile <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd>. Atinge o tastă de comandă, apoi litera sau cifra de pe tastatura telefonului: <kbd>Ctrl</kbd> și apoi <kbd>B</kbd> face aldin. O atingere ține tasta pentru o singură apăsare, două atingeri o lasă apăsată până o atingi din nou. <kbd>Shift</kbd> + săgeți extinde selecția; ține apăsat pe o săgeată ca să se repete.</p>
+      <p>Pe telefon și tabletă, cât timp un câmp de text are cursorul, deasupra tastaturii apare o bară cu <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, tastele <kbd>:</kbd> <kbd>-</kbd> <kbd>_</kbd> și săgețile <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd>. Atinge o tastă de comandă, apoi litera sau cifra de pe tastatura telefonului: <kbd>Ctrl</kbd> și apoi <kbd>B</kbd> face aldin. O atingere ține tasta pentru o singură apăsare, două atingeri o lasă apăsată până o atingi din nou. <kbd>Shift</kbd> + săgeți extinde selecția; ține apăsat pe o săgeată ca să se repete.</p>
     `
   },
   en:{
@@ -551,6 +555,7 @@ const I18N = {
     mkShiftTip:"Shift for the next key — tap twice to keep it on",
     mkAltTip:"Alt for the next key — tap twice to keep it on",
     mkLeft:"Left arrow", mkUp:"Up arrow", mkDown:"Down arrow", mkRight:"Right arrow",
+    mkColon:"Colon", mkHyphen:"Hyphen", mkUnderscore:"Underscore",
     dictateRecovery:"Dictation could not be inserted. Copy the recovered text below.",
     dictateRecoveredText:"Recovered dictation",
     explorerTip:"Image Explorer", explorerBtn:"🖼 Explorer",
@@ -814,6 +819,7 @@ const I18N = {
     calSynced:([n, gone]) => (n === 1 ? "1 date sent to the calendar" : n + " dates sent to the calendar") +
                              (gone ? ", " + gone + " removed" : "") + ".",
     calNoDates:"No \u201C@date\u201D found. Write one like @2026-09-03 14:00-15:30.",
+    durTotal:"Total time",
     calOpen:"Open",
     mapBtn:"\uD83D\uDDFA Map", mapTip:"Show this chapter's \u201C^@\u201D places on the map (Ctrl+Alt+M)",
     mapNone:"No \u201C^@\u201D place in this chapter. Write one like ^@Pele\u0219 Castle.",
@@ -906,6 +912,8 @@ const I18N = {
       <p><code>&gt;&gt;Name</code> can appear anywhere in the text, including outside a task, to mark a responsible person. The leading <code>Name&gt;&gt; text</code> form also works.</p>
       <h3>The @date marker</h3>
       <p><code>@2026-09-03</code>, <code>@2026-09-03 14:00</code>, <code>@2026-09-03 14:00-15:30</code>, or a day range with <code>..</code> — written anywhere in the text. 📅 "Push dates" or <kbd>Ctrl+Alt+D</kbd> sends every marker to the Calendar page.</p>
+      <h3>Durations from time ranges</h3>
+      <p>A range like <code>9:21 - 9:34</code> or <code>09:21-9:34</code> (spaces around "-" optional) shows its length in the preview, "⏱ 13 min". At the end of each section — before the next heading or at the end of the text — a "Total time" line adds up the section's durations. A range past midnight (<code>23:30-0:15</code>) counts correctly; the times inside an <code>@date</code> are not added.</p>
       <h3>The ^@ place marker</h3>
       <p><code>^@Peleș Castle</code>, <code>^@12 Lipscani Street, Bucharest</code> or <code>^@44.4268, 26.1025</code> — a name, an address or coordinates, written to the end of the line. What follows a <code>|</code> is a note, and a <code>#tag</code> ends the address and stays the line's.</p>
       <p>The 🗺 Map button is there only while the open chapter holds a <code>^@</code>; it (or <kbd>Ctrl+Alt+M</kbd>) takes the places to the Map page, laid out in layers by the heading above each one.</p>
@@ -945,7 +953,7 @@ const I18N = {
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> code block ·
         <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> task to do / in work / done ·
         <kbd>Ctrl+Shift+.</kbd> / <kbd>Ctrl+Shift+,</kbd> next / previous heading or task (in the editor, preview and navigation) ·
-        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line ·
+        <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> blank line after/before · <kbd>Alt+↑/↓</kbd> move line · <kbd>Ctrl+Alt+↑/↓</kbd> add a cursor above/below, <kbd>Alt+Click</kbd> add (or remove) a cursor where you click, to edit several places at once (<kbd>Esc</kbd> back to one cursor) ·
         <kbd>Ctrl+L</kbd> select the line (press again for the paragraph) · <kbd>Ctrl+Shift+/</kbd> select and copy the whole block up to the next heading or task, without its opening markers ·
         <kbd>Ctrl+1</kbd> navigation · <kbd>Ctrl+2</kbd> workbooks · <kbd>Ctrl+4</kbd> / <kbd>Ctrl+Shift+F</kbd> search · <kbd>Ctrl+3</kbd> graph · <kbd>Ctrl+5</kbd> garden · <kbd>Ctrl+6</kbd> photos ·
         <kbd>Ctrl+Shift+L</kbd> [[note]] link ·
@@ -953,7 +961,7 @@ const I18N = {
         <kbd>Ctrl+Alt+1/2/3</kbd> importance (<kbd>Ctrl+Alt+0</kbd> clears) ·
         <kbd>F2</kbd> renames the selected workbook/chapter · <kbd>Esc</kbd> closes whatever's open.
       </p>
-      <p>On a phone or tablet, while a text field has the caret, a bar with <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd> and the arrows <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> appears above the keyboard. Tap a modifier, then the letter or digit on the phone keyboard: <kbd>Ctrl</kbd> then <kbd>B</kbd> makes bold. One tap holds the key for a single press, two taps keep it on until you tap it again. <kbd>Shift</kbd> + arrows extends the selection; hold an arrow to repeat it.</p>
+      <p>On a phone or tablet, while a text field has the caret, a bar with <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, the <kbd>:</kbd> <kbd>-</kbd> <kbd>_</kbd> keys and the arrows <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> appears above the keyboard. Tap a modifier, then the letter or digit on the phone keyboard: <kbd>Ctrl</kbd> then <kbd>B</kbd> makes bold. One tap holds the key for a single press, two taps keep it on until you tap it again. <kbd>Shift</kbd> + arrows extends the selection; hold an arrow to repeat it.</p>
     `
   }
 };

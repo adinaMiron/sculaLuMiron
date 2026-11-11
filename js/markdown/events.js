@@ -159,6 +159,11 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'Enter') { e.preventDefault(); insertLineAbove(); }
   else if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertLineBelow(); }
   if ((e.ctrlKey||e.metaKey) && !e.altKey && !e.shiftKey && e.key === 'l' && document.activeElement === editor) { e.preventDefault(); selectLineOrParagraph(); return; }
+  // Ctrl+Alt+↑/↓ adds a cursor above/below (multicursor.js), as in VS Code;
+  // the editor handles it itself while it has focus.
+  if ((e.ctrlKey||e.metaKey) && e.altKey && !e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault(); mcAdd(e.key === 'ArrowDown' ? 1 : -1); return;
+  }
   if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); moveLineDown(); }
   else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); moveLineUp(); }
 });

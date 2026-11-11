@@ -44,13 +44,17 @@ function undoMark(coalesce) {
   }
   paintUndo();
 }
-function undoReset() { undoStack = []; redoStack = []; undoTime = 0; paintUndo(); }
+function undoReset() {
+  undoStack = []; redoStack = []; undoTime = 0; paintUndo();
+  if (typeof mcClear === 'function') mcClear();
+}
 function undoScrollToCaret() {
   const at = editorMirrorAt(editor.selectionStart);
   if (at.top < editor.scrollTop || at.top > editor.scrollTop + editor.clientHeight - at.lineHeight)
     editor.scrollTop = Math.max(0, at.top - editor.clientHeight / 2);
 }
 function undoApply(s) {
+  if (typeof mcClear === 'function') mcClear();   // extra cursors belong to the text being replaced
   undoApplying = true;
   editor.value = s.value;
   editor.focus();

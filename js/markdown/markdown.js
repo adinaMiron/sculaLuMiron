@@ -32,6 +32,10 @@ const TAG_RE = /(^|[\s(\[{])#([\p{L}\p{N}_\/-]*[\p{L}_][\p{L}\p{N}_\/-]*)/gu;
 // and the export. Tried before TAG_RE, since "#4F8A97" also satisfies the
 // tag pattern (it has letters in it).
 const HEX_COLOR_RE = /(^|[\s(\[{])#([0-9a-fA-F]{8}|[0-9a-fA-F]{6})\b/g;
+// "9:21 - 9:34" or "09:21-9:34" — a time range, spaces around "-" optional.
+// The preview adds the length after it, and parseMarkdown() sums them per
+// heading section. An end before the start is taken as past midnight.
+const TIME_RANGE_RE = /(^|[^\d:])([01]?\d|2[0-3]):([0-5]\d)\s*-\s*([01]?\d|2[0-3]):([0-5]\d)(?![\d:])/g;
 // "@2026-09-03 14:00-15:30" — a date flagged for the calendar. The pattern
 // is ScuLaCal's, not this file's: the calendar page and any other page that
 // learns to scrape dates must read the exact same syntax, so it lives once
@@ -879,7 +883,7 @@ function mdSpanStyle(attrs) {
 
 function applyInline(text, opts) {
   const forExport = !!(opts && opts.forExport);
-  return text
+  const html = text
     .replace(INLINE_ASSIGNEE_RE, (m, name) => `&gt;&gt;<span class="md-assignee">${name}</span>`)
     // [[…]] before ![…](…): an embed is "![[" and both start with a bracket
     .replace(WIKI_RE, (m, bang, target, alias) => renderWikiLink(bang, target, alias, opts))
@@ -910,6 +914,36 @@ function applyInline(text, opts) {
     // last, and only after a space or a line start: by now every "#" this
     // pass produced sits right after ">" or a quote, so none of them match
     .replace(TAG_RE, (m, lead, tag) => renderTag(lead, tag));
+  return renderTimeRanges(html);
+}
+
+/* Time ranges — "9:21 - 9:34" gets "⏱ 13 min" after it. Runs on the
+   finished inline HTML, on text between tags only, so a time inside a link
+   address, `inline code` or an "@date" chip is left alone. While
+   parseMarkdown() runs, each length is added to mdDurSink for the section
+   total. */
+let mdDurSink = null;
+function mdDurText(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+}
+function renderTimeRanges(html) {
+  let skip = null;                       // closing tag we are waiting for
+  return html.split(/(<[^>]*>)/).map(part => {
+    if (part.charAt(0) === '<') {
+      if (skip) { if (part.toLowerCase().startsWith(skip)) skip = null; }
+      else if (/^<code\b/i.test(part)) skip = '</code';
+      else if (/^<span class="md-date"/.test(part)) skip = '</span';
+      return part;
+    }
+    if (skip) return part;
+    return part.replace(TIME_RANGE_RE, (m, lead, h1, m1, h2, m2) => {
+      let min = (+h2 * 60 + +m2) - (+h1 * 60 + +m1);
+      if (min < 0) min += 24 * 60;
+      if (mdDurSink) { mdDurSink.min += min; mdDurSink.n++; }
+      return `${m} <span class="md-dur">⏱ ${mdDurText(min)}</span>`;
+    });
+  }).join('');
 }
 
 /* A fenced code block. In the preview it is a plain <pre><code>; in the
@@ -947,6 +981,12 @@ function mdTableCells(row) {
 }
 
 function parseMarkdown(md, opts) {
+  const outer = mdDurSink;
+  mdDurSink = { min: 0, n: 0 };
+  try { return parseMarkdownBlocks(md, opts); } finally { mdDurSink = outer; }
+}
+
+function parseMarkdownBlocks(md, opts) {
   const forExport = !!(opts && opts.forExport);
   let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // Restore innermost spans first so overlapping toolbar selections can
@@ -964,6 +1004,18 @@ function parseMarkdown(md, opts) {
   let tableBuffer = [];
   let timelineBuffer = [];
   const slugSeen = {};      // keeps two headings of the same name apart
+
+  // The sum of the time ranges since the last heading, shown where the
+  // section ends: before the next heading, or at the end of the text —
+  // right under its last line, ahead of any trailing blank lines.
+  function flushDuration() {
+    const dur = mdDurSink;
+    if (!dur || !dur.n) return;
+    let at = out.length;
+    while (at > 0 && out[at - 1] === '<br>') at--;
+    out.splice(at, 0, `<p class="md-dur-total">⏱ ${t('durTotal')}: <strong>${mdDurText(dur.min)}</strong></p>`);
+    dur.min = 0; dur.n = 0;
+  }
 
   // A run of "#date - !what" lines is one timeline — docs/FEATURES.md § R.
   function flushTimeline() {
@@ -1060,6 +1112,7 @@ function parseMarkdown(md, opts) {
     if (hm) {
       if (inUL) { out.push('</ul>'); inUL = false; }
       if (inOL) { out.push('</ol>'); inOL = false; }
+      flushDuration();
       out.push(`<h${hm[1].length} id="${attrEsc(headingSlug(hm[2], slugSeen))}">${applyInline(hm[2], opts)}</h${hm[1].length}>`);
       continue;
     }
@@ -1103,6 +1156,7 @@ function parseMarkdown(md, opts) {
   if (inCode) out.push(mdFenceHtml(codeLines, codeLang, codeStart, opts));
   if (inUL) out.push('</ul>');
   if (inOL) out.push('</ol>');
+  flushDuration();
   return out.join('\n');
 }
 

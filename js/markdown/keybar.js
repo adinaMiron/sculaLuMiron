@@ -1,4 +1,4 @@
-/* ── Phone key bar: Ctrl, Shift, Alt and the four arrows ──
+/* ── Phone key bar: Ctrl, Shift, Alt, the : - _ keys and the four arrows ──
    A phone keyboard has no modifier keys, so every Ctrl/Alt shortcut in
    events.js was out of reach. The bar shows on touch screens while a text
    field has the caret. Tap a modifier once for the next key, twice to keep
@@ -66,6 +66,18 @@
     if (!ch) return;
     const key = /^[a-z]$/i.test(ch) ? (mods.shift ? ch.toUpperCase() : ch.toLowerCase()) : ch;
     fire(key, codeFor(ch));
+    release();
+  }
+
+  // ":", "-" and "_" sit on the phone keyboard's symbol page. A tap types
+  // the character, or completes a shortcut when Ctrl or Alt is on.
+  function typeChar(ch) {
+    if (armed()) { fireChar(ch); return; }
+    const el = document.activeElement;
+    if (isField(el) && !document.execCommand('insertText', false, ch) && hasTextCaret(el)) {
+      el.setRangeText(ch, el.selectionStart, el.selectionEnd, 'end');
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ch }));
+    }
     release();
   }
 
@@ -185,7 +197,8 @@
       const k = b.dataset.mkMod;
       mods[k] = (mods[k] + 1) % 3;
       paint(); refocus();
-    } else if (b.dataset.mkKey && !pressed) arrow(b.dataset.mkKey);   // keyboard activation
+    } else if (b.dataset.mkChar) typeChar(b.dataset.mkChar);
+    else if (b.dataset.mkKey && !pressed) arrow(b.dataset.mkKey);   // keyboard activation
     pressed = false;
   });
 

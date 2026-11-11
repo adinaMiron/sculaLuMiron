@@ -186,6 +186,8 @@ switched between Romanian and English; the guides below use the English labels.
 | <kbd>Ctrl+Shift+1…6</kbd> | Headings H1–H6 |
 | <kbd>Ctrl+Enter</kbd> / <kbd>Ctrl+Shift+Enter</kbd> | Blank line after / before |
 | <kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd> | Move line |
+| <kbd>Ctrl+Alt+↑</kbd> / <kbd>Ctrl+Alt+↓</kbd> | Add a cursor on the line above / below, same column, to edit several lines at once; <kbd>Esc</kbd> or a click returns to one cursor |
+| <kbd>Alt+Click</kbd> | Add a cursor where you click (Alt+Click on an extra cursor removes it) |
 | <kbd>Ctrl+L</kbd> | Select line; press again for paragraph |
 | <kbd>Ctrl+1</kbd> / <kbd>Ctrl+2</kbd> | Navigation / workbooks |
 | <kbd>Ctrl+3</kbd> / <kbd>Ctrl+4</kbd> | Graph / search |
