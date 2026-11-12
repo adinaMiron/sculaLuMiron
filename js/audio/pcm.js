@@ -1,4 +1,4 @@
-/* Plain browser helper shared by Voice and Song; usable from file://.
+/* Plain browser helper used by Voice; usable from file://.
    Source PCM only: no normalisation, effects, resampling or channel mixing. */
 (function(){
   "use strict";

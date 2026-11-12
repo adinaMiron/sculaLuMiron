@@ -272,7 +272,6 @@
   <a href="kanban.html" data-page="kanban.html">Kanban</a>
   <a href="map.html" data-page="map.html">Hartă</a>
   <a href="voice.html" data-page="voice.html">Caiet vocal</a>
-  <a href="song.html" data-page="song.html">Creează melodie</a>
   <a href="recipes.html" data-page="recipes.html">Rețete</a>
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <a href="transfer.html" data-page="transfer.html">Transfer</a>
@@ -428,7 +427,7 @@
     if(a.getAttribute("data-page") === here) a.classList.add("current");
   });
   // Shared UI-language toggle - see docs/I18N.md "Shared preference across
-  // pages". This block is byte-identical in all nine files (CLAUDE.md rule
+  // pages". This block is byte-identical in all eight files (CLAUDE.md rule
   // 2); it only paints itself from localStorage and broadcasts a
   // "scula-ui-lang" event. Each app's own script (loaded later, at the
   // bottom of the page) owns the actual translation via its own I18N/t()/
@@ -451,7 +450,6 @@
   }
   function paintLang(l){
     btn.textContent = l === "ro" ? "EN" : "RO";
-    document.querySelector('#site-nav [data-page="song.html"]').textContent = l === "en" ? "Song Creation" : "Creează melodie";
   }
 
   // Some apps toggle the language from their own controls; follow along.
@@ -478,13 +476,12 @@
                   there - the OS picker owns that choice.
        "download" last resort, and always available.
 
-     Byte-identical in all nine files (CLAUDE.md rule 2) - see
+     Byte-identical in all eight files (CLAUDE.md rule 2) - see
      docs/FEATURES.md "Saving files".
      ============================================================ */
   var DB_NAME = "scula-fs", DB_STORE = "handles", DB_KEY = "root", MODE_KEY = "mode";
   var SUBDIR = {
     "voice.html": "transcript",
-    "song.html": "Song Creation",
     "calendar.html": "calendar",
     "kanban.html": "kanban",
     "map.html": "harta",
@@ -872,8 +869,8 @@
   // The one call pages make. Always resolves. Read `message` to say what
   // happened in the app's own UI (null = say nothing), or leave `quiet` off
   // and the shared toast speaks.
-  // Stream producers are used by large Song WAV exports. Other saves keep the
-  // Blob API. Await every write for backpressure; never buffer a large fallback.
+  // Stream producers (size + stream()) let large exports avoid one big Blob.
+  // Other saves keep the Blob API. Await every write for backpressure; never buffer a large fallback.
   async function saveStream(filename, source, opts){
     var cap = 32 * 1048576, quiet = !!(opts && opts.quiet);
     if(!Number.isSafeInteger(source.size) || source.size < 0) throw new Error("renderLimit");

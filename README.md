@@ -1,11 +1,10 @@
 # webPages
 
-Nine standalone browser tools. No build step, no dependencies to install —
+Eight standalone browser tools. No build step, no dependencies to install —
 open any `.html` file in a browser and it runs.
 
 | Tool | File | What it does |
 |---|---|---|
-| **Song Creation / Creează melodie** | `song.html` | Named music projects, voice/humming and instrument samples, original WAV, humming extraction, editable melody and instrumental arrangement versions, local persistence and export. |
 | **Caiet vocal** | `voice.html` | Voice dictation → text. Romanian & English, server or in-browser transcription. |
 | **Image Marker** | `editor.html` | Screen annotation & drawing: shapes, arrows, freehand, text, screenshots, screen recording. |
 | **Markdown Editor** | `index.html` | Markdown editing with live preview, workbooks of chapters, docx import, HTML export, an Obsidian-style knowledge graph over `[[wikilinks]]` and `#tags`, and a folder of photos and films read through its own metadata — when each was taken, where, and the name hiding in the file name. |
@@ -15,7 +14,7 @@ open any `.html` file in a browser and it runs.
 | **Hartă** | `map.html` | Draws the places written in markdown with `^@` — a name, a street with a number, or plain coordinates — on a map, laid out in layers by the heading each one sits under. The map is hand-rolled (OpenStreetMap tiles, no map library); both the tile address and the geocoder are visible, editable fields, so a local tile folder makes it work with no internet. |
 | **Rețete** | `recipes.html` | Reads a meal plan or a recipe book out of a PDF (or a photo, or pasted text) and writes it as recipe markdown — one chapter per day, ingredients and method. Reads its own PDFs and its own JPEG 2000 scans, recognises photos in the page, and lets a hundred days be searched, filtered and rearranged. |
 
-All nine share a common nav bar and link to each other.
+All eight share a common nav bar and link to each other.
 The Markdown editor's JavaScript lives in [`js/markdown/`](js/markdown/README.md).
 
 ## Running
@@ -66,7 +65,7 @@ This guide brings together the Help panels in the pages. The interface can be
 switched between Romanian and English; the guides below use the English labels.
 
 **Jump to:** [Markdown editor](#markdown-editor-indexhtml) ·
-[Voice notebook](#voice-notebook-voicehtml) · [Song Creation](#song-creation-songhtml) ·
+[Voice notebook](#voice-notebook-voicehtml) ·
 [Image Marker](#image-marker-editorhtml) ·
 [Calendar](#calendar-calendarhtml) · [Kanban](#kanban-kanbanhtml) ·
 [Transfer](#transfer-transferhtml) · [Map](#map-maphtml) ·
@@ -411,64 +410,3 @@ are best sent in batches or saved directly as they arrive.
   or **.html** for a self-contained, searchable page suited to sharing or
   printing. The 📁 button chooses a computer folder, phone share sheet or
   regular download destination.
-
-### Song Creation (`song.html`)
-
-Create or rename a project, allow microphone access, choose a microphone and
-record a named **Melody / humming** or **Instrument sample** take. Sample details
-are optional. Stop to retain the original WAV; play, rename, delete or save each
-take from the project list. Save metadata separately with **Save metadata**.
-
-Captured source WAVs are genuine 24-bit PCM, at the Web Audio capture rate shown on screen.
-The page requests 48 kHz and disabled speech processing, then reports actual
-microphone settings. Browser/device quality varies; 24-bit encoding does not
-prove 24-bit microphone precision. Keep the page in the foreground.
-If a remembered microphone is unplugged, capture retries the default microphone
-and displays the device actually used.
-
-Import a hummed WAV or use a microphone take, then choose **Extract melody**.
-Edit notes, timing, cents and velocity in the melody table; add/delete notes,
-undo/redo or restore the detected notes. The roll shows editable notes and
-detected note onsets and offsets, with a choice of measured or interpreted pitch contour.
-Song's version 2 analysis repairs isolated octave readings and treats short
-slides as part of a note when there is no measured attack. Choose original or quantized timing,
-preview the melody and save MIDI. Metadata keeps the full detected performance
-and your edits; the master WAV stays byte-for-byte unchanged. Analysis accepts
-solo humming up to 180 seconds; accompaniment and overlapping voices can confuse
-the estimates. Imported WAVs retain their original format. Older version 1
-performances and backups remain readable; reanalysis creates version 2 evidence.
-
-Choose **Create arrangement version** to turn the edited melody into lead,
-chords, bass and drums. Select instruments and independently enable or adjust
-each part's volume. Change arrangement tempo, key and original/quantized timing;
-the arrangement roll shows all four parts. Play/Stop releases audio resources,
-and **Save stereo WAV** / **Save multitrack MIDI** export through the same folder,
-share or download route. Versions retain snapshots, so later melody edits do not
-change an earlier arrangement. Save metadata to back up all versions and settings.
-Song renders piano with struck, slightly detuned strings, guitar and electric bass
-with plucked string models, and three distinct drum kits with pitched shells and
-noise components. These sounds are generated locally; recordings saved as instrument
-samples remain source takes and are not used automatically in arrangements.
-
-Projects and WAV Blobs survive reload in IndexedDB. Export backups: clearing
-browser storage removes them. **Save ZIP backup** includes project metadata,
-original WAVs and any used instrument pack in one file. Restore it through the
-ZIP input, **Validate backup**, then **Import separate project**. Optional
-**Save ZIP to chosen folder** creates a new snapshot; it does not synchronize
-automatically. ZIP supports up to 512 MiB, with a 32 MiB share/download limit;
-larger exports require folder access. See [portability details](docs/SONG-PORTABILITY.md).
-Desktop folder saves use `Song Creation/<project>/`
-with `recordings/`, `samples/` and derived `exports/`; phones use the existing share/download route
-with ownership in filenames. Metadata export references the WAVs, without
-embedding audio. To restore, select the JSON and all referenced source WAVs in
-**Restore an exported project**, choose **Validate backup**, then **Import separate
-project**. This works on phones without a folder picker; keep the exported WAV
-names. New JSON exports include SHA-256 digests of the complete source WAVs;
-validation rejects changed bytes before import. Older backups still import with
-an explicit warning that their audio integrity cannot be verified cryptographically.
-Hashing reports progress and can be cancelled, including from `file://` without
-Web Crypto. Validation and cancellation leave existing projects intact. Each restore
-creates independent IDs and preserves source bytes, analysis, edits and arrangement
-snapshots. If local storage fails, export the imported files before reloading or
-use **Retry local storage**. See
-[architecture and testing](docs/FEATURES.md#v-song-creation-songhtml).
