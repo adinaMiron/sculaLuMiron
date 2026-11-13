@@ -9,13 +9,20 @@
      |------------|---------------|-------------|
      | 2026-11-08 | 91.5          | după Paște  |
 
+   A date may carry a time and the calendar's "@" (§ L) — "@2026-11-13 10:28"
+   — so readings taken several times a day are spaced by the hour.
+
    Each number column is a line; every other column is a note shown with the
    point. Rows may be in any order — the chart sorts them by date. Loaded
    right after markdown.js, whose tlDateValue/tlPlain it reuses. */
 
 // Whole dates and months only. A bare year or a plain number in the first
 // column is more often a quantity than a date, so it never makes a chart.
-const CH_DATE_RE = /^(?:\d{4}-\d{1,2}(?:-\d{1,2})?|\d{1,2}[./]\d{1,2}[./]\d{4}|\d{1,2}[./]\d{4})$/;
+// An "@" before it and a time after it ("@2026-11-13 10:28", the end of an
+// interval ignored) are allowed, so a calendar-flagged row draws too.
+const CH_DATE_RE = /^@?(\d{4}-\d{1,2}(?:-\d{1,2})?|\d{1,2}[./]\d{1,2}[./]\d{4}|\d{1,2}[./]\d{4})(?:[ T]+([01]?\d|2[0-3]):([0-5]\d)(?:\s*-\s*(?:[01]?\d|2[0-3]):[0-5]\d)?)?$/;
+// One day in the years of tlDateValue, whose months are 31 days each.
+const CH_DAY = 1 / 372;
 // A number, with an optional short unit after it: "91.5", "89,7 kg", "12 %".
 const CH_NUM_RE = /^([-+]?\d+(?:[.,]\d+)?)(?:\s*[^\d\s]{1,4})?$/;
 const CH_SERIES_MAX = 5;                  // one colour each, ch-s0 … ch-s4
@@ -31,15 +38,24 @@ function chNumber(cell) {
   return m ? parseFloat(m[1].replace(',', '.')) : null;
 }
 
+// Where the cell sits in time, or null: tlDateValue's place for the day, plus
+// the time of day as a fraction of it.
+function chDateValue(raw) {
+  const m = raw.match(CH_DATE_RE);
+  const v = m ? tlDateValue(m[1]) : null;
+  if (v === null) return null;
+  return m[2] ? v + (+m[2] * 60 + +m[3]) / 1440 * CH_DAY : v;
+}
+
 // The table, read as a chart, or null when it isn't one.
 function chModel(headers, rows) {
   if (headers.length < 2 || rows.length < 2) return null;
   const points = [];
   for (const cells of rows) {
     const raw = (cells[0] || '').trim();
-    const v = CH_DATE_RE.test(raw) ? tlDateValue(raw) : null;
+    const v = chDateValue(raw);
     if (v === null) return null;
-    points.push({ raw, v, cells: cells.map(c => (c || '').trim()) });
+    points.push({ raw: raw.replace(/^@/, ''), v, cells: cells.map(c => (c || '').trim()) });
   }
   const series = [], notes = [];
   for (let c = 1; c < headers.length; c++) {
@@ -69,21 +85,41 @@ function chValueTicks(lo, hi) {
 }
 
 // Labels along the time axis: years for a long stretch, months for a shorter
-// one, and just the two ends when the dates are close together. Values are
-// in the years of tlDateValue, where a month starts exactly at (m - 1) / 12.
+// one, then days, then hours, and just the two ends when the points are
+// minutes apart. Values are in the years of tlDateValue, where a month starts
+// exactly at (m - 1) / 12 and a day lasts CH_DAY.
 function chTimeTicks(lo, hi) {
   const span = hi - lo, out = [];
+  const locale = UI === 'en' ? 'en-GB' : 'ro-RO';
   if (span >= 2) {
     const step = Math.ceil(span / 6);
     for (let y = Math.ceil(lo - 1e-9); y <= hi + 1e-9; y += step) out.push({ v: y, label: String(y) });
   } else if (span >= 2 / 12) {
-    const locale = UI === 'en' ? 'en-GB' : 'ro-RO';
     const step = [1, 2, 3, 6].find(s => span * 12 / s <= 6) || 12;
     let first = true;
     for (let m = Math.ceil(lo * 12 - 1e-9); m <= hi * 12 + 1e-9; m += step) {
       const y = Math.floor(m / 12), mo = m - y * 12;
       const name = new Date(y, mo, 1).toLocaleDateString(locale, { month: 'short' }).replace('.', '');
       out.push({ v: m / 12, label: first || mo === 0 ? name + ' ' + y : name });
+      first = false;
+    }
+  } else if (span > 0) {
+    // Counted in minutes of tlDateValue's calendar, so a tick lands on a
+    // whole day or hour; the 31st of a shorter month is skipped.
+    const at = v => v / CH_DAY * 1440;
+    const minutes = at(hi) - at(lo);
+    const step = [10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 10080, 20160]
+      .find(s => minutes / s <= 5);         // fewer than months: the first label is longer
+    if (minutes < 30 || !step) return out;
+    let first = true;
+    for (let k = Math.ceil(at(lo) / step - 1e-9); k * step <= at(hi) + 1e-6; k++) {
+      const m = k * step, days = Math.floor(m / 1440), min = m - days * 1440;
+      const y = Math.floor(days / 372), mo = Math.floor((days % 372) / 31), d = days % 31 + 1;
+      const date = new Date(y, mo, d);
+      if (date.getMonth() !== mo) continue;
+      const day = date.toLocaleDateString(locale, { day: 'numeric', month: 'short' }).replace('.', '');
+      const hm = String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+      out.push({ v: m / 1440 * CH_DAY, label: step >= 1440 ? day : first || min === 0 ? day + ' ' + hm : hm });
       first = false;
     }
   }
