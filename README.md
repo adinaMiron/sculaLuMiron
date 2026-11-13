@@ -81,12 +81,16 @@ switched between Romanian and English; the guides below use the English labels.
   and press <kbd>F2</kbd> to rename it. Drag chapters to reorder or move them
   between workbooks; on touch screens, press and hold before dragging.
 - Typing autosaves in the page. **Save to workbook** (<kbd>Ctrl+S</kbd>) writes
-  to the folder chosen with 📁. **Save all modified** (<kbd>Ctrl+Alt+S</kbd>)
-  writes every changed chapter; a dot marks chapters not yet written to disk.
-- **Sync to folder** imports new workbooks and chapters from the Markdown
-  folder, then writes all chapters back. **Google account** connects and syncs
-  with Drive; click again to sync and right-click to disconnect. Drive sync
-  needs the page opened over HTTP(S), not `file://`.
+  to the folder chosen with 📁; a dot marks chapters not yet written to disk.
+- **Sync now** (<kbd>Ctrl+Alt+S</kbd>) writes every changed chapter, imports
+  new workbooks and chapters from the Markdown folder and from Google Drive,
+  then writes all chapters back. **Connect Google** links the account and
+  syncs; the same button then reads **Disconnect Google**. Drive sync needs
+  the page opened over HTTP(S), not `file://`.
+- **From Drive…** (shown while an account is linked) brings in folders and
+  `.md` files put into the "Scula Markdown" Drive folder by hand: they are
+  chosen in Google's own file window, so the page is given access to those
+  items only — never the whole Drive — and then the sync runs.
 - A workbook whose name contains `TODO` gets a button to show chapters with
   open tasks. **Tasks only** applies across all workbooks and shows only
   unchecked task lines in the open chapter.
@@ -178,7 +182,7 @@ switched between Romanian and English; the guides below use the English labels.
 | Shortcut | Action |
 |---|---|
 | <kbd>Ctrl+S</kbd> / <kbd>Ctrl+Shift+S</kbd> | Save to workbook / export file |
-| <kbd>Ctrl+Alt+S</kbd> | Save all modified chapters |
+| <kbd>Ctrl+Alt+S</kbd> | Sync now (saves all modified chapters) |
 | <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> | Undo / redo |
 | <kbd>Ctrl+B</kbd> / <kbd>Ctrl+I</kbd> | Bold / italic |
 | <kbd>Ctrl+K</kbd> / <kbd>Ctrl+Shift+K</kbd> | Insert link / code block |

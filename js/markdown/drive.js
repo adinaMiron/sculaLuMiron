@@ -28,6 +28,8 @@
 const GSYNC = {
   CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
   SCOPE: "https://www.googleapis.com/auth/drive.file",
+  APP_ID: "766100323605",      // the Cloud project number — what ties a Picker choice to this app
+  API_KEY: "",                 // optional; the Picker is shown without one (cloudPick)
   FOLDER_NAME: "Scula Markdown",
   MANIFEST: "index.json",
   POLL_MS: 120000,      // pull what the other browsers wrote, while the tab is open
@@ -39,6 +41,7 @@ let gsToken = null, gsTokenExp = 0, gsFolder = null, gsClient = null;
 let gsFolderOk = false;               // the remembered folder, confirmed against Drive this page-load
 const gsDirOk = new Set();            // workbook folder ids confirmed the same way (gsDirLive)
 let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
+let gsPicking = false;                // Google's file window is open (cloudPick)
 let gsGraves = {};                    // id → deleted-at, books and chapters alike
 
 // The token is editor.html's — same origin, same OAuth client, same scope —
@@ -147,6 +150,20 @@ async function gsChild(name, parentId, isFolder) {
   const r = await gsJson(GS_FILES + '?pageSize=1&fields=files(id,name)&q=' + encodeURIComponent(q));
   return (r.files && r.files[0]) || null;
 }
+// Everything directly inside one folder, all pages of it — for the adoption
+// step of an explicit sync (cloudSync, 3b).
+async function gsList(parentId) {
+  const q = "'" + parentId + "' in parents and trashed=false";
+  const out = [];
+  let page = '';
+  do {
+    const r = await gsJson(GS_FILES + '?pageSize=1000&fields=nextPageToken,files(id,name,mimeType,modifiedTime)&q='
+      + encodeURIComponent(q) + (page ? '&pageToken=' + encodeURIComponent(page) : ''));
+    out.push(...((r && r.files) || []));
+    page = (r && r.nextPageToken) || '';
+  } while (page);
+  return out;
+}
 function gsMakeFolder(name, parentId) {
   const body = { name: name, mimeType: GS_DIR_MIME };
   if (parentId) body.parents = [parentId];
@@ -158,6 +175,12 @@ function gsRename(id, name) {
   return gsJson(GS_FILES + '/' + id + '?fields=id,name', {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name })
   });
+}
+// What the page may know about one id: null when Google will not show it —
+// gone, or simply not shared with this app.
+async function gsMeta(id) {
+  try { return await gsJson(GS_FILES + '/' + id + '?fields=id,name,mimeType,parents,trashed'); }
+  catch (e) { if (e.status !== 404 && e.status !== 403) throw e; return null; }
 }
 const gsDownload = id => gsText(GS_FILES + '/' + id + '?alt=media');
 const gsTrash = id => gsRaw(GS_FILES + '/' + id, { method: 'DELETE' }).then(() => true, () => false);
@@ -264,7 +287,13 @@ async function cloudTombstone(id) {
 /* ── The sync ──
    One pass: read the manifest, merge it against IndexedDB record by record,
    move only what differs, write the manifest back. Returns {up, down} so the
-   caller can say what happened. */
+   caller can say what happened.
+
+   { adopt: true } — the ☁ press and Connect, never a background run — also
+   takes in what Drive holds that no manifest lists (step 3b): the Drive
+   counterpart of wbAdoptFromFolder(). drive.file shows this page only the
+   files it made itself and the ones chosen for it in Google's Picker
+   (cloudPick), so that is what can be found there. */
 function gsValidateManifest(man) {
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   const stamp = value => Number.isFinite(value) && value >= 0;
@@ -292,7 +321,7 @@ function gsValidateManifest(man) {
   return man;
 }
 
-async function cloudSync(interactive) {
+async function cloudSync(interactive, opts) {
   if (gsBusy) return null;
   if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
   if (!interactive && !gsLive()) { paintCloud(); return null; }
@@ -400,6 +429,63 @@ async function cloudSync(interactive) {
                       updated: lb.updated || 0, order: lb.order || 0, driveId: driveId });
     }
 
+    /* 3b. what Drive holds outside the manifest. A folder under the root
+       that no workbook owns becomes a workbook; a text file in a workbook's
+       folder that no chapter owns becomes a chapter, listed against that
+       same Drive file so it is not uploaded a second time. Like the folder
+       pass it only ever adds: a name a chapter already has is left alone —
+       except that a local chapter the manifest has not met yet takes the
+       same-named file over, rather than leaving two of them in Drive. */
+    const takeover = new Map();       // local chapter id → the unlisted Drive file it overwrites
+    if (opts && opts.adopt) {
+      for (const dir of await gsList(rootId)) {
+        if (dir.mimeType !== GS_DIR_MIME || claimed.has(dir.id) || dir.name.charAt(0) === '.') continue;
+        const book = { id: wbNewId('wb_'), name: dir.name, folder: wbUniqueFolder(dir.name, null, dir.name),
+                       created: Date.now(), updated: Date.now(), order: wbBooks.length };
+        wbBooks.push(book);
+        if (!await wbPersist(WB_BOOKS, book)) { wbBooks.pop(); continue; }
+        wbOpenBooks.add(book.id);
+        claimed.add(dir.id); gsDirOk.add(dir.id); dirOf.set(book.id, dir.id);
+        outBooks.push({ id: book.id, name: book.name, folder: book.folder, created: book.created,
+                        updated: book.updated, order: book.order, driveId: dir.id });
+        down++;
+      }
+      const owned = new Set([...remChaps.values()].map(c => c.driveId));
+      for (const book of wbBooks.slice()) {
+        const dirId = dirOf.get(book.id);
+        if (!dirId) continue;
+        // file name → the local chapter that has it, or null when only the
+        // manifest does (a chapter step 4 is about to pull)
+        const names = new Map();
+        for (const rc of remChaps.values()) if (rc.workbookId === book.id) names.set(rc.file.toLowerCase(), null);
+        for (const c of wbChaptersOf(book.id)) names.set((c.file || '').toLowerCase(), c);
+        let order = wbChaptersOf(book.id).length;
+        for (const f of await gsList(dirId)) {
+          if (f.mimeType === GS_DIR_MIME || owned.has(f.id) || !WB_ADOPT_RE.test(f.name)) continue;
+          const key = f.name.toLowerCase();
+          if (names.has(key)) {
+            const twin = names.get(key);
+            if (twin && !remChaps.has(twin.id) && !takeover.has(twin.id)) { takeover.set(twin.id, f.id); owned.add(f.id); }
+            continue;
+          }
+          const text = await gsDownload(f.id);
+          const at = Date.parse(f.modifiedTime) || Date.now();
+          const ch = { id: wbNewId('ch_'), workbookId: book.id,
+                       title: wbTitleFromText(text, f.name.replace(/\.[^.]+$/, '')),
+                       file: f.name, content: text, created: at, updated: at, order: order };
+          wbChapters.push(ch);
+          if (!await wbPersist(WB_CHAPTERS, ch)) { wbChapters.pop(); continue; }
+          wbRecordResponsibles(ch.content);
+          await wbPendingMark(ch);        // so the markdown folder catches up too
+          // Known to the rest of this pass as a chapter Drive already holds.
+          remChaps.set(ch.id, { id: ch.id, workbookId: book.id, title: ch.title, file: ch.file,
+                                updated: ch.updated, driveId: f.id });
+          names.set(key, ch); owned.add(f.id);
+          order++; down++;
+        }
+      }
+    }
+
     /* 4. chapters — the same rule, plus the file body either way */
     for (const rc of remChaps.values()) {
       const lc = wbChapter(rc.id);
@@ -462,7 +548,7 @@ async function cloudSync(interactive) {
       const rc = remChaps.get(lc.id);
       const dir = dirOf.get(lc.workbookId);
       if (!dir) continue;               // an orphan chapter has nowhere to go
-      let driveId = rc && rc.driveId;
+      let driveId = (rc && rc.driveId) || takeover.get(lc.id);
       // A workbook given a new folder this pass takes its chapters with it,
       // changed or not: the old files went with a deleted folder, or sit in
       // another workbook's.
@@ -498,16 +584,26 @@ async function cloudSync(interactive) {
   }
 }
 
-/* ── The button ── */
+/* ── The two buttons ──
+   ☁ syncs (syncNow, workbooks.js) and only wears the state; its label and
+   tip are plain data-i. The Connect button is the one whose words depend on
+   the connection, so both halves of it are written here and applyUILang()
+   is kept away from it. */
 function paintCloud() {
-  const btn = document.getElementById('btn-wb-cloud');
-  if (!btn) return;
   const on = gsConnected();
-  btn.textContent = on ? t('cloudBtnOn') : t('cloudBtn');
-  btn.title = on ? t('cloudTipOn', (gsFolder && gsFolder.name) || GSYNC.FOLDER_NAME) : t('cloudTip');
-  btn.setAttribute('aria-label', btn.title);
-  btn.classList.toggle('connected', on);
-  btn.classList.toggle('syncing', gsBusy);
+  const sync = document.getElementById('btn-wb-cloud');
+  if (sync) {
+    sync.classList.toggle('connected', on);
+    sync.classList.toggle('syncing', gsBusy || wbSyncBusy);
+  }
+  // Pointing at files in Drive only means something once an account is linked.
+  const pick = document.getElementById('btn-wb-pick');
+  if (pick) pick.hidden = !on;
+  const link = document.getElementById('btn-wb-connect');
+  if (link) {
+    link.textContent = t(on ? 'cloudDisconnectBtn' : 'cloudConnectBtn');
+    link.title = on ? t('cloudDisconnectTip', (gsFolder && gsFolder.name) || GSYNC.FOLDER_NAME) : t('cloudConnectTip');
+  }
   const where = document.getElementById('wb-cloud-where');
   if (!where) return;
   const stale = on && !gsLive();
@@ -550,22 +646,164 @@ function cloudError(err) {
   wbSay(t('cloudError', m), true);
 }
 
-async function cloudButton() {
+/* Linking the account is its own button, so nothing else on the page ever
+   opens a first sign-in. The click is the gesture the popup needs; once the
+   folder is found (or made) the ordinary sync pass runs, which is what
+   brings down whatever the account already holds. */
+async function cloudConnect() {
   if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
   if (gsBusy) return;
-  const first = !gsConnected();
   try {
-    if (first || !gsLive()) {
+    gsInteractive = true;
+    await gsAuth(true);
+    const f = await gsRoot();
+    ScuLaFolder.toast(t('cloudConnected', f.name));
+  } catch (err) {
+    cloudError(err);
+    return;
+  } finally {
+    gsInteractive = false;
+    paintCloud();
+  }
+  await syncNow();
+}
+function cloudToggle() { return gsConnected() ? cloudForgetAsk() : cloudConnect(); }
+
+/* ── What was put into Drive by hand ──
+   drive.file shows this page the files it made and the ones the person opened
+   with it, and Google has no scope for "this one folder": the next step up is
+   the whole Drive. So a folder dragged into "Scula Markdown" on
+   drive.google.com stays invisible until it is pointed at, and Google's own
+   Picker is how that is done without widening anything — it runs on Google's
+   side, shows the person their Drive, and hands this page the chosen items
+   and nothing else. Once chosen they are ordinary files to the listing, so
+   the import itself is step 3b of the pass that follows.
+
+   Choosing a folder shares the folder, not what is in it. Hence the second
+   window, opened inside a chosen folder that still lists no chapter; and a
+   third, asking for the folder, when files were chosen by walking into one
+   the page cannot name. If Google ever does hand over a folder's contents,
+   the listing is not empty and the second window never opens. */
+function gsPick(parentId, title) {
+  return new Promise(resolve => {
+    const P = google.picker;
+    const view = new P.DocsView(P.ViewId.DOCS)
+      .setParent(parentId)
+      .setIncludeFolders(true)
+      .setSelectFolderEnabled(true)
+      .setMode(P.DocsViewMode.LIST);          // no thumbnails under drive.file
+    const b = new P.PickerBuilder()
+      .setAppId(GSYNC.APP_ID)
+      .setOAuthToken(gsToken)
+      .setOrigin(location.protocol + '//' + location.host)
+      .setLocale(UI)
+      .setTitle(title)
+      .enableFeature(P.Feature.MULTISELECT_ENABLED)
+      .addView(view)
+      .setCallback(data => {
+        if (data.action === P.Action.PICKED) resolve(data.docs || []);
+        else if (data.action === P.Action.CANCEL) resolve([]);
+      });
+    if (GSYNC.API_KEY) b.setDeveloperKey(GSYNC.API_KEY);
+    b.build().setVisible(true);
+  });
+}
+
+async function cloudPick() {
+  if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
+  if (gsPicking || gsBusy || wbSyncBusy) return;
+  gsPicking = true;
+  let left = 0;                       // chosen, but not something a pass can take in
+  try {
+    // The windows stay open as long as the person likes and a background
+    // pass may run meanwhile, so the flag is raised again after each one.
+    const mine = () => { gsInteractive = true; };
+    mine();
+    await gsAuth(true);
+    const root = await gsRoot();
+    const known = new Set((await gsList(root.id)).map(f => f.id));
+    try {
+      await gsLoadScript('https://apis.google.com/js/api.js');
+      await new Promise((res, rej) => gapi.load('picker', { callback: res, onerror: () => rej(new Error('picker')) }));
+    } catch (e) { throw new Error(t('cloudPickFail')); }
+
+    const folders = new Map(), files = [];
+    const take = docs => docs.forEach(d => { if (d.mimeType === GS_DIR_MIME) folders.set(d.id, d); else files.push(d); });
+    take(await gsPick(root.id, t('cloudPickTitle', root.name)));
+    if (!folders.size && !files.length) return;            // closed: nothing was asked for
+    mine();
+
+    // A workbook is a folder directly under the root; anything else is not one.
+    const metas = new Map();
+    const meta = async id => { if (!metas.has(id)) metas.set(id, await gsMeta(id)); return metas.get(id); };
+    const isBook = m => !!m && !m.trashed && m.mimeType === GS_DIR_MIME
+      && (m.parents || []).includes(root.id) && m.name.charAt(0) !== '.';
+
+    for (const dir of [...folders.values()]) {
+      const m = await meta(dir.id);
+      if (!isBook(m)) { left++; continue; }
+      const seen = (await gsList(dir.id)).some(f => f.mimeType !== GS_DIR_MIME && WB_ADOPT_RE.test(f.name));
+      if (seen && !known.has(dir.id)) continue;
+      for (const d of await gsPick(dir.id, t('cloudPickInside', m.name))) {
+        if (d.mimeType === GS_DIR_MIME) left++;            // a folder inside a workbook is not a chapter
+        else files.push(d);
+      }
+      mine();
+    }
+
+    const byParent = new Map();
+    for (const f of files) {
+      if (!WB_ADOPT_RE.test(f.name || '')) { left++; continue; }
+      const parent = f.parentId || (((await meta(f.id)) || {}).parents || [])[0] || '';
+      if (!byParent.has(parent)) byParent.set(parent, []);
+      byParent.get(parent).push(f.name);
+    }
+    const orphans = [];
+    for (const [parent, names] of byParent) {
+      const m = parent && parent !== root.id ? await meta(parent) : null;
+      if (isBook(m)) continue;
+      if (parent && parent !== root.id && !m) orphans.push(...names);   // a folder the page was never shown
+      else left += names.length;
+    }
+    if (orphans.length) {
+      const names = orphans.slice(0, 3).join(', ') + (orphans.length > 3 ? '…' : '');
+      await gsPick(root.id, t('cloudPickFolderOf', names));
+      mine();
+      for (const [parent, names] of byParent) {
+        if (!parent || parent === root.id || metas.get(parent)) continue;
+        metas.delete(parent);
+        if (!isBook(await meta(parent))) left += names.length;
+      }
+    }
+  } catch (err) {
+    cloudError(err);
+    return;
+  } finally {
+    gsPicking = false; gsInteractive = false;
+    paintCloud();
+  }
+  await syncNow({ note: left ? t('cloudPickLeft', left) : '' });
+}
+
+// An explicit chapter save also syncs a remembered connection, including
+// renewing an expired sign-in. Never enroll a new account from Save. If a
+// sync is already running, retain the usual delayed push so edits saved
+// during it still get another turn.
+async function cloudSyncAfterSave() {
+  if (!gsConnected()) return;
+  if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
+  if (gsBusy) { cloudAutoSync(); return; }
+  clearTimeout(gsTimer);
+  try {
+    if (!gsLive()) {
       gsInteractive = true;
       await gsAuth(true);
-      const f = await gsRoot();
-      if (first) ScuLaFolder.toast(t('cloudConnected', f.name));
+      await gsRoot();
     }
     const r = await cloudSync(true);
     // What came down is pending (§ E). With a markdown folder chosen and
-    // already permitted, it goes straight into it — a new phone given a
-    // folder expects the files there, not a second press. No permission
-    // prompt this late in the press: without one they simply stay pending.
+    // already permitted, it goes straight into it. No permission prompt
+    // this late in the press: without one they simply stay pending.
     if (r && r.down && wbFolderMode() && await ScuLaFolder.dir(false)) {
       for (const id of [...wbPendingIds]) {
         const ch = wbChapter(id), book = ch && wbBook(ch.workbookId);
@@ -582,20 +820,8 @@ async function cloudButton() {
   }
 }
 
-// An explicit chapter save also acts like “Sync now” for a remembered
-// connection, including renewing an expired sign-in. Never enroll a new
-// account from Save. If a sync is already running, retain the usual delayed
-// push so edits saved during it still get another turn.
-async function cloudSyncAfterSave() {
-  if (!gsConnected()) return;
-  if (gsBusy) { cloudAutoSync(); return; }
-  clearTimeout(gsTimer);
-  await cloudButton();
-}
-
-// The same gesture the folder button and editor.html's Drive button use.
-function cloudForgetAsk(ev) {
-  if (ev) ev.preventDefault();
+// The Disconnect half of the Connect button.
+function cloudForgetAsk() {
   if (!gsConnected()) return;
   if (!confirm(t('cloudForgetAsk'))) return;
   gsForget(false);

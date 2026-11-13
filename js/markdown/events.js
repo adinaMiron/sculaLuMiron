@@ -144,7 +144,7 @@ document.addEventListener('keydown', e => {
   // Ctrl+Shift+F as well, the way every editor spells "search everything".
   // Plain Ctrl+F is left alone: the browser's own find still has a job here.
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'F') { e.preventDefault(); toggleFind(); }
-  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyS') { e.preventDefault(); saveAllModifiedChapters(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.altKey && e.code === 'KeyS') { e.preventDefault(); syncNow(); return; }
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && !e.altKey && e.code === 'KeyS') { e.preventDefault(); exportMarkdown(); return; }
   if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveToWorkbook(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**','**'); }

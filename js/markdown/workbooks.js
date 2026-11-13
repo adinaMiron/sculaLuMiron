@@ -543,7 +543,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) wbSy
    wbPendingIds additionally remembers *which* chapters have changed since
    their .md file was last written — in memory and in the `pending` store,
    so the list survives a reload. A marker is dropped when that chapter's
-   file is written by saveToWorkbook() or saveAllModifiedChapters(). */
+   file is written by saveToWorkbook() or syncNow(). */
 function wbPendingRecord(ch) {
   return { chapterId: ch.id, workbookId: ch.workbookId, content: ch.content, updated: ch.updated || Date.now() };
 }
@@ -842,8 +842,8 @@ async function wbMirrorRemove(folder, file) {
    The mirror used to run one way only: records here, files there. But the
    folder is a folder — a person drops a directory of notes into
    <root>/markdown, or a .md next to the ones a workbook already owns, and
-   means those to be a workbook and a chapter. "Sincronizează în dosar" now
-   looks before it writes.
+   means those to be a workbook and a chapter. So the sync pass (syncNow)
+   looks before it writes, and so does the moment a folder is chosen.
 
    A directory whose name matches no book.folder becomes a workbook; a text
    file inside one whose name matches no chapter.file of that workbook
@@ -866,13 +866,22 @@ async function wbDirEntries(handle, kind) {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function wbAdoptFromFolder() {
+// One pass at a time: two that overlap (a folder just chosen, then a press)
+// would both find the same file unowned and make two chapters of it.
+// `quiet` never raises the browser's permission prompt — for the callers
+// that are not inside a click.
+let wbAdoptQueue = Promise.resolve();
+function wbAdoptFromFolder(quiet) {
+  const run = () => wbAdoptRun(quiet);
+  return (wbAdoptQueue = wbAdoptQueue.then(run, run));
+}
+async function wbAdoptRun(quiet) {
   const found = { books: 0, chapters: 0 };
   if (!wbFolderMode()) return found;
   let md = null;
   try {
-    md = await ScuLaFolder.dir(!wbMirrorAsked);           // <root>/markdown
-    wbMirrorAsked = true;
+    md = await ScuLaFolder.dir(quiet ? false : !wbMirrorAsked);   // <root>/markdown
+    if (!quiet) wbMirrorAsked = true;
   } catch (e) { return found; }
   if (!md) return found;
 
@@ -919,6 +928,20 @@ async function wbAdoptFromFolder() {
   }
   return found;
 }
+// Outside a press: when a folder is chosen on this page, and on the first
+// visit to a device whose folder was chosen on another page. Reads only what
+// the browser already allows, says what it found, and lets Drive catch up.
+async function wbAdoptQuietly() {
+  if (!wbBooted) return;
+  const found = await wbAdoptFromFolder(true);
+  if (!found.books && !found.chapters) return;
+  renderWorkbooks();
+  wbSay(t('wbAdopted', found), true);
+  cloudAutoSync();
+}
+window.addEventListener('scula-folder', ev => {
+  if (ev.detail && ev.detail.mode === 'folder') wbAdoptQuietly();
+});
 
 /* ── Panel rendering ── */
 function wbActBtn(label, title, fn) {
@@ -1719,9 +1742,12 @@ function exportChapter(id) {
   ScuLaFolder.save(name, new Blob([content], { type: 'text/markdown' }));
 }
 
-/* Every direction in one press, in this order: read the folder for
-   workbooks and chapters that only exist there yet, trade with Google Drive
-   (§ O), then write every chapter out into the folder.
+/* The ☁ button and Ctrl+Alt+S: every direction in one press, in this order —
+   read the folder for workbooks and chapters that only exist there yet,
+   trade with Google Drive (§ O), then write every chapter out into the
+   folder. Each half runs only where it is set up: a folder with no account
+   is the folder alone, an account with no folder is Drive alone, and with
+   neither the press still saves what is pending and says where it lives.
 
    The cloud sits in the middle for the new device's sake. A phone that has
    just been handed a folder has nothing of its own, and what the person
@@ -1730,55 +1756,72 @@ function exportChapter(id) {
    pending and wait for another press. Whatever the read pass adopted is in
    IndexedDB by then too, which is all the merge needs to carry it up.
 
-   A press is where a sign-in is allowed to happen, so a device that was
-   never connected, or whose hour-long token lapsed, gets the popup here —
-   first thing, while the click still counts as a gesture (the folder's own
-   permission prompt, when there is one, goes just before it for the same
-   reason). Closing the popup is an answer: the folder half runs anyway.
-   { cloud: false } is the first-run modal's "no": the folder only. */
-async function syncAllToFolder(opts) {
-  if (!wbFolderMode()) { ScuLaFolder.chooser(); return; }
-  try { await ScuLaFolder.dir(!wbMirrorAsked); wbMirrorAsked = true; } catch (e) {}
-  let cloud = location.protocol !== 'file:' && !(opts && opts.cloud === false);
-  let r = null, cloudMsg = '';
-  if (cloud && !gsLive()) {
-    try {
-      gsInteractive = true;
-      await gsAuth(true);
-    } catch (e) {
-      cloud = false;
-      const m = (e && e.message) || String(e);
-      cloudMsg = /^(cancelled|popup_closed|popup_failed_to_open|stale)$/.test(m) ? t('cloudSkipped') : t('cloudError', m);
-    } finally { gsInteractive = false; paintCloud(); }
-  }
-
-  if (!await flushChapter()) return;
-  const found = await wbAdoptFromFolder();
-
-  if (cloud) {
-    try {
-      r = await cloudSync(true);
-      if (r) cloudMsg = (r.up || r.down) ? t('cloudDone', r) : t('cloudNothing');
-    } catch (e) {
-      const m = (e && e.message) || String(e);
-      cloudMsg = t('cloudError', m);
+   The press never links an account — that is the Connect button's job
+   (cloudConnect, § O). It does renew a remembered connection whose
+   hour-long token lapsed: the popup comes first thing, while the click still
+   counts as a gesture (the folder's own permission prompt, when there is
+   one, goes just before it for the same reason). Closing the popup is an
+   answer: the folder half runs anyway.
+   { cloud: false } is the first-run modal's "no": the folder only.
+   { note } is one more sentence for the status line (cloudPick, § O). */
+let wbSyncBusy = false;
+async function syncNow(opts) {
+  if (wbSyncBusy) return;
+  wbSyncBusy = true;
+  paintCloud();                // the ☁ button shows the press is being worked on
+  try {
+    const folder = wbFolderMode();
+    if (folder) { try { await ScuLaFolder.dir(!wbMirrorAsked); wbMirrorAsked = true; } catch (e) {} }
+    let cloud = location.protocol !== 'file:' && !(opts && opts.cloud === false) && gsConnected();
+    let cloudMsg = '';
+    if (cloud && !gsLive()) {
+      try {
+        gsInteractive = true;
+        await gsAuth(true);
+      } catch (e) {
+        cloud = false;
+        const m = (e && e.message) || String(e);
+        cloudMsg = /^(cancelled|popup_closed|popup_failed_to_open|stale)$/.test(m) ? t('cloudSkipped') : t('cloudError', m);
+      } finally { gsInteractive = false; paintCloud(); }
     }
-  }
 
-  let n = 0, failed = 0;
-  for (const book of wbBooks) {
-    for (const ch of wbChaptersOf(book.id)) {
-      const saved = await wbSaveMirror(book, ch);
-      if (saved.path) n++;
-      if (saved.failed) failed++;
+    if (!await flushChapter()) return;
+    const found = await wbAdoptFromFolder();
+
+    if (cloud) {
+      try {
+        const r = await cloudSync(true, { adopt: true });
+        cloudMsg = !r ? t('cloudSyncing') : (r.up || r.down) ? t('cloudDone', r) : t('cloudNothing');
+      } catch (e) {
+        cloudMsg = t('cloudError', (e && e.message) || String(e));
+      }
     }
-  }
-  renderWorkbooks();
 
-  let msg = t(failed ? 'wbSyncedSome' : 'wbSynced', n);
-  if (found.books || found.chapters) msg = t('wbAdopted', found) + ' ' + msg;
-  if (cloudMsg) msg += ' ' + cloudMsg;
-  wbSay(msg, true);
+    // With a folder every chapter is written — that is what fills one that
+    // was just chosen. Without one there is no file to write: only the
+    // pending markers are settled.
+    for (const id of [...wbPendingIds]) if (!wbChapter(id)) await wbPendingClear(id);
+    let n = 0, failed = 0;
+    for (const book of wbBooks) {
+      for (const ch of wbChaptersOf(book.id)) {
+        if (!folder && !wbPendingIds.has(ch.id)) continue;
+        const saved = await wbSaveMirror(book, ch);
+        if (saved.path) n++;
+        if (saved.failed) failed++;
+      }
+    }
+    renderWorkbooks();
+
+    const parts = [];
+    if (found.books || found.chapters) parts.push(t('wbAdopted', found));
+    if (folder) parts.push(t(failed ? 'wbSyncedSome' : 'wbSynced', n));
+    if (cloudMsg) parts.push(cloudMsg);
+    if (opts && opts.note) parts.push(opts.note);
+    wbSay(parts.join(' ') || t('syncLocalOnly'), true);
+  } finally {
+    wbSyncBusy = false;
+    paintCloud();
+  }
 }
 
 /* ── Autosave: the open chapter is written back to IndexedDB as you type,
@@ -1874,29 +1917,6 @@ async function saveToWorkbook() {
     : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
-}
-
-/* Save every chapter edited since its last save — write each one's .md
-   file, then drop its pending marker. Header button + Ctrl+Alt+S. */
-async function saveAllModifiedChapters() {
-  if (!await flushChapter()) return;          // fold in the open chapter's latest edits
-  const ids = [...wbPendingIds];
-  if (!ids.length) { wbSay(t('wbNoModified'), true); return; }
-  let done = 0, failed = 0;
-  for (const id of ids) {
-    const ch = wbChapter(id);
-    if (!ch) { await wbPendingClear(id); continue; }
-    const book = wbBook(ch.workbookId);
-    if (!book) { failed++; continue; }
-    try {
-      const saved = await wbSaveMirror(book, ch);
-      if (saved.failed) failed++;
-      else done++;
-    } catch (e) { failed++; }
-  }
-  wbSay(failed ? t('wbSavedSomeModified', done) : t('wbSavedAllModified', done), true);
-  renderWorkbooks();
-  cloudAutoSync();
 }
 
 function openWorkbookModal() {

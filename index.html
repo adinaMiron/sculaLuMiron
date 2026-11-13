@@ -321,6 +321,7 @@
     border-color: var(--accent);
   }
   #btn-wb-cloud.syncing { border-style: dashed; }
+  #btn-wb-pick[hidden] { display: none; }
   #wb-cloud-where {
     font-size: 11px;
     color: var(--text-3);
@@ -396,7 +397,7 @@
     background: var(--surface-2);
   }
   .wb-ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* chapter edited since its last save — cleared by "Save to workbook" / "Save all modified" */
+  /* chapter edited since its last save — cleared by "Save to workbook" / "Sync now" */
   .wb-ch-row.modified .wb-ch-name::after,
   .wb-book-row.has-modified .wb-book-name::after { content: "•"; color: var(--accent); margin-left: 5px; font-weight: 700; }
   .wb-ch-empty { padding: 6px 10px 6px 26px; font-size: 11px; color: var(--text-3); font-style: italic; }
@@ -3919,18 +3920,20 @@
      desktop; at 1024px and below it stays on one sideways-scrollable line. -->
 <div class="wb-save-sync-row" id="wb-save-sync-row">
   <button class="btn btn-primary" onclick="saveToWorkbook()" data-i="saveToWorkbookBtn" data-i-title="saveToWorkbookTip" title="Save this chapter into a workbook and sync with Google Drive if an account is connected (Ctrl+S)">📓 Save to workbook</button>
-  <!-- Beside ☁ rather than inside the Caiete panel: the two are one
-       gesture on a new device (folder + account), so they sit together. -->
-  <button class="btn" id="btn-wb-sync" onclick="syncAllToFolder()" data-i="syncFolderBtn" data-i-title="syncFolderTip" title="Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder">⇩ Sync to folder</button>
-  <!-- Google Drive sync: the chapters follow the Google account, so every
-       Chrome signed into it has them — docs/FEATURES.md § O. No data-i:
-       the label depends on the connection, so paintCloud() writes both
-       halves and applyUILang() must not overwrite one of them. Kept beside
-       the Save buttons rather than inside the Caiete/Workbooks panel, so
-       it's reachable without opening that panel. -->
-  <button class="btn" id="btn-wb-cloud" onclick="cloudButton()" oncontextmenu="cloudForgetAsk(event)">☁ Google account</button>
+  <!-- One press for every direction that is set up — the markdown folder
+       read and written, Google Drive traded with (syncNow(), docs/FEATURES.md
+       § E and § O). Kept beside Save rather than inside the Caiete/Workbooks
+       panel, so it's reachable without opening that panel. -->
+  <button class="btn" id="btn-wb-cloud" onclick="syncNow()" data-i="syncNowBtn" data-i-title="syncNowTip" title="Save every modified chapter and sync: take in new workbooks and chapters from the markdown folder and from Google Drive (when an account is connected), then write the chapters to both (Ctrl+Alt+S)">☁ Sync now</button>
   <div id="wb-cloud-where"></div>
-  <button class="btn" id="btn-save-all-modified" onclick="saveAllModifiedChapters()" data-i="saveAllModifiedBtn" data-i-title="saveAllModifiedTip" title="Save every modified chapter in every workbook (Ctrl+Alt+S)">📚 Save all modified</button>
+  <!-- What was put into the Drive folder by hand: Google's own file window,
+       then the same sync (cloudPick(), docs/FEATURES.md § O). Shown only
+       while an account is linked — paintCloud(). -->
+  <button class="btn" id="btn-wb-pick" onclick="cloudPick()" data-i="cloudPickBtn" data-i-title="cloudPickTip" title="Bring in folders and files you put into the Scula Markdown folder in Google Drive by hand: choose them in Google's window, then everything is synced. The page gets access only to what you choose." hidden>📥 From Drive…</button>
+  <!-- The only place a Google account is linked or forgotten. No data-i:
+       the label depends on the connection, so paintCloud() writes both
+       halves and applyUILang() must not overwrite one of them. -->
+  <button class="btn" id="btn-wb-connect" onclick="cloudToggle()">🔗 Connect Google</button>
 </div>
 
 <div class="toolbar">

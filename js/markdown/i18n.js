@@ -119,10 +119,11 @@ const I18N = {
     scanningFolder:"Se scanează folderul…", noImagesFound:"Nicio imagine găsită.", errorReadingFolder:"Eroare la citirea folderului.",
     /* ── Caiete și capitole (vezi docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
-    newWorkbookBtn:"＋ Caiet nou", syncFolderBtn:"⇩ Sincronizează în dosar",
-    syncFolderTip:"Aduce caietele și capitolele noi din dosarul markdown și din Google Drive, apoi scrie fiecare capitol în dosar",
+    newWorkbookBtn:"＋ Caiet nou",
+    syncNowBtn:"☁ Sincronizează acum",
+    syncNowTip:"Salvează tot ce s-a modificat și sincronizează: aduce caietele și capitolele noi din dosarul markdown și din Google Drive (dacă ai conectat un cont), apoi scrie capitolele în amândouă (Ctrl+Alt+S)",
+    syncLocalOnly:"Capitolele sunt salvate doar în acest browser. Alege un dosar cu 📁 sau conectează contul Google ca să ai o copie și în altă parte.",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet și sincronizează cu Google Drive dacă ai conectat un cont (Ctrl+S)",
-    saveAllModifiedBtn:"📚 Salvează tot ce s-a modificat", saveAllModifiedTip:"Salvează fiecare capitol modificat din toate caietele (Ctrl+Alt+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
     wbNoChapters:"niciun capitol încă",
     wbNoOpenTasks:"niciun capitol cu bifă neterminată",
@@ -150,9 +151,6 @@ const I18N = {
     wbSynced:n=>`${n} capitol${n===1?'':'e'} scrise în dosar.`,
     wbSyncedSome:n=>`${n} capitol${n===1?'':'e'} scrise în dosar; unele nu s-au putut scrie și rămân marcate pentru reîncercare.`,
     wbAdopted:r=>`Găsite în dosar: ${r.books} caiet${r.books===1?'':'e'}, ${r.chapters} capitol${r.chapters===1?'':'e'}.`,
-    wbNoModified:"Niciun capitol modificat.",
-    wbSavedAllModified:n=>`${n} capitol${n===1?'':'e'} modificat${n===1?'':'e'} salvat${n===1?'':'e'}.`,
-    wbSavedSomeModified:n=>`${n} capitol${n===1?'':'e'} salvat${n===1?'':'e'}; unele nu s-au putut scrie.`,
     wbStoreFailed:"Nu s-a putut salva local (IndexedDB indisponibil).",
     wbConflict:"Capitol modificat în altă filă. Textul tău este păstrat într-un capitol separat cu «conflict» în titlu.",
     wbConflictMoved:s=>`Același loc a fost modificat și în altă filă. Versiunea ta continuă în capitolul separat «${s}»; originalul are textul celeilalte file.`,
@@ -175,9 +173,9 @@ const I18N = {
     saveBtn:"Salvează", wbPathHint:p=>`Fișier: ${p}`,
 
     /* ── Sincronizare cu contul Google (docs/FEATURES.md § O) ── */
-    cloudBtn:"☁ Cont Google", cloudBtnOn:"☁ Sincronizează acum",
-    cloudTip:"Ține capitolele în contul tău Google, ca să le găsești în orice Chrome conectat la el",
-    cloudTipOn:f=>`Sincronizează cu dosarul „${f}” din Google Drive (clic dreapta ca să te deconectezi)`,
+    cloudConnectBtn:"🔗 Conectează Google", cloudDisconnectBtn:"⏏ Deconectează Google",
+    cloudConnectTip:"Conectează contul tău Google, ca să găsești capitolele în orice Chrome conectat la el",
+    cloudDisconnectTip:f=>`Deconectează contul Google de pe acest dispozitiv. Capitolele rămân și aici, și în dosarul „${f}” din Drive.`,
     cloudOff:"☁ doar pe acest dispozitiv",
     cloudReady:"☁ conectat, încă nesincronizat",
     cloudAt:h=>`☁ sincronizat la ${h}`,
@@ -192,6 +190,13 @@ const I18N = {
     cloudNoFile:"Sincronizarea nu merge cu pagina deschisă direct de pe disc (file://). Deschide-o prin http(s) — de pe site, de exemplu — și încearcă din nou.",
     cloudForgetAsk:"Uiți conexiunea cu contul Google? Capitolele rămân și aici, și în Drive.",
     cloudForgot:"Cont Google deconectat.",
+    cloudPickBtn:"📥 Din Drive…",
+    cloudPickTip:"Adu dosarele și fișierele puse de mână în dosarul „Scula Markdown” din Google Drive: le alegi în fereastra Google, apoi totul se sincronizează. Pagina primește acces doar la ce alegi.",
+    cloudPickTitle:f=>`Alege din „${f}” dosarele (caiete) și fișierele .md de adus`,
+    cloudPickInside:f=>`Alege capitolele (.md, .txt) din „${f}”`,
+    cloudPickFolderOf:n=>`Alege și dosarul în care se află: ${n}`,
+    cloudPickLeft:n=>`${n} dintre cele alese nu au fost aduse: un capitol e un fișier .md sau .txt dintr-un dosar aflat direct în „Scula Markdown”.`,
+    cloudPickFail:"fereastra Google de ales fișiere nu a putut fi deschisă.",
 
     /* ── Prima pornire pe un dispozitiv (docs/FEATURES.md § E) ── */
     welcomeTitle:"Bun venit",
@@ -373,8 +378,9 @@ const I18N = {
       <p>Cea mai importantă parte a paginii: unde ajung de fapt fișierele și cum rămân la fel pe toate dispozitivele.</p>
       <ul>
         <li>Butonul <b>📁</b> din bara de sus (sau „📁 Alege dosar…” din panoul Caiete) alege dosarul de pe disc unde se scriu caietele — pe calculator, un dosar adevărat; pe telefon, fișierele trec prin foaia de partajare a sistemului, pentru că niciun browser de telefon nu oferă o alegere de dosar. Fără un dosar ales, ce scrii rămâne doar în acest browser (localStorage) și se pierde dacă se șterg datele browserului.</li>
-        <li><b>☁ Cont Google</b>, în bara de sus, conectează contul Google și sincronizează capitolele cu Google Drive — câte un fișier pentru fiecare capitol, într-un folder propriu în Drive. Un clic conectează, un clic din nou sincronizează oricând, clic dreapta deconectează contul. Funcționează doar cu pagina deschisă prin HTTP(S), nu direct ca fișier local.</li>
-        <li><b>⇩ Sincronizează în dosar</b>, lângă „☁ Cont Google”, e cel mai important buton din pagină: citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive, apoi scrie înapoi în dosar toate capitolele. Așa ajung pe un dispozitiv nou caietele scrise pe altul.</li>
+        <li><b>🔗 Conectează Google</b>, în rândul de sub bara de sus, leagă contul Google de acest dispozitiv; după conectare același buton devine „⏏ Deconectează Google” și desface legătura. Capitolele merg în Google Drive — câte un fișier pentru fiecare capitol, într-un folder propriu. Funcționează doar cu pagina deschisă prin HTTP(S), nu direct ca fișier local.</li>
+        <li><b>☁ Sincronizează acum</b> (<kbd>Ctrl+Alt+S</kbd>), lângă „Salvează capitolul în caiet”, e cel mai important buton din pagină: salvează tot ce s-a modificat, citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive dacă ai conectat un cont, apoi scrie toate capitolele în dosar și în Drive. Așa ajung pe un dispozitiv nou caietele scrise pe altul. Ce ai copiat în dosar e preluat și în clipa în care alegi dosarul.</li>
+        <li><b>📥 Din Drive…</b>, în același rând cu „☁ Sincronizează acum” (apare după ce ai conectat contul), aduce ce ai pus de mână în dosarul „Scula Markdown” din Google Drive. Google îi arată paginii doar fișierele create de ea și pe cele alese de tine, așa că se deschide fereastra Google: alege dosarul nou, apoi — în a doua fereastră, deschisă în el — fișierele .md sau .txt (<kbd>Ctrl+A</kbd> le ia pe toate); pentru un fișier pus într-un caiet existent, deschide dosarul caietului și alege fișierul. După aceea pornește singură sincronizarea: dosarul devine caiet, fișierele devin capitole. Pagina primește acces doar la ce ai ales, nu la restul Drive-ului, iar ce ai ales o dată rămâne văzut și la sincronizările următoare.</li>
         <li>La prima pornire pe un dispozitiv nou, o fereastră cere întâi dosarul, apoi întreabă dacă aduci datele din cloud — răspunde „Da” ca să tragi aici tot ce ai scris pe alt dispozitiv.</li>
       </ul>
       <h3>Caiete și capitole</h3>
@@ -382,9 +388,8 @@ const I18N = {
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus, apoi sincronizează cu Google Drive dacă ai conectat un cont.</li>
-        <li>„📚 Salvează tot ce s-a modificat” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc.</li>
-        <li>„⇩ Sincronizează în dosar”, lângă „☁ Cont Google” în bara de sus, preia caietele și capitolele noi din folderul markdown și din Google Drive, apoi scrie toate capitolele înapoi în acel folder. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
-        <li>„☁ Cont Google” conectează și sincronizează capitolele cu Google Drive; apasă din nou pentru sincronizare, iar clic dreapta deconectează contul. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
+        <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown și din Google Drive și scrie toate capitolele înapoi. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
+        <li>„🔗 Conectează Google” leagă contul Google și sincronizează pe loc; „⏏ Deconectează Google” desface legătura. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
       <h3>Formatare</h3>
@@ -480,7 +485,7 @@ const I18N = {
       <p>Limba vorbită — română sau engleză — este detectată singură și textul nu este niciodată tradus (cu excepția dictării din browser, care folosește limba aleasă în Caiet vocal).</p>
       <h3>Scurtături</h3>
       <p>
-        <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> salvează tot ce s-a modificat ·
+        <kbd>Ctrl+S</kbd> salvează în caiet · <kbd>Ctrl+Shift+S</kbd> exportă fișier · <kbd>Ctrl+Alt+S</kbd> sincronizează acum (salvează tot ce s-a modificat) ·
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> anulare/refă ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> bloc de cod ·
         <kbd>Ctrl+Shift+1..6</kbd> titluri H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> sarcină de făcut / în lucru / terminată ·
@@ -607,10 +612,11 @@ const I18N = {
     scanningFolder:"Scanning folder…", noImagesFound:"No images found.", errorReadingFolder:"Error reading folder.",
     /* ── Workbooks and chapters (see docs/FEATURES.md § E) ── */
     workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
-    newWorkbookBtn:"＋ New workbook", syncFolderBtn:"⇩ Sync to folder",
-    syncFolderTip:"Take in new workbooks and chapters from the markdown folder and from Google Drive, then write every chapter into the folder",
+    newWorkbookBtn:"＋ New workbook",
+    syncNowBtn:"☁ Sync now",
+    syncNowTip:"Save every modified chapter and sync: take in new workbooks and chapters from the markdown folder and from Google Drive (when an account is connected), then write the chapters to both (Ctrl+Alt+S)",
+    syncLocalOnly:"The chapters are saved in this browser only. Pick a folder with 📁 or connect a Google account to keep a copy elsewhere.",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook and sync with Google Drive if an account is connected (Ctrl+S)",
-    saveAllModifiedBtn:"📚 Save all modified", saveAllModifiedTip:"Save every modified chapter in every workbook (Ctrl+Alt+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
     wbNoChapters:"no chapters yet",
     wbNoOpenTasks:"no chapter has an unchecked box",
@@ -638,9 +644,6 @@ const I18N = {
     wbSynced:n=>`${n} chapter${n===1?'':'s'} written to the folder.`,
     wbSyncedSome:n=>`${n} chapter${n===1?'':'s'} written to the folder; some couldn't be written and remain marked for retry.`,
     wbAdopted:r=>`Found in the folder: ${r.books} workbook${r.books===1?'':'s'}, ${r.chapters} chapter${r.chapters===1?'':'s'}.`,
-    wbNoModified:"No modified chapters.",
-    wbSavedAllModified:n=>`${n} modified chapter${n===1?'':'s'} saved.`,
-    wbSavedSomeModified:n=>`${n} chapter${n===1?'':'s'} saved; some couldn't be written.`,
     wbStoreFailed:"Couldn't save locally (IndexedDB unavailable).",
     wbConflict:"Chapter changed in another tab. Your text is preserved in a separate chapter with 'conflict' in its title.",
     wbConflictMoved:s=>`The same place was also changed in another tab. Your version continues in the separate chapter '${s}'; the original keeps the other tab's text.`,
@@ -663,9 +666,9 @@ const I18N = {
     saveBtn:"Save", wbPathHint:p=>`File: ${p}`,
 
     /* ── Google account sync (docs/FEATURES.md § O) ── */
-    cloudBtn:"☁ Google account", cloudBtnOn:"☁ Sync now",
-    cloudTip:"Keep these chapters on your Google account, so every Chrome signed into it has them",
-    cloudTipOn:f=>`Sync with the “${f}” folder in Google Drive (right-click to disconnect)`,
+    cloudConnectBtn:"🔗 Connect Google", cloudDisconnectBtn:"⏏ Disconnect Google",
+    cloudConnectTip:"Connect your Google account, so every Chrome signed into it has these chapters",
+    cloudDisconnectTip:f=>`Disconnect the Google account on this device. The chapters stay both here and in the “${f}” folder in Drive.`,
     cloudOff:"☁ this device only",
     cloudReady:"☁ connected, not synced yet",
     cloudAt:h=>`☁ synced at ${h}`,
@@ -680,6 +683,13 @@ const I18N = {
     cloudNoFile:"Sync can't work when the page is opened straight off disk (file://). Serve it over http(s) — from the site, say — and try again.",
     cloudForgetAsk:"Forget the Google account connection? The chapters stay both here and in Drive.",
     cloudForgot:"Google account disconnected.",
+    cloudPickBtn:"📥 From Drive…",
+    cloudPickTip:"Bring in folders and files you put into the “Scula Markdown” folder in Google Drive by hand: choose them in Google's window, then everything is synced. The page gets access only to what you choose.",
+    cloudPickTitle:f=>`Choose the folders (workbooks) and .md files to bring in from “${f}”`,
+    cloudPickInside:f=>`Choose the chapters (.md, .txt) in “${f}”`,
+    cloudPickFolderOf:n=>`Also choose the folder that holds: ${n}`,
+    cloudPickLeft:n=>`${n} of the chosen items were not brought in: a chapter is a .md or .txt file in a folder directly inside “Scula Markdown”.`,
+    cloudPickFail:"Google's file window could not be opened.",
 
     /* ── First run on a device (docs/FEATURES.md § E) ── */
     welcomeTitle:"Welcome",
@@ -861,8 +871,9 @@ const I18N = {
       <p>The single most important part of this page: where your files actually live, and how they stay the same across every device.</p>
       <ul>
         <li>The <b>📁</b> button in the top bar (or "📁 Set folder…" in the Workbooks panel) picks the folder on disk where workbooks are written — a real folder on a computer; on a phone, files go through the system's share sheet instead, since no mobile browser offers a folder picker. Without a folder set, what you write stays only in this browser (localStorage) and is lost if the browser's data is cleared.</li>
-        <li><b>☁ Google account</b>, in the top bar, connects your Google account and syncs chapters with Google Drive — one file per chapter, in its own folder in Drive. Click once to connect, click again anytime to sync, right-click to disconnect. Only works with the page open over HTTP(S), not opened directly as a local file.</li>
-        <li><b>⇩ Sync to folder</b>, beside "☁ Google account", is the single most important button on the page: it reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive, then writes every chapter back into the folder. This is how workbooks written on one device reach another.</li>
+        <li><b>🔗 Connect Google</b>, in the row under the top bar, links your Google account to this device; once connected the same button reads "⏏ Disconnect Google" and unlinks it. Chapters go to Google Drive — one file per chapter, in its own folder. Only works with the page open over HTTP(S), not opened directly as a local file.</li>
+        <li><b>☁ Sync now</b> (<kbd>Ctrl+Alt+S</kbd>), beside "Save to workbook", is the single most important button on the page: it saves everything modified, reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive if an account is connected, then writes every chapter to the folder and to Drive. This is how workbooks written on one device reach another. What you copied into the folder is also taken in the moment you pick the folder.</li>
+        <li><b>📥 From Drive…</b>, in the same row as "☁ Sync now" (shown once an account is connected), brings in what you put into the "Scula Markdown" folder in Google Drive by hand. Google shows this page only the files it created and the ones you choose for it, so Google's own window opens: choose the new folder, then — in the second window, opened inside it — the .md or .txt files (<kbd>Ctrl+A</kbd> takes them all); for a file dropped into an existing workbook, open that workbook's folder and choose the file. The sync then runs by itself: the folder becomes a workbook, the files become chapters. The page gets access only to what you chose, not to the rest of your Drive, and what was chosen once stays visible to every later sync.</li>
         <li>The first time the page runs on a new device, a window asks for the folder first, then asks whether to bring your data from the cloud — answer "Yes" to pull in everything written on another device.</li>
       </ul>
       <h3>Workbooks and chapters</h3>
@@ -870,9 +881,8 @@ const I18N = {
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top, then syncs with Google Drive if an account is connected.</li>
-        <li>"📚 Save all modified" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet.</li>
-        <li>"⇩ Sync to folder", beside "☁ Google account" in the top bar, takes in new workbooks and chapters from the markdown folder and from Google Drive, then writes every chapter back to that folder. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
-        <li>"☁ Google account" connects and syncs chapters with Google Drive; click again to sync, or right-click to disconnect. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
+        <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder and from Google Drive, and writes every chapter back. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
+        <li>"🔗 Connect Google" links your Google account and syncs right away; "⏏ Disconnect Google" unlinks it. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>
       <h3>Formatting</h3>
@@ -968,7 +978,7 @@ const I18N = {
       <p>The spoken language — Romanian or English — is detected on its own and the text is never translated (except for browser dictation, which uses the language chosen in Caiet vocal).</p>
       <h3>Shortcuts</h3>
       <p>
-        <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> save all modified ·
+        <kbd>Ctrl+S</kbd> save to workbook · <kbd>Ctrl+Shift+S</kbd> export file · <kbd>Ctrl+Alt+S</kbd> sync now (saves all modified) ·
         <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> undo/redo ·
         <kbd>Ctrl+B</kbd> bold · <kbd>Ctrl+I</kbd> italic · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+Shift+K</kbd> code block ·
         <kbd>Ctrl+Shift+1..6</kbd> headings H1-H6 · <kbd>Ctrl+Shift+7/8/9</kbd> task to do / in work / done ·

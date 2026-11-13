@@ -179,6 +179,8 @@ async function welcomeMaybe() {
   try { await ScuLaFolder.ready; } catch (e) {}
   if (wbBooks.length || wbChapters.length || ScuLaFolder.isSet() || gsConnected()) {
     wbMetaSet(WELCOME_KEY, Date.now()).catch(() => {});
+    // A folder chosen on another page may already hold a markdown tree.
+    wbAdoptQuietly();
     return;
   }
   welcomeStep('folder');
@@ -215,23 +217,21 @@ async function welcomePickFolder() {
 }
 function welcomeFolderLater() { welcomeStep('cloud'); }
 
-/* Yes goes through the same press as the header buttons, so a new device
-   gets exactly what "⇩ Sync to folder" does: the Google sign-in popup first
-   (still inside this click's gesture), the chapters pulled from Drive, then
-   written into the folder. Without a folder the ☁ button's path does the
-   pulling. No reads the chosen folder alone, in case it already held a
-   markdown tree from another device. */
+/* Yes is the Connect button's press, so a new device gets exactly what that
+   does: the Google sign-in popup first (still inside this click's gesture),
+   then the sync pass — the folder read, the chapters pulled from Drive and
+   written into the folder. A closed popup still reads the folder. No reads
+   the chosen folder alone, in case it already held a markdown tree. */
 async function welcomeCloud(yes) {
   document.getElementById('welcome-modal').classList.remove('open');
   wbMetaSet(WELCOME_KEY, Date.now()).catch(() => {});
   if (yes && location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); yes = false; }
-  if (!yes) {
-    if (wbFolderMode()) await syncAllToFolder({ cloud: false });
+  if (yes) await cloudConnect();
+  if (!gsConnected()) {
+    if (wbFolderMode()) await syncNow({ cloud: false });
     return;
   }
-  if (wbFolderMode()) await syncAllToFolder();
-  else await cloudButton();
-  if (gsConnected() && !wbChapters.length) wbSay(t('welcomeCloudEmpty'), true);
+  if (!wbChapters.length) wbSay(t('welcomeCloudEmpty'), true);
 }
 
 setView('source');
