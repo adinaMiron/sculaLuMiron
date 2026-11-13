@@ -28,6 +28,10 @@
 const GSYNC = {
   CLIENT_ID: "766100323605-bv0ot1d4tj6kttem6b3hacrfplohlec1.apps.googleusercontent.com",
   SCOPE: "https://www.googleapis.com/auth/drive.file",
+  // Asked for only by 📥 Everything from Drive (cloudPickAll), once: Google
+  // keeps the grant, so later silent sign-ins carry it and edits to files put
+  // into Drive by hand can be written back to those same files.
+  FULL_SCOPE: "https://www.googleapis.com/auth/drive",
   APP_ID: "766100323605",      // the Cloud project number — what ties a Picker choice to this app
   API_KEY: "",                 // optional; the Picker is shown without one (cloudPick)
   FOLDER_NAME: "Scula Markdown",
@@ -43,6 +47,7 @@ const gsDirOk = new Set();            // workbook folder ids confirmed the same 
 let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
 let gsPicking = false;                // Google's file window is open (cloudPick)
 let gsGraves = {};                    // id → deleted-at, books and chapters alike
+let gsFull = false;                   // full Drive access was granted here (cloudPickAll)
 
 // The token is editor.html's — same origin, same OAuth client, same scope —
 // so connecting on either page connects both. Only the folder is ours.
@@ -52,6 +57,7 @@ try {
   if (tk && ex > Date.now() + 60000) { gsToken = tk; gsTokenExp = ex; }
   gsFolder = JSON.parse(localStorage.getItem('gdrive_md_folder') || 'null');
   gsLastAt = Number(localStorage.getItem('gdrive_md_at')) || 0;
+  gsFull = localStorage.getItem('gdrive_md_full') === '1';
 } catch (e) {}
 
 function gsLive() { return !!gsToken && gsTokenExp > Date.now() + 60000; }
@@ -83,17 +89,25 @@ function gsForget(tokenOnly) {
   try {
     localStorage.removeItem('gdrive_token');
     localStorage.removeItem('gdrive_token_exp');
-    if (!tokenOnly) { localStorage.removeItem('gdrive_md_folder'); localStorage.removeItem('gdrive_md_at'); }
+    if (!tokenOnly) {
+      localStorage.removeItem('gdrive_md_folder'); localStorage.removeItem('gdrive_md_at');
+      localStorage.removeItem('gdrive_md_full');
+    }
   } catch (e) {}
-  if (!tokenOnly) { gsFolder = null; gsFolderOk = false; gsLastAt = 0; gsDirOk.clear(); }
+  if (!tokenOnly) { gsFolder = null; gsFolderOk = false; gsLastAt = 0; gsDirOk.clear(); gsFull = false; }
 }
 
 /* A background sync must never open a popup — nobody asked for one, and a
    popup blocker would eat it anyway. So the interactive flag travels with the
    call: without it an expired token is an error to report quietly, not a
-   sign-in to demand. */
-async function gsAuth(interactive) {
-  if (gsLive()) return gsToken;
+   sign-in to demand.
+
+   { full } asks for the whole Drive on top of drive.file (cloudPickAll). Once
+   granted it is asked for again with every sign-in, which Google answers
+   without a consent screen. A person who unticks it in Google's window gets
+   a working drive.file token and an error saying the access was not given. */
+async function gsAuth(interactive, full) {
+  if (gsLive() && !full) return gsToken;
   if (!interactive) throw new Error('stale');
   await gsLoadScript('https://accounts.google.com/gsi/client');
   return new Promise((resolve, reject) => {
@@ -110,11 +124,14 @@ async function gsAuth(interactive) {
         localStorage.setItem('gdrive_token', gsToken);
         localStorage.setItem('gdrive_token_exp', String(gsTokenExp));
       } catch (e) {}
+      if (full && !google.accounts.oauth2.hasGrantedAllScopes(resp, GSYNC.FULL_SCOPE))
+        return reject(new Error(t('cloudAllDenied')));
       resolve(gsToken);
     };
     // Closing the popup is an answer, not a failure to shout about.
     gsClient.error_callback = (err) => reject(new Error((err && err.type) || 'cancelled'));
-    gsClient.requestAccessToken({ prompt: '' });
+    const scope = GSYNC.SCOPE + (full || gsFull ? ' ' + GSYNC.FULL_SCOPE : '');
+    gsClient.requestAccessToken({ prompt: '', scope: scope });
   });
 }
 
@@ -142,7 +159,8 @@ const GS_DIR_MIME = 'application/vnd.google-apps.folder';
 
 /* drive.file only ever lists what this page itself made, so a name search is
    already scoped to our own files — it cannot see, or collide with, anything
-   else in the account. */
+   else in the account. With full access (cloudPickAll) every search here is
+   still limited to one parent folder, except the root's own (gsFindRoot). */
 async function gsChild(name, parentId, isFolder) {
   const q = "name='" + String(name).replace(/'/g, "\\'") + "' and trashed=false"
           + (parentId ? " and '" + parentId + "' in parents" : '')
@@ -434,8 +452,12 @@ async function cloudSync(interactive, opts) {
        folder that no chapter owns becomes a chapter, listed against that
        same Drive file so it is not uploaded a second time. Like the folder
        pass it only ever adds: a name a chapter already has is left alone —
-       except that a local chapter the manifest has not met yet takes the
-       same-named file over, rather than leaving two of them in Drive. */
+       except that a local chapter the manifest has not met yet is paired
+       with the same-named file, rather than leaving two of them in Drive.
+       The newer of the two wins: a Drive file changed after the local copy
+       (an older file in the markdown folder) is pulled into the chapter and
+       marked pending, so the folder catches up; otherwise the chapter
+       overwrites the file. An open chapter with unsaved typing always wins. */
     const takeover = new Map();       // local chapter id → the unlisted Drive file it overwrites
     if (opts && opts.adopt) {
       for (const dir of await gsList(rootId)) {
@@ -465,7 +487,25 @@ async function cloudSync(interactive, opts) {
           const key = f.name.toLowerCase();
           if (names.has(key)) {
             const twin = names.get(key);
-            if (twin && !remChaps.has(twin.id) && !takeover.has(twin.id)) { takeover.set(twin.id, f.id); owned.add(f.id); }
+            if (!twin || remChaps.has(twin.id) || takeover.has(twin.id)) continue;
+            owned.add(f.id);
+            const at = Date.parse(f.modifiedTime) || 0;
+            const typing = () => twin.id === wbCurrentId && (wbDirty || editor.value !== (twin.content || ''));
+            if (at > (twin.updated || 0) && !typing()) {
+              const text = await gsDownload(f.id);
+              const ch = { ...twin, content: text, updated: at };
+              if (!typing() && await wbPersist(WB_CHAPTERS, ch)) {
+                Object.assign(twin, ch);
+                wbRecordResponsibles(twin.content);
+                if (twin.id === wbCurrentId) loadChapterIntoEditor(twin);
+                await wbPendingMark(twin);
+                remChaps.set(twin.id, { id: twin.id, workbookId: book.id, title: twin.title, file: twin.file,
+                                        updated: twin.updated, driveId: f.id });
+                down++;
+                continue;
+              }
+            }
+            takeover.set(twin.id, f.id);
             continue;
           }
           const text = await gsDownload(f.id);
@@ -599,6 +639,8 @@ function paintCloud() {
   // Pointing at files in Drive only means something once an account is linked.
   const pick = document.getElementById('btn-wb-pick');
   if (pick) pick.hidden = !on;
+  const all = document.getElementById('btn-wb-pick-all');
+  if (all) all.hidden = !on;
   const link = document.getElementById('btn-wb-connect');
   if (link) {
     link.textContent = t(on ? 'cloudDisconnectBtn' : 'cloudConnectBtn');
@@ -783,6 +825,35 @@ async function cloudPick() {
     paintCloud();
   }
   await syncNow({ note: left ? t('cloudPickLeft', left) : '' });
+}
+
+/* ── Everything in "Scula Markdown", nothing to choose ──
+   Google's Picker is a docs.google.com frame: the page cannot add a "select
+   all" to it. 📥 Everything from Drive asks once for the whole Drive instead
+   (GSYNC.FULL_SCOPE). With it the listing in step 3b sees every workbook
+   folder under the root and every chapter file in them, and step 4 can
+   overwrite those same files when they are edited here — so the ordinary
+   adopting sync is the whole import, and later saves sync both ways. Like
+   cloudPick, a workbook is a folder directly under the root and a chapter a
+   .md/.txt file directly in one; anything deeper is left where it is. */
+async function cloudPickAll() {
+  if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
+  if (gsPicking || gsBusy || wbSyncBusy) return;
+  gsPicking = true;
+  try {
+    gsInteractive = true;
+    await gsAuth(true, true);
+    gsFull = true;
+    try { localStorage.setItem('gdrive_md_full', '1'); } catch (e) {}
+    await gsRoot();
+  } catch (err) {
+    cloudError(err);
+    return;
+  } finally {
+    gsPicking = false; gsInteractive = false;
+    paintCloud();
+  }
+  await syncNow();
 }
 
 // An explicit chapter save also syncs a remembered connection, including

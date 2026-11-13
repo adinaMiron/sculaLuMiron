@@ -197,6 +197,9 @@ const I18N = {
     cloudPickFolderOf:n=>`Alege și dosarul în care se află: ${n}`,
     cloudPickLeft:n=>`${n} dintre cele alese nu au fost aduse: un capitol e un fișier .md sau .txt dintr-un dosar aflat direct în „Scula Markdown”.`,
     cloudPickFail:"fereastra Google de ales fișiere nu a putut fi deschisă.",
+    cloudPickAllBtn:"📥 Tot din Drive",
+    cloudPickAllTip:"Adu toate dosarele și fișierele din „Scula Markdown” din Google Drive, fără să le alegi, și trimite înapoi în aceleași fișiere ce modifici aici. Cere o singură dată acces la tot Google Drive-ul (Google poate arăta un avertisment de aplicație neverificată).",
+    cloudAllDenied:"accesul la tot Drive-ul nu a fost dat — se pot aduce doar fișierele alese în „📥 Din Drive…”.",
 
     /* ── Prima pornire pe un dispozitiv (docs/FEATURES.md § E) ── */
     welcomeTitle:"Bun venit",
@@ -381,6 +384,7 @@ const I18N = {
         <li><b>🔗 Conectează Google</b>, în rândul de sub bara de sus, leagă contul Google de acest dispozitiv; după conectare același buton devine „⏏ Deconectează Google” și desface legătura. Capitolele merg în Google Drive — câte un fișier pentru fiecare capitol, într-un folder propriu. Funcționează doar cu pagina deschisă prin HTTP(S), nu direct ca fișier local.</li>
         <li><b>☁ Sincronizează acum</b> (<kbd>Ctrl+Alt+S</kbd>), lângă „Salvează capitolul în caiet”, e cel mai important buton din pagină: salvează tot ce s-a modificat, citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive dacă ai conectat un cont, apoi scrie toate capitolele în dosar și în Drive. Așa ajung pe un dispozitiv nou caietele scrise pe altul. Ce ai copiat în dosar e preluat și în clipa în care alegi dosarul.</li>
         <li><b>📥 Din Drive…</b>, în același rând cu „☁ Sincronizează acum” (apare după ce ai conectat contul), aduce ce ai pus de mână în dosarul „Scula Markdown” din Google Drive. Google îi arată paginii doar fișierele create de ea și pe cele alese de tine, așa că se deschide fereastra Google: alege dosarul nou, apoi — în a doua fereastră, deschisă în el — fișierele .md sau .txt (<kbd>Ctrl+A</kbd> le ia pe toate); pentru un fișier pus într-un caiet existent, deschide dosarul caietului și alege fișierul. După aceea pornește singură sincronizarea: dosarul devine caiet, fișierele devin capitole. Pagina primește acces doar la ce ai ales, nu la restul Drive-ului, iar ce ai ales o dată rămâne văzut și la sincronizările următoare.</li>
+        <li><b>📥 Tot din Drive</b>, lângă „📥 Din Drive…”, aduce totul din „Scula Markdown” fără ferestre de ales: fiecare dosar aflat direct în el devine caiet, fiecare fișier .md sau .txt din acele dosare devine capitol. Prima dată Google cere acces la tot Drive-ul (poate apărea un avertisment de aplicație neverificată); accesul rămâne dat, așa că ce modifici și salvezi aici ajunge înapoi în aceleași fișiere din Drive. Când un fișier există și în dosarul markdown de pe calculator, câștigă versiunea mai nouă, iar dosarul local primește și el capitolele aduse. Dosarele mai adânci rămân neatinse. „Deconectează” retrage și acest acces.</li>
         <li>La prima pornire pe un dispozitiv nou, o fereastră cere întâi dosarul, apoi întreabă dacă aduci datele din cloud — răspunde „Da” ca să tragi aici tot ce ai scris pe alt dispozitiv.</li>
       </ul>
       <h3>Caiete și capitole</h3>
@@ -690,6 +694,9 @@ const I18N = {
     cloudPickFolderOf:n=>`Also choose the folder that holds: ${n}`,
     cloudPickLeft:n=>`${n} of the chosen items were not brought in: a chapter is a .md or .txt file in a folder directly inside “Scula Markdown”.`,
     cloudPickFail:"Google's file window could not be opened.",
+    cloudPickAllBtn:"📥 Everything from Drive",
+    cloudPickAllTip:"Bring in every folder and file in “Scula Markdown” in Google Drive without choosing them, and write what you change here back to those same files. Asks once for access to your whole Google Drive (Google may show an unverified-app warning).",
+    cloudAllDenied:"access to the whole Drive was not given — only files chosen in “📥 From Drive…” can be brought in.",
 
     /* ── First run on a device (docs/FEATURES.md § E) ── */
     welcomeTitle:"Welcome",
@@ -874,6 +881,7 @@ const I18N = {
         <li><b>🔗 Connect Google</b>, in the row under the top bar, links your Google account to this device; once connected the same button reads "⏏ Disconnect Google" and unlinks it. Chapters go to Google Drive — one file per chapter, in its own folder. Only works with the page open over HTTP(S), not opened directly as a local file.</li>
         <li><b>☁ Sync now</b> (<kbd>Ctrl+Alt+S</kbd>), beside "Save to workbook", is the single most important button on the page: it saves everything modified, reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive if an account is connected, then writes every chapter to the folder and to Drive. This is how workbooks written on one device reach another. What you copied into the folder is also taken in the moment you pick the folder.</li>
         <li><b>📥 From Drive…</b>, in the same row as "☁ Sync now" (shown once an account is connected), brings in what you put into the "Scula Markdown" folder in Google Drive by hand. Google shows this page only the files it created and the ones you choose for it, so Google's own window opens: choose the new folder, then — in the second window, opened inside it — the .md or .txt files (<kbd>Ctrl+A</kbd> takes them all); for a file dropped into an existing workbook, open that workbook's folder and choose the file. The sync then runs by itself: the folder becomes a workbook, the files become chapters. The page gets access only to what you chose, not to the rest of your Drive, and what was chosen once stays visible to every later sync.</li>
+        <li><b>📥 Everything from Drive</b>, next to "📥 From Drive…", brings in all of "Scula Markdown" with no windows to choose in: every folder directly inside it becomes a workbook, every .md or .txt file in those folders becomes a chapter. The first time, Google asks for access to your whole Drive (an unverified-app warning may appear); the access stays granted, so what you change and save here goes back to those same files in Drive. When a file also exists in the markdown folder on your computer, the newer version wins, and the local folder receives the chapters brought in too. Deeper folders are left alone. "Disconnect" withdraws this access as well.</li>
         <li>The first time the page runs on a new device, a window asks for the folder first, then asks whether to bring your data from the cloud — answer "Yes" to pull in everything written on another device.</li>
       </ul>
       <h3>Workbooks and chapters</h3>

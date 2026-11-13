@@ -321,7 +321,7 @@
     border-color: var(--accent);
   }
   #btn-wb-cloud.syncing { border-style: dashed; }
-  #btn-wb-pick[hidden] { display: none; }
+  #btn-wb-pick[hidden], #btn-wb-pick-all[hidden] { display: none; }
   #wb-cloud-where {
     font-size: 11px;
     color: var(--text-3);
@@ -3930,6 +3930,10 @@
        then the same sync (cloudPick(), docs/FEATURES.md § O). Shown only
        while an account is linked — paintCloud(). -->
   <button class="btn" id="btn-wb-pick" onclick="cloudPick()" data-i="cloudPickBtn" data-i-title="cloudPickTip" title="Bring in folders and files you put into the Scula Markdown folder in Google Drive by hand: choose them in Google's window, then everything is synced. The page gets access only to what you choose." hidden>📥 From Drive…</button>
+  <!-- Google's Picker is a docs.google.com frame, so "select all" cannot be
+       added inside it: this asks once for the whole Drive and syncs every
+       folder and file of Scula Markdown (cloudPickAll()). -->
+  <button class="btn" id="btn-wb-pick-all" onclick="cloudPickAll()" data-i="cloudPickAllBtn" data-i-title="cloudPickAllTip" title="Bring in every folder and file in “Scula Markdown” in Google Drive without choosing them, and write what you change here back to those same files. Asks once for access to your whole Google Drive (Google may show an unverified-app warning)." hidden>📥 Everything from Drive</button>
   <!-- The only place a Google account is linked or forgotten. No data-i:
        the label depends on the connection, so paintCloud() writes both
        halves and applyUILang() must not overwrite one of them. -->
