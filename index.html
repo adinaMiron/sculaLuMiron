@@ -55,6 +55,11 @@
     --imp-nice: #8FBAA7;
     --imp-important: #D9A441;
     --imp-vital: #EAA07F;
+
+    /* A chart point whose row has a note — something happened there. The
+       one blue in the app, so it stands out from every series colour.
+       See docs/FEATURES.md § W. */
+    --chart-noted: #6FA8DC;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1870,6 +1875,7 @@
   .ch-s2 { --ch-c: var(--graph-loop-r); }
   .ch-s3 { --ch-c: var(--graph-attachment); }
   .ch-s4 { --ch-c: var(--graph-block); }
+  .ch-noted { --ch-c: var(--chart-noted); }   /* after .ch-s*, so it wins */
   .ch-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.88em; line-height: 1.5; }
   .ch-key { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
   .ch-key b { color: var(--text); font-weight: 600; }

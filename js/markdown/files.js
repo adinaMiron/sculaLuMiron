@@ -248,7 +248,7 @@ function exportHtml() {
     .tl-what img { max-width: 100%; height: auto; border-radius: 4px; margin: 4px 0 0; }
     @media (max-width: 640px) { .tl-item { flex-wrap: wrap; } .tl-what { flex-basis: 100%; } }
     .md-chart { margin: 14px 0 8px; padding: 10px 14px 4px; border: 1px solid #e2e2e2; border-radius: 8px; background: #fafafa; }
-    .ch-s0 { --ch-c: #8A6A1F; } .ch-s1 { --ch-c: #3F7A63; } .ch-s2 { --ch-c: #C08A1E; } .ch-s3 { --ch-c: #A1421C; } .ch-s4 { --ch-c: #5F7468; }
+    .ch-s0 { --ch-c: #8A6A1F; } .ch-s1 { --ch-c: #3F7A63; } .ch-s2 { --ch-c: #C08A1E; } .ch-s3 { --ch-c: #A1421C; } .ch-s4 { --ch-c: #5F7468; } .ch-noted { --ch-c: #2F6DB5; }
     .ch-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.88em; }
     .ch-key { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
     .ch-stat { color: #666; font-family: 'Courier New', monospace; font-size: 0.92em; }

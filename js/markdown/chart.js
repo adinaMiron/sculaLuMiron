@@ -182,8 +182,10 @@ function chTableHtml(headers, rows, opts) {
       // The tooltip leans away from the edge it would run off.
       const side = x < 22 ? ' ch-tip-l' : x > 78 ? ' ch-tip-r' : '';
       const below = y < 70 ? ' ch-tip-b' : '';
+      // A row with a note is a blue dot: something happened there.
+      const noted = said.length ? ' ch-noted' : '';
       if (si === 0) lastS0 = dots.length;
-      dots.push(`<button type="button" class="ch-dot ch-s${si}" data-s="${si}" tabindex="-1"`
+      dots.push(`<button type="button" class="ch-dot ch-s${si}${noted}" data-s="${si}" tabindex="-1"`
         + ` style="left:${x}%;top:${y}px" data-x="${x}" data-y="${y}"`
         + ` aria-label="${chAttr(p.raw + ' — ' + s.name + ': ' + p.cells[s.col])}">`
         + `<span class="ch-tip${side}${below}"><b class="ch-tip-date">${p.raw}</b>${values.join('')}${said.join('')}</span></button>`);
@@ -205,11 +207,15 @@ function chTableHtml(headers, rows, opts) {
       + `<span class="ch-stat">${t('chartLast')} ${last.cells[s.col]} · ${t('chartMin')} ${min.cells[s.col]}`
       + ` · ${t('chartMax')} ${max.cells[s.col]}</span></span>`;
   }).join('');
+  // …and that a blue dot is a row with a note.
+  const noteCols = notes.filter(o => points.some(p => tlPlain(p.cells[o.col] || '')));
+  const notedKey = noteCols.length ? `<span class="ch-key"><i class="ch-swatch ch-noted"></i>`
+    + `<b>${noteCols.map(o => o.name).filter(Boolean).join(', ') || '…'}</b></span>` : '';
 
   const aria = t('chartAria') + ': ' + series.map(s => s.name).join(', ')
     + ', ' + points[0].raw + (span > 0 ? ' – ' + points[points.length - 1].raw : '');
   return `<figure class="md-chart" role="group" aria-label="${chAttr(aria)}">`
-    + `<figcaption class="ch-legend">${legend}</figcaption>`
+    + `<figcaption class="ch-legend">${legend}${notedKey}</figcaption>`
     + `<div class="ch-plot" style="height:${CH_H}px">`
     + `<svg class="ch-svg" height="${CH_H}" aria-hidden="true">${svg.join('')}</svg>`
     + `<span class="ch-guide" aria-hidden="true"></span>`
