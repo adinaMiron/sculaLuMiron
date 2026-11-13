@@ -639,8 +639,11 @@ function paintCloud() {
   // Pointing at files in Drive only means something once an account is linked.
   const pick = document.getElementById('btn-wb-pick');
   if (pick) pick.hidden = !on;
+  // Everything from Drive is a first-time door only: shown until this browser
+  // has finished one Drive sync (with or without an account linked yet — it
+  // links one itself), and again after Disconnect forgets that sync.
   const all = document.getElementById('btn-wb-pick-all');
-  if (all) all.hidden = !on;
+  if (all) all.hidden = !!gsLastAt;
   const link = document.getElementById('btn-wb-connect');
   if (link) {
     link.textContent = t(on ? 'cloudDisconnectBtn' : 'cloudConnectBtn');
@@ -835,17 +838,21 @@ async function cloudPick() {
    overwrite those same files when they are edited here — so the ordinary
    adopting sync is the whole import, and later saves sync both ways. Like
    cloudPick, a workbook is a folder directly under the root and a chapter a
-   .md/.txt file directly in one; anything deeper is left where it is. */
+   .md/.txt file directly in one; anything deeper is left where it is.
+   It is offered only before this browser's first Drive sync (paintCloud),
+   so on a device with no account linked yet the press is also the Connect. */
 async function cloudPickAll() {
   if (location.protocol === 'file:') { ScuLaFolder.toast(t('cloudNoFile')); return; }
   if (gsPicking || gsBusy || wbSyncBusy) return;
   gsPicking = true;
   try {
     gsInteractive = true;
+    const linked = gsConnected();
     await gsAuth(true, true);
     gsFull = true;
     try { localStorage.setItem('gdrive_md_full', '1'); } catch (e) {}
-    await gsRoot();
+    const f = await gsRoot();
+    if (!linked) ScuLaFolder.toast(t('cloudConnected', f.name));
   } catch (err) {
     cloudError(err);
     return;
