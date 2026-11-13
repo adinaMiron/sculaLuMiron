@@ -48,6 +48,12 @@ let gsBusy = false, gsInteractive = false, gsTimer = 0, gsLastAt = 0;
 let gsPicking = false;                // Google's file window is open (cloudPick)
 let gsGraves = {};                    // id → deleted-at, books and chapters alike
 let gsFull = false;                   // full Drive access was granted here (cloudPickAll)
+// 📥 From Drive… belongs to a browser's first sign-in only. Whether this
+// browser had already finished a Drive sync before this page loaded is kept
+// in IndexedDB (GS_SYNCED_KEY), which Disconnect does not clear, so linking
+// the account again later does not bring the button back. null = not read yet.
+const GS_SYNCED_KEY = 'driveSynced';
+let gsPickRetired = null;
 
 // The token is editor.html's — same origin, same OAuth client, same scope —
 // so connecting on either page connects both. Only the folder is ours.
@@ -59,6 +65,12 @@ try {
   gsLastAt = Number(localStorage.getItem('gdrive_md_at')) || 0;
   gsFull = localStorage.getItem('gdrive_md_full') === '1';
 } catch (e) {}
+if (gsLastAt) gsPickRetired = true;   // a stamp from before the IndexedDB flag existed
+wbMetaGet(GS_SYNCED_KEY).then(v => {
+  const before = !!v || !!gsLastAt;
+  if (before && !v) wbMetaSet(GS_SYNCED_KEY, gsLastAt).catch(() => {});
+  if (gsPickRetired !== true) { gsPickRetired = before; paintCloud(); }
+}, () => { if (gsPickRetired === null) { gsPickRetired = false; paintCloud(); } });
 
 function gsLive() { return !!gsToken && gsTokenExp > Date.now() + 60000; }
 // Connected means "set up here" — a stored folder outlives the hour-long
@@ -616,6 +628,8 @@ async function cloudSync(interactive, opts) {
 
     gsLastAt = Date.now();
     try { localStorage.setItem('gdrive_md_at', String(gsLastAt)); } catch (e) {}
+    // Remembered for the next visit; the button stays for the rest of this one.
+    wbMetaSet(GS_SYNCED_KEY, gsLastAt).catch(() => {});
     renderWorkbooks();
     return { up: up, down: down };
   } finally {
@@ -636,9 +650,11 @@ function paintCloud() {
     sync.classList.toggle('connected', on);
     sync.classList.toggle('syncing', gsBusy || wbSyncBusy);
   }
-  // Pointing at files in Drive only means something once an account is linked.
+  // Pointing at files in Drive only means something once an account is linked,
+  // and is offered only on this browser's first sign-in: hidden on every visit
+  // after one in which a Drive sync finished (gsPickRetired).
   const pick = document.getElementById('btn-wb-pick');
-  if (pick) pick.hidden = !on;
+  if (pick) pick.hidden = !on || gsPickRetired !== false;
   // Everything from Drive is a first-time door only: shown until this browser
   // has finished one Drive sync (with or without an account linked yet — it
   // links one itself), and again after Disconnect forgets that sync.
