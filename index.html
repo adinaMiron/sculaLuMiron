@@ -141,7 +141,7 @@
      importance and the filters stay directly in the menu. */
   @media (max-width: 600px) {
     .tb-group-btns { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
-    .tb-group-btns .tb-btn { flex: 1 1 0; min-height: 36px; }
+    .tb-group-btns .tb-btn { flex: 1 1 0; min-height: 44px; }
     .tb-group-btns .tb-btn[aria-expanded="true"] { background: var(--accent, #4a7); color: #fff; }
     .toolbar-groups .toolbar-sep { display: none; }
     .toolbar-groups:not([data-open="edit"]) [data-tbg="edit"],
@@ -165,7 +165,9 @@
     font-size: 13px;
     font-family: var(--font-ui);
     cursor: pointer;
-    transition: all 0.12s;
+    /* Not "all": an animated inherited visibility keeps buttons out of the Tab
+       order for a moment after the ☰ menu expands. */
+    transition: background-color 0.12s, color 0.12s, opacity 0.12s;
     white-space: nowrap;
     letter-spacing: 0.03em;
   }
@@ -557,7 +559,7 @@
     position: absolute; inset: 33px 0 0; /* below the pane header */
     box-sizing: border-box; padding: 24px 28px;
     overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word;
-    font: 14px/1.7 var(--font-mono); tab-size: 2;
+    font: var(--md-text-size, 14px)/1.7 var(--font-mono); tab-size: 2;
     color: var(--text); pointer-events: none; z-index: 0;
   }
   #editor-matches mark.page-match { position: relative; background: #ffd54a; color: #211900; border-radius: 2px; }
@@ -586,7 +588,9 @@
     outline: none;
     resize: none;
     font-family: var(--font-mono);
-    font-size: 14px;
+    /* --md-text-size: the per-browser text size picked in the toolbar
+       (setTextSize() in js/markdown/startup.js); unset keeps the default. */
+    font-size: var(--md-text-size, 14px);
     line-height: 1.7;
     padding: 24px 28px;
     overflow-y: auto;
@@ -603,7 +607,7 @@
     flex: 1;
     padding: 24px 28px;
     overflow-y: auto;
-    font-size: 15px;
+    font-size: var(--md-text-size, 15px);
     line-height: 1.8;
     color: var(--text);
   }
@@ -1434,8 +1438,8 @@
     body.view-source #preview-pane { display: none; }
     body.view-preview #editor-pane { display: none; }
 
-    #editor { padding: 16px 14px; font-size: 15px; line-height: 1.65; }
-    #preview { padding: 16px 14px; font-size: 15px; }
+    #editor { padding: 16px 14px; font-size: var(--md-text-size, 15px); line-height: 1.65; }
+    #preview { padding: 16px 14px; font-size: var(--md-text-size, 15px); }
     #preview h1 { font-size: 1.6em; }
     #preview h2 { font-size: 1.35em; }
     #preview h3 { font-size: 1.18em; }
@@ -4025,6 +4029,24 @@
   <button class="tb-btn" data-tbg="tools" id="btn-find" onclick="toggleFind(true)" data-i="findBtn" data-i-title="findTip" title="Search and filter (Ctrl+4)">🔍 Find</button>
   <button class="tb-btn active" data-tbg="tools" id="btn-explorer" onclick="togglePanel()" data-i="explorerBtn" data-i-title="explorerTip" title="Image Explorer">🖼 Explorer</button>
   <button class="tb-btn active" data-tbg="tools" id="btn-nav" onclick="toggleNav()" data-i="navBtn" data-i-title="navTip" title="Navigation (Ctrl+1)">☰ Nav</button>
+  <!-- Display only: the text size of the editor and the preview in this
+       browser, kept in IndexedDB — setTextSize() in js/markdown/startup.js. -->
+  <select class="tb-select" data-tbg="tools" id="text-size-select" onchange="setTextSize(this.value)"
+          data-i-title="textSizeTip" title="Text size in the editor and the preview (this browser only)">
+    <option value="" data-i="textSizeDefault">Aa — Text size —</option>
+    <option value="12">Aa 12px</option>
+    <option value="13">Aa 13px</option>
+    <option value="14">Aa 14px</option>
+    <option value="15">Aa 15px</option>
+    <option value="16">Aa 16px</option>
+    <option value="17">Aa 17px</option>
+    <option value="18">Aa 18px</option>
+    <option value="20">Aa 20px</option>
+    <option value="22">Aa 22px</option>
+    <option value="24">Aa 24px</option>
+    <option value="26">Aa 26px</option>
+    <option value="28">Aa 28px</option>
+  </select>
   <!-- Filter matching tasks in every workbook and the open chapter's preview. -->
   <div class="toolbar-filters" role="group">
     <select class="tb-select" id="btn-filter-todo" onchange="filterTodoByStatus(this.value)"

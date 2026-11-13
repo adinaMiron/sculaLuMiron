@@ -126,6 +126,40 @@ function initWbPanelDrag() {
   header.addEventListener('pointercancel', endDrag);
 }
 
+/* ── Text size of the editor and the preview, per browser ──
+   Some displays render the default 14/15px too small. The toolbar's
+   #text-size-select sets --md-text-size on <html>; the #editor, #preview and
+   #editor-matches rules fall back to their defaults while it is unset.
+   Display only: the chapter text is untouched, and the choice lives in the
+   workbooks' IndexedDB meta store, so it stays with this browser. */
+const TEXT_SIZE_KEY = 'textSize';
+const TEXT_SIZE_MIN = 10, TEXT_SIZE_MAX = 32;
+let textSizeTouched = false;   // a pick made before the stored value loads wins
+
+function applyTextSize(v) {
+  const px = Math.round(Number(v));
+  const ok = v !== '' && v != null && px >= TEXT_SIZE_MIN && px <= TEXT_SIZE_MAX;
+  const root = document.documentElement.style;
+  if (ok) root.setProperty('--md-text-size', px + 'px');
+  else root.removeProperty('--md-text-size');
+  const sel = document.getElementById('text-size-select');
+  if (sel) sel.value = ok && sel.querySelector('option[value="' + px + '"]') ? String(px) : '';
+  if (typeof mcActive === 'function' && mcActive()) mcRender();   // overlay copies the editor's font
+  return ok ? px : null;
+}
+
+function setTextSize(v) {
+  textSizeTouched = true;
+  const px = applyTextSize(v);
+  wbMetaSet(TEXT_SIZE_KEY, px).catch(() => {});
+}
+
+async function loadTextSize() {
+  let px = null;
+  try { px = await wbMetaGet(TEXT_SIZE_KEY); } catch (e) { return; }
+  if (!textSizeTouched && px != null) applyTextSize(px);
+}
+
 /* ── First run on a device (docs/FEATURES.md § E "A new device") ──
    A phone or a second computer opens the page with an empty database, no
    folder and no Google account. Instead of leaving the person to find the
@@ -206,6 +240,7 @@ loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); welc
 initToolbarCollapse();
 initWbPanelResize();
 initWbPanelDrag();
+loadTextSize();
 
 let lastSmall = isSmallScreen();
 // Returning to the page (e.g. Alt+Tab back): put the caret, selection and

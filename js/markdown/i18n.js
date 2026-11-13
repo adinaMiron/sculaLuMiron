@@ -33,6 +33,7 @@ const I18N = {
     impNice:"Bine de avut", impImportant:"Important", impVital:"Vital",
     impFindTip:"Caută tot ce e marcat așa",
     lblSize:"Dimensiune", sizeDefault:"— Dimensiune font —",
+    textSizeDefault:"Aa — Mărimea textului —", textSizeTip:"Mărimea textului în editor și în previzualizare (doar în acest browser)",
     linkTip:"Inserează hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Imagine",
     colorHighlightTip:"Culoare text + evidențiere", textColorTip:"Culoarea textului selectat",highlightColorTip:"Evidențiază textul selectat",
     tableTip:"Inserează tabel", tableBtn:"⊞ Tabel",
@@ -388,6 +389,7 @@ const I18N = {
       </ul>
       <h3>Formatare</h3>
       <p>Bara de instrumente are bold, italic, titluri, liste, listă de sarcini, cod, tabel, imagine, link, dimensiune font, culoare text și evidențiere. Selectează textul și aplică dimensiunea, culoarea și evidențierea în orice combinație. Lipirea unei poze (<kbd>Ctrl+V</kbd>) o pune direct în text, ca imagine încorporată.</p>
+      <p>Lista <b>Aa</b> din grupul Instrumente alege mărimea textului din editor și din previzualizare, fără să schimbe fișierul — utilă pe ecranele unde textul apare prea mic. Alegerea se păstrează doar în acest browser; „— Mărimea textului —” revine la mărimea implicită.</p>
       <h3>Legături [[wikilink]] și #etichete</h3>
       <ul>
         <li>Scrie <code>[[</code> pentru sugestii de notițe (↑↓ alege, Enter/Tab inserează, Esc renunță), sau folosește butonul ⟦⟧ Notiță / <kbd>Ctrl+Shift+L</kbd>.</li>
@@ -519,6 +521,7 @@ const I18N = {
     impNice:"Nice to have", impImportant:"Important", impVital:"Vital",
     impFindTip:"Find everything marked this way",
     lblSize:"Size", sizeDefault:"— Font Size —",
+    textSizeDefault:"Aa — Text size —", textSizeTip:"Text size in the editor and the preview (this browser only)",
     linkTip:"Insert hyperlink (Ctrl+K)", linkBtn:"🔗 Link", imageBtn:"⬛ Image",
     colorHighlightTip:"Text color + highlight", textColorTip:"Color selected text",highlightColorTip:"Highlight selected text",
     tableTip:"Insert table", tableBtn:"⊞ Table",
@@ -874,6 +877,7 @@ const I18N = {
       </ul>
       <h3>Formatting</h3>
       <p>The toolbar has bold, italic, headings, lists, a todo list, code, a table, an image, a link, font size, text color and highlight. Select text and apply size, color and highlight in any combination. Pasting a picture (<kbd>Ctrl+V</kbd>) drops it straight into the text as an embedded image.</p>
+      <p>The <b>Aa</b> list in the Tools group sets the text size of the editor and the preview without changing the file — useful on displays where the text looks too small. The choice is kept in this browser only; "— Text size —" goes back to the default size.</p>
       <h3>[[Wikilinks]] and #tags</h3>
       <ul>
         <li>Type <code>[[</code> for note suggestions (↑↓ to move, Enter/Tab to insert, Esc to dismiss), or use the ⟦⟧ Note link button / <kbd>Ctrl+Shift+L</kbd>.</li>

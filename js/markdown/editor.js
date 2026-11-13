@@ -812,6 +812,16 @@ window.matchMedia(TB_COLLAPSE_MQ).addEventListener('change', () => {
   setToolbarCollapsed(document.querySelector('.toolbar').classList.contains('collapsed'));
 });
 
+// A resize can hide the focused toolbar control before the media-query handler
+// runs (phone groups use display:none, a saved collapse visibility:hidden),
+// dropping focus to <body>; return it to ☰ as collapsing does.
+document.getElementById('toolbar-groups').addEventListener('focusout', e => {
+  const el = e.target;
+  const shown = el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : el.getClientRects().length > 0;
+  if (!e.relatedTarget && toolbarCollapsible() && !shown)
+    document.getElementById('btn-toolbar-toggle').focus();
+});
+
 // Phones group the tools behind Edit/Format/Insert/Tools; one group is open at a time.
 function toggleToolbarGroup(name) {
   const groups = document.getElementById('toolbar-groups');
