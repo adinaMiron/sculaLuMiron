@@ -145,14 +145,21 @@
   /* Phones: tools are grouped behind four buttons; selects for task status,
      importance and the filters stay directly in the menu. */
   @media (max-width: 600px) {
-    .tb-group-btns { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
-    .tb-group-btns .tb-btn { flex: 1 1 0; min-height: 44px; }
+    /* 💡 Idea shares the group buttons' row: an open keyboard leaves the menu
+       one row tall, and a row of its own would hide Edit/Format/Insert/Tools. */
+    .toolbar-groups .tb-menu-idea { flex: 0 0 auto; }
+    .tb-group-btns { display: flex; flex-wrap: nowrap; gap: 4px; flex: 1 1 calc(100% - 80px); min-width: 0; }
+    .tb-group-btns .tb-btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-left: 2px; padding-right: 2px; }
     .tb-group-btns .tb-btn[aria-expanded="true"] { background: var(--accent, #4a7); color: #fff; }
     .toolbar-groups .toolbar-sep { display: none; }
     .toolbar-groups:not([data-open="edit"]) [data-tbg="edit"],
     .toolbar-groups:not([data-open="format"]) [data-tbg="format"],
     .toolbar-groups:not([data-open="insert"]) [data-tbg="insert"],
     .toolbar-groups:not([data-open="tools"]) [data-tbg="tools"] { display: none; }
+  }
+  @media (max-width: 359px) {
+    .toolbar-groups .tb-menu-idea, .tb-group-btns .tb-btn { font-size: 11px; }
+    .toolbar-groups .tb-menu-idea { padding-left: 3px; padding-right: 3px; }
   }
   .tb-toggle { display: none; } /* shown only on small screens, see media queries */
   /* 💡 Idea inside the ☰ menu: tablet and phone only (the header has it on desktop) */
