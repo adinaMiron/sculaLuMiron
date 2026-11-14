@@ -1190,6 +1190,7 @@ function updatePreview() {
   gdRefresh();          // and the garden toolbox
   gdBtnRefresh();        // 🌱 only exists while a garden chapter is open
   mapRefresh();         // and the 🗺 button only exists while a "^@" does
+  tableRowBtnRefresh(); // and ⊞+ Row only while the chapter has a table
 }
 
 // Copy the rendered text so escaped HTML, indentation and line breaks survive.

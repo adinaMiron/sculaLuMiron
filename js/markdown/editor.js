@@ -175,6 +175,12 @@ function tableRowFindTables(lines) {
   return tables;
 }
 
+// ⊞+ Row is only offered while the open chapter has a table.
+function tableRowBtnRefresh() {
+  const btn = document.getElementById('btn-table-row');
+  if (btn) btn.hidden = !tableRowFindTables(editor.value.split('\n')).length;
+}
+
 function addTableRow(now) {
   now = now instanceof Date ? now : new Date();
   const val = editor.value;
