@@ -644,6 +644,9 @@
   .task-status-blocked { color: var(--danger); }
   #preview strong { color: var(--text); font-weight: 700; }
   #preview em { color: var(--accent-2); font-style: italic; }
+  /* A toolbar text color wins over the default bold/italic/code colors. */
+  #preview span[style^="color:"] :is(strong, em, code),
+  #preview span[style*=";color:"] :is(strong, em, code) { color: inherit; }
   #preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; border: 1px solid var(--border); }
   #preview code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); font-size: 0.88em; color: var(--accent-2); }
 

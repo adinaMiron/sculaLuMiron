@@ -238,12 +238,55 @@ function addTableRow(now) {
 /* ── Toolbar actions ── */
 function wrapSelection(before, after) {
   editor.focus();
+  if (before === after && (before === '**' || before === '*') && toggleEmphasis(before.length)) return;
   const start = editor.selectionStart, end = editor.selectionEnd;
   const sel = editor.value.substring(start, end);
   const replacement = before + (sel || 'text') + after;
   editor.setRangeText(replacement, start, end, 'select');
   if (!sel) editor.setSelectionRange(start + before.length, start + before.length + 4);
   updatePreview(); updateStatus();
+}
+
+// Bold (k = 2) and italic (k = 1) toggle on the "*" runs around the selected
+// text: inside the selection, right next to it, or outside the color/size
+// spans that enclose it, so styles combine in any order without "****".
+function toggleEmphasis(k) {
+  const val = editor.value;
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  let s = start, e = end;
+  while (s < e && val[s] === '*') s++;
+  while (e > s && val[e - 1] === '*') e--;
+  const text = val.slice(s, e);
+  if (!text || text.includes('*')) return false;
+  let a = start, b = end;
+  for (;;) {
+    while (a > 0 && val[a - 1] === '*') a--;
+    while (b < val.length && val[b] === '*') b++;
+    const open = val.slice(0, a).match(/<span style="[^"]*">$/);
+    if (!open || !val.startsWith('</span>', b)) break;
+    a -= open[0].length; b += '</span>'.length;
+  }
+  let left = val.slice(a, s), right = val.slice(e, b);
+  const stars = str => (str.match(/\*/g) || []).length;
+  const n = Math.min(stars(left), stars(right));
+  const on = k === 2 ? n >= 2 : n % 2 === 1;
+  if (on) {
+    // Drop the k stars nearest the text on each side.
+    for (let i = 0; i < k; i++) {
+      const l = left.lastIndexOf('*'), r = right.indexOf('*');
+      left = left.slice(0, l) + left.slice(l + 1);
+      right = right.slice(0, r) + right.slice(r + 1);
+    }
+  } else {
+    left += '*'.repeat(k); right = '*'.repeat(k) + right;
+  }
+  editor.setRangeText(left + text + right, a, b, 'preserve');
+  // Select the text with the star runs directly around it, as wrapSelection does.
+  const textStart = a + left.length;
+  const lead = left.match(/\**$/)[0].length, trail = right.match(/^\**/)[0].length;
+  editor.setSelectionRange(textStart - lead, textStart + text.length + trail);
+  updatePreview(); updateStatus();
+  return true;
 }
 
 function applyTextColor(color) {

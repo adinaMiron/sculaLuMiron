@@ -881,9 +881,60 @@ function mdSpanStyle(attrs) {
   return styles.length ? ` style="${styles.join(';')}"` : '';
 }
 
+/* **bold**, *italic* and ***both***. The "*" rules see each HTML tag made so
+   far (color/size spans, links, images) as one placeholder character, so a
+   "*" inside an attribute is never a marker, markers may sit on either side
+   of a tag, and a run made only of tags is not emphasized text. Markers that
+   cross a tag boundary are then re-nested by mdNestInline(). */
+function mdEmphasis(html) {
+  const tags = [];
+  const PH = '[\\uE000-\\uF8FF]';
+  // Private-use characters already in the text would be misread as tags.
+  const masked = /[-]/.test(html) ? html : html.replace(/<[^>]*>/g, tag =>
+    tags.length > 0x18FF ? tag : String.fromCharCode(0xE000 + tags.push(tag) - 1));
+  const marked = masked
+    .replace(new RegExp(`\\*\\*\\*(?!${PH}*\\*)(.+?)\\*\\*\\*`, 'g'), '<strong><em>$1</em></strong>')
+    .replace(new RegExp(`\\*\\*(?!${PH}*\\*\\*)(.+?)\\*\\*`, 'g'), '<strong>$1</strong>')
+    .replace(new RegExp(`\\*(?!${PH}*\\*)(.+?)\\*`, 'g'), '<em>$1</em>');
+  const html2 = tags.length ? marked.replace(/[-]/g,
+    ch => tags[ch.charCodeAt(0) - 0xE000]) : marked;
+  return mdNestInline(html2);
+}
+
+/* Make inline tags nest properly: a closing tag first closes the elements
+   opened inside it and reopens them after it (only before content follows),
+   so "<strong>a <span>b</strong> c</span>" keeps both styles on the right
+   text. A closing tag for an element opened on an earlier line closes and
+   reopens everything open around it; unclosed elements are left open. */
+const MD_VOID_TAG_RE = /^(?:img|br|hr|input|wbr)$/;
+function mdNestInline(html) {
+  if (!/<\//.test(html)) return html;
+  const out = [], stack = [];
+  const show = () => { for (const el of stack) if (!el.shown) { out.push(el.open); el.shown = true; } };
+  const close = el => { if (el.shown) out.push(`</${el.name}>`); };
+  for (const part of html.split(/(<[^>]*>)/)) {
+    if (!part) continue;
+    const tag = part.match(/^<(\/?)([a-z][a-z0-9-]*)\b[^>]*>$/i);
+    if (!tag) { show(); out.push(part); continue; }
+    const name = tag[2].toLowerCase();
+    if (!tag[1]) {
+      show(); out.push(part);
+      if (!MD_VOID_TAG_RE.test(name) && !part.endsWith('/>')) stack.push({ name, open: part, shown: true });
+      continue;
+    }
+    let i = stack.length - 1;
+    while (i >= 0 && stack[i].name !== name) i--;
+    const above = stack.splice(i + 1);
+    for (let j = above.length - 1; j >= 0; j--) close(above[j]);
+    if (i >= 0) close(stack.pop()); else out.push(part);
+    for (const el of above) { el.shown = false; stack.push(el); }
+  }
+  return out.join('');
+}
+
 function applyInline(text, opts) {
   const forExport = !!(opts && opts.forExport);
-  const html = text
+  const html = mdEmphasis(text
     .replace(INLINE_ASSIGNEE_RE, (m, name) => `&gt;&gt;<span class="md-assignee">${name}</span>`)
     // [[…]] before ![…](…): an embed is "![[" and both start with a bracket
     .replace(WIKI_RE, (m, bang, target, alias) => renderWikiLink(bang, target, alias, opts))
@@ -895,9 +946,7 @@ function applyInline(text, opts) {
     .replace(/!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g,
       (_, alt, src, title) => `<img src="${attrEsc(resolveImageSrc(mdUnescape(src), forExport))}" alt="${attrEsc(mdUnescape(alt))}"${title ? ` title="${attrEsc(mdUnescape(title))}"` : ''}>`)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-      (_, label, src) => `<a href="${attrEsc(mdSafeUrl(mdUnescape(src), false))}" target="_blank" rel="noopener">${label}</a>`)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      (_, label, src) => `<a href="${attrEsc(mdSafeUrl(mdUnescape(src), false))}" target="_blank" rel="noopener">${label}</a>`))
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     // "@date" after the code rule for the same reason TAG_RE runs last: a
     // marker inside `inline code` now follows ">", which the lead class
