@@ -66,6 +66,7 @@
   <a href="editor.html" data-page="editor.html">Mazgaleste</a>
   <a href="transfer.html" data-page="transfer.html">Transfer</a>
   <button id="navFolderBtn" type="button">📁 <span id="navFolderName">Dosar</span></button>
+  <button id="navNasBtn" type="button" aria-haspopup="dialog" hidden>NAS</button>
   <button id="navLangBtn" type="button" aria-label="Limba interfeței / Interface language">EN</button>
 </nav>
 <style>
@@ -97,6 +98,7 @@
     font-weight:600;
   }
   #site-nav #navFolderBtn,
+  #site-nav #navNasBtn,
   #site-nav #navLangBtn{
     flex:0 0 auto;
     background:transparent;
@@ -112,6 +114,7 @@
     white-space:nowrap;
   }
   #site-nav #navFolderBtn:hover,
+  #site-nav #navNasBtn:hover,
   #site-nav #navLangBtn:hover{ color:#F3EEE1; }
   #site-nav #navFolderBtn{
     margin-left:auto;
@@ -122,6 +125,15 @@
     text-overflow:ellipsis;
   }
   #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
+  /* NAS sync (js/shared/nas.js, loaded at the end of this block). The button
+     stays hidden until that script has run, so a copy of the pages without
+     the js/ folder shows no dead control. Its class is the sync state. */
+  #site-nav #navNasBtn{ letter-spacing:.04em; }
+  #site-nav #navNasBtn[hidden]{ display:none; }
+  #site-nav #navNasBtn.sync,
+  #site-nav #navNasBtn.ok{ color:#C1BB45; border-color:#5A6B2E; }
+  #site-nav #navNasBtn.ask,
+  #site-nav #navNasBtn.error{ color:#F3EEE1; border-color:#C1BB45; }
   @media (max-width:560px){
     /* A long folder name must not push the language toggle out of reach on a
        phone - the nav scrolls, but the toggle should still be visible. */
@@ -1394,6 +1406,7 @@
   };
 })();
 </script>
+<script src="js/shared/nas.js"></script>
 <!-- ===== end toolbar nav ===== -->
 <main class="kanban-shell">
   <header class="kanban-head">
