@@ -119,6 +119,116 @@ function insertImportanceAtCursor(marker) {
   select.value = '';
 }
 
+/* ── ⊞+ Row: a new table row stamped with the current date and time ──
+   Below the caret row when the caret is in a table, otherwise after the
+   last row of the table nearest above the caret (else the first one below).
+   Each date/time cell copies the format of the same column in the caret
+   row or the rows above it: "@2026-11-13 10:28", "13.11.2026 10:28:05",
+   a date alone or a time alone. Tables in fenced code are ignored. */
+const TABLE_ROW_DATE_RE = /^(@?)(?:(\d{1,4})([-./])(\d{1,2})\3(\d{1,4}))?([ T]+)?(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?:\s*-\s*\d{1,2}:\d{2}(?::\d{2})?)?$/;
+
+// A function writing `now` the way `cell` writes its date/time, or null.
+function tableRowDateFormat(cell) {
+  const m = cell.match(TABLE_ROW_DATE_RE);
+  if (!m) return null;
+  const [, at, d1, dSep, d2, d3, gap, hh, mm, ss] = m;
+  const hasDate = d1 !== undefined, hasTime = hh !== undefined;
+  if (!hasDate && !hasTime) return null;
+  if (hasDate && hasTime && !gap) return null;
+  if (hasTime && (+hh > 23 || +mm > 59 || (ss !== undefined && +ss > 59))) return null;
+  let ymd = false;
+  if (hasDate) {
+    if (d1.length === 4 && d3.length <= 2) ymd = true;
+    else if (!(d1.length <= 2 && d3.length === 4)) return null;
+  }
+  const part = (n, sample) => sample.length >= 2 ? String(n).padStart(2, '0') : String(n);
+  return now => {
+    let out = at;
+    if (hasDate) {
+      const y = String(now.getFullYear()), mo = now.getMonth() + 1, d = now.getDate();
+      out += ymd ? y + dSep + part(mo, d2) + dSep + part(d, d3)
+                 : part(d, d1) + dSep + part(mo, d2) + dSep + y;
+    }
+    if (hasDate && hasTime) out += gap;
+    if (hasTime) {
+      out += part(now.getHours(), hh) + ':' + part(now.getMinutes(), mm);
+      if (ss !== undefined) out += ':' + part(now.getSeconds(), ss);
+    }
+    return out;
+  };
+}
+
+// Tables of the text: { header, sep, last } line indexes, outside code fences.
+function tableRowFindTables(lines) {
+  const tables = [];
+  const isRow = l => { const s = l.trim(); return s.length > 1 && s.startsWith('|') && s.endsWith('|'); };
+  const isSep = l => isRow(l) && mdTableCells(l.trim()).every(c => /^:?-+:?$/.test(c));
+  let inCode = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*```/.test(lines[i])) { inCode = !inCode; continue; }
+    if (inCode || !isRow(lines[i]) || i + 1 >= lines.length || !isSep(lines[i + 1])) continue;
+    let last = i + 1;
+    while (last + 1 < lines.length && isRow(lines[last + 1])) last++;
+    tables.push({ header: i, sep: i + 1, last });
+    i = last;
+  }
+  return tables;
+}
+
+function addTableRow(now) {
+  now = now instanceof Date ? now : new Date();
+  const val = editor.value;
+  const lines = val.split('\n');
+  const tables = tableRowFindTables(lines);
+  if (!tables.length) {
+    if (window.ScuLaFolder) ScuLaFolder.toast(t('tableRowNone'));
+    return false;
+  }
+  const caret = editor.selectionStart;
+  const caretLine = val.slice(0, caret).split('\n').length - 1;
+  let table = tables.find(tb => caretLine >= tb.header && caretLine <= tb.last);
+  let after;
+  if (table) {
+    after = Math.max(caretLine, table.sep);
+  } else {
+    const above = tables.filter(tb => tb.last < caretLine);
+    table = above.length ? above[above.length - 1] : tables[0];
+    after = table.last;
+  }
+  const cols = mdTableCells(lines[table.header].trim()).length;
+  // The date format of a column comes from the row the new one follows, then
+  // the rows above it, then the rows below: the newest entries win.
+  const order = [];
+  for (let r = after; r > table.sep; r--) order.push(r);
+  for (let r = after + 1; r <= table.last; r++) order.push(r);
+  const cells = [];
+  for (let c = 0; c < cols; c++) {
+    let text = '';
+    for (const r of order) {
+      const fmt = tableRowDateFormat(mdTableCells(lines[r].trim())[c] || '');
+      if (fmt) { text = fmt(now); break; }
+    }
+    cells.push(text);
+  }
+  const model = lines[order.length ? order[0] : table.header];
+  const indent = model.match(/^[ \t]*/)[0];
+  const row = indent + '| ' + cells.join(' | ') + ' |';
+  // Insert at the end of the line `after`; the caret lands in the first empty cell.
+  let at = 0;
+  for (let i = 0; i <= after; i++) at += lines[i].length + (i < after ? 1 : 0);
+  editor.focus();
+  editor.setRangeText('\n' + row, at, at, 'end');
+  const empty = cells.findIndex(c => !c);
+  let pos = at + 1 + row.length;
+  if (empty !== -1) {
+    pos = at + 1 + indent.length + 2;
+    for (let c = 0; c < empty; c++) pos += cells[c].length + 3;
+  }
+  editor.setSelectionRange(pos, pos);
+  updatePreview(); updateStatus(); scheduleAutosave();
+  return true;
+}
+
 /* ── Toolbar actions ── */
 function wrapSelection(before, after) {
   editor.focus();

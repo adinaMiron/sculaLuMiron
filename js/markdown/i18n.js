@@ -25,6 +25,8 @@ const I18N = {
     // on the pill and in the select is translated.
     impTip:"Arată doar sarcinile cu importanța aleasă din toate caietele",
     impInsertTip:"Inserează un marcaj de importanță la cursor",
+    tableRowBtn:"⊞+ Rând", tableRowTip:"Adaugă un rând cu data și ora de acum sub rândul de la cursor sau, cu cursorul în afara tabelului, după ultimul rând",
+    tableRowNone:"Nu există niciun tabel în capitol",
     impInsertDefault:"— Marcaje de importanță —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     responsibleAll:"— Toți responsabilii —", responsibleTip:"Arată doar capitolele și rândurile atribuite responsabilului ales",
@@ -464,6 +466,7 @@ const I18N = {
         <li>Un tabel cu date în prima coloană și numere în celelalte primește deasupra un grafic cu linii: o linie pentru fiecare coloană de numere (până la cinci).</li>
         <li>Datele se scriu <code>2026-11-08</code>, <code>08.11.2026</code> sau <code>2026-11</code>; rândurile pot fi în orice ordine. Numerele pot avea virgulă sau punct și o unitate scurtă: <code>89,7 kg</code>.</li>
         <li>Coloanele cu text sunt note: apar lângă punct. O celulă goală sare punctul.</li>
+        <li>Butonul <b>⊞+ Rând</b> (lângă „Stare sarcină”, și pe telefon) adaugă un rând cu data și ora de acum: sub rândul cu cursorul sau, dacă cursorul nu e în tabel, după ultimul rând al tabelului. Data și ora se scriu ca în celelalte rânduri (de exemplu <code>@2026-11-13 10:28</code>), iar cursorul ajunge în prima celulă goală.</li>
         <li>Treci cu mouse-ul sau atinge graficul: se arată punctul cel mai apropiat, cu data, valoarea și nota. Cu <kbd>Tab</kbd> ajungi la grafic, iar <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> trec de la un punct la altul.</li>
       </ul>
       <h3>Diagrame</h3>
@@ -522,6 +525,8 @@ const I18N = {
     filterAllTodoBtn:"▣ Tasks only", filterAllTodoTip:"Show only chapters with an unchecked box (“- [ ]”), across every workbook, and in the open chapter only the unchecked lines",
     impTip:"Show only tasks with the selected importance across all workbooks",
     impInsertTip:"Insert an importance marker at the cursor",
+    tableRowBtn:"⊞+ Row", tableRowTip:"Add a row with the current date and time below the row at the cursor or, with the cursor outside the table, after the last row",
+    tableRowNone:"There is no table in the chapter",
     impInsertDefault:"— Importance markers —",
     impInsertNice:"🌱 !nice", impInsertImportant:"⭐ !important", impInsertVital:"🔥 !vital",
     responsibleAll:"— All responsibles —", responsibleTip:"Show only chapters and lines assigned to the selected responsible",
@@ -961,6 +966,7 @@ const I18N = {
         <li>A table with dates in its first column and numbers in the others gets a line chart above it: one line per number column (up to five).</li>
         <li>Write the dates as <code>2026-11-08</code>, <code>08.11.2026</code> or <code>2026-11</code>; the rows may be in any order. Numbers may use a comma or a point and a short unit: <code>89,7 kg</code>.</li>
         <li>Text columns are notes, shown with the point. An empty cell skips the point.</li>
+        <li>The <b>⊞+ Row</b> button (beside “Task status”, also on phones) adds a row with the current date and time: below the row at the cursor or, when the cursor is not in a table, after the table's last row. The date and time are written like the other rows (for example <code>@2026-11-13 10:28</code>), and the cursor lands in the first empty cell.</li>
         <li>Hover over or touch the chart to see the nearest point, with its date, value and note. <kbd>Tab</kbd> reaches the chart, and <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> move between points.</li>
       </ul>
       <h3>Diagrams</h3>
