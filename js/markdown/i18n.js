@@ -184,6 +184,12 @@ const I18N = {
     cloudOpenTip:f=>`Deschide dosarul „${f}” în Google Drive`,
     cloudStale:"☁ conectarea a expirat — apasă din nou",
     cloudSyncing:"☁ se sincronizează…",
+    /* pașii unei apăsări pe ☁, lângă buton (wbSyncStep, workbooks.js) */
+    syncStepStart:"☁ Pornesc sincronizarea…",
+    syncStepFolder:"☁ Citesc dosarul…",
+    syncStepDrive:r=>r.up||r.down?`☁ Google Drive: ${r.down} primite, ${r.up} trimise…`:"☁ Google Drive…",
+    syncStepNas:"☁ NAS…",
+    syncStepWrite:r=>`☁ Scriu în dosar: ${r.i} din ${r.n}…`,
     cloudConnected:f=>`Cont Google conectat. Capitolele merg în „${f}”.`,
     cloudDone:r=>`Sincronizat: ${r.up} trimise, ${r.down} primite.`,
     cloudNothing:"Sincronizat — nimic de schimbat.",
@@ -433,7 +439,7 @@ const I18N = {
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus, apoi sincronizează cu Google Drive dacă ai conectat un cont.</li>
-        <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown, din Google Drive și de pe NAS și scrie toate capitolele înapoi. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
+        <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown, din Google Drive și de pe NAS și scrie toate capitolele înapoi. Cât lucrează, rândul de lângă buton arată pasul la care a ajuns (de exemplu „Scriu în dosar: 12 din 40”); la final apare un mesaj cu ce s-a făcut. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
         <li>„🔗 Conectează Google” leagă contul Google și sincronizează pe loc; „⏏ Deconectează Google” desface legătura. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
@@ -723,6 +729,12 @@ const I18N = {
     cloudOpenTip:f=>`Open the “${f}” folder in Google Drive`,
     cloudStale:"☁ sign-in expired — press again",
     cloudSyncing:"☁ syncing…",
+    /* the steps of a ☁ press, beside the button (wbSyncStep, workbooks.js) */
+    syncStepStart:"☁ Starting sync…",
+    syncStepFolder:"☁ Reading the folder…",
+    syncStepDrive:r=>r.up||r.down?`☁ Google Drive: ${r.down} received, ${r.up} sent…`:"☁ Google Drive…",
+    syncStepNas:"☁ NAS…",
+    syncStepWrite:r=>`☁ Writing to the folder: ${r.i} of ${r.n}…`,
     cloudConnected:f=>`Google account connected. Chapters go to “${f}”.`,
     cloudDone:r=>`Synced: ${r.up} sent, ${r.down} received.`,
     cloudNothing:"Synced — nothing to change.",
@@ -972,7 +984,7 @@ const I18N = {
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top, then syncs with Google Drive if an account is connected.</li>
-        <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder, from Google Drive and from the NAS, and writes every chapter back. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
+        <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder, from Google Drive and from the NAS, and writes every chapter back. While it works, the line beside the button shows the step it has reached (for example “Writing to the folder: 12 of 40”); a message at the end says what was done. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
         <li>"🔗 Connect Google" links your Google account and syncs right away; "⏏ Disconnect Google" unlinks it. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>

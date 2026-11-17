@@ -1765,10 +1765,21 @@ function exportChapter(id) {
    { cloud: false } is the first-run modal's "no": the folder only.
    { note } is one more sentence for the status line (cloudPick, § O). */
 let wbSyncBusy = false;
+// The step a press is on, shown beside the ☁ button (paintCloud) and in the
+// status bar. When the press ends the row shows its usual state again and
+// the outcome goes to the status bar and the toast (wbSay).
+let wbSyncStage = '';
+function wbSyncStep(msg) {
+  if (!wbSyncBusy) return;     // Drive's own passes report nothing here
+  wbSyncStage = msg;
+  const el = document.getElementById('stat-wb');
+  if (el) el.textContent = msg;
+  paintCloud();
+}
 async function syncNow(opts) {
   if (wbSyncBusy) return;
   wbSyncBusy = true;
-  paintCloud();                // the ☁ button shows the press is being worked on
+  wbSyncStep(t('syncStepStart'));   // and the ☁ button wears the press
   try {
     const folder = wbFolderMode();
     if (folder) { try { await ScuLaFolder.dir(!wbMirrorAsked); wbMirrorAsked = true; } catch (e) {} }
@@ -1786,9 +1797,11 @@ async function syncNow(opts) {
     }
 
     if (!await flushChapter()) return;
+    if (folder) wbSyncStep(t('syncStepFolder'));
     const found = await wbAdoptFromFolder();
 
     if (cloud) {
+      wbSyncStep(t('syncStepDrive', { up: 0, down: 0 }));
       try {
         const r = await cloudSync(true, { adopt: true });
         cloudMsg = !r ? t('cloudSyncing') : (r.up || r.down) ? t('cloudDone', r) : t('cloudNothing');
@@ -1802,6 +1815,7 @@ async function syncNow(opts) {
     // Drive's half of the press, it also takes in what was put there by hand.
     let nasMsg = '';
     if (typeof nasSync === 'function' && nasOn()) {
+      wbSyncStep(t('syncStepNas'));
       try { nasMsg = nasReport(await nasSync({ adopt: true })); }
       catch (e) { nasMsg = t('nasError', (e && e.message) || String(e)); }
     }
@@ -1810,10 +1824,12 @@ async function syncNow(opts) {
     // was just chosen. Without one there is no file to write: only the
     // pending markers are settled.
     for (const id of [...wbPendingIds]) if (!wbChapter(id)) await wbPendingClear(id);
-    let n = 0, failed = 0;
+    let n = 0, failed = 0, done = 0;
+    const total = folder ? wbBooks.reduce((sum, b) => sum + wbChaptersOf(b.id).length, 0) : 0;
     for (const book of wbBooks) {
       for (const ch of wbChaptersOf(book.id)) {
         if (!folder && !wbPendingIds.has(ch.id)) continue;
+        if (folder) wbSyncStep(t('syncStepWrite', { i: ++done, n: Math.max(total, done) }));
         const saved = await wbSaveMirror(book, ch);
         if (saved.path) n++;
         if (saved.failed) failed++;
@@ -1830,6 +1846,9 @@ async function syncNow(opts) {
     wbSay(parts.join(' ') || t('syncLocalOnly'), true);
   } finally {
     wbSyncBusy = false;
+    const el = document.getElementById('stat-wb');   // a press that stopped early
+    if (el && wbSyncStage && el.textContent === wbSyncStage) el.textContent = '';
+    wbSyncStage = '';
     paintCloud();
   }
 }

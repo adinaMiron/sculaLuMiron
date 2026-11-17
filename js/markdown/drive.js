@@ -599,6 +599,7 @@ async function cloudSync(interactive, opts) {
       if (ch.id === wbCurrentId) loadChapterIntoEditor(ch);
       await wbPendingMark(ch);          // so the markdown folder catches up too
       down++;
+      wbSyncStep(t('syncStepDrive', { up, down }));
     }
     const outChaps = [];
     for (const lc of wbChapters) {
@@ -617,6 +618,7 @@ async function cloudSync(interactive, opts) {
         if ((moved === 'shared' || movedBook) && driveId) await gsTrash(driveId);
         driveId = file.id;
         up++;
+        wbSyncStep(t('syncStepDrive', { up, down }));
       }
       outChaps.push({ id: lc.id, workbookId: lc.workbookId, title: lc.title, file: lc.file,
                       created: lc.created || 0, updated: lc.updated || 0, order: lc.order || 0,
@@ -672,6 +674,13 @@ function paintCloud() {
   }
   const where = document.getElementById('wb-cloud-where');
   if (!where) return;
+  // A ☁ press at work, or its outcome for a moment after (wbSyncStep,
+  // workbooks.js): on a phone this line is the only progress in view.
+  if (wbSyncStage) {
+    where.classList.remove('warn');
+    where.textContent = wbSyncStage;
+    return;
+  }
   const stale = on && !gsLive();
   where.classList.toggle('warn', stale);
   const msg = !on ? t('cloudOff')
