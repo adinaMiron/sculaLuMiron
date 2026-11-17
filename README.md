@@ -64,12 +64,37 @@ Deeper references live in [`docs/`](docs/) and [`HANDOFF.md`](HANDOFF.md).
 This guide brings together the Help panels in the pages. The interface can be
 switched between Romanian and English; the guides below use the English labels.
 
-**Jump to:** [Markdown editor](#markdown-editor-indexhtml) ·
+**Jump to:** [NAS sync](#nas-sync-every-page) ·
+[Markdown editor](#markdown-editor-indexhtml) ·
 [Voice notebook](#voice-notebook-voicehtml) ·
 [Image Marker](#image-marker-editorhtml) ·
 [Calendar](#calendar-calendarhtml) · [Kanban](#kanban-kanbanhtml) ·
 [Transfer](#transfer-transferhtml) · [Map](#map-maphtml) ·
 [Recipes](#recipes-recipeshtml).
+
+### NAS sync (every page)
+
+The **NAS** button in the top bar of every page keeps your work in step with
+a folder on your own NAS in the home network — instead of Google Drive, or
+beside it. Setting it up (connecting the share on Linux, Windows, macOS and
+Android, choosing the folder, Chrome's "Allow on every visit") is in
+[`docs/NAS-SETUP.md`](docs/NAS-SETUP.md).
+
+- A web page cannot open an `smb://` address: your system connects to the
+  NAS and you choose the folder once per device. The app never asks for or
+  keeps a password and sends nothing over the network itself.
+- **At home** — the folder answers — chapters and calendar events are brought
+  in step in both directions, and every file a page saves is also written
+  into that page's subfolder on the NAS.
+- **Away from home** everything stays on the device. Saved files wait in a
+  queue (the button shows how many) and go to the NAS the next time a page is
+  open at home.
+- The button shows the state: `NAS` off · `◌` away · `●` at home · `↻` syncing
+  · `✓` in step · `⚠` one click needed to reopen the folder · `✕` error. Its
+  sheet lists the waiting files and says what this device can do.
+- Nothing on the NAS is erased: what a sync deletes or replaces is moved into
+  `.scula-trash/` in the NAS folder. When a chapter was changed on two devices
+  before they met, both texts are kept.
 
 ### Markdown editor (`index.html`)
 
@@ -87,6 +112,11 @@ switched between Romanian and English; the guides below use the English labels.
   then writes all chapters back. **Connect Google** links the account and
   syncs; the same button then reads **Disconnect Google**. Drive sync needs
   the page opened over HTTP(S), not `file://`.
+- With a [NAS folder](#nas-sync-every-page) chosen, **Sync now** also brings
+  the chapters and the NAS in step and takes in folders and `.md`/`.txt` files
+  copied into its `markdown/` folder by hand. The same sync runs by itself
+  when the page opens at home, when you come home and after **Save to
+  workbook**; the row under the top bar shows the NAS state beside Drive's.
 - **From Drive…** (shown while an account is linked) brings in folders and
   `.md` files put into the "Scula Markdown" Drive folder by hand: they are
   chosen in Google's own file window, so the page is given access to those
@@ -285,6 +315,9 @@ switched between Romanian and English; the guides below use the English labels.
 - Markdown `@date` markers reach Calendar from the editor's 📅 **Push dates**
   action or <kbd>Ctrl+Alt+D</kbd>. Re-syncing updates the event title and date
   without making a duplicate.
+- With a [NAS folder](#nas-sync-every-page) chosen, events follow it in both
+  directions from whichever page is open at home — a deleted event is deleted
+  on the other devices too, and the newest edit of an event wins.
 
 | Shortcut | Action |
 |---|---|
@@ -303,6 +336,11 @@ states, and open a task's source line. Use `start@YYYY-MM-DD` and
 `end@YYYY-MM-DD` in a task to give it a start or due date. Task states use the
 Markdown forms `- [ ]`, `- [ ] ~inwork`, `- [ ] ~onhold`, `- [ ] ~blocked` and
 `- [x]`.
+
+The board changes the chapters themselves. With a
+[NAS folder](#nas-sync-every-page) chosen, a moved card reaches the NAS the
+next time the Markdown editor is open at home. This page has no Help panel
+of its own; the **NAS** button and its sheet work here as on every page.
 
 ### Transfer (`transfer.html`)
 

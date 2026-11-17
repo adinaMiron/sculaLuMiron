@@ -324,7 +324,9 @@ async function cloudTombstone(id) {
    counterpart of wbAdoptFromFolder(). drive.file shows this page only the
    files it made itself and the ones chosen for it in Google's Picker
    (cloudPick), so that is what can be found there. */
-function gsValidateManifest(man) {
+// `nas`: the same checks for the NAS manifest (js/markdown/nassync.js), whose
+// records are found by folder and file name and carry no Drive id.
+function gsValidateManifest(man, nas) {
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   const stamp = value => Number.isFinite(value) && value >= 0;
   const strings = (record, fields) => fields.every(field => typeof record[field] === 'string');
@@ -333,18 +335,19 @@ function gsValidateManifest(man) {
     && value.id && !ids.has(value.id) && stamp(value.updated)
     && (value.created === undefined || stamp(value.created))
     && (value.order === undefined || Number.isFinite(value.order));
-  const invalid = () => { throw new Error('Invalid Drive manifest'); };
+  const invalid = () => { throw new Error(nas ? 'Invalid NAS manifest' : 'Invalid Drive manifest'); };
+  const driveId = nas ? [] : ['driveId'];
   if (!object(man)) invalid();
-  if (man.v !== 1) throw new Error('Unsupported Drive manifest version');
+  if (man.v !== 1) throw new Error(nas ? 'Unsupported NAS manifest version' : 'Unsupported Drive manifest version');
   if (!Array.isArray(man.books) || !Array.isArray(man.chapters) || !object(man.deleted)
       || (man.updated !== undefined && !stamp(man.updated))) invalid();
   for (const book of man.books) {
-    if (!record(book, ['id', 'name', 'folder', 'driveId']) || !book.driveId || !book.folder) invalid();
+    if (!record(book, ['id', 'name', 'folder', ...driveId]) || (!nas && !book.driveId) || !book.folder) invalid();
     ids.add(book.id); books.add(book.id);
   }
   for (const chapter of man.chapters) {
-    if (!record(chapter, ['id', 'workbookId', 'title', 'file', 'driveId'])
-        || !books.has(chapter.workbookId) || !chapter.file || !chapter.driveId) invalid();
+    if (!record(chapter, ['id', 'workbookId', 'title', 'file', ...driveId])
+        || !books.has(chapter.workbookId) || !chapter.file || (!nas && !chapter.driveId)) invalid();
     ids.add(chapter.id);
   }
   if (!Object.values(man.deleted).every(stamp)) invalid();
@@ -352,7 +355,9 @@ function gsValidateManifest(man) {
 }
 
 async function cloudSync(interactive, opts) {
-  if (gsBusy) return null;
+  // One pass at a time in this tab — a NAS pass (nassync.js) rewrites the
+  // same workbook and chapter lists.
+  if (gsBusy || (typeof nasBusy !== 'undefined' && nasBusy)) return null;
   if (location.protocol === 'file:') { if (interactive) ScuLaFolder.toast(t('cloudNoFile')); return null; }
   if (!interactive && !gsLive()) { paintCloud(); return null; }
 
@@ -687,6 +692,8 @@ function paintCloud() {
   } else {
     where.textContent = msg;
   }
+  // The NAS state stands in the same element, after Drive's — nassync.js.
+  if (typeof nasPaint === 'function') nasPaint();
 }
 
 // A bare time reads as "just now". A stamp from another day has to say which,

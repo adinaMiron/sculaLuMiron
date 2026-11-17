@@ -236,7 +236,7 @@ async function welcomeCloud(yes) {
 
 setView('source');
 applyResponsiveDefaults();
-loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); welcomeMaybe(); }, cloudBoot);   // § O: the tree first, then Drive
+loadWorkbooks().then(async () => { await openKanbanTaskLink(); cloudBoot(); nasBoot(); welcomeMaybe(); }, cloudBoot);   // § O: the tree first, then Drive and the NAS folder
 initToolbarCollapse();
 initWbPanelResize();
 initWbPanelDrag();

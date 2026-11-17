@@ -123,7 +123,7 @@ const I18N = {
     workbooksBtn:"📓 Caiete", workbooksTip:"Caiete (Ctrl+2)", workbooksTitle:"Caiete",
     newWorkbookBtn:"＋ Caiet nou",
     syncNowBtn:"☁ Sincronizează acum",
-    syncNowTip:"Salvează tot ce s-a modificat și sincronizează: aduce caietele și capitolele noi din dosarul markdown și din Google Drive (dacă ai conectat un cont), apoi scrie capitolele în amândouă (Ctrl+Alt+S)",
+    syncNowTip:"Salvează tot ce s-a modificat și sincronizează: aduce caietele și capitolele noi din dosarul markdown, din Google Drive (dacă ai conectat un cont) și de pe NAS (dacă ai ales un dosar acolo), apoi scrie capitolele peste tot (Ctrl+Alt+S)",
     syncLocalOnly:"Capitolele sunt salvate doar în acest browser. Alege un dosar cu 📁 sau conectează contul Google ca să ai o copie și în altă parte.",
     saveToWorkbookBtn:"📓 Salvează capitolul în caiet", saveToWorkbookTip:"Salvează capitolul în caiet și sincronizează cu Google Drive dacă ai conectat un cont (Ctrl+S)",
     wbEmpty:"Niciun caiet încă. Apasă „Caiet nou” ca să începi.",
@@ -189,6 +189,38 @@ const I18N = {
     cloudNothing:"Sincronizat — nimic de schimbat.",
     cloudSkipped:"Google Drive nu a fost conectat — nimic adus din cont.",
     cloudError:m=>`Google Drive: ${m}`,
+    /* ── NAS: capitolele (js/markdown/nassync.js, docs/tasks/nas-sync/) ── */
+    nasDone:r=>`NAS: ${r.up} trimise, ${r.down} primite${r.gone?`, ${r.gone} mutate în .scula-trash`:''}.`,
+    nasNothing:"NAS: nimic de schimbat.",
+    nasAdopted:r=>`Găsite pe NAS: ${r.books} caiet${r.books===1?'':'e'}, ${r.chapters} capitol${r.chapters===1?'':'e'}.`,
+    nasCopies:n=>n===1?"Conflict: s-a făcut o copie — textul celălalt este păstrat într-un capitol separat, cu dispozitivul și data în titlu.":`Conflict: s-au făcut ${n} copii — textele celelalte sunt păstrate în capitole separate, cu dispozitivul și data în titlu.`,
+    nasConflictTitle:c=>`${c.title} (conflict ${c.device} ${c.date})`,
+    nasLocked:"NAS: alt dispozitiv sincronizează chiar acum. Se încearcă din nou în scurt timp.",
+    nasAway:"NAS: nu răspunde acum — capitolele rămân pe acest dispozitiv până ajungi acasă.",
+    nasSyncing:"NAS: o sincronizare este deja în curs.",
+    nasError:m=>`NAS: ${m}`,
+    nasBadManifest:"indexul capitolelor de pe NAS (markdown/.scula-index.json) nu poate fi citit sau nu este valid. Nimic nu a fost schimbat.",
+    nasNewerManifest:"indexul capitolelor de pe NAS a fost scris de o versiune mai nouă a aplicației. Actualizează aplicația pe acest dispozitiv.",
+    nasChanged:"alt dispozitiv continuă să sincronizeze în același timp. Nimic nu s-a pierdut; se încearcă din nou în scurt timp.",
+    nasLost:"dosarul NAS nu a mai răspuns în timpul sincronizării. Nimic nu a fost șters; încearcă din nou acasă.",
+    nasWriteFailed:"un fișier nu a putut fi scris pe NAS. Încearcă din nou.",
+    nasBrowserFailed:n=>`un fișier din dosarul NAS nu a putut fi citit sau scris chiar acum (${n}). Nimic nu a fost șters; încearcă din nou peste un minut.`,
+    nasPullConflict:"capitol modificat în timp ce era adus de pe NAS. Versiunea de pe NAS este păstrată într-un capitol separat cu «conflict» în titlu. Sincronizarea s-a oprit; modificările locale sunt păstrate.",
+    /* starea NAS din rândul Salvează/Sincronizează — nasPaint() */
+    nasRowAway:"NAS ◌ departe",
+    nasRowAwayTip:"Dosarul NAS nu răspunde: nu ești acasă. Capitolele rămân pe acest dispozitiv și se sincronizează când ajungi acasă.",
+    nasRowHome:"NAS ● acasă",
+    nasRowHomeTip:"Dosarul NAS răspunde. Capitolele nu au fost încă sincronizate în această vizită.",
+    nasRowSync:"NAS ↻ se sincronizează…",
+    nasRowSyncTip:"Capitolele se sincronizează cu dosarul NAS.",
+    nasRowOk:h=>`NAS ✓ în pas la ${h}`,
+    nasRowOkTip:"Capitolele de aici și cele din dosarul NAS sunt la fel.",
+    nasRowConflict:"NAS ⚠ conflict — copie păstrată",
+    nasRowConflictTip:"Un capitol a fost schimbat și aici, și pe NAS. Textul mai nou a rămas capitolul; celălalt este într-un capitol separat, cu dispozitivul și data în titlu.",
+    nasRowError:"NAS ✕ eroare",
+    nasRowErrorTip:"Ultima sincronizare cu NAS-ul s-a oprit. Apasă pe ☁ pentru a încerca din nou.",
+    nasRowAsk:"NAS ⚠ apasă NAS",
+    nasRowAskTip:"Browserul cere din nou permisiunea pentru dosarul NAS: apasă butonul NAS din meniu.",
     cloudNoFile:"Sincronizarea nu merge cu pagina deschisă direct de pe disc (file://). Deschide-o prin http(s) — de pe site, de exemplu — și încearcă din nou.",
     cloudForgetAsk:"Uiți conexiunea cu contul Google? Capitolele rămân și aici, și în Drive.",
     cloudForgot:"Cont Google deconectat.",
@@ -382,19 +414,26 @@ const I18N = {
       <h3>Dosarul de pe dispozitiv și sincronizarea cu norul</h3>
       <p>Cea mai importantă parte a paginii: unde ajung de fapt fișierele și cum rămân la fel pe toate dispozitivele.</p>
       <ul>
-        <li>Butonul <b>📁</b> din bara de sus (sau „📁 Alege dosar…” din panoul Caiete) alege dosarul de pe disc unde se scriu caietele — pe calculator, un dosar adevărat; pe telefon, fișierele trec prin foaia de partajare a sistemului, pentru că niciun browser de telefon nu oferă o alegere de dosar. Fără un dosar ales, ce scrii rămâne doar în acest browser (localStorage) și se pierde dacă se șterg datele browserului.</li>
+        <li>Butonul <b>📁</b> din bara de sus (sau „📁 Alege dosar…” din panoul Caiete) alege dosarul de pe disc unde se scriu caietele — pe calculator, un dosar adevărat; pe un telefon al cărui browser nu oferă o alegere de dosar (iPhone), fișierele trec prin foaia de partajare a sistemului. Fără un dosar ales, ce scrii rămâne doar în acest browser (localStorage) și se pierde dacă se șterg datele browserului.</li>
         <li><b>🔗 Conectează Google</b>, în rândul de sub bara de sus, leagă contul Google de acest dispozitiv; după conectare același buton devine „⏏ Deconectează Google” și desface legătura. Capitolele merg în Google Drive — câte un fișier pentru fiecare capitol, într-un folder propriu. Funcționează doar cu pagina deschisă prin HTTP(S), nu direct ca fișier local.</li>
-        <li><b>☁ Sincronizează acum</b> (<kbd>Ctrl+Alt+S</kbd>), lângă „Salvează capitolul în caiet”, e cel mai important buton din pagină: salvează tot ce s-a modificat, citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive dacă ai conectat un cont, apoi scrie toate capitolele în dosar și în Drive. Așa ajung pe un dispozitiv nou caietele scrise pe altul. Ce ai copiat în dosar e preluat și în clipa în care alegi dosarul.</li>
+        <li><b>☁ Sincronizează acum</b> (<kbd>Ctrl+Alt+S</kbd>), lângă „Salvează capitolul în caiet”, e cel mai important buton din pagină: salvează tot ce s-a modificat, citește dosarul de pe disc după caiete sau capitole adăugate acolo de mână (un folder nou devine caiet, un fișier .md nou devine capitol), aduce ce e nou din Google Drive dacă ai conectat un cont și de pe NAS dacă ai ales un dosar acolo (butonul NAS), apoi scrie toate capitolele în dosar, în Drive și pe NAS. Așa ajung pe un dispozitiv nou caietele scrise pe altul. Ce ai copiat în dosar e preluat și în clipa în care alegi dosarul.</li>
         <li><b>📥 Din Drive…</b>, în același rând cu „☁ Sincronizează acum” (apare doar la prima conectare a contului în acest browser; după prima sincronizare nu mai apare la vizitele următoare), aduce ce ai pus de mână în dosarul „Scula Markdown” din Google Drive. Google îi arată paginii doar fișierele create de ea și pe cele alese de tine, așa că se deschide fereastra Google: alege dosarul nou, apoi — în a doua fereastră, deschisă în el — fișierele .md sau .txt (<kbd>Ctrl+A</kbd> le ia pe toate); pentru un fișier pus într-un caiet existent, deschide dosarul caietului și alege fișierul. După aceea pornește singură sincronizarea: dosarul devine caiet, fișierele devin capitole. Pagina primește acces doar la ce ai ales, nu la restul Drive-ului, iar ce ai ales o dată rămâne văzut și la sincronizările următoare.</li>
         <li><b>📥 Tot din Drive</b> apare doar până la prima sincronizare cu Google Drive pe acest dispozitiv (și înainte de a conecta contul, pe care îl conectează singur). Aduce totul din „Scula Markdown” fără ferestre de ales: fiecare dosar aflat direct în el devine caiet, fiecare fișier .md sau .txt din acele dosare devine capitol. Prima dată Google cere acces la tot Drive-ul (poate apărea un avertisment de aplicație neverificată); accesul rămâne dat, așa că ce modifici și salvezi aici ajunge înapoi în aceleași fișiere din Drive. Când un fișier există și în dosarul markdown de pe calculator, câștigă versiunea mai nouă, iar dosarul local primește și el capitolele aduse. Dosarele mai adânci rămân neatinse. „Deconectează” retrage și acest acces și face butonul să apară din nou.</li>
         <li>La prima pornire pe un dispozitiv nou, o fereastră cere întâi dosarul, apoi întreabă dacă aduci datele din cloud — răspunde „Da” ca să tragi aici tot ce ai scris pe alt dispozitiv.</li>
+      </ul>
+      <h3 id="help-nas">Butonul NAS</h3>
+      <p>Butonul <b>NAS</b> din bara de sus ține ce lucrezi la fel cu un dosar de pe NAS-ul tău de acasă, în locul unui cont în cloud sau pe lângă el. Sistemul se conectează la NAS; în foaia butonului alegi dosarul o singură dată („Alege dosarul de pe NAS”). Aplicația nu cere și nu păstrează nicio parolă.</p>
+      <ul>
+        <li><b>Din pagina asta:</b> caietele și capitolele merg în ambele sensuri — singure când pagina se deschide acasă, când ajungi acasă și după „Salvează capitolul în caiet”, iar la „☁ Sincronizează acum” sunt preluate și dosarele și fișierele .md sau .txt copiate de mână în dosarul <code>markdown</code> de pe NAS. Un capitol schimbat pe două dispozitive își păstrează ambele texte (cel mai vechi devine un capitol „conflict”), iar ce se șterge sau se înlocuiește pe NAS este mutat în <code>.scula-trash</code>, nu șters. Datele trimise în calendar cu 📅 și fișierele exportate ajung și ele pe NAS. Rândul de sub bara de sus arată starea NAS-ului lângă cea a Google Drive.</li>
+        <li><b>Departe de casă</b> totul rămâne pe acest dispozitiv: capitolele și evenimentele se sincronizează data viitoare când pagina e deschisă acasă, iar fișierele exportate așteaptă (butonul arată câte) și pleacă singure spre NAS.</li>
+        <li>Butonul arată starea: ◌ nu ești acasă, ● acasă, ↻ se sincronizează, ✓ sincronizat, ⚠ e nevoie de un clic ca să redeschizi dosarul, ✕ eroare. Foaia lui arată fișierele care mai așteaptă și ce poate face acest dispozitiv.</li>
       </ul>
       <h3>Caiete și capitole</h3>
       <ul>
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus, apoi sincronizează cu Google Drive dacă ai conectat un cont.</li>
-        <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown și din Google Drive și scrie toate capitolele înapoi. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
+        <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown, din Google Drive și de pe NAS și scrie toate capitolele înapoi. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
         <li>„🔗 Conectează Google” leagă contul Google și sincronizează pe loc; „⏏ Deconectează Google” desface legătura. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
         <li>Un caiet cu „TODO” în nume capătă un buton ☑ care arată doar capitolele cu o sarcină nebifată; „▣ Doar sarcini” din bara de instrumente face același lucru pentru toate caietele, indiferent de nume, și arată în capitolul deschis doar liniile „- [ ]” nebifate — nu sarcinile terminate, nu restul textului.</li>
       </ul>
@@ -623,7 +662,7 @@ const I18N = {
     workbooksBtn:"📓 Workbooks", workbooksTip:"Workbooks (Ctrl+2)", workbooksTitle:"Workbooks",
     newWorkbookBtn:"＋ New workbook",
     syncNowBtn:"☁ Sync now",
-    syncNowTip:"Save every modified chapter and sync: take in new workbooks and chapters from the markdown folder and from Google Drive (when an account is connected), then write the chapters to both (Ctrl+Alt+S)",
+    syncNowTip:"Save every modified chapter and sync: take in new workbooks and chapters from the markdown folder, from Google Drive (when an account is connected) and from the NAS (when a folder is chosen there), then write the chapters to all of them (Ctrl+Alt+S)",
     syncLocalOnly:"The chapters are saved in this browser only. Pick a folder with 📁 or connect a Google account to keep a copy elsewhere.",
     saveToWorkbookBtn:"📓 Save to workbook", saveToWorkbookTip:"Save this chapter into a workbook and sync with Google Drive if an account is connected (Ctrl+S)",
     wbEmpty:"No workbooks yet. Click “New workbook” to start one.",
@@ -689,6 +728,38 @@ const I18N = {
     cloudNothing:"Synced — nothing to change.",
     cloudSkipped:"Google Drive not connected — nothing brought from the account.",
     cloudError:m=>`Google Drive: ${m}`,
+    /* ── NAS: the chapters (js/markdown/nassync.js, docs/tasks/nas-sync/) ── */
+    nasDone:r=>`NAS: ${r.up} sent, ${r.down} received${r.gone?`, ${r.gone} moved to .scula-trash`:''}.`,
+    nasNothing:"NAS: nothing to change.",
+    nasAdopted:r=>`Found on the NAS: ${r.books} workbook${r.books===1?'':'s'}, ${r.chapters} chapter${r.chapters===1?'':'s'}.`,
+    nasCopies:n=>n===1?"Conflict: a copy was made — the other text is kept in a separate chapter named with the device and the date.":`Conflict: ${n} copies were made — the other texts are kept in separate chapters named with the device and the date.`,
+    nasConflictTitle:c=>`${c.title} (conflict ${c.device} ${c.date})`,
+    nasLocked:"NAS: another device is syncing right now. It will be tried again shortly.",
+    nasAway:"NAS: not answering now — the chapters stay on this device until you are home.",
+    nasSyncing:"NAS: a sync is already running.",
+    nasError:m=>`NAS: ${m}`,
+    nasBadManifest:"the chapter index on the NAS (markdown/.scula-index.json) cannot be read or is not valid. Nothing was changed.",
+    nasNewerManifest:"the chapter index on the NAS was written by a newer version of the app. Update the app on this device.",
+    nasChanged:"another device keeps syncing at the same moment. Nothing was lost; it will be tried again shortly.",
+    nasLost:"the NAS folder stopped answering during the sync. Nothing was deleted; try again at home.",
+    nasWriteFailed:"a file could not be written to the NAS. Try again.",
+    nasBrowserFailed:n=>`a file in the NAS folder could not be read or written just now (${n}). Nothing was deleted; try again in a minute.`,
+    nasPullConflict:"chapter changed while it was being brought from the NAS. The NAS version is kept in a separate chapter with 'conflict' in its title. Sync stopped; local edits are kept.",
+    /* the NAS state in the save/sync row — nasPaint() */
+    nasRowAway:"NAS ◌ away",
+    nasRowAwayTip:"The NAS folder is not answering: you are not at home. The chapters stay on this device and sync when you are home.",
+    nasRowHome:"NAS ● home",
+    nasRowHomeTip:"The NAS folder answers. The chapters have not been synced in this visit yet.",
+    nasRowSync:"NAS ↻ syncing…",
+    nasRowSyncTip:"The chapters are being synced with the NAS folder.",
+    nasRowOk:h=>`NAS ✓ in step at ${h}`,
+    nasRowOkTip:"The chapters here and the ones in the NAS folder are the same.",
+    nasRowConflict:"NAS ⚠ conflict — copy kept",
+    nasRowConflictTip:"A chapter was changed both here and on the NAS. The newer text stayed the chapter; the other is in a separate chapter named with the device and the date.",
+    nasRowError:"NAS ✕ error",
+    nasRowErrorTip:"The last sync with the NAS stopped. Press ☁ to try again.",
+    nasRowAsk:"NAS ⚠ press NAS",
+    nasRowAskTip:"The browser asks again for permission to the NAS folder: press the NAS button in the menu.",
     cloudNoFile:"Sync can't work when the page is opened straight off disk (file://). Serve it over http(s) — from the site, say — and try again.",
     cloudForgetAsk:"Forget the Google account connection? The chapters stay both here and in Drive.",
     cloudForgot:"Google account disconnected.",
@@ -882,19 +953,26 @@ const I18N = {
       <h3>The folder on your device, and syncing with the cloud</h3>
       <p>The single most important part of this page: where your files actually live, and how they stay the same across every device.</p>
       <ul>
-        <li>The <b>📁</b> button in the top bar (or "📁 Set folder…" in the Workbooks panel) picks the folder on disk where workbooks are written — a real folder on a computer; on a phone, files go through the system's share sheet instead, since no mobile browser offers a folder picker. Without a folder set, what you write stays only in this browser (localStorage) and is lost if the browser's data is cleared.</li>
+        <li>The <b>📁</b> button in the top bar (or "📁 Set folder…" in the Workbooks panel) picks the folder on disk where workbooks are written — a real folder on a computer; on a phone whose browser offers no folder picker (an iPhone), files go through the system's share sheet instead. Without a folder set, what you write stays only in this browser (localStorage) and is lost if the browser's data is cleared.</li>
         <li><b>🔗 Connect Google</b>, in the row under the top bar, links your Google account to this device; once connected the same button reads "⏏ Disconnect Google" and unlinks it. Chapters go to Google Drive — one file per chapter, in its own folder. Only works with the page open over HTTP(S), not opened directly as a local file.</li>
-        <li><b>☁ Sync now</b> (<kbd>Ctrl+Alt+S</kbd>), beside "Save to workbook", is the single most important button on the page: it saves everything modified, reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive if an account is connected, then writes every chapter to the folder and to Drive. This is how workbooks written on one device reach another. What you copied into the folder is also taken in the moment you pick the folder.</li>
+        <li><b>☁ Sync now</b> (<kbd>Ctrl+Alt+S</kbd>), beside "Save to workbook", is the single most important button on the page: it saves everything modified, reads the folder on disk for workbooks or chapters added there by hand (a new folder becomes a workbook, a new .md file becomes a chapter), pulls in whatever is new from Google Drive if an account is connected and from your NAS if a folder is chosen there (the NAS button), then writes every chapter to the folder, to Drive and to the NAS. This is how workbooks written on one device reach another. What you copied into the folder is also taken in the moment you pick the folder.</li>
         <li><b>📥 From Drive…</b>, in the same row as "☁ Sync now" (shown only the first time an account is connected in this browser; after the first sync it is not shown on later visits), brings in what you put into the "Scula Markdown" folder in Google Drive by hand. Google shows this page only the files it created and the ones you choose for it, so Google's own window opens: choose the new folder, then — in the second window, opened inside it — the .md or .txt files (<kbd>Ctrl+A</kbd> takes them all); for a file dropped into an existing workbook, open that workbook's folder and choose the file. The sync then runs by itself: the folder becomes a workbook, the files become chapters. The page gets access only to what you chose, not to the rest of your Drive, and what was chosen once stays visible to every later sync.</li>
         <li><b>📥 Everything from Drive</b> is shown only until the first sync with Google Drive on this device (also before an account is connected — it connects one itself). It brings in all of "Scula Markdown" with no windows to choose in: every folder directly inside it becomes a workbook, every .md or .txt file in those folders becomes a chapter. The first time, Google asks for access to your whole Drive (an unverified-app warning may appear); the access stays granted, so what you change and save here goes back to those same files in Drive. When a file also exists in the markdown folder on your computer, the newer version wins, and the local folder receives the chapters brought in too. Deeper folders are left alone. "Disconnect" withdraws this access as well and brings the button back.</li>
         <li>The first time the page runs on a new device, a window asks for the folder first, then asks whether to bring your data from the cloud — answer "Yes" to pull in everything written on another device.</li>
+      </ul>
+      <h3 id="help-nas">The NAS button</h3>
+      <p>The <b>NAS</b> button in the top bar keeps your work in step with a folder on your own NAS at home, instead of a cloud account or beside one. Your system connects to the NAS; in the button's sheet you choose the folder once ("Choose the NAS folder"). The app never asks for or keeps a password.</p>
+      <ul>
+        <li><b>From this page:</b> workbooks and chapters travel both ways — by themselves when the page opens at home, when you come home and after "Save to workbook"; "☁ Sync now" also takes in folders and .md or .txt files copied by hand into the <code>markdown</code> folder on the NAS. A chapter changed on two devices keeps both texts (the older one becomes a "conflict" chapter), and what is deleted or replaced on the NAS is moved to <code>.scula-trash</code>, not erased. Dates pushed to the calendar with 📅 and exported files reach the NAS too. The row under the top bar shows the NAS state beside Google Drive's.</li>
+        <li><b>Away from home</b> everything stays on this device: chapters and events sync the next time the page is open at home, and exported files wait (the button shows how many) and go to the NAS by themselves.</li>
+        <li>The button shows the state: ◌ away, ● at home, ↻ syncing, ✓ in step, ⚠ one click needed to reopen the folder, ✕ error. Its sheet lists the files still waiting and says what this device can do.</li>
       </ul>
       <h3>Workbooks and chapters</h3>
       <ul>
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top, then syncs with Google Drive if an account is connected.</li>
-        <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder and from Google Drive, and writes every chapter back. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
+        <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder, from Google Drive and from the NAS, and writes every chapter back. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
         <li>"🔗 Connect Google" links your Google account and syncs right away; "⏏ Disconnect Google" unlinks it. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
         <li>A workbook named with "TODO" gets a ☑ button that shows only chapters with an open task; the toolbar's "▣ Tasks only" does the same across every workbook regardless of its name, and shows only the unchecked "- [ ]" lines of the open chapter — not finished tasks, not the rest of the text.</li>
       </ul>

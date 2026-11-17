@@ -607,8 +607,8 @@
        phone - the nav scrolls, but the toggle should still be visible. */
     #site-nav #navFolderBtn{ max-width:min(30vw,140px); }
   }
-  /* No phone or tablet browser has showDirectoryPicker, so on those devices
-     the button just names the fallback route (share/download) and a tap
+  /* Where the browser has no showDirectoryPicker (iOS; Chrome for Android
+     has one) the button just names the fallback route (share/download) and a tap
      opens the destination sheet instead of the picker - see the "supported()"
      branch in fBtn's click handler below. Kept visible (not hidden) so a
      phone still has a way to reach ScuLaFolder.chooser() from the nav. */
@@ -732,7 +732,7 @@
      ------------------------------------------------------------
      Pages never build their own <a download>; they call
      ScuLaFolder.save(name, blob) and this decides where the bytes go.
-     Three routes, in order of preference:
+     Three routes, in order of preference, and a fourth by choice:
 
        "folder"   desktop Chrome/Edge. One directory picked once via the
                   File System Access API, kept in IndexedDB (a directory
@@ -745,6 +745,15 @@
                   in any folder they like. No folder can be *remembered*
                   there - the OS picker owns that choice.
        "download" last resort, and always available.
+       "nas"      no folder chosen, NAS sync on (js/shared/nas.js) and
+                  the person asked for it: the file waits in that
+                  script's queue on the device and reaches the NAS at
+                  home. A queue that cannot take the file hands it to
+                  the route beneath, and the message says so.
+
+     While NAS sync is on, the first three routes also leave a copy in
+     that queue (nasCopy below) once the route has the bytes. The copy
+     never delays or fails a save.
 
      Byte-identical in all eight files (CLAUDE.md rule 2) - see
      docs/FEATURES.md "Saving files".
@@ -779,7 +788,7 @@
       tapToSave:function(n){ return "Fișierul „" + n + "” e gata."; },
       tapAction:"Salvează",
       sheetTitle:"Unde salvezi fișierele?",
-      sheetIntroMobile:"Pe telefon și tabletă niciun browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
+      sheetIntroMobile:"Acest browser nu poate ține minte un dosar. Prin „Salvează în Fișiere” alegi tu dosarul de fiecare dată - iar sistemul îl reține pe ultimul folosit.",
       sheetIntroDesktop:"Alege ce se întâmplă când salvezi.",
       optShare:"Salvează în Fișiere",
       optShareSub:"Deschide fereastra de partajare a sistemului: alegi dosarul pe care îl vrei.",
@@ -790,7 +799,13 @@
       optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
       sheetClose:"Închide",
       modeSetShare:"Fișierele merg către fereastra de partajare.",
-      modeSetDownload:"Fișierele se descarcă."
+      modeSetDownload:"Fișierele se descarcă.",
+      modeNas:"NAS",
+      optNas:"Păstrează pentru NAS",
+      optNasSub:"Fișierul rămâne pe acest dispozitiv și ajunge pe NAS când ești acasă.",
+      modeSetNas:"Fișierele rămân pe acest dispozitiv și ajung pe NAS acasă.",
+      nasKept:function(n){ return "Păstrat pe acest dispozitiv, ajunge pe NAS acasă: " + n; },
+      nasFailed:"Fișierul nu a putut fi păstrat pentru NAS."
     },
     en:{
       pickLabel:"Folder",
@@ -810,7 +825,7 @@
       tapToSave:function(n){ return "“" + n + "” is ready."; },
       tapAction:"Save",
       sheetTitle:"Where do saved files go?",
-      sheetIntroMobile:"On phones and tablets no browser can remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
+      sheetIntroMobile:"This browser cannot remember a folder. “Save to Files” lets you pick the folder yourself each time - and the system remembers the last one you used.",
       sheetIntroDesktop:"Choose what happens when you save.",
       optShare:"Save to Files",
       optShareSub:"Opens the system share sheet, where you pick any folder you like.",
@@ -821,7 +836,13 @@
       optFolderSub:"One folder for every page, remembered between visits.",
       sheetClose:"Close",
       modeSetShare:"Files now go to the share sheet.",
-      modeSetDownload:"Files now download."
+      modeSetDownload:"Files now download.",
+      modeNas:"NAS",
+      optNas:"Keep for the NAS",
+      optNasSub:"The file stays on this device and goes to the NAS when you are home.",
+      modeSetNas:"Files now stay on this device and go to the NAS at home.",
+      nasKept:function(n){ return "Kept on this device, goes to the NAS at home: " + n; },
+      nasFailed:"The file could not be kept for the NAS."
     }
   };
   function tx(k){ return (T[lang] || T.ro)[k]; }
@@ -829,7 +850,7 @@
   var fBtn = document.getElementById("navFolderBtn");
   var fName = document.getElementById("navFolderName");
   var root = null;          // FileSystemDirectoryHandle, desktop only
-  var mode = null;          // "share" | "download" | null (= pick for me)
+  var mode = null;          // "share" | "download" | "nas" | null (= pick for me)
   var toastEl = null, toastTimer = 0;
   var sheetEl = null;
 
@@ -846,8 +867,14 @@
     }catch(e){ return false; }
   }
 
-  function currentMode(){
+  // NAS sync is on when js/shared/nas.js remembers a NAS folder.
+  function nasOn(){ var N = window.ScuLaNas; return !!(N && N.queue && N.folder && N.folder()); }
+
+  // `plain` asks for the route beneath "nas": where the file goes when the
+  // queue is not wanted ({ nas:false }) or cannot take it.
+  function currentMode(plain){
     if(root) return "folder";
+    if(mode === "nas" && plain !== true && nasOn()) return "nas";
     if(mode === "share") return canShareFiles() ? "share" : "download";
     if(mode === "download") return "download";
     // Unset: on a device with no directory picker the share sheet is the
@@ -893,9 +920,10 @@
     // the tap opens the picker. Where there is no picker the button names the
     // route a save will actually take, because that is what the tap changes.
     fName.textContent = m === "folder" ? root.name
+      : m === "nas" ? tx("modeNas")
       : (supported() ? tx("pickLabel")
       : (m === "share" ? tx("modeShare") : tx("modeDownload")));
-    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
+    fBtn.classList.toggle("set", m === "folder" || m === "nas" || (!supported() && m === "share"));
   }
 
   function idb(){
@@ -979,7 +1007,7 @@
     mode = m;
     return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
       announce();
-      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
+      toast(m === "share" ? tx("modeSetShare") : m === "nas" ? tx("modeSetNas") : tx("modeSetDownload"));
       return m;
     });
   }
@@ -1022,6 +1050,10 @@
     if(supported()){
       card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
         function(){ closeSheet(); pick(); }));
+    }
+    if(!root && nasOn()){
+      card.appendChild(option(tx("optNas"), tx("optNasSub"), m === "nas", true,
+        function(){ closeSheet(); setMode("nas"); }));
     }
     var shareOk = canShareFiles();
     card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
@@ -1136,6 +1168,24 @@
     });
   }
 
+  /* ---- NAS sync (js/shared/nas.js) ----
+     The copy for the NAS is made after the route has the bytes; nothing
+     waits for it. On the "nas" route the queue is the destination. */
+  function nasCopy(folders, name, body){
+    var N = window.ScuLaNas;
+    if(N && N.queue) N.queue(subdir(), folders, name, body, { copy:true });
+  }
+  function nasKept(filename, folders, quiet){
+    return report({ saved:true, via:"nas", name:filename,
+                    path: subdir() + "/" + (folders.length ? folders.join("/") + "/" : "") + filename,
+                    message: tx("nasKept")(filename) }, quiet);
+  }
+  // The queue could not take the file: it went the ordinary way instead.
+  function nasFell(r, quiet){
+    if(r && r.message) r.message = tx("nasFailed") + " " + r.message;
+    return report(r, quiet);
+  }
+
   // The one call pages make. Always resolves. Read `message` to say what
   // happened in the app's own UI (null = say nothing), or leave `quiet` off
   // and the shared toast speaks.
@@ -1160,6 +1210,12 @@
       return save(filename,new Blob(chunks,{type:source.type}),opts);
     }
     if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
+    var plain=!!(opts && opts.nas===false);
+    if(currentMode(plain)==="nas"){
+      var kept=await window.ScuLaNas.queue(subdir(),folders,filename,source);
+      if(kept && kept.queued) return nasKept(filename,folders,quiet);
+      return nasFell(await saveStream(filename,source,Object.assign({},opts,{nas:false,quiet:true})),quiet);
+    }
     if(currentMode()!=="folder") return fallback();
     var d=await dir();
     if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
@@ -1177,21 +1233,34 @@
       await w.close();
     }catch(e){try{await w.abort();}catch(_){} throw e;}
     var path=root.name+"/"+subdir()+"/"+(folders.length?folders.join("/")+"/":"")+name;
+    if(!plain) fh.getFile().then(function(f){ nasCopy(folders,name,f); },function(){});
     return report({saved:true,via:"folder",name:name,path:path,message:tx("saved")(path)},quiet);
   }
 
   function save(filename, blob, opts){
     if(blob && !(blob instanceof Blob) && typeof blob.stream === "function") return saveStream(filename,blob,opts);
-    var quiet = !!(opts && opts.quiet);
+    var quiet = !!(opts && opts.quiet), plain = !!(opts && opts.nas === false);
     // Optional directories remain beneath this page's SUBDIR. On mobile,
     // callers include ownership in the filename; share/download stay flat.
     var folders = opts && opts.directories || [];
     if(!Array.isArray(folders) || folders.some(function(p){
       return typeof p !== "string" || !p || p === "." || p === ".." || /[\\/\x00-\x1f<>:"|?*]/.test(p) || /[. ]$/.test(p);
     })) return Promise.resolve({ saved:false, message:tx("failed"), via:"folder" });
-    var m = currentMode();
-    if(m === "share") return shareOut(filename, blob, quiet);
-    if(m !== "folder") return Promise.resolve(downloadResult(filename, blob, quiet));
+    // A save the person backed out of leaves no copy; { nas:false } asks for none.
+    function copied(r){
+      if(!plain && r && !r.cancelled) nasCopy(folders, r.saved && r.via === "folder" ? r.name : filename, blob);
+      return r;
+    }
+    var m = currentMode(plain);
+    if(m === "nas"){
+      return window.ScuLaNas.queue(subdir(), folders, filename, blob).then(function(kept){
+        if(kept && kept.queued) return nasKept(filename, folders, quiet);
+        return save(filename, blob, { quiet:true, nas:false, directories:folders })
+          .then(function(r){ return nasFell(r, quiet); });
+      });
+    }
+    if(m === "share") return shareOut(filename, blob, quiet).then(copied);
+    if(m !== "folder") return Promise.resolve(copied(downloadResult(filename, blob, quiet)));
     return dir().then(function(d){
       if(!d) return null;
       var nested = Promise.resolve(d);
@@ -1207,8 +1276,8 @@
         });
       });
     }); }).catch(function(){ return { failed:true }; }).then(function(r){
-      if(r && r.saved){ r.message = tx("saved")(r.path); return report(r, quiet); }
-      return downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : "");
+      if(r && r.saved){ r.message = tx("saved")(r.path); return copied(report(r, quiet)); }
+      return copied(downloadResult(filename, blob, quiet, r && r.failed ? tx("failed") : ""));
     });
   }
 
@@ -1216,7 +1285,7 @@
     idbGet(DB_KEY).catch(function(){ return null; }),
     idbGet(MODE_KEY).catch(function(){ return null; })
   ]).then(function(vals){
-    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
+    if(vals[1] === "share" || vals[1] === "download" || vals[1] === "nas") mode = vals[1];
     var h = vals[0];
     if(!h){ paintFolder(); return null; }
     return permitted(h, false).then(function(ok){
@@ -1233,6 +1302,8 @@
     // feature there. Everywhere else the picker does not exist, so offer the
     // routes that do.
     fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
+    // Whether NAS sync is on decides what the "nas" route names here.
+    window.addEventListener("scula-nas", paintFolder);
     fBtn.addEventListener("contextmenu", function(ev){
       ev.preventDefault();
       if(root && confirm(tx("clearAsk")(root.name))) forget();
@@ -1418,12 +1489,6 @@
         list.push(ev); lsWrite(list);
       });
   }
-  function dropRaw(id){
-    return tx(EV, "readwrite", function(s){ return s.delete(id); })
-      .catch(function(){
-      lsWrite(lsRead().filter(function(e){ return e.id !== id; }));
-      });
-  }
   function metaGet(k){
     return tx(META, "readonly", function(s){ return s.get(k); })
       .catch(function(){
@@ -1504,11 +1569,94 @@
     ev.updated = new Date().toISOString();
     return putRaw(ev).then(function(){ fire(); return ev; });
   }
-  function remove(id){ return dropRaw(id).then(function(){ fire(); }); }
+  function remove(id){ return bury([id]).then(function(){ fire(); }); }
+  // Brought in by hand (an import): as much "saved now" as put() is, so a
+  // sync does not put an older copy, or an earlier deletion, back over it.
   function putMany(list){
-    var chain = Promise.resolve();
-    list.forEach(function(ev){ chain = chain.then(function(){ return putRaw(ev); }); });
+    var chain = Promise.resolve(), now = new Date().toISOString();
+    list.forEach(function(ev){ ev.updated = now; chain = chain.then(function(){ return putRaw(ev); }); });
     return chain.then(function(){ fire(); return list.length; });
+  }
+
+/* ---- deletions, and what a sync exchanges (js/shared/nas.js) ----
+     A deleted event leaves a tombstone - { id: when } under "deleted" in
+     the meta store - so that the deletion reaches the other devices
+     instead of the event coming back from them. A tombstone is kept
+     GRAVE_MS, as the workbooks' are; an event saved after it outlives it. */
+  var GRAVES = "deleted", GRAVE_MS = 90 * MS_DAY;
+  function stamp(ev){ var n = Date.parse(ev && ev.updated); return n > 0 ? n : 0; }
+  // One read-modify-write over the events and the tombstones together, so
+  // that nothing saved meanwhile - here or in another tab - is overwritten
+  // by something older. run(events, graves) returns { put, drop, graves }.
+  function edit(run){
+    function work(have, g){
+      var live = {}, old = Date.now() - GRAVE_MS, k;
+      if(g && typeof g === "object") for(k in g) if(g[k] > old) live[k] = g[k];
+      return run(have || [], live);
+    }
+    return idb().then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction([EV, META], "readwrite"), out = null;
+        var evs = t.objectStore(EV), meta = t.objectStore(META), a = evs.getAll();
+        meta.get(GRAVES).onsuccess = function(e){
+          out = work(a.result, e.target.result);
+          out.drop.forEach(function(id){ evs.delete(id); });
+          out.put.forEach(function(ev){ evs.put(ev); });
+          meta.put(out.graves, GRAVES);
+        };
+        t.oncomplete = function(){ db.close(); res(out); };
+        t.onerror = t.onabort = function(){ db.close(); rej(t.error); };
+      });
+    }).catch(function(){
+      var g = null, gone = {};
+      try{ g = JSON.parse(localStorage.getItem("scula:cal:" + GRAVES) || "null"); }catch(e){}
+      var out = work(lsRead(), g);
+      out.drop.forEach(function(id){ gone[id] = 1; });
+      out.put.forEach(function(ev){ gone[ev.id] = 1; });
+      lsWrite(lsRead().filter(function(e){ return !gone[e.id]; }).concat(out.put));
+      try{ localStorage.setItem("scula:cal:" + GRAVES, JSON.stringify(out.graves)); }catch(e){}
+      return out;
+    });
+  }
+  // Deleted here. The tombstone is dated after the event's own stamp, so an
+  // event saved by a clock that ran ahead does not outlive its deletion.
+  function bury(ids){
+    return edit(function(have, g){
+      var now = Date.now(), at = {};
+      have.forEach(function(e){ at[e.id] = stamp(e); });
+      ids.forEach(function(id){ g[id] = Math.max(now, (at[id] || 0) + 1); });
+      return { put:[], drop:ids, graves:g };
+    });
+  }
+  // Another copy of the calendar taken in - { events, deleted }, which is
+  // also what this resolves (with no argument: what is here). Per id the
+  // newest `updated` wins; a tombstone removes what was not saved after it
+  // and is ended by what was. `took` and `lost` count what was replaced
+  // and removed here; the pages repaint through the change fan-out.
+  function mergeState(theirs){
+    var evs = (theirs && theirs.events) || [], dead = (theirs && theirs.deleted) || {};
+    return edit(function(have, g){
+      var mine = Object.create(null), by = Object.create(null), old = Date.now() - GRAVE_MS;
+      var put = [], drop = [], events = [], k;
+      have.forEach(function(e){ mine[e.id] = by[e.id] = e; });
+      for(k in dead) if(dead[k] > old && !(g[k] >= dead[k])) g[k] = dead[k];
+      evs.forEach(function(e){
+        var m = by[e.id], a = stamp(e), b = stamp(m);
+        // (The same stamp on two different texts: both devices pick the same one.)
+        if(!m || a > b || (a === b && JSON.stringify(e) > JSON.stringify(m))) by[e.id] = e;
+      });
+      for(k in g){
+        if(!by[k]) continue;
+        if(stamp(by[k]) >= g[k]) delete g[k];
+        else delete by[k];
+      }
+      for(k in by){ events.push(by[k]); if(by[k] !== mine[k]) put.push(by[k]); }
+      for(k in mine) if(!by[k]) drop.push(k);
+      return { put:put, drop:drop, graves:g, events:events };
+    }).then(function(r){
+      if(r.put.length || r.drop.length) fire();
+      return { events:r.events, deleted:r.graves, took:r.put.length, lost:r.drop.length };
+    });
   }
 
   // The hook page-scrapers use. Everything this source+ref owns is
@@ -1530,8 +1678,8 @@
         out.push(ev);
       });
     var gone = mine.filter(function(e){ return !keep[e.id]; });
-    var chain = Promise.resolve();
-    gone.forEach(function(e){ chain = chain.then(function(){ return dropRaw(e.id); }); });
+    // (What is gone leaves tombstones, or a sync would bring it back.)
+    var chain = gone.length ? bury(gone.map(function(e){ return e.id; })) : Promise.resolve();
     out.forEach(function(e){ chain = chain.then(function(){ return putRaw(e); }); });
       return chain.then(function(){
         fire();
@@ -1704,6 +1852,7 @@
     put: put,
     putMany: putMany,
     remove: remove,
+    mergeState: mergeState,
     make: make,
     priv: priv,
     syncSource: syncSource,
@@ -2462,6 +2611,13 @@ const I18N = {
         <li><b>.html</b> — o pagină de sine stătătoare, cu căutare și totaluri, bună de trimis pe mail sau de printat.</li>
       </ul>
       <p>Toate trec prin alegerea de folder din bara de sus (📁) — un folder pe calculator, ecranul de partajare pe telefon, sau o descărcare simplă.</p>
+      <h3 id="help-nas">Butonul NAS</h3>
+      <p>Butonul <b>NAS</b> din bara de sus ține ce lucrezi la fel cu un dosar de pe NAS-ul tău de acasă, în locul unui cont în cloud sau pe lângă el. Sistemul se conectează la NAS; în foaia butonului alegi dosarul o singură dată („Alege dosarul de pe NAS”). Aplicația nu cere și nu păstrează nicio parolă.</p>
+      <ul>
+        <li><b>Din pagina asta:</b> fiecare fișier salvat aici (.md, .json, .html) se scrie și în dosarul <code>retete</code> de pe NAS, fără să suprascrie nimic. Rețetele ținute în caiete călătoresc ca orice capitol. Evenimentele din calendar se sincronizează din orice pagină; capitolele, din pagina Markdown.</li>
+        <li><b>Departe de casă</b> fișierele salvate rămân pe acest dispozitiv și așteaptă (butonul arată câte); pleacă singure spre NAS data viitoare când o pagină e deschisă acasă.</li>
+        <li>Butonul arată starea: ◌ nu ești acasă, ● acasă, ↻ se sincronizează, ✓ sincronizat, ⚠ e nevoie de un clic ca să redeschizi dosarul, ✕ eroare. Foaia lui arată fișierele care mai așteaptă și ce poate face acest dispozitiv.</li>
+      </ul>
     `
   },
   en:{
@@ -2748,6 +2904,13 @@ const I18N = {
         <li><b>.html</b> — a self-contained page, with search and totals, good for emailing or printing.</li>
       </ul>
       <p>All of them go through the folder picker in the top bar (📁) — a folder on your computer, the phone's share sheet, or a plain download.</p>
+      <h3 id="help-nas">The NAS button</h3>
+      <p>The <b>NAS</b> button in the top bar keeps your work in step with a folder on your own NAS at home, instead of a cloud account or beside one. Your system connects to the NAS; in the button's sheet you choose the folder once ("Choose the NAS folder"). The app never asks for or keeps a password.</p>
+      <ul>
+        <li><b>From this page:</b> every file you save here (.md, .json, .html) is also written into the <code>retete</code> folder on the NAS, overwriting nothing. Recipes kept in workbooks travel as any chapter does. Calendar events sync from every page; chapters, from the Markdown page.</li>
+        <li><b>Away from home</b> saved files stay on this device and wait (the button shows how many); they go to the NAS by themselves the next time a page is open at home.</li>
+        <li>The button shows the state: ◌ away, ● at home, ↻ syncing, ✓ in step, ⚠ one click needed to reopen the folder, ✕ error. Its sheet lists the files still waiting and says what this device can do.</li>
+      </ul>
     `
   }
 };

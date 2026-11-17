@@ -1797,6 +1797,15 @@ async function syncNow(opts) {
       }
     }
 
+    // The NAS folder, when one is remembered (js/markdown/nassync.js). It
+    // does not depend on Google: either, both or neither may be in use. Like
+    // Drive's half of the press, it also takes in what was put there by hand.
+    let nasMsg = '';
+    if (typeof nasSync === 'function' && nasOn()) {
+      try { nasMsg = nasReport(await nasSync({ adopt: true })); }
+      catch (e) { nasMsg = t('nasError', (e && e.message) || String(e)); }
+    }
+
     // With a folder every chapter is written — that is what fills one that
     // was just chosen. Without one there is no file to write: only the
     // pending markers are settled.
@@ -1816,6 +1825,7 @@ async function syncNow(opts) {
     if (found.books || found.chapters) parts.push(t('wbAdopted', found));
     if (folder) parts.push(t(failed ? 'wbSyncedSome' : 'wbSynced', n));
     if (cloudMsg) parts.push(cloudMsg);
+    if (nasMsg) parts.push(nasMsg);
     if (opts && opts.note) parts.push(opts.note);
     wbSay(parts.join(' ') || t('syncLocalOnly'), true);
   } finally {
@@ -1917,6 +1927,7 @@ async function saveToWorkbook() {
     : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
+  if (typeof nasAfterSave === 'function') await nasAfterSave();   // and the NAS folder, at home
 }
 
 function openWorkbookModal() {
@@ -2039,4 +2050,5 @@ async function confirmSaveToWorkbook() {
     : saved.path ? t('wbSavedTo', saved.path) : t('wbSavedLocal'), true);
   renderWorkbooks();
   await cloudSyncAfterSave();
+  if (typeof nasAfterSave === 'function') await nasAfterSave();
 }

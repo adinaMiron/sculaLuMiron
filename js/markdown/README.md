@@ -28,6 +28,7 @@ behavior. All paths are relative, so opening `index.html` with `file://` works.
 | `keybar.js` | Phone/tablet key bar (Ctrl, Shift, Alt, `:` `-` `_`, arrows) that feeds the shortcuts in `events.js` |
 | `dictation.js` | Speech transcription into notes or the idea dialog |
 | `drive.js` | Google Drive authentication, merge and sync |
+| `nassync.js` | The chapter pass against a NAS folder (`nasSync`): the same merge as Drive's, over the file store of `js/shared/nas.js`, with conflict copies, adoption of hand-put files on ☁, a lock between devices, the runs nobody asked for (`nasAuto`) and the NAS state in the save/sync row (`nasPaint`) — loaded right after `drive.js`, whose tombstones and manifest checks it shares ([docs/tasks/nas-sync](../../docs/tasks/nas-sync/00-overview.md)) |
 | `startup.js` | Initial rendering, layout and workbook boot (after Drive is defined) |
 
 The shared navigation script (`ScuLaFolder`, `ScuLaCal`, `ScuLaGeo`) remains
