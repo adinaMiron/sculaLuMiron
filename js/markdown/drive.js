@@ -354,6 +354,41 @@ function gsValidateManifest(man, nas) {
   return man;
 }
 
+/* A newer version brought down by a pass (Drive's or the NAS's) becomes the
+   stored chapter — unless the chapter moved on here meanwhile: an autosave,
+   another tab, or typing in the editor. That text is newer than the one
+   brought down, so it stays and nothing is written; the next pass sends it.
+   Typing that lands between the check and the commit withdraws the version
+   again, so the editor's next save stands on the record it started from.
+   Resolves true when `ch` is now the stored chapter. Shared with nassync.js. */
+async function wbPullApply(id, ch, before, base, unchanged) {
+  let fresh = false;
+  await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+    const req = chapters.get(id);
+    req.onsuccess = () => {
+      fresh = unchanged() && wbChapterVersion(req.result) === base;
+      if (fresh) chapters.put(ch);
+    };
+    return req;
+  });
+  if (!fresh) return false;
+  wbChapterVersions.set(id, wbChapterVersion(ch));
+  if (unchanged()) return true;
+  const pulled = wbChapterVersion(ch);
+  let back = false;
+  await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
+    const req = chapters.get(id);
+    req.onsuccess = () => {
+      if (wbChapterVersion(req.result) !== pulled) return;    // already saved over: that save stands
+      if (before) chapters.put({ ...before }); else chapters.delete(id);
+      back = true;
+    };
+    return req;
+  });
+  if (back) { if (before) wbChapterVersions.set(id, base); else wbChapterVersions.delete(id); }
+  return false;
+}
+
 async function cloudSync(interactive, opts) {
   // One pass at a time in this tab — a NAS pass (nassync.js) rewrites the
   // same workbook and chapter lists.
@@ -543,7 +578,13 @@ async function cloudSync(interactive, opts) {
       }
     }
 
-    /* 4. chapters — the same rule, plus the file body either way */
+    /* 4. chapters — the same rule, plus the file body either way. Newest
+       `updated` wins and nothing else is made: a chapter that is being typed
+       in while its newer version is on the way holds the newest text there
+       is, so the download is left where it is (held) and the typing goes up
+       with the next pass. Drive keeps the file it replaces in its own
+       version history. */
+    const held = new Set();
     for (const rc of remChaps.values()) {
       const lc = wbChapter(rc.id);
       if (lc && (lc.updated || 0) >= (rc.updated || 0)) continue;   // ours is newer, or the same
@@ -552,6 +593,7 @@ async function cloudSync(interactive, opts) {
       const unchanged = () => wbChapterVersion(wbChapter(rc.id)) === base
         && !(rc.id === wbCurrentId && (wbDirty || editor.value !== baseText))
         && !wbFlushPromise;
+      if (!unchanged()) { held.add(rc.id); continue; }
       // A required pull must succeed before publishing a manifest built from
       // local chapters, or remote-only entries and newer metadata would be lost.
       const text = await gsDownload(rc.driveId);
@@ -561,38 +603,8 @@ async function cloudSync(interactive, opts) {
       ch.order = rc.order || 0;
       ch.content = text;
       ch.updated = rc.updated || Date.now();
-      const competing = () => {
-        const id = wbNewId('ch_'), title = t('wbConflictTitle', rc.title);
-        return { ...ch, id, title, file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
-          created: Date.now(), updated: Date.now(), order: wbChaptersOf(rc.workbookId).length };
-      };
-      let conflict = false;
-      // Recheck both the editor and the durable revision in the transaction:
-      // an autosave or another tab can finish while the body is downloading.
-      await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
-        const req = chapters.get(rc.id);
-        req.onsuccess = () => {
-          conflict = !unchanged() || wbChapterVersion(req.result) !== base;
-          if (conflict) { ch = competing(); chapters.add(ch); }
-          else chapters.put(ch);
-        };
-        return req;
-      });
-      wbChapterVersions.set(ch.id, wbChapterVersion(ch));
-      // Typing can also occur between the transaction's request and commit.
-      // Preserve the downloaded body before a later autosave replaces it.
-      if (!conflict && !unchanged()) {
-        ch = competing();
-        if (!await wbPersist(WB_CHAPTERS, ch)) throw new Error(t('wbStoreFailed'));
-        conflict = true;
-      }
+      if (!await wbPullApply(rc.id, ch, lc, base, unchanged)) { held.add(rc.id); continue; }
       wbRecordResponsibles(ch.content);
-      if (conflict) {
-        wbChapters.push(ch);
-        await wbPendingMark(ch);
-        renderWorkbooks();
-        throw new Error(t('cloudPullConflict'));
-      }
       if (lc) Object.assign(lc, ch);
       else wbChapters.push(ch);
       // No await between the final revision check and replacing the editor.
@@ -606,11 +618,13 @@ async function cloudSync(interactive, opts) {
       const rc = remChaps.get(lc.id);
       const dir = dirOf.get(lc.workbookId);
       if (!dir) continue;               // an orphan chapter has nowhere to go
+      const moved = rehomed.get(lc.workbookId);
+      // Held: it stays as Drive has it until the typing is saved and sent.
+      if (held.has(lc.id) && !moved) { outChaps.push(rc); continue; }
       let driveId = (rc && rc.driveId) || takeover.get(lc.id);
       // A workbook given a new folder this pass takes its chapters with it,
       // changed or not: the old files went with a deleted folder, or sit in
       // another workbook's.
-      const moved = rehomed.get(lc.workbookId);
       const movedBook = rc && rc.workbookId !== lc.workbookId;
       if (!rc || moved || (lc.updated || 0) > (rc.updated || 0)) {
         const file = await gsWrite(lc.file, dir, new Blob([lc.content || ''], { type: 'text/markdown' }),
@@ -624,6 +638,8 @@ async function cloudSync(interactive, opts) {
                       created: lc.created || 0, updated: lc.updated || 0, order: lc.order || 0,
                       driveId: driveId });
     }
+    // A held chapter this device does not have yet is listed as it was.
+    for (const id of held) if (!outChaps.some(c => c.id === id)) outChaps.push(remChaps.get(id));
 
     /* 5. the manifest goes back last, so a run that died halfway leaves the
        old one in place and the next run redoes the work rather than losing

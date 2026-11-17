@@ -22,11 +22,15 @@
      again — and repeating one never makes a second copy of anything.
 
    What makes it safe between devices (nas-wb-conflict, nas-concurrency):
-   · this device remembers, per chapter, the version it last saw on both
-     sides (`nasSeen` in the meta store). When both have moved on since —
-     or the file on the NAS is not the one its manifest entry describes —
-     the newer text becomes the chapter and the other is kept as a chapter
-     of its own, named with the device and the date. No text is discarded;
+   · the newest version wins, by its `updated` stamp (the moment it was
+     saved) — or, for a file changed outside the app, by the file's own
+     time. No conflict chapters are made: the losing text is kept out of the
+     workbook, in the trash. This device remembers, per chapter, the version
+     it last saw on both sides (`nasSeen` in the meta store); a text of its
+     own that loses after it moved on since is written to the trash too, so
+     a clock difference never takes a text without a trace. A chapter being
+     typed in while a newer version arrives holds the newest text: the
+     download is left for later, and the typing goes up with the next pass;
    · a pass that writes holds an advisory lock (`.scula-lock.json`), reads
      the manifest again immediately before writing it, and when another
      device replaced it meanwhile does the merge again from theirs.
@@ -44,7 +48,7 @@ const NSYNC = { DIR: 'markdown', MANIFEST: '.scula-index.json', TRASH: '.scula-t
   RETRIES: 8 };       // this many times
 const NAS_RESTART = {};      // thrown inside a round: the manifest is not the one it read
 let nasBusy = false;
-let nasLast = { at: 0, copies: 0, error: '' };   // how the last pass of this visit ended — the save/sync row
+let nasLast = { at: 0, error: '' };   // how the last pass of this visit ended — the save/sync row
 let nasRetryTimer = 0, nasRetries = 0;
 
 // A pass that could not have its turn — another device holds the lock, or
@@ -161,17 +165,20 @@ async function nasSeenLoad(store) {
 const nasMovedHere = (saw, lc) => !saw || (lc.updated || 0) !== saw.local;
 const nasMovedThere = (saw, rc) => !saw || (rc.updated || 0) !== saw.remote || (rc.hash || '') !== (saw.hash || '');
 
-/* The text that is about to lose, as a chapter of its own in the same
-   workbook — or null when keeping it would keep nothing: no text at all,
-   the very text that wins, a beginning of it (a write that was cut short),
-   or a text another chapter of the workbook already holds, which is also
-   what makes a pass that died after making the copy safe to repeat. */
-function nasCopy(run, bookId, title, text, exceptId, winner) {
-  if (!text.trim() || winner.startsWith(text)) return null;
-  if (wbChapters.some(c => c.workbookId === bookId && c.id !== exceptId && (c.content || '') === text)) return null;
-  const name = t('nasConflictTitle', { title: title, device: run.device, date: nasDay() }), now = Date.now();
-  return { id: wbNewId('ch_'), workbookId: bookId, title: name, file: wbUniqueFile(bookId, name), content: text,
-           created: now, updated: now, order: wbChaptersOf(bookId).length };
+/* The text here that is about to lose to a newer one: written into the
+   pass's trash folder beside the file it was (Optica.md → "Optica (Linux-3f9a
+   1a2b3c4d).md"), not into the workbook. Nothing is kept when it would keep
+   nothing: no text, the very text that wins, or a beginning of it (a write
+   that was cut short). The name comes from the text, so a pass that died
+   after writing it and is done again writes the same file, not a second. */
+async function nasKeepOld(store, run, folder, file, text, winner) {
+  if (!text.trim() || winner.startsWith(text)) return;
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const sum = ((await nasHash(blob)) || 'sha256-' + text.length.toString(16) + Date.now().toString(16)).slice(7, 15);
+  const dot = file.lastIndexOf('.');
+  const name = store.safe((dot > 0 ? file.slice(0, dot) : file) + ' (' + run.device + ' ' + sum + ')' + (dot > 0 ? file.slice(dot) : ''));
+  await store.write(folder.concat(name), blob);
+  run.older++;
 }
 
 /* The lock. A pass that only reads takes none, so one that finds nothing to
@@ -214,7 +221,7 @@ function nasGuarded(store, run) {
    run nobody asked for — also takes in what was put into the folder by hand. */
 async function nasPass(store, opts) {
   const run = { claimed: false, at: 0, manText: undefined, round: 0, device: (await ScuLaNas.device()).name,
-                up: 0, down: 0, gone: 0, copies: 0, found: { books: 0, chapters: 0 },
+                up: 0, down: 0, gone: 0, older: 0, found: { books: 0, chapters: 0 },
                 freshBooks: new Map(), freshChaps: new Map() };
   const guarded = nasGuarded(store, run);
   try {
@@ -233,7 +240,7 @@ async function nasPass(store, opts) {
       }
       try {
         await nasRound(guarded, opts, run);
-        return { up: run.up, down: run.down, gone: run.gone, copies: run.copies, found: run.found };
+        return { up: run.up, down: run.down, gone: run.gone, older: run.older, found: run.found };
       } catch (e) { if (e !== NAS_RESTART) throw e; }
     }
     throw Object.assign(new Error(t('nasChanged')), { later: true });
@@ -441,12 +448,24 @@ async function nasRound(store, opts, run) {
     }
     return lists.get(key);
   };
+  // Chapters left as the NAS has them this pass (being typed in here: that
+  // text is the newest and goes up with the next pass), and chapters whose
+  // file the NAS must get again although its entry is not older (the file
+  // there was changed outside the app, before this device's own edit).
+  const held = new Set(), force = new Set();
   for (const rc of [...remChaps.values()]) {
     const lc = wbChapter(rc.id), saw = seen[rc.id];
     if (!wbBook(rc.workbookId)) continue;
     const dir = manFolder.get(rc.workbookId);
     const ahead = lc ? (rc.updated || 0) - (lc.updated || 0) : 1;
-    if (ahead < 0) continue;          // ours is newer: sent below, after a look at what the file holds
+    if (ahead < 0) {
+      // Ours is newer by its stamp, and is sent below. The file is read only
+      // when it changed after our edit and not as this device left it — a
+      // file changed by hand on the NAS since, which may be newer still.
+      if (sure.has(rc.id)) continue;
+      const listed = await peek(dir), there = listed && listed.get(rc.file.toLowerCase());
+      if (!there || there.dir || (saw && saw.tag && saw.tag === there.tag) || !((there.modified || 0) > (lc.updated || 0))) continue;
+    }
     if (ahead === 0) {
       // The same version by its stamp. Only the file is looked at — and read
       // only if it is not the file this device already found in order.
@@ -461,72 +480,42 @@ async function nasRound(store, opts, run) {
     const got = await store.read([MD, dir, rc.file]);
     if (!got) continue;               // gone without a tombstone: nothing to take; ours, if any, goes up again
     const fits = await nasMatches(rc, got.blob);
-    if (ahead === 0 && fits) { sure.set(rc.id, got.tag); continue; }
+    if (ahead <= 0 && fits) { if (ahead === 0) sure.set(rc.id, got.tag); continue; }
     // Bytes the manifest does not describe: a file changed by hand — or one
     // another device is replacing right now. With the lock held and the
     // manifest still the one that was read, it is the first.
     if (!fits) await store.claim();
+    // When this version was saved: the manifest's stamp, or — for a file
+    // changed outside the app — the file's own time. The newest wins.
+    const when = fits ? (rc.updated || 0) : (got.blob.lastModified || Date.now());
     const text = await got.blob.text();
+    // The chapter here is newer — or the file holds a beginning of it, a
+    // write cut short: it goes to the NAS below, over this file (which is
+    // copied to the trash first).
+    if (lc && (when <= (lc.updated || 0) || (!fits && (lc.content || '').startsWith(text)))) {
+      if (!fits) force.add(rc.id);
+      continue;
+    }
     const base = wbChapterVersion(lc), baseText = lc?.content || '';
     const unchanged = () => wbChapterVersion(wbChapter(rc.id)) === base
       && !(rc.id === wbCurrentId && (wbDirty || editor.value !== baseText))
       && !wbFlushPromise;
+    if (!unchanged()) { held.add(rc.id); continue; }
     let ch = { ...(lc || { id: rc.id, created: rc.created || Date.now() }) };
     ch.workbookId = rc.workbookId;
     ch.title = rc.title; ch.file = wbUniqueFile(rc.workbookId, rc.title, rc.id, rc.file);
     ch.order = rc.order || 0;
     ch.content = text;
-    // Such a file is a version of its own, newer than anything listed —
-    // also when a clock that runs ahead stamped the listed one.
-    ch.updated = fits ? (rc.updated || Date.now()) : Math.max(Date.now(), (rc.updated || 0) + 1);
-    // The chapter here moved on as well since the two were last seen in
-    // step — or the file is not the listed one: what the device holds is
-    // kept beside it. (Changed here and yet older than the NAS can also be a
-    // clock that was set back; the text is kept all the same.)
-    const clash = !!lc && (!fits || nasMovedHere(saw, lc));
-    const copy = clash ? nasCopy(run, lc.workbookId, lc.title, baseText, lc.id, text) : null;
-    const competing = () => {
-      const id = wbNewId('ch_'), title = t('wbConflictTitle', rc.title);
-      return { ...ch, id, title, file: wbSlug(title, 'conflict').slice(0, 40) + '-' + id + '.md',
-        created: Date.now(), updated: Date.now(), order: wbChaptersOf(rc.workbookId).length };
-    };
-    let conflict = false, kept = false;
-    // The store's revision guard, as in cloudSync(): an autosave or another
-    // tab can finish while the file is being read. A chapter edited
-    // meanwhile is not overwritten — what the NAS holds is kept beside it.
-    // The copy of the losing text is written in the same transaction as the
-    // text that replaces it: both, or neither.
-    await wbTx(WB_CHAPTERS, 'readwrite', chapters => {
-      const req = chapters.get(rc.id);
-      req.onsuccess = () => {
-        conflict = !unchanged() || wbChapterVersion(req.result) !== base;
-        if (conflict) { ch = competing(); chapters.add(ch); }
-        else {
-          chapters.put(ch);
-          if (copy) { chapters.add(copy); kept = true; }
-        }
-      };
-      return req;
-    });
-    wbChapterVersions.set(ch.id, wbChapterVersion(ch));
-    if (kept) {
-      wbChapters.push(copy);
-      wbChapterVersions.set(copy.id, wbChapterVersion(copy));
-      await wbPendingMark(copy);
-      run.copies++;
-    }
-    // Typing can also occur between the transaction's request and commit.
-    if (!conflict && !unchanged()) {
-      ch = competing();
-      if (!await wbPersist(WB_CHAPTERS, ch)) throw new Error(t('wbStoreFailed'));
-      conflict = true;
-    }
+    // A file changed by hand is a version newer than the one listed, so the
+    // manifest is written again to describe it.
+    ch.updated = fits ? (rc.updated || Date.now()) : Math.max(when, (rc.updated || 0) + 1);
+    // The text here loses. If it had moved on since the two were last seen in
+    // step (or the file is not the listed one), it is not simply dropped: it
+    // goes to the NAS trash first, out of the workbook — a clock difference
+    // never takes a text without a trace.
+    if (lc && (!fits || nasMovedHere(saw, lc))) await nasKeepOld(store, run, toTrash([MD, dir]), rc.file, baseText, text);
+    if (!await wbPullApply(rc.id, ch, lc, base, unchanged)) { held.add(rc.id); continue; }
     wbRecordResponsibles(ch.content);
-    if (conflict) {
-      wbChapters.push(ch);
-      await wbPendingMark(ch);
-      throw new Error(t('nasPullConflict'));
-    }
     if (lc) Object.assign(lc, ch);
     else wbChapters.push(ch);
     // No await between the final revision check and replacing the editor.
@@ -565,15 +554,16 @@ async function nasRound(store, opts, run) {
     outChaps.push(file === rc.file ? rc : { ...rc, file });
   };
   // The chapters as they are now — one a save changes while the pass is at
-  // work goes up as it was, whole, and again with the next pass — and, after
-  // them, the conflict copies this very loop makes.
+  // work goes up as it was, whole, and again with the next pass.
   const queue = wbChapters.map(c => ({ ...c }));
   for (let i = 0; i < queue.length; i++) {
     const lc = queue[i], saw = seen[lc.id];
     const rc = remChaps.get(lc.id), dir = dirOf.get(lc.workbookId);
     if (!dir) { if (rc) await carry(rc); continue; }       // an orphan chapter has nowhere to go
+    // Held above: listed as it is, and not in step — the next pass looks again.
+    if (rc && held.has(lc.id)) { await carry(rc); if (saw) noted[lc.id] = saw; continue; }
     const was = rc ? { dir: manFolder.get(rc.workbookId), file: rc.file } : null;
-    const newer = !rc || (lc.updated || 0) > (rc.updated || 0);
+    const newer = !rc || (lc.updated || 0) > (rc.updated || 0) || force.has(lc.id);
     const here = !!was && was.dir === dir;                 // already in this workbook's folder
     const own = name => here && name.toLowerCase() === was.file.toLowerCase();
     const mine = name => { const id = owner.get(at(dir, name)); return !id || id === lc.id; };
@@ -606,11 +596,10 @@ async function nasRound(store, opts, run) {
     // without a tombstone, which is never a delete: it is written again.
     const text = lc.content || '', blob = new Blob([text], { type: 'text/markdown' });
     const holds = async name => { const cur = await store.read([MD, dir, name]); return !!cur && cur.blob.size === blob.size && await cur.blob.text() === text; };
-    // Newer here: what the NAS holds of it is about to be replaced. If both
-    // sides moved on since they were last seen in step, or the file is not
-    // the listed one, that text becomes a chapter of its own first. (Only
-    // the NAS having moved — to something older — is a folder put back from
-    // a backup: versions this device has had, and no reason for a copy each.)
+    // Newer here: what the NAS holds of it is about to be replaced — and is
+    // kept in the trash (below), never made a chapter of its own. When both
+    // sides had moved on since they were last seen in step, or the file is
+    // not the listed one, the status line says an older text went there.
     let curText = null;
     if (rc && newer) {
       const cur = await store.read([MD, was.dir, was.file]);
@@ -618,16 +607,7 @@ async function nasRound(store, opts, run) {
         curText = await cur.blob.text();
         const fits = curText === text || await nasMatches(rc, cur.blob);
         if (!fits) await store.claim();
-        if (curText !== text && (!fits || (nasMovedHere(saw, lc) && nasMovedThere(saw, rc)))) {
-          const copy = nasCopy(run, lc.workbookId, rc.title, curText, null, text);
-          if (copy) {
-            wbChapters.push(copy);
-            if (!await wbPersist(WB_CHAPTERS, copy)) { wbChapters.pop(); throw new Error(t('wbStoreFailed')); }
-            await wbPendingMark(copy);
-            queue.push({ ...copy });
-            run.copies++;
-          }
-        }
+        if (curText !== text && curText.trim() && !text.startsWith(curText) && (!fits || (nasMovedHere(saw, lc) && nasMovedThere(saw, rc)))) run.older++;
       }
     }
     let write = true, tag = '';
@@ -701,7 +681,7 @@ async function nasRound(store, opts, run) {
    "away": the NAS did not answer; "busy": another pass is running, in
    another tab, or Drive's in this one; "locked": another device is syncing
    and did not finish in time (tried again later, see nasLater()) — and
-   { ran:true, up, down, gone, copies, found:{ books, chapters } } otherwise. Rejects with a translated reason
+   { ran:true, up, down, gone, older, found:{ books, chapters } } otherwise. Rejects with a translated reason
    when the pass had to stop. opts: see nasPass(). */
 async function nasSync(opts) {
   if (nasBusy || !nasOn()) return null;
@@ -713,7 +693,7 @@ async function nasSync(opts) {
     const r = await ScuLaNas.pass('chapters', store => nasPass(store, opts));
     if (!r.ran) return r;
     clearTimeout(nasRetryTimer); nasRetries = 0;
-    nasLast = { at: Date.now(), copies: r.value.copies, error: '' };
+    nasLast = { at: Date.now(), error: '' };
     return { ran: true, ...r.value };
   } catch (err) {
     // What the store throws is a word; the person gets a sentence.
@@ -724,7 +704,7 @@ async function nasSync(opts) {
     // ours, with the error's name kept for whoever has to look into it.
     const said = m === 'away' ? t('nasLost') : /^(exists|size|names|path)$/.test(m) ? t('nasWriteFailed')
       : typeof DOMException === 'function' && err instanceof DOMException ? t('nasBrowserFailed', err.name) : m;
-    nasLast = { at: nasLast.at, copies: 0, error: said };
+    nasLast = { at: nasLast.at, error: said };
     throw new Error(said);
   } finally {
     nasBusy = false;
@@ -739,7 +719,7 @@ function nasReport(r) {
   if (!r.ran) return r.why === 'away' ? t('nasAway') : r.why === 'busy' ? t('nasSyncing') : r.why === 'locked' ? t('nasLocked') : '';
   const parts = [(r.up || r.down || r.gone) ? t('nasDone', r) : t('nasNothing')];
   if (r.found && (r.found.books || r.found.chapters)) parts.push(t('nasAdopted', r.found));
-  if (r.copies) parts.push(t('nasCopies', r.copies));
+  if (r.older) parts.push(t('nasOlder', r.older));
   return parts.join(' ');
 }
 
@@ -760,7 +740,7 @@ async function nasAuto() {
   catch (e) { wbSay(t('nasError', (e && e.message) || String(e)), true); return null; }
   if (r && r.ran) {
     const found = r.found.books || r.found.chapters;
-    if (r.up || r.down || r.gone || r.copies || found) wbSay(nasReport(r), !!r.copies);
+    if (r.up || r.down || r.gone || found) wbSay(nasReport(r));
   } else if (r && r.why === 'busy') nasLater();
   return r;
 }
@@ -769,7 +749,7 @@ async function nasAuto() {
 // Drive sync — no permission prompt this late in the press.
 async function nasAfterSave() {
   const r = await nasAuto();
-  if (!(r && r.ran && (r.down || r.copies) && wbFolderMode() && await ScuLaFolder.dir(false))) return;
+  if (!(r && r.ran && r.down && wbFolderMode() && await ScuLaFolder.dir(false))) return;
   for (const id of [...wbPendingIds]) {
     const ch = wbChapter(id), book = ch && wbBook(ch.workbookId);
     if (book) await wbSaveMirror(book, ch);
@@ -794,8 +774,8 @@ window.addEventListener('scula-nas', ev => {
 window.addEventListener('scula-ui-lang', () => setTimeout(nasPaint, 0));
 
 /* The NAS state in the save/sync row, beside Drive's: nothing while NAS
-   sync is off; otherwise away, syncing, in step with the time, a conflict
-   copy made by the last pass, or the reason the last pass stopped. It
+   sync is off; otherwise away, syncing, in step with the time, or the
+   reason the last pass stopped. It
    stands inside #wb-cloud-where, which paintCloud() rebuilds — and which
    therefore calls this last. */
 function nasPaint() {
@@ -815,9 +795,8 @@ function nasPaint() {
   else if (st.state === 'error') { key = 'nasRowError'; tip = st.error; }
   else if (!st.home) key = 'nasRowAway';
   else if (nasLast.error) { key = 'nasRowError'; tip = t('nasError', nasLast.error); }
-  else if (nasLast.copies) key = 'nasRowConflict';
   else if (nasLast.at) { key = 'nasRowOk'; arg = hour(nasLast.at); }
-  el.className = key === 'nasRowError' || key === 'nasRowConflict' || key === 'nasRowAsk' ? 'warn' : '';
+  el.className = key === 'nasRowError' || key === 'nasRowAsk' ? 'warn' : '';
   el.textContent = ' · ' + t(key, arg);
   el.title = tip || t(key + 'Tip');
 }
