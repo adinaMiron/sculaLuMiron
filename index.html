@@ -2797,15 +2797,14 @@
                   in any folder they like. No folder can be *remembered*
                   there - the OS picker owns that choice.
        "download" last resort, and always available.
-       "nas"      no folder chosen, NAS sync on (js/shared/nas.js) and
-                  the person asked for it: the file waits in that
-                  script's queue on the device and reaches the NAS at
-                  home. A queue that cannot take the file hands it to
-                  the route beneath, and the message says so.
 
-     While NAS sync is on, the first three routes also leave a copy in
-     that queue (nasCopy below) once the route has the bytes. The copy
-     never delays or fails a save.
+     NAS sync (js/shared/nas.js) is never a route of its own: the file
+     always goes one of the three ways above, onto this device, and
+     while sync is on each of them also leaves a copy in that script's
+     queue (nasCopy below) once the route has the bytes; the copy
+     reaches the NAS at home. It never delays or fails a save. (A "nas"
+     route remembered by an earlier version - the file kept for the NAS
+     only - is read as no choice at all.)
 
      Byte-identical in all eight files (CLAUDE.md rule 2) - see
      docs/FEATURES.md "Saving files".
@@ -2851,13 +2850,7 @@
       optFolderSub:"Un singur dosar pentru toate paginile, ținut minte între vizite.",
       sheetClose:"Închide",
       modeSetShare:"Fișierele merg către fereastra de partajare.",
-      modeSetDownload:"Fișierele se descarcă.",
-      modeNas:"NAS",
-      optNas:"Păstrează pentru NAS",
-      optNasSub:"Fișierul rămâne pe acest dispozitiv și ajunge pe NAS când ești acasă.",
-      modeSetNas:"Fișierele rămân pe acest dispozitiv și ajung pe NAS acasă.",
-      nasKept:function(n){ return "Păstrat pe acest dispozitiv, ajunge pe NAS acasă: " + n; },
-      nasFailed:"Fișierul nu a putut fi păstrat pentru NAS."
+      modeSetDownload:"Fișierele se descarcă."
     },
     en:{
       pickLabel:"Folder",
@@ -2888,13 +2881,7 @@
       optFolderSub:"One folder for every page, remembered between visits.",
       sheetClose:"Close",
       modeSetShare:"Files now go to the share sheet.",
-      modeSetDownload:"Files now download.",
-      modeNas:"NAS",
-      optNas:"Keep for the NAS",
-      optNasSub:"The file stays on this device and goes to the NAS when you are home.",
-      modeSetNas:"Files now stay on this device and go to the NAS at home.",
-      nasKept:function(n){ return "Kept on this device, goes to the NAS at home: " + n; },
-      nasFailed:"The file could not be kept for the NAS."
+      modeSetDownload:"Files now download."
     }
   };
   function tx(k){ return (T[lang] || T.ro)[k]; }
@@ -2902,7 +2889,7 @@
   var fBtn = document.getElementById("navFolderBtn");
   var fName = document.getElementById("navFolderName");
   var root = null;          // FileSystemDirectoryHandle, desktop only
-  var mode = null;          // "share" | "download" | "nas" | null (= pick for me)
+  var mode = null;          // "share" | "download" | null (= pick for me)
   var toastEl = null, toastTimer = 0;
   var sheetEl = null;
 
@@ -2919,14 +2906,8 @@
     }catch(e){ return false; }
   }
 
-  // NAS sync is on when js/shared/nas.js remembers a NAS folder.
-  function nasOn(){ var N = window.ScuLaNas; return !!(N && N.queue && N.folder && N.folder()); }
-
-  // `plain` asks for the route beneath "nas": where the file goes when the
-  // queue is not wanted ({ nas:false }) or cannot take it.
-  function currentMode(plain){
+  function currentMode(){
     if(root) return "folder";
-    if(mode === "nas" && plain !== true && nasOn()) return "nas";
     if(mode === "share") return canShareFiles() ? "share" : "download";
     if(mode === "download") return "download";
     // Unset: on a device with no directory picker the share sheet is the
@@ -2972,10 +2953,9 @@
     // the tap opens the picker. Where there is no picker the button names the
     // route a save will actually take, because that is what the tap changes.
     fName.textContent = m === "folder" ? root.name
-      : m === "nas" ? tx("modeNas")
       : (supported() ? tx("pickLabel")
       : (m === "share" ? tx("modeShare") : tx("modeDownload")));
-    fBtn.classList.toggle("set", m === "folder" || m === "nas" || (!supported() && m === "share"));
+    fBtn.classList.toggle("set", m === "folder" || (!supported() && m === "share"));
   }
 
   function idb(){
@@ -3059,7 +3039,7 @@
     mode = m;
     return idbPut(MODE_KEY, m).catch(function(){}).then(function(){
       announce();
-      toast(m === "share" ? tx("modeSetShare") : m === "nas" ? tx("modeSetNas") : tx("modeSetDownload"));
+      toast(m === "share" ? tx("modeSetShare") : tx("modeSetDownload"));
       return m;
     });
   }
@@ -3102,10 +3082,6 @@
     if(supported()){
       card.appendChild(option(tx("optFolder"), tx("optFolderSub"), m === "folder", true,
         function(){ closeSheet(); pick(); }));
-    }
-    if(!root && nasOn()){
-      card.appendChild(option(tx("optNas"), tx("optNasSub"), m === "nas", true,
-        function(){ closeSheet(); setMode("nas"); }));
     }
     var shareOk = canShareFiles();
     card.appendChild(option(tx("optShare"), shareOk ? tx("optShareSub") : tx("optShareOff"),
@@ -3222,20 +3198,10 @@
 
   /* ---- NAS sync (js/shared/nas.js) ----
      The copy for the NAS is made after the route has the bytes; nothing
-     waits for it. On the "nas" route the queue is the destination. */
+     waits for it. */
   function nasCopy(folders, name, body){
     var N = window.ScuLaNas;
     if(N && N.queue) N.queue(subdir(), folders, name, body, { copy:true });
-  }
-  function nasKept(filename, folders, quiet){
-    return report({ saved:true, via:"nas", name:filename,
-                    path: subdir() + "/" + (folders.length ? folders.join("/") + "/" : "") + filename,
-                    message: tx("nasKept")(filename) }, quiet);
-  }
-  // The queue could not take the file: it went the ordinary way instead.
-  function nasFell(r, quiet){
-    if(r && r.message) r.message = tx("nasFailed") + " " + r.message;
-    return report(r, quiet);
   }
 
   // The one call pages make. Always resolves. Read `message` to say what
@@ -3263,11 +3229,6 @@
     }
     if(opts && opts.requireFolder && currentMode()!=="folder") throw new Error("folderRequired");
     var plain=!!(opts && opts.nas===false);
-    if(currentMode(plain)==="nas"){
-      var kept=await window.ScuLaNas.queue(subdir(),folders,filename,source);
-      if(kept && kept.queued) return nasKept(filename,folders,quiet);
-      return nasFell(await saveStream(filename,source,Object.assign({},opts,{nas:false,quiet:true})),quiet);
-    }
     if(currentMode()!=="folder") return fallback();
     var d=await dir();
     if(!d && opts && opts.requireFolder) throw new Error("folderRequired");
@@ -3303,14 +3264,7 @@
       if(!plain && r && !r.cancelled) nasCopy(folders, r.saved && r.via === "folder" ? r.name : filename, blob);
       return r;
     }
-    var m = currentMode(plain);
-    if(m === "nas"){
-      return window.ScuLaNas.queue(subdir(), folders, filename, blob).then(function(kept){
-        if(kept && kept.queued) return nasKept(filename, folders, quiet);
-        return save(filename, blob, { quiet:true, nas:false, directories:folders })
-          .then(function(r){ return nasFell(r, quiet); });
-      });
-    }
+    var m = currentMode();
     if(m === "share") return shareOut(filename, blob, quiet).then(copied);
     if(m !== "folder") return Promise.resolve(copied(downloadResult(filename, blob, quiet)));
     return dir().then(function(d){
@@ -3337,7 +3291,7 @@
     idbGet(DB_KEY).catch(function(){ return null; }),
     idbGet(MODE_KEY).catch(function(){ return null; })
   ]).then(function(vals){
-    if(vals[1] === "share" || vals[1] === "download" || vals[1] === "nas") mode = vals[1];
+    if(vals[1] === "share" || vals[1] === "download") mode = vals[1];
     var h = vals[0];
     if(!h){ paintFolder(); return null; }
     return permitted(h, false).then(function(ok){
@@ -3354,8 +3308,6 @@
     // feature there. Everywhere else the picker does not exist, so offer the
     // routes that do.
     fBtn.addEventListener("click", function(){ if(supported()) pick(); else openSheet(); });
-    // Whether NAS sync is on decides what the "nas" route names here.
-    window.addEventListener("scula-nas", paintFolder);
     fBtn.addEventListener("contextmenu", function(ev){
       ev.preventDefault();
       if(root && confirm(tx("clearAsk")(root.name))) forget();

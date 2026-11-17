@@ -69,7 +69,7 @@
       forgotten:"Dosarul a fost uitat pe acest dispozitiv. Pe NAS nu s-a schimbat nimic.",
       forgetFailed:"Dosarul nu a putut fi uitat: browserul a refuzat stocarea.",
       denied:"Browserul nu a primit acces de scriere în dosar.",
-      clash:function(n){ return "„" + n + "” este deja dosarul 📁 în care ajung fișierele salvate. Același dosar nu poate fi și dosarul NAS."; },
+      clash:function(n){ return "„" + n + "” este deja dosarul 📁 în care ajung fișierele salvate. Același dosar nu poate fi și dosarul NAS: fișierele salvate nu ar mai rămâne și pe acest dispozitiv. Alege cu 📁 un dosar de pe acest dispozitiv, sau eliberează-l aici — fișierele salvate se descarcă atunci până alegi alt dosar 📁."; },
       badIdentity:"Dosarul are un fișier de identitate (.scula-sync.json) care nu poate fi citit. Nu a fost schimbat nimic: alege alt dosar sau repară fișierul.",
       newerIdentity:"Dosarul a fost pregătit de o versiune mai nouă a aplicației. Actualizează aplicația pe acest dispozitiv.",
       pickFailed:"Dosarul nu a putut fi pregătit: citirea sau scrierea în el a eșuat.",
@@ -116,8 +116,7 @@
       outTitle:"Fișiere care așteaptă drumul spre NAS",
       outNone:"Niciun fișier nu așteaptă.",
       outOff:"Sincronizarea este oprită. Fișierele de mai jos au rămas de dinainte; pleacă spre NAS după ce alegi din nou un dosar.",
-      routeNas:"Fișierele salvate rămân pe acest dispozitiv și ajung pe NAS când ești acasă.",
-      routeAlso:"Fișierele salvate ajung unde ajungeau și până acum, iar o copie așteaptă aici drumul spre NAS.",
+      routeAlso:"Fișierele salvate ajung pe acest dispozitiv ca și până acum (în dosarul 📁, prin partajare sau descărcate), iar o copie așteaptă aici drumul spre NAS.",
       routeBtn:"Unde ajung fișierele salvate…",
       outTotal:function(n, size){ return filesRo(n) + ", " + size + " în total."; },
       outFree:function(free){ return " Spațiu liber pe dispozitiv: aproximativ " + free + "."; },
@@ -172,7 +171,7 @@
       forgotten:"The folder was forgotten on this device. Nothing on the NAS was changed.",
       forgetFailed:"The folder could not be forgotten: the browser refused the storage.",
       denied:"The browser was not given write access to the folder.",
-      clash:function(n){ return "“" + n + "” is already the 📁 folder that saved files go to. The same folder cannot also be the NAS folder."; },
+      clash:function(n){ return "“" + n + "” is already the 📁 folder that saved files go to. The same folder cannot also be the NAS folder: saved files would no longer also stay on this device. Choose a folder on this device with 📁, or release it here — saved files then download until you choose another 📁 folder."; },
       badIdentity:"The folder has an identity file (.scula-sync.json) that cannot be read. Nothing was changed: choose another folder or repair the file.",
       newerIdentity:"The folder was set up by a newer version of the app. Update the app on this device.",
       pickFailed:"The folder could not be set up: reading or writing in it failed.",
@@ -219,8 +218,7 @@
       outTitle:"Files waiting to go to the NAS",
       outNone:"No file is waiting.",
       outOff:"Sync is off. The files below were left from before; they go to the NAS once you choose a folder again.",
-      routeNas:"Saved files stay on this device and go to the NAS when you are home.",
-      routeAlso:"Saved files go where they went before, and a copy waits here to go to the NAS.",
+      routeAlso:"Saved files go onto this device as before (into the 📁 folder, through the share sheet or as a download), and a copy waits here to go to the NAS.",
       routeBtn:"Where saved files go…",
       outTotal:function(n, size){ return filesEn(n) + ", " + size + " in total."; },
       outFree:function(free){ return " Free space on this device: about " + free + "."; },
@@ -1931,7 +1929,7 @@
       box.hidden = false;
       box.appendChild(el("h3", "", tx("outTitle")));
       if(!nas || presence.why !== "clash"){
-        var route = el("p", "", !nas ? tx("outOff") : tx(F && F.mode() === "nas" ? "routeNas" : "routeAlso"));
+        var route = el("p", "", !nas ? tx("outOff") : tx("routeAlso"));
         route.id = "nasRouteLine";
         box.appendChild(route);
       }
@@ -1988,7 +1986,8 @@
       msg.id = "nasOutMsg";
       msg.setAttribute("role", "status");
       box.appendChild(msg);
-      // The "keep for the NAS" route is offered where no 📁 folder is set.
+      // Where no 📁 folder is set: the way to choose one, or the share sheet
+      // or a download, for the copy that stays on this device.
       if(nas && presence.why !== "clash" && F && typeof F.chooser === "function" && !F.isSet()){
         var where = el("button", "act quiet", tx("routeBtn"));
         where.id = "nasRoute"; where.type = "button";
