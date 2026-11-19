@@ -176,9 +176,52 @@ function tableRowFindTables(lines) {
 }
 
 // ⊞+ Row is only offered while the open chapter has a table.
+// The select beside it picks where the row goes; the choice is remembered per
+// chapter in the IndexedDB meta store ("tableRowModes": { chapterId: mode }).
+const TABLE_ROW_MODES = ['cursor', 'heading', 'end'];
+let tableRowModes = null, tableRowModesLoading = false, tableRowShownFor;
+
+function tableRowMode() {
+  const sel = document.getElementById('table-row-mode');
+  return sel && TABLE_ROW_MODES.includes(sel.value) ? sel.value : 'cursor';
+}
+
+function tableRowShowMode() {
+  const sel = document.getElementById('table-row-mode');
+  if (!sel) return;
+  const m = tableRowModes && wbCurrentId ? tableRowModes[wbCurrentId] : null;
+  sel.value = TABLE_ROW_MODES.includes(m) ? m : 'cursor';
+  tableRowShownFor = wbCurrentId;
+}
+
+async function tableRowModeChanged() {
+  if (!wbCurrentId) return;
+  const id = wbCurrentId, mode = tableRowMode();
+  try {
+    const stored = (await wbMetaGet('tableRowModes')) || {};
+    stored[id] = mode;
+    tableRowModes = stored;
+    await wbMetaSet('tableRowModes', stored);
+  } catch (e) {}
+}
+
+async function tableRowLoadModes() {
+  if (tableRowModes || tableRowModesLoading) return;
+  tableRowModesLoading = true;
+  try { tableRowModes = (await wbMetaGet('tableRowModes')) || {}; } catch (e) { tableRowModes = {}; }
+  tableRowModesLoading = false;
+  tableRowShowMode();
+}
+
+// ⊞+ Row is only offered while the open chapter has a table.
 function tableRowBtnRefresh() {
   const btn = document.getElementById('btn-table-row');
-  if (btn) btn.hidden = !tableRowFindTables(editor.value.split('\n')).length;
+  const sel = document.getElementById('table-row-mode');
+  const none = !tableRowFindTables(editor.value.split('\n')).length;
+  if (btn) btn.hidden = none;
+  if (sel) sel.hidden = none;
+  if (!tableRowModes) tableRowLoadModes();
+  else if (tableRowShownFor !== wbCurrentId) tableRowShowMode();
 }
 
 function addTableRow(now) {
@@ -193,6 +236,7 @@ function addTableRow(now) {
   const caret = editor.selectionStart;
   const caretLine = val.slice(0, caret).split('\n').length - 1;
   let table = tables.find(tb => caretLine >= tb.header && caretLine <= tb.last);
+  const mode = tableRowMode();
   let after;
   if (table) {
     after = Math.max(caretLine, table.sep);
@@ -201,6 +245,8 @@ function addTableRow(now) {
     table = above.length ? above[above.length - 1] : tables[0];
     after = table.last;
   }
+  if (mode === 'heading') after = table.sep;
+  else if (mode === 'end') after = table.last;
   const cols = mdTableCells(lines[table.header].trim()).length;
   // The date format of a column comes from the row the new one follows, then
   // the rows above it, then the rows below: the newest entries win.

@@ -14,7 +14,18 @@
   .kanban-head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin-bottom:20px; }
   .kanban-head h1 { margin:0; font-size:clamp(24px,3vw,36px); letter-spacing:-.035em; }
   .kanban-head p { margin:3px 0 0; color:var(--muted); }
-  .kanban-head button { margin-left:auto; }
+  .head-actions { display:flex; gap:8px; margin-left:auto; }
+  .help-modal { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.55); }
+  .help-modal.open { display:flex; }
+  .help-dialog { width:min(38rem,100%); max-height:calc(100vh - 32px); overflow:auto; padding:18px 20px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+  .help-dialog h2 { margin:0 0 .75rem; font-size:1rem; }
+  .help-acts { display:flex; justify-content:flex-end; margin-top:.9rem; }
+  .help-body h3 { font-size:.95rem; margin:1rem 0 .35rem; color:var(--text); }
+  .help-body h3:first-child { margin-top:0; }
+  .help-body p, .help-body li { font-size:.82rem; line-height:1.6; color:var(--muted); margin:0 0 .4rem; }
+  .help-body ul { margin:0 0 .5rem; padding-left:1.25rem; }
+  .help-body b { color:var(--text); }
+  .help-body code { font-family:ui-monospace,monospace; font-size:.78rem; background:var(--surface-2); border-radius:.3rem; padding:.05rem .35rem; color:var(--accent); }
   .controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
   .control { display:flex; flex-direction:column; gap:5px; min-width:160px; flex:1 1 160px; }
   .control.search { flex:2 1 230px; }
@@ -52,7 +63,7 @@
   .empty-page { grid-column:1/-1; padding:46px 16px; text-align:center; border:1px dashed var(--border); border-radius:14px; color:var(--muted); }
   .empty-page a { color:var(--accent); }
   @media(max-width:1150px) { .board { grid-template-columns:repeat(5,minmax(250px,1fr)); } }
-  @media(max-width:700px) { .kanban-shell { padding:12px; } .kanban-head button { margin-left:0; } .controls { gap:10px; padding:12px; } .control { min-width:calc(50% - 5px); } .control.search, .control.scope { min-width:100%; } .board { scroll-snap-type:x mandatory; } .lane { scroll-snap-align:start; } }
+  @media(max-width:700px) { .kanban-shell { padding:12px; } .head-actions { margin-left:0; } .controls { gap:10px; padding:12px; } .control { min-width:calc(50% - 5px); } .control.search, .control.scope { min-width:100%; } .board { scroll-snap-type:x mandatory; } .lane { scroll-snap-align:start; } }
 </style>
 </head>
 <body>
@@ -1512,7 +1523,10 @@
 <main class="kanban-shell">
   <header class="kanban-head">
     <div><h1 data-i="title">Kanban</h1><p data-i="subtitle">Sarcini din caiete, organizate după stare.</p></div>
-    <button id="refresh" class="btn" type="button" data-i="refresh">↻ Reîncarcă</button>
+    <div class="head-actions">
+      <button id="refresh" class="btn" type="button" data-i="refresh">↻ Reîncarcă</button>
+      <button id="helpBtn" class="btn" type="button" data-i-title="helpBtn" data-i-aria="helpBtn" title="Ajutor" aria-label="Ajutor">?</button>
+    </div>
   </header>
   <section class="controls" aria-label="Filtre Kanban">
     <div class="control scope"><label for="scope" data-i="scope">Arată sarcinile din</label><select id="scope"></select></div>
@@ -1526,10 +1540,67 @@
   <div class="summary" role="status"><strong id="count">0</strong><span id="count-label"></span><span class="sep">•</span><span id="progress"></span><span id="notice" aria-live="polite"></span></div>
   <div id="board" class="board"></div>
 </main>
+<div id="help-modal" class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="help-dialog">
+    <h2 id="help-title" data-i="helpTitle">Ajutor — Kanban</h2>
+    <div id="help-body" class="help-body"></div>
+    <div class="help-acts"><button id="help-close" class="btn" type="button" data-i="close">Închide</button></div>
+  </div>
+</div>
 <script>
 const I18N = {
-  ro: { title:'Kanban', subtitle:'Sarcini din caiete, organizate după stare.', refresh:'↻ Reîncarcă', scope:'Arată sarcinile din', search:'Caută sarcini', searchHint:'Caută text, caiet sau capitol…', owner:'Responsabil', priority:'Prioritate', dateFilter:'Dată', stateFilter:'Stare', clear:'Șterge filtrele', all:'Toate caietele și capitolele', allOwners:'Toți responsabilii', unassigned:'Fără responsabil', allPriorities:'Toate prioritățile', noPriority:'Fără prioritate', nice:'Utilă', important:'Importantă', vital:'Vitală', allDates:'Toate datele', overdue:'Întârziate', today:'Astăzi', next7:'Următoarele 7 zile', undated:'Fără dată', allStates:'Toate stările', todo:'De făcut', inwork:'În lucru', onhold:'În așteptare', blocked:'Blocate', done:'Terminate', tasks:n=>`${n} sarcini afișate`, progress:(d,n)=>`${d} din ${n} terminate`, noTasks:'Nu există sarcini în această selecție. Adaugă o listă „- [ ]” într-un capitol.', noMatches:'Nicio sarcină nu corespunde filtrelor.', emptyLane:'Nicio sarcină', open:'Deschide', move:'Schimbă starea', loadError:'Nu s-au putut încărca caietele.', saveError:'Sarcina s-a schimbat între timp. Am reîncărcat pagina.', saved:'Starea a fost salvată.', workbook:'Caiet', chapter:'Capitol' },
-  en: { title:'Kanban', subtitle:'Workbook tasks organized by state.', refresh:'↻ Refresh', scope:'Show tasks from', search:'Search tasks', searchHint:'Search text, workbook or chapter…', owner:'Responsible', priority:'Priority', dateFilter:'Date', stateFilter:'State', clear:'Clear filters', all:'All workbooks and chapters', allOwners:'All responsibles', unassigned:'Unassigned', allPriorities:'All priorities', noPriority:'No priority', nice:'Nice to have', important:'Important', vital:'Vital', allDates:'All dates', overdue:'Overdue', today:'Today', next7:'Next 7 days', undated:'No date', allStates:'All states', todo:'To do', inwork:'In work', onhold:'On hold', blocked:'Blocked', done:'Done', tasks:n=>`${n} tasks shown`, progress:(d,n)=>`${d} of ${n} done`, noTasks:'No tasks in this selection. Add a “- [ ]” list to a chapter.', noMatches:'No tasks match the filters.', emptyLane:'No tasks', open:'Open', move:'Change state', loadError:'Could not load workbooks.', saveError:'This task changed in the meantime. The board has been refreshed.', saved:'Status saved.', workbook:'Workbook', chapter:'Chapter' }
+  ro: { title:'Kanban', subtitle:'Sarcini din caiete, organizate după stare.', refresh:'↻ Reîncarcă', scope:'Arată sarcinile din', search:'Caută sarcini', searchHint:'Caută text, caiet sau capitol…', owner:'Responsabil', priority:'Prioritate', dateFilter:'Dată', stateFilter:'Stare', clear:'Șterge filtrele', all:'Toate caietele și capitolele', allOwners:'Toți responsabilii', unassigned:'Fără responsabil', allPriorities:'Toate prioritățile', noPriority:'Fără prioritate', nice:'Utilă', important:'Importantă', vital:'Vitală', allDates:'Toate datele', overdue:'Întârziate', today:'Astăzi', next7:'Următoarele 7 zile', undated:'Fără dată', allStates:'Toate stările', todo:'De făcut', inwork:'În lucru', onhold:'În așteptare', blocked:'Blocate', done:'Terminate', tasks:n=>`${n} sarcini afișate`, progress:(d,n)=>`${d} din ${n} terminate`, noTasks:'Nu există sarcini în această selecție. Adaugă o listă „- [ ]” într-un capitol.', noMatches:'Nicio sarcină nu corespunde filtrelor.', emptyLane:'Nicio sarcină', open:'Deschide', move:'Schimbă starea', loadError:'Nu s-au putut încărca caietele.', saveError:'Sarcina s-a schimbat între timp. Am reîncărcat pagina.', saved:'Starea a fost salvată.', workbook:'Caiet', chapter:'Capitol', helpBtn:'Ajutor', helpTitle:'Ajutor — Kanban', close:'Închide', helpBody:`
+      <h3>Ce face pagina asta</h3>
+      <p>Arată sarcinile (listele <code>- [ ]</code>) din caietele Markdown ca fișe grupate pe stări. Se deschide din butonul ▦ al paginii Markdown. Fișele sunt citite din capitolele de pe acest dispozitiv; pagina nu ține sarcinile separat.</p>
+      <h3>Ce sarcini vezi</h3>
+      <ul>
+        <li><b>Arată sarcinile din</b> alege capitolul curent, un caiet sau toate caietele.</li>
+        <li>Căutarea găsește text, caiet sau capitol; filtrele aleg responsabilul, prioritatea, data (întârziate, astăzi, următoarele 7 zile, fără dată) și starea. „Șterge filtrele” le readuce la „toate”.</li>
+        <li>„↻ Reîncarcă” citește din nou caietele; pagina o face singură și când revii la ea.</li>
+      </ul>
+      <h3>Mutarea unei sarcini</h3>
+      <p>Trage fișa în altă coloană sau alege starea din lista ei. Schimbarea se scrie chiar în linia din capitol. „Deschide” duce la linia sarcinii în pagina Markdown. Dacă linia s-a schimbat între timp, nimic nu se scrie și tabla se reîncarcă.</p>
+      <h3>Cum se scrie o sarcină</h3>
+      <ul>
+        <li>Stări: <code>- [ ]</code> de făcut, <code>- [ ] ~inwork</code> în lucru, <code>- [ ] ~onhold</code> în așteptare, <code>- [ ] ~blocked</code> blocată, <code>- [x]</code> terminată.</li>
+        <li>Responsabil: <code>Ana &gt;&gt; text</code> la început sau <code>&gt;&gt;Ana</code> oriunde în text.</li>
+        <li>Prioritate: <code>!nice</code>, <code>!important</code> sau <code>!vital</code>.</li>
+        <li>Date: <code>start@AAAA-LL-ZZ</code> și <code>end@AAAA-LL-ZZ</code> (termenul); o dată <code>@AAAA-LL-ZZ</code> obișnuită contează și ea.</li>
+      </ul>
+      <h3 id="help-nas">Butonul NAS</h3>
+      <p>Butonul <b>NAS</b> din bara de sus ține ce lucrezi la fel cu un dosar de pe NAS-ul tău de acasă, în locul unui cont în cloud sau pe lângă el. Sistemul se conectează la NAS; în foaia butonului alegi dosarul o singură dată („Alege dosarul de pe NAS”). Aplicația nu cere și nu păstrează nicio parolă.</p>
+      <ul>
+        <li><b>Din pagina asta:</b> o fișă mutată schimbă capitolul, iar capitolul ajunge în dosarul <code>markdown</code> de pe NAS data viitoare când pagina Markdown e deschisă acasă. Pagina asta nu salvează fișiere proprii.</li>
+        <li><b>Departe de casă</b> schimbările rămân în capitolele de pe acest dispozitiv și pleacă spre NAS când pagina Markdown e deschisă acasă.</li>
+        <li>Butonul arată starea: ◌ nu ești acasă, ● acasă, ↻ se sincronizează, ✓ sincronizat, ⚠ e nevoie de un clic ca să redeschizi dosarul, ✕ eroare. Foaia lui arată fișierele care mai așteaptă și ce poate face acest dispozitiv.</li>
+      </ul>
+    ` },
+  en: { title:'Kanban', subtitle:'Workbook tasks organized by state.', refresh:'↻ Refresh', scope:'Show tasks from', search:'Search tasks', searchHint:'Search text, workbook or chapter…', owner:'Responsible', priority:'Priority', dateFilter:'Date', stateFilter:'State', clear:'Clear filters', all:'All workbooks and chapters', allOwners:'All responsibles', unassigned:'Unassigned', allPriorities:'All priorities', noPriority:'No priority', nice:'Nice to have', important:'Important', vital:'Vital', allDates:'All dates', overdue:'Overdue', today:'Today', next7:'Next 7 days', undated:'No date', allStates:'All states', todo:'To do', inwork:'In work', onhold:'On hold', blocked:'Blocked', done:'Done', tasks:n=>`${n} tasks shown`, progress:(d,n)=>`${d} of ${n} done`, noTasks:'No tasks in this selection. Add a “- [ ]” list to a chapter.', noMatches:'No tasks match the filters.', emptyLane:'No tasks', open:'Open', move:'Change state', loadError:'Could not load workbooks.', saveError:'This task changed in the meantime. The board has been refreshed.', saved:'Status saved.', workbook:'Workbook', chapter:'Chapter', helpBtn:'Help', helpTitle:'Help — Kanban', close:'Close', helpBody:`
+      <h3>What this page does</h3>
+      <p>Shows the tasks (<code>- [ ]</code> lists) of your Markdown workbooks as cards grouped by state. Open it from the Markdown page's ▦ button. The cards are read from the chapters on this device; the page keeps no tasks of its own.</p>
+      <h3>Which tasks you see</h3>
+      <ul>
+        <li><b>Show tasks from</b> picks the current chapter, one workbook or all workbooks.</li>
+        <li>Search matches text, workbook or chapter; the filters pick the responsible person, the priority, the date (overdue, today, next 7 days, no date) and the state. “Clear filters” sets them back to “all”.</li>
+        <li>“↻ Refresh” reads the workbooks again; the page also does this by itself when you come back to it.</li>
+      </ul>
+      <h3>Moving a task</h3>
+      <p>Drag the card to another column, or pick the state from its list. The change is written into the chapter's own line. “Open” goes to the task's line on the Markdown page. If the line changed in the meantime, nothing is written and the board refreshes.</p>
+      <h3>Writing a task</h3>
+      <ul>
+        <li>States: <code>- [ ]</code> to do, <code>- [ ] ~inwork</code> in work, <code>- [ ] ~onhold</code> on hold, <code>- [ ] ~blocked</code> blocked, <code>- [x]</code> done.</li>
+        <li>Responsible: <code>Ana &gt;&gt; text</code> at the start, or <code>&gt;&gt;Ana</code> anywhere in the text.</li>
+        <li>Priority: <code>!nice</code>, <code>!important</code> or <code>!vital</code>.</li>
+        <li>Dates: <code>start@YYYY-MM-DD</code> and <code>end@YYYY-MM-DD</code> (the due date); a plain <code>@YYYY-MM-DD</code> date counts too.</li>
+      </ul>
+      <h3 id="help-nas">The NAS button</h3>
+      <p>The <b>NAS</b> button in the top bar keeps your work in step with a folder on your own NAS at home, instead of a cloud account or beside one. Your system connects to the NAS; in the button's sheet you choose the folder once ("Choose the NAS folder"). The app never asks for or keeps a password.</p>
+      <ul>
+        <li><b>From this page:</b> a moved card changes its chapter, and the chapter reaches the <code>markdown</code> folder on the NAS the next time the Markdown page is open at home. This page saves no files of its own.</li>
+        <li><b>Away from home</b> the changes stay in the chapters on this device and go to the NAS when the Markdown page is open at home.</li>
+        <li>The button shows the state: ◌ away, ● at home, ↻ syncing, ✓ in step, ⚠ one click needed to reopen the folder, ✕ error. Its sheet lists the files still waiting and says what this device can do.</li>
+      </ul>
+    ` }
 };
 let UI = 'ro';
 try { UI = localStorage.getItem('scula:ui-lang') === 'en' ? 'en' : 'ro'; } catch(e) {}
@@ -1786,8 +1857,18 @@ function repaintLanguage() {
   document.documentElement.lang=UI;
   document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
   document.querySelectorAll('[data-i-placeholder]').forEach(el=>el.placeholder=t(el.dataset.iPlaceholder));
+  document.querySelectorAll('[data-i-title]').forEach(el=>el.title=t(el.dataset.iTitle));
+  document.querySelectorAll('[data-i-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.iAria)));
+  if ($('help-modal').classList.contains('open')) paintHelp();
   if (loaded) { paintControls(); filterTasks(); }
 }
+function paintHelp() { $('help-body').innerHTML=t('helpBody'); }
+function openHelp() { paintHelp(); $('help-modal').classList.add('open'); $('help-close').focus({preventScroll:true}); document.querySelector('.help-dialog').scrollTop=0; }
+function closeHelp() { $('help-modal').classList.remove('open'); $('helpBtn').focus(); }
+$('helpBtn').addEventListener('click',openHelp);
+$('help-close').addEventListener('click',closeHelp);
+$('help-modal').addEventListener('click',e=>{ if(e.target===$('help-modal')) closeHelp(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('help-modal').classList.contains('open')) closeHelp(); });
 window.addEventListener('scula-ui-lang',e=>{ UI=e.detail==='en'?'en':'ro'; repaintLanguage(); });
 window.addEventListener('focus',reload);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reload(); });

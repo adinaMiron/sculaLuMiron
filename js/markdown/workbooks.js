@@ -1191,6 +1191,7 @@ function renderWorkbooks() {
   invalidateWikiIndex();      // titles and files are what [[links]] resolve against
   const filterBeforePaint = wbResponsibleFilter;
   wbPaintResponsibleSelect();
+  wbPaintStampBtn();
   const tree = document.getElementById('wb-tree');
   if (!tree) return;
   tree.textContent = '';
@@ -1452,7 +1453,7 @@ async function newChapter(workbookId) {
   if (!await flushChapter()) return;
   const ch = {
     id: wbNewId('ch_'), workbookId: book.id, title,
-    file: wbUniqueFile(book.id, title), content: '',
+    file: wbUniqueFile(book.id, title), content: wbStampOn() ? wbStampText('') : '',
     created: Date.now(), updated: Date.now(), order: wbChaptersOf(book.id).length
   };
   wbChapters.push(ch);
@@ -1462,8 +1463,8 @@ async function newChapter(workbookId) {
   if (isSmallScreen()) closeWbPanel();
   setView('source');
   editor.focus();
-  editor.setSelectionRange(0, 0);
-  await wbMirrorWrite(book, ch, '');
+  editor.setSelectionRange(ch.content.length, ch.content.length);
+  await wbMirrorWrite(book, ch, ch.content);
 }
 
 // Enter after a lone "@date" row turns it into "# @date" and opens the next row.
@@ -1853,6 +1854,62 @@ async function syncNow(opts) {
   }
 }
 
+/* ── "Last updated" line at the top of every chapter ──
+   One italic first line, "*Ultima actualizare: 2026-11-19*" (or "Last
+   updated"), then a blank line. Whether it is on is read from the chapters
+   themselves, so every device agrees; while a chapter carries it, each save
+   refreshes the date (at most once a day changes the text). */
+const WB_STAMP_RE = /^\*(?:Ultima actualizare|Last updated): \d{4}-\d{2}-\d{2}\*[ \t]*(?:\r?\n(?:[ \t]*\r?\n)?|$)/;
+function wbYmd(ms) {
+  const d = new Date(ms || Date.now());
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function wbHasStamp(text) { return WB_STAMP_RE.test(String(text || '')); }
+function wbUnstampText(text) { return String(text || '').replace(WB_STAMP_RE, ''); }
+function wbStampText(text, ms) {
+  return '*' + t('stampLabel') + ': ' + wbYmd(ms) + '*\n\n' + wbUnstampText(text);
+}
+function wbStampOn() { return wbChapters.some(c => wbHasStamp(c.content)); }
+// Only a chapter that already has the line gets it refreshed; the label keeps
+// its language unless the date changes.
+function wbRefreshStamp(text) {
+  const m = String(text || '').match(WB_STAMP_RE);
+  if (!m || m[0].includes(wbYmd())) return text;
+  return wbStampText(text);
+}
+function wbPaintStampBtn() {
+  const btn = document.getElementById('wb-stamp-btn');
+  if (!btn) return;
+  const on = wbStampOn();
+  btn.textContent = t(on ? 'stampRemoveBtn' : 'stampAddBtn');
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.disabled = !wbChapters.length;
+}
+async function wbToggleStamps() {
+  if (!await flushChapter()) return;
+  const on = wbStampOn();
+  const targets = wbChapters.filter(c => wbHasStamp(c.content) === on);
+  if (!targets.length) { wbPaintStampBtn(); return; }
+  if (!confirm(t(on ? 'stampConfirmRemove' : 'stampConfirmAdd', targets.length))) return;
+  let done = 0;
+  for (const ch of targets) {
+    // The date written is the chapter's own last change, not today's.
+    const content = on ? wbUnstampText(ch.content) : wbStampText(ch.content, ch.updated);
+    const saved = { ...ch, content, updated: Date.now() };
+    if (!await wbPersist(WB_CHAPTERS, saved, true)) continue;
+    Object.assign(ch, saved);
+    done++;
+    if (ch.id === wbCurrentId) {
+      wbReplaceEditorText(content);
+      wbDraftWrite();
+      updatePreview(); updateStatus(); updateNav();
+    }
+  }
+  renderWorkbooks();
+  wbSay(t('stampDone', done), true);
+  cloudAutoSync();
+}
+
 /* ── Autosave: the open chapter is written back to IndexedDB as you type,
    so nothing is lost on any device. Disk mirroring stays on explicit saves,
    which is where a permission prompt is allowed to happen. ── */
@@ -1873,6 +1930,8 @@ async function flushChapter(force = false) {
   if (!wbCurrentId || (!wbDirty && !force)) return true;
   const ch = wbChapter(wbCurrentId);
   if (!ch) return false;
+  const stamped = wbRefreshStamp(editor.value);
+  if (stamped !== editor.value) { wbReplaceEditorText(stamped); updatePreview(); }
   const saved = { ...ch, content: editor.value, updated: Date.now() };
   wbDirty = true;
   wbDraftWrite();            // keep recovery even if the store rejects this write

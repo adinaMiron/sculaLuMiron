@@ -339,8 +339,8 @@ Markdown forms `- [ ]`, `- [ ] ~inwork`, `- [ ] ~onhold`, `- [ ] ~blocked` and
 
 The board changes the chapters themselves. With a
 [NAS folder](#nas-sync-every-page) chosen, a moved card reaches the NAS the
-next time the Markdown editor is open at home. This page has no Help panel
-of its own; the **NAS** button and its sheet work here as on every page.
+next time the Markdown editor is open at home. The **?** button opens the
+page's Help, which repeats this and the task forms above.
 
 ### Transfer (`transfer.html`)
 

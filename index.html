@@ -109,6 +109,15 @@
   /* 0,2,0 beats the mobile `.btn { flex: 1 1 auto; min-width: 0 }` */
   .wb-save-sync-row .btn { flex: 0 0 auto; white-space: nowrap; }
   .wb-save-sync-row #wb-cloud-where { flex: 0 0 auto; }
+  /* The Connect button lives in #site-nav (moved there by script), styled
+     like the nav's own pills. */
+  #site-nav #btn-wb-connect {
+    flex: 0 0 auto; background: transparent; color: #9FB3A5;
+    border: 1px solid #2E4739; border-radius: 999px; padding: 7px 11px;
+    font-family: inherit; font-size: 11px; letter-spacing: .04em;
+    cursor: pointer; white-space: nowrap;
+  }
+  #site-nav #btn-wb-connect:hover { color: #F3EEE1; }
 
   .btn {
     background: transparent;
@@ -439,7 +448,7 @@
   .wb-crumb[hidden] { display: none; }
   #btn-map[hidden] { display: none; }
   #btn-garden[hidden] { display: none; }
-  #btn-table-row[hidden] { display: none; }
+  #btn-table-row[hidden], #table-row-mode[hidden] { display: none; }
 
   #stat-wb { color: var(--text-2); }
   #wb-draft-warning { padding: 8px 16px; color: var(--danger); background: var(--surface); flex-shrink: 0; }
@@ -4075,6 +4084,14 @@
        halves and applyUILang() must not overwrite one of them. -->
   <button class="btn" id="btn-wb-connect" onclick="cloudToggle()">🔗 Connect Google</button>
 </div>
+<script>
+/* #btn-wb-connect sits in the shared nav, right of #navNasBtn. The nav block
+   must stay byte-identical on all eight pages, so only this page moves it in. */
+(function(){
+  var b = document.getElementById('btn-wb-connect'), n = document.getElementById('navNasBtn');
+  if (b && n && n.parentNode) n.parentNode.insertBefore(b, n.nextSibling);
+})();
+</script>
 
 <div class="toolbar">
   <button class="tb-btn tb-toggle active" id="btn-toolbar-toggle" onclick="toggleToolbarCollapse()" aria-controls="toolbar-groups" aria-expanded="true" data-i-title="toolbarToggleTip" title="Show/hide toolbar">☰</button>
@@ -4135,6 +4152,11 @@
   <button class="tb-btn" data-tbg="insert" onclick="insertList()" data-i="listBtn" data-i-title="listTip" title="Unordered List">≡ List</button>
   <button class="tb-btn" data-tbg="insert" onclick="insertOrderedList()" data-i="orderedListBtn" data-i-title="orderedListTip" title="Ordered List">№ Ordered</button>
   <button class="tb-btn" id="btn-table-row" onclick="addTableRow()" data-i="tableRowBtn" data-i-title="tableRowTip" title="Add a row with the current date and time below the row at the cursor or, with the cursor outside the table, after the last row">⊞+ Row</button>
+  <select class="tb-select" id="table-row-mode" onchange="tableRowModeChanged()" data-i-title="tableRowModeTip" title="Where the new row goes" hidden>
+    <option value="cursor" data-i="tableRowCursor">+ row after cursor</option>
+    <option value="heading" data-i="tableRowHeading">+ row after heading</option>
+    <option value="end" data-i="tableRowEnd">+ row at end of table</option>
+  </select>
   <select class="tb-select" id="task-status-select" onchange="setTaskStatus(this.value)"
           data-i-title="taskStatusTip" title="Set the status of the task at the caret or selected tasks (Ctrl+Shift+7 to do · 8 in work · 9 done)">
     <option value="" data-i="taskStatusDefault">— Task status —</option>
@@ -4244,6 +4266,7 @@
     </div>
     <div class="panel-actions">
       <button class="btn" onclick="createWorkbook()" data-i="newWorkbookBtn">＋ New workbook</button>
+      <button class="btn" id="wb-stamp-btn" onclick="wbToggleStamps()" data-i-title="stampTip" title="Add or remove the date of the latest update in every chapter" aria-pressed="false">🕓 Add update date</button>
       <div id="wb-where"></div>
     </div>
     <div id="wb-tree"></div>
