@@ -520,9 +520,12 @@
   #site-nav #navFolderBtn.set{ color:#C1BB45; border-color:#5A6B2E; }
   /* NAS sync (js/shared/nas.js, loaded at the end of this block). The button
      stays hidden until that script has run, so a copy of the pages without
-     the js/ folder shows no dead control. Its class is the sync state. */
+     the js/ folder shows no dead control. Its class is the sync state;
+     while the NAS folder answers (home, sync, ok) it is lit like a chosen
+     folder, so a phone shows "connected" without a tooltip. */
   #site-nav #navNasBtn{ letter-spacing:.04em; }
   #site-nav #navNasBtn[hidden]{ display:none; }
+  #site-nav #navNasBtn.home,
   #site-nav #navNasBtn.sync,
   #site-nav #navNasBtn.ok{ color:#C1BB45; border-color:#5A6B2E; }
   #site-nav #navNasBtn.ask,

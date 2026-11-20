@@ -18,8 +18,9 @@
    save.
 
    What is here so far: the nav button and its states, the
-   settings sheet, the SMB address and default folder, the "what
-   this device can do" check, choosing the NAS folder, presence
+   settings sheet, the noted SMB address of the sync folder and the
+   steps that connect it on each system, the "what this device can
+   do" check, choosing the NAS folder, presence
    (home or away), the outbox - the queue every saved file waits
    in until the device is home - and what a page's two-way pass is
    built on: the file store (list, read, write, move, copy by path,
@@ -39,6 +40,11 @@
   // repository has a public mirror (docs/tasks/nas-sync/00-overview.md).
   var EXAMPLE = "smb://user@192.168.1.10/share/folder/";
   var MAX_SEGMENTS = 24;
+  // The phone's road. Chrome's folder chooser on Android is the system's
+  // own, and it lists a NAS only when an app puts it there. This is the app
+  // the steps name; any other SMB "storage provider" is used the same way.
+  var SMB_APP = "CIFS Documents Provider";
+  var SMB_APP_URL = "https://play.google.com/store/apps/details?id=com.wa2c.android.cifsdocumentsprovider";
 
   var T = {
     ro:{
@@ -55,10 +61,16 @@
       tipAsk:"NAS: e nevoie de un clic ca să redeschizi dosarul.",
       tipError:function(m){ return "NAS: eroare." + (m ? " " + m : ""); },
       title:"Sincronizare cu NAS-ul",
-      intro:"Un dosar de pe NAS-ul de acasă, în locul unui cont în cloud. O pagină web nu poate deschide singură o adresă smb://: sistemul se conectează la NAS, iar aici alegi dosarul o singură dată. Aplicația nu cere și nu păstrează nicio parolă.",
-      folderTitle:"Dosarul de pe NAS",
+      intro:"Un dosar de pe NAS-ul de acasă, în locul unui cont în cloud. Sistemul — pe telefon, o aplicație SMB — se conectează la NAS, iar aici alegi dosarul o singură dată. Aplicația nu cere și nu păstrează nicio parolă.",
+      folderTitle:"Dosarul de sincronizare",
       folderNone:"Niciun dosar ales încă.",
       folderIs:function(n){ return "Dosar ales: " + n; },
+      folderAt:function(u){ return "Pe NAS: " + u; },
+      folderCode:function(c){ return "Codul dosarului: " + c + ". Același cod apare pe fiecare dispozitiv care sincronizează cu acest dosar; alt cod înseamnă alt dosar."; },
+      mismatch:function(noted, chosen){ return "Adresa notată mai jos se termină în „" + noted + "”, dar dosarul ales pe acest dispozitiv se numește „" + chosen + "”. Sincronizarea folosește dosarul ales, nu adresa. Dacă „" + chosen + "” este dosarul bun, corectează adresa; dacă nu, alege alt dosar."; },
+      fixAddr:"Corectează adresa",
+      sameFolder:"Este același dosar, sub alt nume",
+      sameKept:"Notat: adresa este a dosarului ales.",
       pick:"Alege dosarul de pe NAS",
       pickOther:"Alege alt dosar",
       forget:"Uită dosarul",
@@ -75,12 +87,15 @@
       pickFailed:"Dosarul nu a putut fi pregătit: citirea sau scrierea în el a eșuat.",
       notKept:"Dosarul nu a putut fi ținut minte pe acest dispozitiv: browserul a refuzat stocarea.",
       whyGone:"Dosarul nu răspunde. Partajarea este conectată?",
+      whyGoneAndroid:"Dosarul nu răspunde. Ești pe Wi-Fi-ul de acasă? Dacă da, deschide o dată aplicația SMB (" + SMB_APP + ") și apasă din nou butonul NAS.",
       whyOther:"Dosarul răspunde, dar nu mai poartă identitatea ținută minte aici. Alege-l din nou dacă este cel bun.",
-      addrLabel:"Adresa NAS-ului (SMB)",
-      folderLabel:"Dosarul implicit de la acea adresă",
-      folderHint:"Opțional: dosarul pe care îl vei alege pentru sincronizare.",
+      addrTitle:"Adresa dosarului pe NAS",
+      addrLabel:"Adresa dosarului de sincronizare (opțional)",
+      addrHint:"O notiță, nu o legătură: o pagină web nu poate deschide o adresă smb://, iar sincronizarea folosește numai dosarul ales mai sus. Scrie adresa întreagă, până la dosarul ales; pașii de conectare îi folosesc numele.",
       save:"Păstrează adresa",
       saved:"Adresa a fost păstrată pe acest dispozitiv.",
+      savedOther:function(noted, chosen){ return "Adresa a fost păstrată, dar se termină în „" + noted + "”, iar dosarul ales se numește „" + chosen + "”. Vezi avertismentul de la „Dosarul de sincronizare”."; },
+      savedPick:"Adresa a fost păstrată pe acest dispozitiv. Sincronizarea pornește abia după ce alegi dosarul cu butonul „Alege dosarul de pe NAS” de mai sus: adresa doar arată ce trebuie conectat.",
       cleared:"Adresa a fost ștearsă de pe acest dispozitiv.",
       passwordDropped:"Parola din adresă nu a fost păstrată. Aplicația nu are nevoie de ea: o cere sistemul, când se conectează.",
       storeFailed:"Adresa nu a putut fi păstrată pe acest dispozitiv.",
@@ -90,15 +105,25 @@
       errUser:"Numele de utilizator conține caractere nepermise.",
       errShare:"Lipsește numele partajării, cel de după adresa NAS-ului.",
       errPath:"Calea conține un nume de dosar nepermis.",
-      errFolder:"Dosarul implicit conține un nume nepermis.",
-      yourNas:"NAS-ul tău",
+      errFolder:"Dosarul conține un nume nepermis.",
       openLink:"Deschide în managerul de fișiere",
-      chooseThis:function(p){ return "Dosarul de ales: " + p; },
-      howTitle:"Cum ajunge dosarul în fereastra de alegere",
-      linux:function(a){ return "Linux: în GNOME, în Fișiere alege „Alte locații”, apoi „Conectare la server”, și scrie " + a.shareUrl + " — sau, într-un terminal: gio mount \"" + a.shareUrl + "\" (amândouă au nevoie de pachetul gvfs-smb). În KDE scrie " + a.shareUrl + " în bara de adresă din Dolphin. Partajarea apare apoi în bara laterală a ferestrei de alegere. În KDE dosarul ales așa primește altă cale la fiecare autentificare și trebuie ales din nou; o montare permanentă (cifs, vezi docs/NAS-SETUP.md) îl păstrează."; },
-      windows:function(a){ return "Windows: în File Explorer alege „Acest PC”, apoi „Mapare unitate de rețea”, și scrie " + a.unc + "."; },
-      mac:function(a){ return "macOS: în Finder alege „Accesare”, apoi „Conectare la server” (⌘K), și scrie " + a.shareUrl + "."; },
-      android:function(a){ return "Android: instalează o aplicație care adaugă partajările SMB în fereastra de fișiere a sistemului (un „furnizor de stocare” SMB/CIFS) și adaugă serverul " + a.host + ", partajarea " + a.share + (a.user ? ", utilizatorul " + a.user : "") + ". Partajarea apare apoi în meniul lateral al ferestrei de alegere."; },
+      howTitle:"Cum ajunge NAS-ul pe acest dispozitiv",
+      howHere:function(os){ return "Pașii pentru acest dispozitiv (" + os + ")"; },
+      howOther:"Pașii pentru alte sisteme",
+      anyShare:"smb://NAS/partajare/",
+      anyUnc:"\\\\NAS\\partajare",
+      linux:function(a){ return "În GNOME, în Fișiere alege „Alte locații”, apoi „Conectare la server”, și scrie " + a.shareUrl + " — sau, într-un terminal: gio mount \"" + a.shareUrl + "\" (amândouă au nevoie de pachetul gvfs-smb). În KDE scrie " + a.shareUrl + " în bara de adresă din Dolphin. Partajarea apare apoi în bara laterală a ferestrei de alegere. În KDE dosarul ales așa primește altă cale la fiecare autentificare și trebuie ales din nou; o montare permanentă (cifs, vezi docs/NAS-SETUP.md) îl păstrează."; },
+      windows:function(a){ return "În File Explorer alege „Acest PC”, apoi „Mapare unitate de rețea”, și scrie " + a.unc + "."; },
+      mac:function(a){ return "În Finder alege „Accesare”, apoi „Conectare la server” (⌘K), și scrie " + a.shareUrl + "."; },
+      deskPick:function(a, btn){ return "Apasă aici „" + btn + "” și alege " + (a.folder ? "dosarul " + a.inShare + " din partajarea " + a.share : a.generic ? "din partajare dosarul pe care îl vrei pentru sincronizare" : "partajarea " + a.share + " sau un dosar din ea") + ", apoi permite browserului să modifice fișierele din el."; },
+      andApp:"Instalează aplicația „" + SMB_APP + "” (din Google Play sau F-Droid) și deschide-o. Ea face NAS-ul vizibil în fereastra de fișiere a telefonului; alt „furnizor de stocare” SMB/CIFS se folosește la fel.",
+      andConn:function(a){ return a.generic
+        ? "Adaugă în ea o conexiune: la Host numele sau adresa IP a NAS-ului, la User utilizatorul tău, iar la Folder partajarea (și, dacă vrei, un dosar din ea). Parola rămâne în aplicația aceea; pagina aceasta nu o vede. Lasă „Read only” oprit."
+        : "Adaugă în ea o conexiune: la Host scrie " + a.host + (a.port ? ", la Port " + a.port : "") + (a.domain ? ", la Domain " + a.domain : "") + (a.login ? ", la User " + a.login : "") + ", iar la Folder " + a.above + ". Aplicația arată atunci adresa " + a.aboveUrl + ". Parola rămâne în aplicația aceea; pagina aceasta nu o vede. Lasă „Read only” oprit."; },
+      andPick:function(a, btn){ return "Apasă aici „" + btn + "”. În fereastra de fișiere deschide meniul ☰, alege „" + SMB_APP + "”, apoi conexiunea ta, " + (a.folder ? "intră în dosarul " + a.folder : "intră în dosarul pe care îl vrei pentru sincronizare (îl poți crea acolo)") + " și apasă butonul de jos („Folosește acest dosar”), apoi „Permite”."; },
+      andRule:"Dosarul de sincronizare este cel ales la ultimul pas. Conexiunea din aplicație doar îl face vizibil: poate arăta spre el sau spre orice dosar de deasupra lui.",
+      andAwake:"Dacă acasă butonul rămâne ◌, deschide o dată " + SMB_APP + " și apasă din nou NAS: Android oprește aplicațiile nefolosite. În setările ei poți porni „Show notification when opening files”, care o ține pornită cât timp sunt folosite fișiere.",
+      appLink:SMB_APP + " în Google Play",
       diagTitle:"Ce poate face acest dispozitiv",
       pickerYes:"Browserul poate alege un dosar: sincronizarea cu NAS-ul poate funcționa aici.",
       pickerNo:"Browserul acesta nu are fereastră de alegere a unui dosar, deci nu poate ajunge la un dosar de pe NAS. Folosește Chrome sau Edge.",
@@ -157,10 +182,16 @@
       tipAsk:"NAS: one click is needed to reopen the folder.",
       tipError:function(m){ return "NAS: error." + (m ? " " + m : ""); },
       title:"Sync with your NAS",
-      intro:"A folder on your home NAS instead of a cloud account. A web page cannot open an smb:// address by itself: your system connects to the NAS, and you choose the folder here once. The app never asks for or keeps a password.",
-      folderTitle:"The NAS folder",
+      intro:"A folder on your home NAS instead of a cloud account. Your system — on a phone, an SMB app — connects to the NAS, and you choose the folder here once. The app never asks for or keeps a password.",
+      folderTitle:"The sync folder",
       folderNone:"No folder chosen yet.",
       folderIs:function(n){ return "Chosen folder: " + n; },
+      folderAt:function(u){ return "On the NAS: " + u; },
+      folderCode:function(c){ return "Folder code: " + c + ". Every device that syncs with this folder shows the same code; another code means another folder."; },
+      mismatch:function(noted, chosen){ return "The address noted below ends in “" + noted + "”, but the folder chosen on this device is called “" + chosen + "”. Sync uses the chosen folder, not the address. If “" + chosen + "” is the right folder, correct the address; if not, choose another folder."; },
+      fixAddr:"Correct the address",
+      sameFolder:"It is the same folder, under another name",
+      sameKept:"Noted: the address is the chosen folder's.",
       pick:"Choose the NAS folder",
       pickOther:"Choose another folder",
       forget:"Forget the folder",
@@ -177,12 +208,15 @@
       pickFailed:"The folder could not be set up: reading or writing in it failed.",
       notKept:"The folder could not be remembered on this device: the browser refused the storage.",
       whyGone:"The folder does not answer. Is the share connected?",
+      whyGoneAndroid:"The folder does not answer. Are you on the home Wi-Fi? If so, open the SMB app (" + SMB_APP + ") once and press the NAS button again.",
       whyOther:"The folder answers, but it no longer carries the identity remembered here. Choose it again if it is the right one.",
-      addrLabel:"NAS address (SMB)",
-      folderLabel:"Default folder at that address",
-      folderHint:"Optional: the folder you will choose for syncing.",
+      addrTitle:"The folder's address on the NAS",
+      addrLabel:"Address of the sync folder (optional)",
+      addrHint:"A note, not a connection: a web page cannot open an smb:// address, and sync uses only the folder chosen above. Type the whole address, down to the chosen folder; the connection steps use its names.",
       save:"Keep the address",
       saved:"The address is kept on this device.",
+      savedOther:function(noted, chosen){ return "The address is kept, but it ends in “" + noted + "” and the chosen folder is called “" + chosen + "”. See the warning under “The sync folder”."; },
+      savedPick:"The address is kept on this device. Sync starts only once you choose the folder with the “Choose the NAS folder” button above: the address only shows what to connect.",
       cleared:"The address was removed from this device.",
       passwordDropped:"The password in the address was not kept. The app does not need it: your system asks for it when it connects.",
       storeFailed:"The address could not be kept on this device.",
@@ -192,15 +226,25 @@
       errUser:"The user name contains characters that are not allowed.",
       errShare:"The share name is missing — the part after the NAS address.",
       errPath:"The path contains a folder name that is not allowed.",
-      errFolder:"The default folder contains a name that is not allowed.",
-      yourNas:"Your NAS",
+      errFolder:"The folder contains a name that is not allowed.",
       openLink:"Open in the file manager",
-      chooseThis:function(p){ return "Folder to choose: " + p; },
-      howTitle:"How the folder gets into the folder chooser",
-      linux:function(a){ return "Linux: on GNOME, in Files choose “Other locations”, then “Connect to server”, and type " + a.shareUrl + " — or, in a terminal: gio mount \"" + a.shareUrl + "\" (both need the gvfs-smb package). On KDE type " + a.shareUrl + " in Dolphin's address bar. The share then appears in the sidebar of the folder chooser. On KDE a folder chosen this way gets a new path each time you log in and has to be chosen again; a permanent mount (cifs, see docs/NAS-SETUP.md) keeps it."; },
-      windows:function(a){ return "Windows: in File Explorer choose “This PC”, then “Map network drive”, and type " + a.unc + "."; },
-      mac:function(a){ return "macOS: in Finder choose “Go”, then “Connect to Server” (⌘K), and type " + a.shareUrl + "."; },
-      android:function(a){ return "Android: install an app that adds SMB shares to the system file chooser (an SMB/CIFS “storage provider”) and add the server " + a.host + ", the share " + a.share + (a.user ? ", the user " + a.user : "") + ". The share then appears in the side menu of the folder chooser."; },
+      howTitle:"How the NAS reaches this device",
+      howHere:function(os){ return "Steps for this device (" + os + ")"; },
+      howOther:"Steps for other systems",
+      anyShare:"smb://NAS/share/",
+      anyUnc:"\\\\NAS\\share",
+      linux:function(a){ return "On GNOME, in Files choose “Other locations”, then “Connect to server”, and type " + a.shareUrl + " — or, in a terminal: gio mount \"" + a.shareUrl + "\" (both need the gvfs-smb package). On KDE type " + a.shareUrl + " in Dolphin's address bar. The share then appears in the sidebar of the folder chooser. On KDE a folder chosen this way gets a new path each time you log in and has to be chosen again; a permanent mount (cifs, see docs/NAS-SETUP.md) keeps it."; },
+      windows:function(a){ return "In File Explorer choose “This PC”, then “Map network drive”, and type " + a.unc + "."; },
+      mac:function(a){ return "In Finder choose “Go”, then “Connect to Server” (⌘K), and type " + a.shareUrl + "."; },
+      deskPick:function(a, btn){ return "Press “" + btn + "” here and choose " + (a.folder ? "the folder " + a.inShare + " in the share " + a.share : a.generic ? "the folder in the share that you want to sync with" : "the share " + a.share + " or a folder in it") + ", then allow the browser to edit the files in it."; },
+      andApp:"Install the app “" + SMB_APP + "” (from Google Play or F-Droid) and open it. It makes the NAS visible in the phone's file chooser; another SMB/CIFS “storage provider” is used the same way.",
+      andConn:function(a){ return a.generic
+        ? "Add a connection in it: under Host the name or IP address of the NAS, under User your user, and under Folder the share (and, if you like, a folder in it). The password stays in that app; this page never sees it. Leave “Read only” off."
+        : "Add a connection in it: under Host type " + a.host + (a.port ? ", under Port " + a.port : "") + (a.domain ? ", under Domain " + a.domain : "") + (a.login ? ", under User " + a.login : "") + ", and under Folder " + a.above + ". The app then shows the address " + a.aboveUrl + ". The password stays in that app; this page never sees it. Leave “Read only” off."; },
+      andPick:function(a, btn){ return "Press “" + btn + "” here. In the file chooser open the ☰ menu, choose “" + SMB_APP + "”, then your connection, " + (a.folder ? "open the folder " + a.folder : "open the folder you want to sync with (you can create it there)") + " and tap the button at the bottom (“Use this folder”), then “Allow”."; },
+      andRule:"The sync folder is the one chosen in the last step. The connection in the app only makes it visible: it may point at that folder or at any folder above it.",
+      andAwake:"If the button stays ◌ at home, open " + SMB_APP + " once and press NAS again: Android stops apps that are not in use. In its settings you can switch on “Show notification when opening files”, which keeps it running while files are in use.",
+      appLink:SMB_APP + " on Google Play",
       diagTitle:"What this device can do",
       pickerYes:"This browser can choose a folder: NAS sync can work here.",
       pickerNo:"This browser has no folder chooser, so it cannot reach a folder on the NAS. Use Chrome or Edge.",
@@ -310,17 +354,31 @@
     var share = parts[0], path = parts.slice(1);
     var where = host + (port ? ":" + port : "");
     var who = user ? encodeURIComponent(user).replace(/%3B/gi, ";") + "@" : "";
+    var semi = user.indexOf(";"), above = parts.slice(0, -1);
+    if(!above.length) above = [share];
     return {
       ok:true, user:user, host:host, port:port, share:share, path:path, hadPassword:hadPassword,
       // What is kept and shown: the address as typed, minus any password.
       url:"smb://" + who + where + "/" + parts.map(encodeURIComponent).join("/") + "/",
       // What a system mounts: the share itself, without the folders inside it.
       shareUrl:"smb://" + who + where + "/" + encodeURIComponent(share) + "/",
-      unc:"\\\\" + host + "\\" + share
+      unc:"\\\\" + host + "\\" + share,
+      // The address is that of the sync folder: its last name is the folder
+      // to choose ("" when the address stops at the share), `inShare` is
+      // where it lies in the mounted share, and `above` is what holds it -
+      // what an SMB app on a phone is pointed at, and shows as `aboveUrl`.
+      folder:path.length ? path[path.length - 1] : "",
+      inShare:path.join("/"),
+      above:above.join("/"),
+      aboveUrl:"smb://" + where + "/" + above.join("/"),
+      // "DOMAIN;user", as an SMB app asks for the two.
+      domain:semi >= 0 ? user.slice(0, semi) : "",
+      login:semi >= 0 ? user.slice(semi + 1) : user
     };
   }
 
-  // The default folder: a relative path under the address, "" for none.
+  // A relative path of folders, "" for none. Until 2026-11-20 the sheet kept
+  // a "default folder" beside the address; this still reads one that is stored.
   function parseFolder(text){
     var parts = String(text == null ? "" : text).trim().split(/[\\/]+/).filter(function(p){ return p !== ""; });
     if(parts.length > MAX_SEGMENTS || !parts.every(safeName)) return { ok:false, error:"errFolder" };
@@ -368,9 +426,9 @@
   function dbRun(mode, run){
     return dbTx(DB_STORE, mode, function(t){ return run(t.objectStore(DB_STORE)); });
   }
-  // The address and folder are two short strings, so localStorage can stand
-  // in where IndexedDB is refused (some private windows). The folder handle
-  // has no such fallback: only IndexedDB can hold one, and pickFolder() says so.
+  // The address is a short string, so localStorage can stand in where
+  // IndexedDB is refused (some private windows). The folder handle has no
+  // such fallback: only IndexedDB can hold one, and pickFolder() says so.
   function loadAddress(){
     return dbRun("readonly", function(s){ return s.get(ADDRESS_KEY); }).catch(function(){
       try{ return JSON.parse(localStorage.getItem(LS_KEY) || "null"); }catch(e){ return null; }
@@ -390,37 +448,80 @@
     });
   }
 
+  // The address is a note: where the sync folder lies on the NAS, as the
+  // person typed it. The page cannot open it and cannot read the path of
+  // the folder that was chosen, so the two are held together by the one
+  // thing it does know of both - the folder's name (aligned(), below).
   var address = null;       // parseAddress() result, or null
-  var folder = "";          // "a/b", or ""
+  var sameAs = "";          // the store id of the folder the person said this address is, under another name
+
+  // Names as a share compares them: neither case nor the Unicode form tells
+  // two folders apart.
+  function fold(text){
+    var t = String(text);
+    try{ t = t.normalize("NFC"); }catch(e){}
+    return t.toLowerCase();
+  }
+  // Does the noted address name the chosen folder? "" when there is nothing
+  // to compare (no folder, no address, or an address that stops at the
+  // share), "same" when its last name is the folder's or the person said it
+  // is that folder, "other" when it names another one.
+  function aligned(){
+    if(!nas || !address || !address.folder) return "";
+    return sameAs === nas.storeId || fold(address.folder) === fold(nas.name) ? "same" : "other";
+  }
+  // A folder can be met under another name than the NAS gives it (a mount
+  // point, the name of a connection in the phone's SMB app). The person
+  // says so once; it holds for this folder and this address only.
+  function confirmSame(){
+    if(!nas || !address) return Promise.resolve({ ok:false, message:"" });
+    var id = nas.storeId;
+    return storeAddress({ url:address.url, same:id }).then(function(ok){
+      if(ok) sameAs = id;
+      return { ok:ok, message:tx(ok ? "sameKept" : "storeFailed") };
+    });
+  }
 
   // Returns { ok, message } and never throws. An empty address forgets it.
-  function setAddress(addrText, folderText){
+  function setAddress(addrText){
     var typed = String(addrText == null ? "" : addrText).trim();
     if(!typed){
       return storeAddress(null).then(function(ok){
-        if(ok){ address = null; folder = ""; }
+        if(ok){ address = null; sameAs = ""; }
         return { ok:ok, cleared:ok, message:tx(ok ? "cleared" : "storeFailed") };
       });
     }
     var a = parseAddress(typed);
     if(!a.ok) return Promise.resolve({ ok:false, field:"address", message:tx(a.error) });
-    var f = parseFolder(folderText);
-    if(!f.ok) return Promise.resolve({ ok:false, field:"folder", message:tx(f.error) });
-    return storeAddress({ url:a.url, folder:f.text }).then(function(ok){
+    // "The same folder" was said of the address as it stood.
+    var same = address && address.url === a.url ? sameAs : "";
+    return storeAddress(same ? { url:a.url, same:same } : { url:a.url }).then(function(ok){
       if(!ok) return { ok:false, message:tx("storeFailed") };
-      address = a; folder = f.text;
-      return { ok:true, hadPassword:a.hadPassword,
-               message:(a.hadPassword ? tx("passwordDropped") + " " : "") + tx("saved") };
+      address = a; sameAs = same;
+      // Typing the address does not choose the folder: say what comes next,
+      // or that it names another folder than the one chosen.
+      var said = !nas ? tx("savedPick") : aligned() === "other" ? tx("savedOther")(a.folder, nas.name) : tx("saved");
+      return { ok:true, hadPassword:a.hadPassword, other:!!nas && aligned() === "other",
+               message:(a.hadPassword ? tx("passwordDropped") + " " : "") + said };
     });
   }
 
   // `loaded`: what this device remembers has been read. `ready`: home or
   // away has been decided as well, and the waiting files counted.
   var loaded = loadAddress().then(function(v){
-    var a = v && typeof v.url === "string" ? parseAddress(v.url) : null;
-    var f = v && typeof v.folder === "string" ? parseFolder(v.folder) : null;
     // What was stored is read back through the same validation as what is typed.
-    if(a && a.ok){ address = a; folder = f && f.ok ? f.text : ""; }
+    var a = v && typeof v.url === "string" ? parseAddress(v.url) : null;
+    // Stored before 2026-11-20: the address of what holds the folder, and
+    // the folder as a second string. Read as the one address they meant.
+    var f = a && a.ok && typeof v.folder === "string" ? parseFolder(v.folder) : null;
+    if(f && f.ok && f.parts.length){
+      var whole = parseAddress(a.url + f.parts.map(encodeURIComponent).join("/"));
+      if(whole.ok) a = whole;
+    }
+    if(a && a.ok){
+      address = a;
+      sameAs = typeof v.same === "string" && ID_RE.test(v.same) ? v.same : "";
+    }
   }).catch(function(){}).then(function(){
     return loadFolder().catch(function(){ return null; });
   }).then(function(rec){
@@ -1664,8 +1765,10 @@
   /* ---- the sheet ---- */
 
   var sheet = null, card = null, opener = null;
-  var draft = null;         // { address, folder } typed but not kept yet
-  var notice = null;        // { text, bad } shown under the form
+  var draft = null;         // the address typed but not kept yet
+  var howOpen = null;       // the steps for this device and for the other systems, as the
+  var otherOpen = null;     // person last left them: true, false, or null for untouched
+  var notice = null;        // { text, bad, invalid } shown under the address
   var folderNote = null;    // { text, bad } shown under the folder buttons
   var busy = false;         // a folder or queue action is running
   var persistNote = "";
@@ -1697,7 +1800,7 @@
     "#scula-nas .msg{margin:10px 0 0;min-height:1.5em;color:#F3EEE1;}",
     "#scula-nas .msg.bad{color:#C1BB45;}",
     "#scula-nas a{color:#C1BB45;word-break:break-all;}",
-    "#scula-nas .link{display:flex;align-items:center;min-height:44px;}",
+    "#scula-nas .link{display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;min-height:44px;}",
     "#scula-nas ul{margin:0 0 12px;padding:0;list-style:none;}",
     "#scula-nas li{position:relative;margin:0 0 8px;padding-left:22px;font-size:13px;line-height:1.5;",
     "color:#9FB3A5;word-break:break-word;}",
@@ -1705,6 +1808,13 @@
     "#scula-nas li.yes::before{content:\"✓\";color:#C1BB45;}",
     "#scula-nas li.no::before{content:\"✕\";color:#F3EEE1;}",
     "#scula-nas li.no{color:#F3EEE1;}",
+    "#scula-nas ol{margin:0 0 12px;padding:0 0 0 22px;}",
+    "#scula-nas ol li{padding-left:2px;list-style:decimal;color:#F3EEE1;}",
+    "#scula-nas ol li::before,#scula-nas li.os::before{content:none;}",
+    "#scula-nas li.os{padding-left:0;}",
+    "#scula-nas li.os strong{display:block;font-weight:600;color:#F3EEE1;}",
+    "#scula-nas .warn{margin:0 0 12px;padding:10px 12px;border:1px solid #C1BB45;border-radius:10px;}",
+    "#scula-nas .warn p{margin:0;color:#F3EEE1;}",
     "#scula-nas details{margin:0 0 12px;}",
     "#scula-nas summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:13px;color:#F3EEE1;}",
     "#scula-nas li.file{margin:0 0 14px;padding-left:0;color:#F3EEE1;}",
@@ -1777,38 +1887,8 @@
     if(keep.indexOf("nasOut") === 0 && !outFocus) outFocus = keep;
     card.appendChild(outboxBox());
 
-    var form = el("form");
-    form.noValidate = true;
-    form.appendChild(field("nasAddr", tx("addrLabel"),
-      draft ? draft.address : (address ? address.url : ""), EXAMPLE));
-    form.appendChild(field("nasFolder", tx("folderLabel"),
-      draft ? draft.folder : folder, "ScuLa", tx("folderHint")));
-    var save = el("button", "act", tx("save"));
-    save.id = "nasSave"; save.type = "submit";
-    form.appendChild(save);
-    var msg = el("p", "msg" + (notice && notice.bad ? " bad" : ""), notice ? notice.text : "");
-    msg.id = "nasMsg";
-    msg.setAttribute("role", "status");
-    form.appendChild(msg);
-    form.addEventListener("input", function(){
-      draft = { address:form.querySelector("#nasAddr").value, folder:form.querySelector("#nasFolder").value };
-    });
-    form.addEventListener("submit", function(ev){
-      ev.preventDefault();
-      var a = form.querySelector("#nasAddr").value, f = form.querySelector("#nasFolder").value;
-      setAddress(a, f).then(function(r){
-        notice = { text:r.message, bad:!r.ok, field:r.field || "" };
-        // Kept: show what was stored (the password, if any, is gone from the
-        // box too). Refused: leave what was typed for correcting.
-        draft = r.ok ? null : { address:a, folder:f };
-        render();
-        var again = sheet.querySelector(r.field === "folder" ? "#nasFolder" : "#nasAddr");
-        if(!r.ok && again) again.focus();
-      });
-    });
-    card.appendChild(form);
-
-    if(address) card.appendChild(mine());
+    card.appendChild(howBox());
+    card.appendChild(addressBox());
 
     var dh = el("h3", "", tx("diagTitle"));
     card.appendChild(dh);
@@ -1825,8 +1905,8 @@
 
     sheet.textContent = "";
     sheet.appendChild(card);
-    if(notice && notice.bad){
-      var bad = sheet.querySelector(notice.field === "folder" ? "#nasFolder" : "#nasAddr");
+    if(notice && notice.invalid){
+      var bad = sheet.querySelector("#nasAddr");
       if(bad){ bad.setAttribute("aria-invalid", "true"); bad.setAttribute("aria-errormessage", "nasMsg"); }
     }
     if(keep){ var back = sheet.querySelector("#" + keep); if(back) back.focus(); }
@@ -1852,8 +1932,14 @@
     return b;
   }
 
-  // The NAS folder: which one, why it is away, and the buttons that choose,
-  // reopen, release and forget it.
+  // The first eight characters of a folder's identity, as a code a person
+  // can compare between two devices: the path of a chosen folder cannot be
+  // read, its identity file can.
+  function codeOf(id){ return id.slice(0, 4) + "-" + id.slice(4, 8); }
+
+  // The NAS folder: which one, where the note says it lies, its code, why
+  // it is away, and the buttons that choose, reopen, release and forget it.
+  // This is the only thing sync goes by; the address further down is a note.
   function folderBox(){
     var box = el("div");
     box.id = "nasFolderBox";
@@ -1862,10 +1948,41 @@
     name.id = "nasFolderName";
     box.appendChild(name);
     var clash = !!nas && presence.why === "clash";
+    if(nas){
+      var how = aligned();
+      if(how === "same"){
+        var at = el("p", "", tx("folderAt")(address.url));
+        at.id = "nasFolderAt";
+        box.appendChild(at);
+      }
+      var code = el("p", "", tx("folderCode")(codeOf(nas.storeId)));
+      code.id = "nasFolderCode";
+      box.appendChild(code);
+      if(how === "other"){
+        // The note names another folder than the one chosen: said where the
+        // folder is shown, with the two ways out of it.
+        var warn = el("div", "warn"), text = el("p", "", tx("mismatch")(address.folder, nas.name));
+        warn.id = "nasMismatch";
+        warn.setAttribute("role", "note");
+        warn.appendChild(text);
+        var fix = el("button", "act quiet", tx("fixAddr"));
+        fix.id = "nasFixAddr"; fix.type = "button";
+        fix.addEventListener("click", function(){
+          var i = sheet.querySelector("#nasAddr");
+          if(!i) return;
+          i.focus();
+          i.select();
+          if(typeof i.scrollIntoView === "function") i.scrollIntoView({ block:"center" });
+        });
+        warn.appendChild(fix);
+        warn.appendChild(action("nasSame", tx("sameFolder"), true, confirmSame));
+        box.appendChild(warn);
+      }
+    }
     if(nas && !presence.home){
       // (A clash and a missing permission are already the state line above.)
       var why = presence.why === "other" ? tx("whyOther")
-        : presence.why === "gone" || presence.why === "timeout" ? tx("whyGone") : "";
+        : presence.why === "gone" || presence.why === "timeout" ? tx(platform() === "Android" ? "whyGoneAndroid" : "whyGone") : "";
       if(why){
         var w = el("p", "", why);
         w.id = "nasWhy";
@@ -2003,35 +2120,117 @@
     return box;
   }
 
-  // The remembered NAS: the address as a link the system file manager
-  // opens, the folder to look for, and how each system makes it choosable.
-  function mine(){
-    var box = el("div");
-    box.id = "nasMine";
-    box.appendChild(el("h3", "", tx("yourNas")));
-    var p = el("p", "link");
-    var a = el("a", "", address.url);
-    a.id = "nasLink";
-    a.href = address.url;
-    a.title = tx("openLink");
-    a.setAttribute("aria-label", tx("openLink") + ": " + address.url);
-    p.appendChild(a);
-    box.appendChild(p);
-    var where = [address.share].concat(address.path, folder ? folder.split("/") : []).join("/");
-    var w = el("p", "", tx("chooseThis")(where));
-    w.id = "nasWhere";
-    box.appendChild(w);
-    var d = el("details");
-    d.id = "nasHow";
-    d.appendChild(el("summary", "", tx("howTitle")));
+  // A list that folds. It opens as `open` says until the person folds or
+  // unfolds it; `keep` remembers that across the repaints of the sheet.
+  function foldable(id, label, open, keep){
+    var d = el("details"), sum = el("summary", "", label);
+    d.id = id;
+    d.open = open;
+    sum.addEventListener("click", function(){ keep(!d.open); });
+    d.appendChild(sum);
+    return d;
+  }
+
+  // How the NAS becomes a folder the chooser lists: the steps for this
+  // device, with the names of the noted address where there is one, and the
+  // other systems folded away. On a phone that is an app - Android's
+  // chooser lists a NAS only when an app puts it there.
+  var OS = { Android:"android", Windows:"windows", Mac:"mac", Linux:"linux" };
+  var OS_NAME = { linux:"Linux", windows:"Windows", mac:"macOS", android:"Android" };
+  function howBox(){
+    var box = el("div"), here = OS[platform()] || "";
+    var a = address || { generic:true, shareUrl:tx("anyShare"), unc:tx("anyUnc") };
+    var btn = tx(nas ? "pickOther" : "pick");
+    function steps(os){
+      return os === "android" ? [tx("andApp"), tx("andConn")(a), tx("andPick")(a, btn)]
+                              : [tx(os)(a), tx("deskPick")(a, btn)];
+    }
+    box.id = "nasHowBox";
+    box.appendChild(el("h3", "", tx("howTitle")));
+    if(here){
+      // Open while connecting is what there is to do: no folder yet, or a
+      // folder that does not answer. (A missing permission and a 📁 clash
+      // have their own button above.)
+      var todo = !nas || (!presence.home && presence.why !== "permission" && presence.why !== "clash");
+      var mine = foldable("nasHowHere", tx("howHere")(OS_NAME[here]),
+        howOpen === null ? todo : howOpen, function(v){ howOpen = v; });
+      var ol = el("ol");
+      ol.id = "nasSteps";
+      ol.setAttribute("data-os", here);
+      steps(here).forEach(function(text){ ol.appendChild(el("li", "", text)); });
+      mine.appendChild(ol);
+      if(here === "android"){
+        var rule = el("p", "", tx("andRule"));
+        rule.id = "nasRule";
+        mine.appendChild(rule);
+        mine.appendChild(el("p", "", tx("andAwake")));
+        var get = el("p", "link"), app = el("a", "", tx("appLink"));
+        app.id = "nasAppLink";
+        app.href = SMB_APP_URL;
+        app.target = "_blank";
+        app.rel = "noopener noreferrer";
+        get.appendChild(app);
+        mine.appendChild(get);
+      } else if(address){
+        // A file manager opens an smb:// link and connects the share on the way.
+        var p = el("p", "link"), link = el("a", "", address.url);
+        link.id = "nasLink";
+        link.href = address.url;
+        link.setAttribute("aria-label", tx("openLink") + ": " + address.url);
+        p.appendChild(el("span", "", tx("openLink") + ":"));
+        p.appendChild(link);
+        mine.appendChild(p);
+      }
+      box.appendChild(mine);
+    }
+    var others = foldable("nasHow", tx("howOther"), otherOpen === null ? !here : otherOpen, function(v){ otherOpen = v; });
     var ul = el("ul");
-    ["linux", "windows", "mac", "android"].forEach(function(k){
-      var li = el("li", "", tx(k)(address));
-      li.setAttribute("data-os", k);
+    ["linux", "windows", "mac", "android"].forEach(function(os){
+      if(os === here) return;
+      var li = el("li", "os");
+      li.setAttribute("data-os", os);
+      li.appendChild(el("strong", "", OS_NAME[os]));
+      li.appendChild(document.createTextNode(steps(os).join(" ")));
       ul.appendChild(li);
     });
-    d.appendChild(ul);
-    box.appendChild(d);
+    others.appendChild(ul);
+    box.appendChild(others);
+    return box;
+  }
+
+  // The address of the sync folder, as a note: one field, and what keeping
+  // it answered. It sits below the folder it describes and never above it.
+  function addressBox(){
+    var box = el("div");
+    box.id = "nasAddrBox";
+    box.appendChild(el("h3", "", tx("addrTitle")));
+    var form = el("form");
+    form.noValidate = true;
+    form.appendChild(field("nasAddr", tx("addrLabel"), draft !== null ? draft : (address ? address.url : ""), EXAMPLE, tx("addrHint")));
+    var save = el("button", "act", tx("save"));
+    save.id = "nasSave"; save.type = "submit";
+    form.appendChild(save);
+    var msg = el("p", "msg" + (notice && notice.bad ? " bad" : ""), notice ? notice.text : "");
+    msg.id = "nasMsg";
+    msg.setAttribute("role", "status");
+    form.appendChild(msg);
+    form.addEventListener("input", function(){ draft = form.querySelector("#nasAddr").value; });
+    form.addEventListener("submit", function(ev){
+      ev.preventDefault();
+      var typed = form.querySelector("#nasAddr").value;
+      setAddress(typed).then(function(r){
+        // (An address that names another folder than the chosen one is kept,
+        // and said in the colour of a warning; it is not an invalid address.)
+        notice = { text:r.message, bad:!r.ok || !!r.other, invalid:!r.ok };
+        // Kept: show what was stored (the password, if any, is gone from the
+        // box too). Refused: leave what was typed for correcting.
+        draft = r.ok ? null : typed;
+        render();
+        var again = sheet.querySelector("#nasAddr");
+        if(!r.ok && again) again.focus();
+      });
+    });
+    box.appendChild(form);
     return box;
   }
 
@@ -2075,9 +2274,13 @@
     opener = document.activeElement;
     draft = null; notice = null; persistNote = ""; folderNote = null; pending = null;
     confirming = 0; outNote = null; outFocus = "";
+    howOpen = null; otherOpen = null;
     render();
     sheet.classList.add("open");
-    var first = sheet.querySelector("#nasAddr");
+    // The focus goes to what there is to do - reopen or choose the folder -
+    // and not to the address: on a phone a focused field raises the keyboard
+    // over the very thing the sheet is opened to show.
+    var first = sheet.querySelector("#nasGrant") || sheet.querySelector("#nasPick") || sheet.querySelector("#nasClose");
     if(first) first.focus();
     // Asking for the sheet is asking how things stand now.
     if(nas) probe();
@@ -2151,9 +2354,13 @@
     queue: queue,
     outbox: outbox,
     flush: flush,
+    // The noted address of the sync folder, or null. `folder` is the name
+    // it ends in ("" when it stops at the share), and `matches` says
+    // whether that is the chosen folder: "same", "other", or "" when there
+    // is nothing to compare.
     address: function(){
       return address ? { url:address.url, host:address.host, share:address.share,
-                         path:address.path.slice(), folder:folder } : null;
+                         path:address.path.slice(), folder:address.folder, matches:aligned() } : null;
     },
     setAddress: setAddress,
     parseAddress: parseAddress,
