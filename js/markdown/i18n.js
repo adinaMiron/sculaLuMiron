@@ -434,7 +434,7 @@ const I18N = {
       <ul>
         <li><b>Din pagina asta:</b> caietele și capitolele merg în ambele sensuri — singure când pagina se deschide acasă, când ajungi acasă și după „Salvează capitolul în caiet”, iar la „☁ Sincronizează acum” sunt preluate și dosarele și fișierele .md sau .txt copiate de mână în dosarul <code>markdown</code> de pe NAS. Un capitol schimbat pe două dispozitive își păstrează ambele texte (cel mai vechi devine un capitol „conflict”), iar ce se șterge sau se înlocuiește pe NAS este mutat în <code>.scula-trash</code>, nu șters. Datele trimise în calendar cu 📅 și fișierele exportate ajung și ele pe NAS. Rândul de sub bara de sus arată starea NAS-ului lângă cea a Google Drive.</li>
         <li><b>Departe de casă</b> totul rămâne pe acest dispozitiv: capitolele și evenimentele se sincronizează data viitoare când pagina e deschisă acasă, iar fișierele exportate așteaptă (butonul arată câte) și pleacă singure spre NAS.</li>
-        <li>Butonul arată starea: ◌ nu ești acasă, ● acasă, ↻ se sincronizează, ✓ sincronizat, ⚠ e nevoie de un clic ca să redeschizi dosarul, ✕ eroare. Foaia lui arată fișierele care mai așteaptă și ce poate face acest dispozitiv.</li>
+        <li>Butonul arată starea: ◌ nu ești acasă, ● acasă, ↻ se sincronizează, ✓ sincronizat, ⚠ e nevoie de un clic ca să redeschizi dosarul, ✕ eroare. Foaia lui arată adresa dosarului de pe NAS și fișierele care mai așteaptă.</li>
       </ul>
       <h3>Caiete și capitole</h3>
       <ul>
@@ -982,7 +982,7 @@ const I18N = {
       <ul>
         <li><b>From this page:</b> workbooks and chapters travel both ways — by themselves when the page opens at home, when you come home and after "Save to workbook"; "☁ Sync now" also takes in folders and .md or .txt files copied by hand into the <code>markdown</code> folder on the NAS. A chapter changed on two devices keeps both texts (the older one becomes a "conflict" chapter), and what is deleted or replaced on the NAS is moved to <code>.scula-trash</code>, not erased. Dates pushed to the calendar with 📅 and exported files reach the NAS too. The row under the top bar shows the NAS state beside Google Drive's.</li>
         <li><b>Away from home</b> everything stays on this device: chapters and events sync the next time the page is open at home, and exported files wait (the button shows how many) and go to the NAS by themselves.</li>
-        <li>The button shows the state: ◌ away, ● at home, ↻ syncing, ✓ in step, ⚠ one click needed to reopen the folder, ✕ error. Its sheet lists the files still waiting and says what this device can do.</li>
+        <li>The button shows the state: ◌ away, ● at home, ↻ syncing, ✓ in step, ⚠ one click needed to reopen the folder, ✕ error. Its sheet shows the folder's address on the NAS and the files still waiting.</li>
       </ul>
       <h3>Workbooks and chapters</h3>
       <ul>

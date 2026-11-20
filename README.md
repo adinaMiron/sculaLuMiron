@@ -91,7 +91,7 @@ Android, choosing the folder, Chrome's "Allow on every visit") is in
   open at home.
 - The button shows the state: `NAS` off · `◌` away · `●` at home · `↻` syncing
   · `✓` in step · `⚠` one click needed to reopen the folder · `✕` error. Its
-  sheet lists the waiting files and says what this device can do.
+  sheet shows the folder's address on the NAS and lists the waiting files.
 - Nothing on the NAS is erased: what a sync deletes or replaces is moved into
   `.scula-trash/` in the NAS folder. When a chapter was changed on two devices
   before they met, both texts are kept.
