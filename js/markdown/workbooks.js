@@ -501,8 +501,9 @@ async function wbSyncOnce() {
   if (changed) renderWorkbooks();
 }
 // Replace the editor's text without moving the caret or scroll for the
-// person reading it. The previous text stays one undo step away.
-function wbReplaceEditorText(text) {
+// person reading it. The previous text stays one undo step away, unless
+// `quiet` (the autosaved date line, which is not the person's edit).
+function wbReplaceEditorText(text, quiet) {
   const old = editor.value;
   if (old === text) return;
   let p = 0;
@@ -510,7 +511,7 @@ function wbReplaceEditorText(text) {
   const shift = at => at <= p ? at : Math.max(p, at + text.length - old.length);
   const start = shift(editor.selectionStart), end = shift(editor.selectionEnd);
   const dir = editor.selectionDirection, top = editor.scrollTop;
-  undoMark(false);
+  if (!quiet) undoMark(false);
   editor.value = text;
   try { editor.setSelectionRange(start, end, dir); } catch (e) {}
   editor.scrollTop = top;
@@ -1855,26 +1856,30 @@ async function syncNow(opts) {
 }
 
 /* ── "Last updated" line at the top of every chapter ──
-   One italic first line, "*Ultima actualizare: 2026-11-19*" (or "Last
-   updated"), then a blank line. Whether it is on is read from the chapters
-   themselves, so every device agrees; while a chapter carries it, each save
-   refreshes the date (at most once a day changes the text). */
-const WB_STAMP_RE = /^\*(?:Ultima actualizare|Last updated): \d{4}-\d{2}-\d{2}\*[ \t]*(?:\r?\n(?:[ \t]*\r?\n)?|$)/;
+   One italic first line, "*Ultima actualizare: 2026-11-19 14:05:33*" (or
+   "Last updated"), then a blank line. Whether it is on is read from the
+   chapters themselves, so every device agrees; while a chapter carries it,
+   each save that changed the text refreshes the date and time. Lines written
+   before the time was added ("…: 2026-11-19*") are still recognised. */
+const WB_STAMP_RE = /^\*(?:Ultima actualizare|Last updated): \d{4}-\d{2}-\d{2}(?: \d{2}:\d{2}:\d{2})?\*[ \t]*(?:\r?\n(?:[ \t]*\r?\n)?|$)/;
 function wbYmd(ms) {
   const d = new Date(ms || Date.now());
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+function wbHms(ms) {
+  const d = new Date(ms || Date.now());
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+}
 function wbHasStamp(text) { return WB_STAMP_RE.test(String(text || '')); }
 function wbUnstampText(text) { return String(text || '').replace(WB_STAMP_RE, ''); }
 function wbStampText(text, ms) {
-  return '*' + t('stampLabel') + ': ' + wbYmd(ms) + '*\n\n' + wbUnstampText(text);
+  return '*' + t('stampLabel') + ': ' + wbYmd(ms) + ' ' + wbHms(ms) + '*\n\n' + wbUnstampText(text);
 }
 function wbStampOn() { return wbChapters.some(c => wbHasStamp(c.content)); }
-// Only a chapter that already has the line gets it refreshed; the label keeps
-// its language unless the date changes.
-function wbRefreshStamp(text) {
-  const m = String(text || '').match(WB_STAMP_RE);
-  if (!m || m[0].includes(wbYmd())) return text;
+// Only a chapter that already has the line gets it refreshed, and only when
+// something besides the line itself changed since the last save.
+function wbRefreshStamp(text, saved) {
+  if (!wbHasStamp(text) || wbUnstampText(text) === wbUnstampText(saved)) return text;
   return wbStampText(text);
 }
 function wbPaintStampBtn() {
@@ -1930,8 +1935,8 @@ async function flushChapter(force = false) {
   if (!wbCurrentId || (!wbDirty && !force)) return true;
   const ch = wbChapter(wbCurrentId);
   if (!ch) return false;
-  const stamped = wbRefreshStamp(editor.value);
-  if (stamped !== editor.value) { wbReplaceEditorText(stamped); updatePreview(); }
+  const stamped = wbRefreshStamp(editor.value, ch.content);
+  if (stamped !== editor.value) { wbReplaceEditorText(stamped, true); updatePreview(); }
   const saved = { ...ch, content: editor.value, updated: Date.now() };
   wbDirty = true;
   wbDraftWrite();            // keep recovery even if the store rejects this write

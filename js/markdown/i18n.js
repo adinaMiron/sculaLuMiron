@@ -125,7 +125,7 @@ const I18N = {
     stampLabel:"Ultima actualizare",
     stampAddBtn:"🕓 Adaugă data actualizării",
     stampRemoveBtn:"🕓 Elimină data actualizării",
-    stampTip:"Pune sau scoate, în toate capitolele, un rând de sus cu data ultimei actualizări; cât e pus, data se reînnoiește la fiecare salvare",
+    stampTip:"Pune sau scoate, în toate capitolele, un rând de sus cu data și ora ultimei actualizări; cât e pus, se reînnoiesc la fiecare salvare care schimbă textul",
     stampConfirmAdd:n=>`Adaug rândul „Ultima actualizare” la începutul a ${n} capitol${n===1?'':'e'}?`,
     stampConfirmRemove:n=>`Scot rândul „Ultima actualizare” din ${n} capitol${n===1?'':'e'}?`,
     stampDone:n=>`Rândul cu data a fost actualizat în ${n} capitol${n===1?'':'e'}.`,
@@ -440,7 +440,7 @@ const I18N = {
       <ul>
         <li>Panoul „Caiete” (<kbd>Ctrl+2</kbd>) arată caietele și capitolele lor; dublu-click sau <kbd>F2</kbd> pe un nume îl redenumește pe loc.</li>
         <li>Trage un capitol ca să-l reordonezi în caiet sau să-l muți în alt caiet. Pe ecran tactil, ține apăsat pe capitol, apoi trage-l.</li>
-        <li>„🕓 Adaugă data actualizării” pune în toate capitolele un prim rând <code>*Ultima actualizare: AAAA-LL-ZZ*</code> (cursiv în previzualizare), cu data ultimei modificări; cât timp rândul există, data se reînnoiește când capitolul se salvează, iar capitolele noi îl primesc și ele. Același buton, devenit „🕓 Elimină data actualizării”, îl scoate din toate capitolele.</li>
+        <li>„🕓 Adaugă data actualizării” pune în toate capitolele un prim rând <code>*Ultima actualizare: AAAA-LL-ZZ HH:MM:SS*</code> (cursiv în previzualizare), cu data și ora ultimei modificări; cât timp rândul există, ele se reînnoiesc când capitolul se salvează cu text schimbat, iar capitolele noi îl primesc și ele. Același buton, devenit „🕓 Elimină data actualizării”, îl scoate din toate capitolele.</li>
         <li>Ce scrii se salvează automat pe măsură ce tastezi; „Salvează în caiet” (<kbd>Ctrl+S</kbd>) scrie și pe disc, dacă ai ales un folder cu 📁 din bara de sus, apoi sincronizează cu Google Drive dacă ai conectat un cont.</li>
         <li>„☁ Sincronizează acum” (<kbd>Ctrl+Alt+S</kbd>) scrie odată toate capitolele modificate din toate caietele — un punct lângă un nume arată ce nu a fost încă scris pe disc —, preia caietele și capitolele noi din folderul markdown, din Google Drive și de pe NAS și scrie toate capitolele înapoi. Cât lucrează, rândul de lângă buton arată pasul la care a ajuns (de exemplu „Scriu în dosar: 12 din 40”); la final apare un mesaj cu ce s-a făcut. La prima pornire pe un dispozitiv nou, aplicația cere întâi dosarul, apoi întreabă dacă aduci datele din cloud.</li>
         <li>„🔗 Conectează Google” leagă contul Google și sincronizează pe loc; „⏏ Deconectează Google” desface legătura. Deschide pagina prin HTTP(S), nu direct ca <code>file://</code>, pentru această funcție.</li>
@@ -673,7 +673,7 @@ const I18N = {
     stampLabel:"Last updated",
     stampAddBtn:"🕓 Add update date",
     stampRemoveBtn:"🕓 Remove update date",
-    stampTip:"Add or remove, in every chapter, a top line with the date of the latest update; while it is there, the date refreshes on every save",
+    stampTip:"Add or remove, in every chapter, a top line with the date and time of the latest update; while it is there, they refresh on every save that changes the text",
     stampConfirmAdd:n=>`Add the “Last updated” line to the top of ${n} chapter${n===1?'':'s'}?`,
     stampConfirmRemove:n=>`Remove the “Last updated” line from ${n} chapter${n===1?'':'s'}?`,
     stampDone:n=>`Date line changed in ${n} chapter${n===1?'':'s'}.`,
@@ -988,7 +988,7 @@ const I18N = {
       <ul>
         <li>The "Workbooks" panel (<kbd>Ctrl+2</kbd>) shows every workbook and its chapters; double-click or <kbd>F2</kbd> on a name renames it in place.</li>
         <li>Drag a chapter to reorder it within a workbook or move it to another workbook. On a touch screen, press and hold the chapter, then drag it.</li>
-        <li>"🕓 Add update date" puts a first line <code>*Last updated: YYYY-MM-DD*</code> (italic in the preview), with the date of the latest change, in every chapter; while the line is there, the date refreshes whenever the chapter saves, and new chapters get it too. The same button, now "🕓 Remove update date", takes it out of every chapter.</li>
+        <li>"🕓 Add update date" puts a first line <code>*Last updated: YYYY-MM-DD HH:MM:SS*</code> (italic in the preview), with the date and time of the latest change, in every chapter; while the line is there, they refresh whenever the chapter saves with changed text, and new chapters get it too. The same button, now "🕓 Remove update date", takes it out of every chapter.</li>
         <li>What you type autosaves as you go; "Save to workbook" (<kbd>Ctrl+S</kbd>) also writes it to disk, if you've picked a folder with the 📁 button up top, then syncs with Google Drive if an account is connected.</li>
         <li>"☁ Sync now" (<kbd>Ctrl+Alt+S</kbd>) writes every modified chapter across every workbook at once — a dot next to a name shows what hasn't hit disk yet — takes in new workbooks and chapters from the markdown folder, from Google Drive and from the NAS, and writes every chapter back. While it works, the line beside the button shows the step it has reached (for example “Writing to the folder: 12 of 40”); a message at the end says what was done. On the first run on a new device, the app asks for the folder first, then whether to bring your data from the cloud.</li>
         <li>"🔗 Connect Google" links your Google account and syncs right away; "⏏ Disconnect Google" unlinks it. Open this page over HTTP(S), not directly as <code>file://</code>, to use it.</li>
