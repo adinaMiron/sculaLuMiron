@@ -765,12 +765,19 @@ async function wbMirrorWrite(book, chapter, text, validate) {
     await w.write(new Blob([text], { type: 'text/markdown' }));
     if (validate && !await validate()) { await w.abort(); return null; }
     await w.close();
+    // This device's own write, not an outside change (wbFolderCheck).
+    try {
+      const f = await fh.getFile();
+      await wbSeenUpdate(seen => { seen[chapter.id] = { path: book.folder + '/' + chapter.file, tag: wbFileTag(f) }; });
+    } catch (e) {}
     return ScuLaFolder.name() + '/' + ScuLaFolder.subdir() + '/' + book.folder + '/' + chapter.file;
   } catch (e) { return null; }
 }
 // Explicit saves accept a local-only route, but a requested folder write
 // must keep its retry marker until the writable has closed successfully.
 async function wbSaveMirror(book, chapter) {
+  // A file changed outside the app is read before anything is written over it.
+  await wbFolderCheckIdle();
   // Chapter objects are updated in place by autosave. Keep the exact body
   // and revision handed to this write across every asynchronous step.
   chapter = { ...chapter };
@@ -943,6 +950,114 @@ async function wbAdoptQuietly() {
 window.addEventListener('scula-folder', ev => {
   if (ev.detail && ev.detail.mode === 'folder') wbAdoptQuietly();
 });
+
+/* ── Chapter files changed outside the app ──
+   A chapter's .md edited in another program is taken back in when the page
+   gets focus, at boot and at the start of a ☁ press, if the file is newer
+   than the chapter's last save here. The newest version wins; nothing is
+   copied aside. What this device last wrote into each file (path and
+   size:lastModified, in the meta store) tells its own writes apart from an
+   outside change whatever the dates say: a ☁ press writes every file, so a
+   file is often newer than a chapter Drive or the NAS brings in later.
+   docs/FEATURES.md § E, "Chapter files changed outside the app". */
+const WB_SEEN_KEY = 'folderSeen';
+function wbFileTag(file) { return file.size + ':' + file.lastModified; }
+// Read and write in one transaction, so two tabs never drop each other's entries.
+function wbSeenUpdate(change) {
+  return wbTx(WB_META, 'readwrite', s => {
+    const req = s.get(WB_SEEN_KEY);
+    req.onsuccess = () => {
+      const seen = req.result && typeof req.result === 'object' ? req.result : {};
+      change(seen);
+      s.put(seen, WB_SEEN_KEY);
+    };
+    return req;
+  }).catch(() => {});
+}
+let wbFolderCheckRun = null;   // one pass at a time; a second caller joins it
+function wbFolderCheck() {
+  if (!wbFolderCheckRun) {
+    wbFolderCheckRun = wbFolderCheckOnce().catch(() => 0).finally(() => { wbFolderCheckRun = null; });
+  }
+  return wbFolderCheckRun;
+}
+async function wbFolderCheckIdle() {
+  while (wbFolderCheckRun) await wbFolderCheckRun;
+}
+// Resolves to the number of chapters taken from their files.
+async function wbFolderCheckOnce() {
+  if (!wbBooted || !wbDraftReady) return 0;
+  try { await ScuLaFolder.ready; } catch (e) {}
+  if (!wbFolderMode()) return 0;
+  const md = await ScuLaFolder.dir(false);        // never the permission prompt
+  if (!md) return 0;
+  const seen = (await wbMetaGet(WB_SEEN_KEY).catch(() => null)) || {};
+  const learnt = {};
+  let took = 0;
+  for (const book of wbBooks.slice()) {
+    let dir;
+    try { dir = await md.getDirectoryHandle(book.folder); } catch (e) { continue; }
+    for (const ch of wbChaptersOf(book.id)) {
+      let file;
+      try { file = await (await dir.getFileHandle(ch.file)).getFile(); } catch (e) { continue; }
+      const path = book.folder + '/' + ch.file, tag = wbFileTag(file), saw = seen[ch.id];
+      if (saw && saw.path === path && saw.tag === tag) continue;   // as this device left it
+      if (!(file.lastModified > (ch.updated || 0))) continue;       // the save here is newer
+      const base = wbChapterVersion(ch), was = ch.content || '';
+      const typing = () => ch.id === wbCurrentId && (wbDirty || editor.value !== was);
+      if (typing()) continue;                                        // being typed in: newer still
+      let text;
+      try { text = await file.text(); } catch (e) { continue; }
+      if (text === was) { learnt[ch.id] = { path, tag }; continue; }
+      let next = null;
+      try {
+        await wbTx(WB_CHAPTERS, 'readwrite', s => {
+          const req = s.get(ch.id);
+          req.onsuccess = () => {
+            // Changed meanwhile — here, in another tab or by a sync: the next look decides.
+            if (wbChapterVersion(req.result) !== base || wbChapterVersion(wbChapter(ch.id)) !== base || typing()) return;
+            next = { ...req.result, content: text, updated: file.lastModified };
+            s.put(next);
+            s.transaction.objectStore(WB_PENDING).delete(ch.id);   // the file already holds it
+          };
+          return req;
+        });
+      } catch (e) { continue; }
+      if (!next) continue;
+      Object.assign(wbChapter(ch.id) || {}, next);
+      wbChapterVersions.set(ch.id, wbChapterVersion(next));
+      wbPendingIds.delete(ch.id);
+      wbRecordResponsibles(text);
+      learnt[ch.id] = { path, tag };
+      took++;
+      if (ch.id === wbCurrentId) {
+        wbReplaceEditorText(text);
+        updatePreview(); updateStatus(); updateNav();
+        wbDraftWrite();
+      }
+    }
+  }
+  const live = new Set(wbChapters.map(c => c.id));
+  const gone = Object.keys(seen).filter(id => !live.has(id));
+  if (gone.length || Object.keys(learnt).length) {
+    await wbSeenUpdate(s => { gone.forEach(id => { delete s[id]; }); Object.assign(s, learnt); });
+  }
+  if (took) renderWorkbooks();
+  return took;
+}
+// Focus and boot. A ☁ press runs its own pass and trades with Drive and the
+// NAS itself; here what came in goes up to them on its own.
+async function wbFolderCheckQuietly() {
+  if (wbSyncBusy) return;
+  const took = await wbFolderCheck();
+  if (!took) return;
+  wbSay(t('wbFolderNewer', took));
+  if (wbSyncBusy) return;
+  cloudAutoSync();
+  if (typeof nasAuto === 'function') nasAuto();
+}
+window.addEventListener('focus', () => wbFolderCheckQuietly());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) wbFolderCheckQuietly(); });
 
 /* ── Panel rendering ── */
 function wbActBtn(label, title, fn) {
@@ -1800,6 +1915,10 @@ async function syncNow(opts) {
 
     if (!await flushChapter()) return;
     if (folder) wbSyncStep(t('syncStepFolder'));
+    // Chapter files changed outside the app come in first, so this press
+    // carries them to Drive and the NAS too.
+    await wbFolderCheckIdle();
+    const newer = folder ? await wbFolderCheck() : 0;
     const found = await wbAdoptFromFolder();
 
     if (cloud) {
@@ -1840,6 +1959,7 @@ async function syncNow(opts) {
     renderWorkbooks();
 
     const parts = [];
+    if (newer) parts.push(t('wbFolderNewer', newer));
     if (found.books || found.chapters) parts.push(t('wbAdopted', found));
     if (folder) parts.push(t(failed ? 'wbSyncedSome' : 'wbSynced', n));
     if (cloudMsg) parts.push(cloudMsg);
@@ -2003,6 +2123,8 @@ async function saveToWorkbook() {
   const ch = wbChapter(wbCurrentId);
   const book = ch && wbBook(ch.workbookId);
   if (!ch || !book) { detachChapter(); openWorkbookModal(); return; }
+  // A click that brought the page back started a folder look; it goes first.
+  await wbFolderCheckIdle();
   if (!await flushChapter(true)) return;
   // Finish both IndexedDB and the local file before cloud sign-in can open.
   const saved = await wbSaveMirror(book, ch);
